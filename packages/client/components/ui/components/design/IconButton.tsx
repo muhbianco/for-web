@@ -42,12 +42,16 @@ export function IconButton(props: Props) {
 
   const [btn, noBtnRest] = splitProps(rest, ["onPress"]);
 
-  //Emulate delay of native onClick
-  // See issue https://github.com/solidjs-community/solid-aria/issues/84
-  // Delay must be at least 32ms for Safari
+  // Safari needs a 32ms delay; Electron drops getDisplayMedia user-activation if we wait.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onPress = (e: any) => setTimeout(() => btn.onPress?.(e), 32),
-    btnRest = mergeProps(noBtnRest, { onPress, preventFocusOnPress: true });
+  const onPress = (e: any) => {
+    if (window.native) {
+      btn.onPress?.(e);
+      return;
+    }
+    setTimeout(() => btn.onPress?.(e), 32);
+  };
+  const btnRest = mergeProps(noBtnRest, { onPress, preventFocusOnPress: true });
 
   const { buttonProps } = createButton(btnRest, () => ref);
   return (
