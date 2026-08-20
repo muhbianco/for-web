@@ -44,6 +44,10 @@ declare global {
       isWayland?(): boolean;
     };
 
+    MuchatVoice?: {
+      toggleScreenshare(): void;
+    };
+
     desktopConfig: {
       get(): DesktopConfig;
       set(config: Partial<DesktopConfig>): void;

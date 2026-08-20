@@ -5,6 +5,8 @@ import {
   createEffect,
   createSignal,
   JSX,
+  onCleanup,
+  onMount,
   Setter,
   useContext,
 } from "solid-js";
@@ -471,7 +473,13 @@ class Voice {
 
   async toggleScreenshare() {
     const room = this.room();
-    if (!room) throw "invalid state";
+    if (!room) {
+      this.openModal({
+        type: "error2",
+        error: new Error("Entra na call antes de compartilhar a tela."),
+      });
+      return;
+    }
 
     if (this.screenshare()) {
       await room.localParticipant.setScreenShareEnabled(false);
@@ -486,6 +494,15 @@ class Voice {
       let screenPickerFrameRate: number | undefined;
 
       // Register the modal on screen picker handler if it exists
+      if (window.native && !window.native.onceScreenPicker) {
+        this.openModal({
+          type: "error2",
+          error: new Error(
+            "Este Muchat está velho. Fecha o app na bandeja e instala a 1.0.18.",
+          ),
+        });
+        return;
+      }
       if (window.native && window.native.onceScreenPicker) {
         window.native.onceScreenPicker((sources) => {
           this.openModal({
@@ -710,6 +727,17 @@ export function VoiceContext(props: { children: JSX.Element }) {
   const sound = useSound();
   const device = useDevice();
   const voice = new Voice(state.voice, modals, sound, device);
+
+  onMount(() => {
+    window.MuchatVoice = {
+      toggleScreenshare: () => {
+        void voice.toggleScreenshare();
+      },
+    };
+    onCleanup(() => {
+      delete window.MuchatVoice;
+    });
+  });
 
   return (
     <voiceContext.Provider value={voice}>
