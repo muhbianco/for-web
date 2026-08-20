@@ -1,20 +1,76 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt-BR">
 
 <head>
   <meta charset="utf-8">
   <meta name="viewport"
     content="width=device-width, initial-scale=1, user-scalable=no, interactive-widget=resizes-content">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="theme-color" content="#000">
-  <meta name="theme-color" content="#000" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#141210">
+  <meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">
   <meta http-equiv="cache-control" content="no-cache">
   <link rel="shortcut icon" type="image/png" href="./public/assets/web/icon.ico">
-  <title>Stoat</title>
+  <title>Muchat</title>
+  <style>
+    /* Bridges the gap between first paint and the app mounting. Removed by
+       src/splash.ts, which also tells the desktop shell it can show itself. */
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      z-index: 20000;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: #141210;
+      color: #f3efe6;
+      font-family: system-ui, sans-serif;
+    }
+
+    #boot-splash img {
+      width: 96px;
+      height: 96px;
+    }
+
+    #boot-splash .boot-splash-track {
+      width: 180px;
+      height: 4px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #2a2723;
+    }
+
+    #boot-splash .boot-splash-bar {
+      width: 30%;
+      height: 100%;
+      border-radius: 999px;
+      background: #e85a2a;
+      animation: boot-splash-slide 1.1s ease-in-out infinite;
+    }
+
+    #boot-splash p {
+      margin: 0;
+      font-size: 13px;
+      opacity: 0.65;
+    }
+
+    @keyframes boot-splash-slide {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(340%); }
+    }
+  </style>
 </head>
 
 <body>
-  <noscript>You need to enable JavaScript to run this app.</noscript>
+  <noscript>Você precisa habilitar o JavaScript para usar o Muchat.</noscript>
+  <div id="boot-splash">
+    <img src="./public/assets/web/android-chrome-192x192.png" alt="Muchat" width="96" height="96">
+    <div class="boot-splash-track">
+      <div class="boot-splash-bar"></div>
+    </div>
+    <p>Carregando…</p>
+  </div>
   <div id="root"></div>
   <div id="floating"></div>
   <script src="/src/index.tsx" type="module"></script>

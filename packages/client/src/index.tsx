@@ -36,6 +36,7 @@ import {
   SnackbarController,
   SnackbarProvider,
 } from "@revolt/ui";
+import { DesktopUpdateBanner } from "@revolt/ui/components/features/desktop/DesktopUpdate";
 
 /* @refresh reload */
 import "@revolt/ui/styles";
@@ -51,6 +52,7 @@ import { HomePage } from "./interface/Home";
 import { ServerHome } from "./interface/ServerHome";
 import { ChannelPage } from "./interface/channels/ChannelPage";
 import "./serviceWorkerInterface";
+import { watchBootSplash } from "./splash";
 
 attachDevtoolsOverlay();
 
@@ -190,6 +192,7 @@ render(
               {routes()}
             </Route>
           </Router>
+          <DesktopUpdateBanner />
           {/* <ReportBug /> */}
         </SnackbarProvider>
       </I18nProvider>
@@ -197,3 +200,5 @@ render(
   ),
   document.getElementById("root") as HTMLElement,
 );
+
+watchBootSplash();

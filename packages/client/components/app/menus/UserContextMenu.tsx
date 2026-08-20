@@ -33,7 +33,7 @@ export function UserContextMenu(props: {
   const state = useState();
   const client = useClient();
   const navigate = useNavigate();
-  const { openModal, modals } = useModals();
+  const { openModal, modals, showError } = useModals();
 
   // server context
   const params = useSmartParams();
@@ -126,6 +126,30 @@ export function UserContextMenu(props: {
       type: "kick_member",
       member: props.member!,
     });
+  }
+
+  /**
+   * Whether this member can be disconnected from voice
+   */
+  function canDisconnectFromVoice() {
+    return (
+      props.inVoice &&
+      !props.user.self &&
+      !props.isScreenshare &&
+      props.member?.server?.havePermission("MoveMembers")
+    );
+  }
+
+  /**
+   * Disconnect the member from the voice channel they are in
+   */
+  async function disconnectFromVoice() {
+    try {
+      await props.member!.edit({ remove: ["VoiceChannel"] });
+    } catch (err) {
+      showError(err);
+    }
+    props.onClose?.();
   }
 
   /**
@@ -331,6 +355,19 @@ export function UserContextMenu(props: {
         >
           <Trans>Mute</Trans>
         </ContextMenuButton>
+        <Show when={canDisconnectFromVoice()}>
+          <ContextMenuButton
+            symbol={
+              <IconSlot>
+                <Symbol size={16}>call_end</Symbol>
+              </IconSlot>
+            }
+            onClick={() => void disconnectFromVoice()}
+            destructive
+          >
+            <Trans>Remove from call</Trans>
+          </ContextMenuButton>
+        </Show>
         <ContextMenuDivider />
       </Show>
       <Show when={props.isScreenshare && !props.user.self}>

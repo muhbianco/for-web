@@ -134,22 +134,25 @@ const Config: SettingsConfiguration<{ server: Server }> = {
             <span class={css({ userSelect: "all" })}>{pkg.version}</span>
           </Text>
           <Show when={window.native}>
-            <Text class="label">
-              Stoat for Desktop {window.native.versions.desktop()}
-            </Text>
-            <Text class="label">
-              <span
-                class={css({
-                  fontSize: "0.8em",
-                  lineHeight: "0.8em",
-                  opacity: "0.5",
-                })}
-              >
-                {window.native.versions.electron()},{" "}
-                {window.native.versions.node()},{" "}
-                {window.native.versions.chrome()}
-              </span>
-            </Text>
+            {(native) => (
+              <>
+                <Text class="label">
+                  Muchat for Desktop {native().versions.desktop()}
+                </Text>
+                <Text class="label">
+                  <span
+                    class={css({
+                      fontSize: "0.8em",
+                      lineHeight: "0.8em",
+                      opacity: "0.5",
+                    })}
+                  >
+                    {native().versions.electron()}, {native().versions.node()},{" "}
+                    {native().versions.chrome()}
+                  </span>
+                </Text>
+              </>
+            )}
           </Show>
           <Show when={config.features.legal_links}>
             {(links) => (

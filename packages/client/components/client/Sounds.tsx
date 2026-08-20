@@ -1,20 +1,20 @@
 import { createContext, JSXElement, useContext } from "solid-js";
 
 import { Sounds, TypeSounds, useState } from "@revolt/state";
-import deafenSound from "../../public/assets/sounds/deafen.ogg";
+import deafenSound from "../../public/assets/sounds/deafen.wav";
 import messageSound from "../../public/assets/sounds/message_sound.ogg";
-import muteSound from "../../public/assets/sounds/mute.ogg";
-import ringtoneIncomingSound from "../../public/assets/sounds/ringtone_incoming.ogg";
-import ringtoneOutgoingSound from "../../public/assets/sounds/ringtone_outgoing.ogg";
-import streamEndSound from "../../public/assets/sounds/stream_end.ogg";
-import streamStartSound from "../../public/assets/sounds/stream_start.ogg";
-import streamViewerJoinSound from "../../public/assets/sounds/stream_viewer_join.ogg";
-import streamViewerLeaveSound from "../../public/assets/sounds/stream_viewer_leave.ogg";
-import undeafenSound from "../../public/assets/sounds/undeafen.ogg";
-import unmuteSound from "../../public/assets/sounds/unmute.ogg";
-import userJoinVoiceSound from "../../public/assets/sounds/user_join_voice.ogg";
-import userLeaveVoiceSound from "../../public/assets/sounds/user_leave_voice.ogg";
-import userMovedSound from "../../public/assets/sounds/user_moved.ogg";
+import muteSound from "../../public/assets/sounds/mute.wav";
+import ringtoneIncomingSound from "../../public/assets/sounds/ringtone_incoming.wav";
+import ringtoneOutgoingSound from "../../public/assets/sounds/ringtone_outgoing.wav";
+import streamEndSound from "../../public/assets/sounds/stream_end.wav";
+import streamStartSound from "../../public/assets/sounds/stream_start.wav";
+import streamViewerJoinSound from "../../public/assets/sounds/stream_viewer_join.wav";
+import streamViewerLeaveSound from "../../public/assets/sounds/stream_viewer_leave.wav";
+import undeafenSound from "../../public/assets/sounds/undeafen.wav";
+import unmuteSound from "../../public/assets/sounds/unmute.wav";
+import userJoinVoiceSound from "../../public/assets/sounds/user_join_voice.wav";
+import userLeaveVoiceSound from "../../public/assets/sounds/user_leave_voice.wav";
+import userMovedSound from "../../public/assets/sounds/user_moved.wav";
 
 /**
  * A controller class for making sure sounds are managed in one place and to prevent undesirable sound overlaps

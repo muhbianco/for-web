@@ -1,8 +1,9 @@
-import { createSignal, onMount } from "solid-js";
+import { Show, createSignal, onMount } from "solid-js";
 
 import { Trans, useLingui } from "@lingui/solid/macro";
 
 import { CategoryButton, Checkbox, Column } from "@revolt/ui";
+import { DesktopUpdateSection } from "@revolt/ui/components/features/desktop/DesktopUpdate";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 declare type DesktopConfig = {
@@ -18,9 +19,28 @@ declare type DesktopConfig = {
   };
 };
 
+/** Used when the shell does not expose desktopConfig at all. */
+export const DEFAULT_DESKTOP_CONFIG: DesktopConfig = {
+  firstLaunch: false,
+  customFrame: false,
+  minimiseToTray: true,
+  startMinimisedToTray: false,
+  spellchecker: true,
+  hardwareAcceleration: false,
+  discordRpc: false,
+  windowState: { isMaximised: false },
+};
+
+/** Update lifecycle reported by the desktop shell's auto updater. */
+export type AppUpdatePayload = {
+  state: "idle" | "available" | "downloading" | "ready" | "error";
+  version?: string;
+  percent?: number;
+};
+
 declare global {
   interface Window {
-    native: {
+    native?: {
       versions: {
         node(): string;
         chrome(): string;
@@ -30,25 +50,31 @@ declare global {
       minimise(): void;
       maximise(): void;
       close(): void;
-      onceScreenPicker(
-        onScreenPick: (
-          sources: {
-            idx: number;
-            name: string;
-            isFullScreen: boolean;
-            image?: string;
-          }[],
-        ) => void,
-      ): void;
-      screenPickerCallback(idx: number, audio: boolean): void;
+      /** Screens and windows offered by the shell for its own picker. */
+      listScreenSources?(): Promise<
+        {
+          id: string;
+          name: string;
+          isFullScreen: boolean;
+          thumbnail?: string;
+          appIcon?: string;
+        }[]
+      >;
+      /** Pre-select a source so getDisplayMedia resolves without a round trip. */
+      armScreenShare?(sourceId: string, audio: boolean): Promise<boolean>;
+      splashReady?(): void;
+      onLoadProgress?(onProgress: (pct: number, label: string) => void): void;
+      onAppUpdate?(onUpdate: (payload: AppUpdatePayload) => void): void;
+      getUpdateState?(): Promise<AppUpdatePayload>;
+      installAppUpdate?(): void;
       isWayland?(): boolean;
     };
 
-    MuchatVoice?: {
-      toggleScreenshare(): void;
-    };
-
-    desktopConfig: {
+    /**
+     * Only the upstream Stoat desktop build ships this; the Muchat shell uses
+     * the native window frame and its own tray handling, so treat it as absent.
+     */
+    desktopConfig?: {
       get(): DesktopConfig;
       set(config: Partial<DesktopConfig>): void;
       getAutostart(): Promise<boolean>;
@@ -63,21 +89,26 @@ declare global {
 export default function Native() {
   const { t } = useLingui();
   const [autostart, setAutostart] = createSignal(false);
-  const [config, setConfig] = createSignal(window.desktopConfig.get());
+  const desktopConfig = window.desktopConfig;
+  const [config, setConfig] = createSignal(
+    desktopConfig?.get() ?? DEFAULT_DESKTOP_CONFIG,
+  );
 
   function set(config: Partial<DesktopConfig>) {
-    window.desktopConfig.set(config);
+    desktopConfig?.set(config);
     setConfig((conf) => ({ ...conf, ...config }));
   }
 
   onMount(async () => {
-    const value = await window.desktopConfig.getAutostart();
+    if (!desktopConfig) return;
+    const value = await desktopConfig.getAutostart();
     setAutostart(value);
   });
 
   async function toggleAutostart() {
+    if (!desktopConfig) return;
     const newValue = !autostart();
-    const savedValue = await window.desktopConfig.setAutostart(newValue);
+    const savedValue = await desktopConfig.setAutostart(newValue);
     setAutostart(savedValue);
   }
 
@@ -112,69 +143,69 @@ export default function Native() {
 
   return (
     <Column gap="lg">
-      <CategoryButton.Group>
-        <CategoryButton
-          action={<Checkbox checked={autostart()} />}
-          onClick={toggleAutostart}
-          icon={<Symbol>exit_to_app</Symbol>}
-          description={
-            <Trans>Launch Stoat when you log into your computer.</Trans>
-          }
-        >
-          <Trans>Start with Computer</Trans>
-        </CategoryButton>
-        {autostart() &&
-          CheckboxButton(
-            "startMinimisedToTray",
-            "minimize",
-            t`Start Minimised to Tray`,
-            t`Stoat will start in the system tray.`,
+      <Show when={desktopConfig}>
+        <CategoryButton.Group>
+          <CategoryButton
+            action={<Checkbox checked={autostart()} />}
+            onClick={toggleAutostart}
+            icon={<Symbol>exit_to_app</Symbol>}
+            description={
+              <Trans>Launch Muchat when you log into your computer.</Trans>
+            }
+          >
+            <Trans>Start with Computer</Trans>
+          </CategoryButton>
+          {autostart() &&
+            CheckboxButton(
+              "startMinimisedToTray",
+              "minimize",
+              t`Start Minimised to Tray`,
+              t`Muchat will start in the system tray.`,
+            )}
+          {CheckboxButton(
+            "minimiseToTray",
+            "cancel_presentation",
+            t`Minimise to Tray`,
+            t`Instead of closing, Muchat will hide in your tray.`,
           )}
-        {CheckboxButton(
-          "minimiseToTray",
-          "cancel_presentation",
-          t`Minimise to Tray`,
-          t`Instead of closing, Stoat will hide in your tray.`,
-        )}
-        {CheckboxButton(
-          "customFrame",
-          "web_asset",
-          t`Custom window frame`,
-          t`Let Stoat use its own custom titlebar.`,
-        )}
-      </CategoryButton.Group>
+          {CheckboxButton(
+            "customFrame",
+            "web_asset",
+            t`Custom window frame`,
+            t`Let Muchat use its own custom titlebar.`,
+          )}
+        </CategoryButton.Group>
 
-      <CategoryButton.Group>
-        {CheckboxButton(
-          "discordRpc",
-          "groups_2",
-          t`Discord RPC`,
-          t`Rep Stoat using Discord rich presence.`,
-        )}
-        {CheckboxButton(
-          "spellchecker",
-          "spellcheck",
-          t`Spellchecker`,
-          t`Show corrections and suggestions as you type.`,
-        )}
-        {CheckboxButton(
-          "hardwareAcceleration",
-          "speed",
-          t`Hardware Acceleration`,
-          t`Use the graphics card to improve performance.`,
-        )}
-      </CategoryButton.Group>
+        <CategoryButton.Group>
+          {CheckboxButton(
+            "spellchecker",
+            "spellcheck",
+            t`Spellchecker`,
+            t`Show corrections and suggestions as you type.`,
+          )}
+          {CheckboxButton(
+            "hardwareAcceleration",
+            "speed",
+            t`Hardware Acceleration`,
+            t`Use the graphics card to improve performance.`,
+          )}
+        </CategoryButton.Group>
+      </Show>
+
+      <DesktopUpdateSection />
 
       <CategoryButton.Group>
         <CategoryButton
           icon={<Symbol>desktop_windows</Symbol>}
           description={
             <>
-              <Trans>Version:</Trans> {window.native.versions.desktop()}
+              <Trans>Version:</Trans> {window.native?.versions.desktop() || "?"}{" "}
+              · <Trans>Chromium:</Trans>{" "}
+              {window.native?.versions.chrome() || "?"}
             </>
           }
         >
-          <Trans>Stoat for Desktop</Trans>
+          <Trans>Muchat for Desktop</Trans>
         </CategoryButton>
       </CategoryButton.Group>
     </Column>

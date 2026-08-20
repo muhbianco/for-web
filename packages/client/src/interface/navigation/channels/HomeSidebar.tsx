@@ -23,6 +23,7 @@ import {
   iconSize,
   typography,
 } from "@revolt/ui";
+import { VoiceDock } from "@revolt/ui/components/features/voice/VoiceDock";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import MdClose from "@material-design-icons/svg/outlined/close.svg?component-solid";
@@ -197,6 +198,7 @@ export const HomeSidebar = (props: Props) => {
           </Deferred>
         </List>
       </div>
+      <VoiceDock />
     </SidebarBase>
   );
 };

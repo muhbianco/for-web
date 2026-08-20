@@ -34,6 +34,7 @@ import {
   typography,
 } from "@revolt/ui";
 import { VoiceChannelPreview } from "@revolt/ui/components/features/voice/VoiceChannelPreview";
+import { VoiceDock } from "@revolt/ui/components/features/voice/VoiceDock";
 import { createDragHandle } from "@revolt/ui/components/utils/Draggable";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
@@ -250,6 +251,7 @@ export const ServerSidebar = (props: Props) => {
           )}
         </Draggable>
       </div>
+      <VoiceDock />
     </SidebarBase>
   );
 };
@@ -476,6 +478,17 @@ function Entry(
 
   const inCall = () => props.channel.id === voice.channel()?.id;
 
+  /**
+   * Clicking a voice channel joins it, like every other voice client does.
+   *
+   * Navigation still happens through the link; this only adds the connect.
+   */
+  function onEntryClick() {
+    if (!props.channel.isVoice || inCall()) return;
+    if (!props.channel.havePermission("Connect")) return;
+    void voice.connect(props.channel);
+  }
+
   const attentionState = createMemo(() =>
     props.active
       ? "selected"
@@ -492,6 +505,7 @@ function Entry(
     <Column gap="sm">
       <MenuButton
         href={`/server/${props.channel.serverId}/channel/${props.channel.id}`}
+        onClick={onEntryClick}
         use:floating={props.menuGenerator(props.channel)}
         size="normal"
         alert={alertState()}

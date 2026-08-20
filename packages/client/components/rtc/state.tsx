@@ -5,8 +5,6 @@ import {
   createEffect,
   createSignal,
   JSX,
-  onCleanup,
-  onMount,
   Setter,
   useContext,
 } from "solid-js";
@@ -28,6 +26,7 @@ import { Channel } from "stoat.js";
 import { SoundController, useSound } from "@revolt/client";
 import { useInstance } from "@revolt/instance";
 import { ModalController, useModals } from "@revolt/modal";
+import type { ScreenShareSelection } from "@revolt/modal/types";
 import { useState } from "@revolt/state";
 import {
   NoiseSuppresionState,
@@ -52,7 +51,7 @@ type ScreenShareQuality = {
   name: ScreenShareQualityName;
   resolution: VideoResolution;
   fullName: string;
-  contentHint: string;
+  contentHint: "detail" | "text" | "motion";
 };
 
 class Voice {
@@ -482,173 +481,219 @@ class Voice {
     }
 
     if (this.screenshare()) {
+      await this.stopScreenshare();
+      return;
+    }
+
+    // On the desktop shell we own the picker: list the sources, let the user
+    // choose, and only capture from inside their click. In the browser the user
+    // agent owns the picker, so we go straight to capture.
+    if (window.native?.listScreenSources) {
+      await this.pickScreenshareSource();
+      return;
+    }
+
+    this.startScreenshare();
+  }
+
+  /** Stop sharing and drop any screen share audio still published. */
+  private async stopScreenshare() {
+    const room = this.room();
+    if (!room) return;
+
+    try {
       await room.localParticipant.setScreenShareEnabled(false);
 
+      const audio = room.localParticipant.getTrackPublication(
+        Track.Source.ScreenShareAudio,
+      );
+      if (audio?.track) {
+        await room.localParticipant.unpublishTrack(audio.track);
+      }
+
       this.#setScreenshare(room.localParticipant.isScreenShareEnabled);
-
       this.sound.playSound("streamEnd");
-    } else {
-      const qualities = this.getEnabledScreenShareQualities();
-      let screenPickerQualityName: ScreenShareQualityName | undefined;
-      let screenPickerAudio: boolean | undefined;
-      let screenPickerFrameRate: number | undefined;
+    } catch (e) {
+      this.onErr(e);
+    }
+  }
 
-      // Register the modal on screen picker handler if it exists
-      if (window.native && !window.native.onceScreenPicker) {
-        this.openModal({
-          type: "error2",
-          error: new Error(
-            "Este Muchat está velho. Fecha o app na bandeja e instala a 1.0.18.",
-          ),
-        });
-        return;
-      }
-      if (window.native && window.native.onceScreenPicker) {
-        window.native.onceScreenPicker((sources) => {
-          this.openModal({
-            type: "screen_share_picker",
-            onCancel: () => {
-              window.native.screenPickerCallback(-1, false);
-            },
-            callback: (
-              idx: number,
-              qualityName: ScreenShareQualityName,
-              audio: boolean,
-              frameRate?: number,
-            ) => {
-              window.native.screenPickerCallback(idx, audio);
-              screenPickerQualityName = qualityName;
-              screenPickerAudio = audio;
-              screenPickerFrameRate = frameRate;
-            },
-            sources: sources,
-            qualities: Object.keys(qualities).map((k) => {
-              const v = qualities[k as ScreenShareQualityName]!;
-              return { name: k, fullName: v.fullName };
-            }),
-          });
-        });
-      }
+  /** Ask the desktop shell for sources and open our own picker. */
+  private async pickScreenshareSource() {
+    const qualities = this.getEnabledScreenShareQualities();
 
-      try {
-        const localTrack = await room.localParticipant.setScreenShareEnabled(
-          true,
-          {
-            resolution:
-              this.getEnabledScreenShareQualities()[
-                this.#settings.screenShareQuality || "low"
-              ]?.resolution,
-            audio: {
+    let sources;
+    try {
+      sources = await window.native!.listScreenSources!();
+    } catch (e) {
+      this.onErr(e);
+      return;
+    }
+
+    if (!sources.length) {
+      this.openModal({
+        type: "error2",
+        error: new Error(
+          "Não achei nenhuma tela ou janela pra compartilhar. Se você está por RDP, tenta na sessão local.",
+        ),
+      });
+      return;
+    }
+
+    this.openModal({
+      type: "screen_share_picker",
+      sources,
+      qualities: Object.keys(qualities).map((k) => {
+        const v = qualities[k as ScreenShareQualityName]!;
+        return { name: k, fullName: v.fullName };
+      }),
+      arm: (sourceId, audio) => {
+        void window.native!.armScreenShare!(sourceId, audio).catch((e) =>
+          console.warn("[muchat] failed to arm screen share", e),
+        );
+      },
+      // Runs inside the Go Live click so that getDisplayMedia still sees the
+      // user gesture; awaiting anything here would break capture silently.
+      callback: (selection) => this.startScreenshare(selection),
+      onCancel: () => {},
+    });
+  }
+
+  /**
+   * Publish the screen share. Must be reachable synchronously from a user
+   * gesture: everything up to livekit's getDisplayMedia call runs without an
+   * await, which is what keeps the transient activation alive.
+   */
+  private startScreenshare(selection?: ScreenShareSelection) {
+    const room = this.room();
+    if (!room) return;
+
+    const qualities = this.getEnabledScreenShareQualities();
+    const qualityName =
+      selection?.qualityName ?? this.#settings.screenShareQuality ?? "low";
+    const quality = qualities[qualityName] ?? qualities.low!;
+    const wantsAudio = selection
+      ? selection.audio
+      : this.#settings.screenShareAudio;
+
+    const resolution = { ...quality.resolution };
+    if (selection?.frameRate) {
+      resolution.frameRate = selection.frameRate;
+    }
+
+    room.localParticipant
+      .setScreenShareEnabled(true, {
+        resolution,
+        contentHint: quality.contentHint,
+        audio: wantsAudio
+          ? {
               autoGainControl: false,
               echoCancellation: false,
               noiseSuppression: false,
               voiceIsolation: false,
               restrictOwnAudio: true,
-            },
-          },
-        );
+            }
+          : false,
+      })
+      .then((localTrack) => this.onScreenshareStarted(localTrack, selection))
+      .catch((e) => this.onErr(e));
+  }
 
+  /** Wire up the freshly published screen share track. */
+  private onScreenshareStarted(
+    localTrack: LocalTrackPublication | undefined,
+    selection?: ScreenShareSelection,
+  ) {
+    const room = this.room();
+    if (!room) return;
+
+    this.#setScreenshare(room.localParticipant.isScreenShareEnabled);
+    if (!localTrack) return;
+
+    // Fired when the share ends outside our UI, e.g. the shared window closes
+    // or the user hits the browser's own "stop sharing" bar. Without this,
+    // livekit would keep publishing the screen share audio.
+    localTrack.on("ended", () => {
+      void this.stopScreenshare();
+    });
+
+    const screenAudioTrack = room.localParticipant.getTrackPublication(
+      Track.Source.ScreenShareAudio,
+    );
+
+    // Our own picker already collected quality and audio, so there is nothing
+    // left to ask. Only the browser path may still need the settings dialog.
+    if (selection) {
+      this.sound.playSound("streamStart");
+      return;
+    }
+
+    const qualities = this.getEnabledScreenShareQualities();
+    if (
+      !this.#settings.screenShareQualityAsk ||
+      Object.keys(qualities).length < 2
+    ) {
+      this.sound.playSound("streamStart");
+      return;
+    }
+
+    localTrack.pauseUpstream();
+    screenAudioTrack?.pauseUpstream();
+    this.openModal({
+      type: "screen_share_settings",
+      trackReference: {
+        participant: room.localParticipant,
+        publication: localTrack,
+        source: Track.Source.ScreenShare,
+      },
+      qualities: Object.keys(qualities).map((k) => {
+        const v = qualities[k as ScreenShareQualityName]!;
+        return { name: k, fullName: v.fullName };
+      }),
+      audio: !!screenAudioTrack,
+      onCancel: () => void this.stopScreenshare(),
+      callback: async (qualityName, audio) => {
+        await this.applyScreenshareQuality(localTrack, qualityName, audio);
+        localTrack.resumeUpstream();
+        if (audio) screenAudioTrack?.resumeUpstream();
+      },
+    });
+  }
+
+  /** Re-constrain a live screen share track after the settings dialog. */
+  private async applyScreenshareQuality(
+    localTrack: LocalTrackPublication,
+    qualityName: ScreenShareQualityName,
+    audio: boolean,
+  ) {
+    const room = this.room();
+    const videoTrack = localTrack.videoTrack;
+    if (!room || !videoTrack) return;
+
+    const qualities = this.getEnabledScreenShareQualities();
+    const quality = qualities[qualityName] ?? qualities.low!;
+    const { width, height, frameRate } = quality.resolution;
+
+    try {
+      await videoTrack.mediaStreamTrack.applyConstraints({
+        frameRate: { max: frameRate },
+        width: width === 0 ? undefined : { ideal: width, max: width },
+        height: height === 0 ? undefined : { ideal: height, max: height },
+      });
+      videoTrack.mediaStreamTrack.contentHint = quality.contentHint;
+
+      if (!audio) {
         const screenAudioTrack = room.localParticipant.getTrackPublication(
           Track.Source.ScreenShareAudio,
         );
-
-        this.#setScreenshare(room.localParticipant.isScreenShareEnabled);
-
-        if (localTrack) {
-          // This event is only fired if the screen share is ended by closing the window being streamed.
-          // This catches the ending and disables screen sharing on our side. If this weren't here,
-          // livekit would still share stream audio after closing the window being streamed.
-          localTrack.on("ended", () => {
-            this.toggleScreenshare();
-            const oldAudioTrack = room.localParticipant.getTrackPublication(
-              Track.Source.ScreenShareAudio,
-            );
-            if (oldAudioTrack && oldAudioTrack.track) {
-              room.localParticipant.unpublishTrack(oldAudioTrack.track);
-            }
-          });
-
-          const callback = async (
-            qualityName: ScreenShareQualityName,
-            audio: boolean,
-          ) => {
-            const quality = qualities[qualityName] || qualities.low!;
-
-            if (localTrack.videoTrack) {
-              await localTrack.videoTrack.mediaStreamTrack.applyConstraints({
-                frameRate: {
-                  max: screenPickerFrameRate || quality.resolution.frameRate,
-                },
-                width:
-                  quality.resolution.width === 0
-                    ? undefined
-                    : {
-                        ideal: quality.resolution.width,
-                        max: quality.resolution.width,
-                      },
-                height:
-                  quality.resolution.width === 0
-                    ? undefined
-                    : {
-                        ideal: quality.resolution.width,
-                        max: quality.resolution.height,
-                      },
-              });
-              localTrack.videoTrack.mediaStreamTrack.contentHint =
-                quality.contentHint;
-              if (!audio && screenAudioTrack?.track) {
-                room.localParticipant.unpublishTrack(screenAudioTrack.track);
-              }
-              this.sound.playSound("streamStart");
-            }
-          };
-
-          if (screenPickerQualityName) {
-            callback(
-              screenPickerQualityName || "low",
-              screenPickerAudio || false,
-            );
-          } else if (this.#settings.screenShareQualityAsk) {
-            if (Object.keys(qualities).length > 1) {
-              localTrack.pauseUpstream();
-              screenAudioTrack?.pauseUpstream();
-              this.openModal({
-                onCancel: async () => {
-                  await room.localParticipant.setScreenShareEnabled(false);
-                  this.#setScreenshare(
-                    room.localParticipant.isScreenShareEnabled,
-                  );
-                },
-                type: "screen_share_settings",
-                trackReference: {
-                  participant: room.localParticipant,
-                  publication: localTrack,
-                  source: Track.Source.ScreenShare,
-                },
-                qualities: Object.keys(qualities).map((k) => {
-                  const v = qualities[k as ScreenShareQualityName]!;
-                  return { name: k, fullName: v.fullName };
-                }),
-                audio: !!screenAudioTrack,
-                callback: async (qualityName, audio) => {
-                  callback(qualityName, audio);
-                  localTrack.resumeUpstream();
-                  if (audio) {
-                    screenAudioTrack?.resumeUpstream();
-                  }
-                },
-              });
-            } else {
-              callback(
-                this.#settings.screenShareQuality || "low",
-                this.#settings.screenShareAudio,
-              );
-            }
-          }
+        if (screenAudioTrack?.track) {
+          await room.localParticipant.unpublishTrack(screenAudioTrack.track);
         }
-      } catch (e) {
-        this.onErr(e);
       }
+
+      this.sound.playSound("streamStart");
+    } catch (e) {
+      this.onErr(e);
     }
   }
 
@@ -711,8 +756,14 @@ class Voice {
   }
 
   private onErr(e: unknown) {
-    if ((e as Error).name !== "NotAllowedError")
-      this.openModal({ type: "error2", error: e });
+    // Always leave a trace: a silently swallowed rejection here is exactly how
+    // screen sharing "did nothing" with no error for days.
+    console.error("[voice]", e);
+
+    // A user declining a permission prompt or closing the OS picker is not a
+    // failure worth a modal; anything else is.
+    if ((e as Error)?.name === "NotAllowedError") return;
+    this.openModal({ type: "error2", error: e });
   }
 }
 
@@ -727,17 +778,6 @@ export function VoiceContext(props: { children: JSX.Element }) {
   const sound = useSound();
   const device = useDevice();
   const voice = new Voice(state.voice, modals, sound, device);
-
-  onMount(() => {
-    window.MuchatVoice = {
-      toggleScreenshare: () => {
-        void voice.toggleScreenshare();
-      },
-    };
-    onCleanup(() => {
-      delete window.MuchatVoice;
-    });
-  });
 
   return (
     <voiceContext.Provider value={voice}>

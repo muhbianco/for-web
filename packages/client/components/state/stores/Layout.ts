@@ -41,6 +41,24 @@ export interface TypeLayout {
    * Only the contrary is ever stored
    */
   openSections: Record<string, boolean>;
+
+  /**
+   * Height in pixels reserved for the in-channel voice stage
+   */
+  voiceStageHeight: number;
+}
+
+/** Bounds for the resizable voice stage. */
+export const VOICE_STAGE_MIN_HEIGHT = 160;
+export const VOICE_STAGE_MAX_HEIGHT = 2000;
+export const VOICE_STAGE_DEFAULT_HEIGHT = 320;
+
+/** Keep a persisted stage height inside sane bounds. */
+export function clampVoiceStageHeight(height: number) {
+  return Math.min(
+    VOICE_STAGE_MAX_HEIGHT,
+    Math.max(VOICE_STAGE_MIN_HEIGHT, Math.round(height)),
+  );
 }
 
 /**
@@ -70,6 +88,7 @@ export class Layout extends AbstractStore<"layout", TypeLayout> {
       activeInterface: "home",
       activePath: {},
       openSections: {},
+      voiceStageHeight: VOICE_STAGE_DEFAULT_HEIGHT,
     };
   }
 
@@ -103,6 +122,10 @@ export class Layout extends AbstractStore<"layout", TypeLayout> {
           layout.openSections[section] = input.openSections[section];
         }
       }
+    }
+
+    if (Number.isFinite(input.voiceStageHeight)) {
+      layout.voiceStageHeight = clampVoiceStageHeight(input.voiceStageHeight!);
     }
 
     return layout;
@@ -192,5 +215,20 @@ export class Layout extends AbstractStore<"layout", TypeLayout> {
       !this.getSectionState(id, defaultValue),
       defaultValue,
     );
+  }
+
+  /**
+   * Height reserved for the in-channel voice stage
+   */
+  getVoiceStageHeight() {
+    return this.get().voiceStageHeight ?? VOICE_STAGE_DEFAULT_HEIGHT;
+  }
+
+  /**
+   * Resize the in-channel voice stage
+   * @param height Desired height in pixels, clamped to sane bounds
+   */
+  setVoiceStageHeight(height: number) {
+    this.set("voiceStageHeight", clampVoiceStageHeight(height));
   }
 }

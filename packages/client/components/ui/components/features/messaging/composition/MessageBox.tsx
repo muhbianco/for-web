@@ -121,7 +121,10 @@ const Base = styled("div", {
 
 const Parent = styled("div", {
   base: {
-    flexGrow: 1,
+    // Never grow or shrink with the column: the composer is sized by its own
+    // content so that resizing anything above it (such as the voice stage)
+    // cannot move it.
+    flexGrow: 0,
     flexShrink: 0,
 
     display: "flex",

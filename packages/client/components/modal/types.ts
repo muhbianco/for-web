@@ -27,6 +27,23 @@ import { ScreenShareQualityName } from "@revolt/state/stores/Voice";
 
 import type { ChangelogResponse } from "./modals/Changelog";
 
+/** A screen or window offered by the desktop shell. */
+export type ScreenShareSource = {
+  id: string;
+  name: string;
+  isFullScreen: boolean;
+  thumbnail?: string;
+  appIcon?: string;
+};
+
+/** What the user settled on in the screen share picker. */
+export type ScreenShareSelection = {
+  sourceId: string;
+  qualityName: ScreenShareQualityName;
+  audio: boolean;
+  frameRate: number;
+};
+
 export type Modals =
   | {
       type: "add_bot";
@@ -333,19 +350,19 @@ export type Modals =
     }
   | {
       type: "screen_share_picker";
-      callback: (
-        idx: number,
-        qualityName: ScreenShareQualityName,
-        audio: boolean,
-        frameRate?: number,
-      ) => void;
+      sources: ScreenShareSource[];
       qualities: { name: string; fullName: string }[];
-      sources: {
-        idx: number;
-        name: string;
-        isFullScreen: boolean;
-        image?: string;
-      }[];
+      /**
+       * Pre-arm the chosen source in the desktop shell so that capture needs no
+       * IPC round trip.
+       */
+      arm: (sourceId: string, audio: boolean) => void;
+      /**
+       * Must be called synchronously from the user's click: getDisplayMedia
+       * requires transient user activation and any await before it loses the
+       * gesture, which makes capture fail silently.
+       */
+      callback: (selection: ScreenShareSelection) => void;
       onCancel: () => void;
     }
   | {

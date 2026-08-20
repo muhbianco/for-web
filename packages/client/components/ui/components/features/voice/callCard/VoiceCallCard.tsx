@@ -18,6 +18,7 @@ import { styled } from "styled-system/jsx";
 
 import { useVoice } from "@revolt/rtc";
 import { useState } from "@revolt/state";
+import { VOICE_STAGE_MIN_HEIGHT } from "@revolt/state/stores/Layout";
 import { SlideState } from "@revolt/ui/components/navigation/SlideDrawer";
 
 import { VoiceCallCardActiveRoom } from "./VoiceCallCardActiveRoom";
@@ -30,12 +31,20 @@ type FloatType = "tl" | "tr" | "bl" | "br";
 type Info = {
   channel: Channel;
   pos: DOMRect;
+  /** Height the mount reserved in the channel column, in pixels. */
+  height: number;
   drawer?: SlideState;
 };
 
 const PAD = 16,
   PAD_X = `${PAD}px`,
   PAD_Y = `${PAD + 56}px`;
+
+/** Space the join preview needs, including the card padding around it. */
+const PREVIEW_STAGE_HEIGHT = 152;
+
+/** Room left for the channel header, composer and a sliver of messages. */
+const STAGE_VIEWPORT_RESERVE = 240;
 
 const callCardContext = createContext<(info?: Info) => void>();
 
@@ -109,10 +118,14 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
     if (voice.fullscreen()) {
       sty.transform = ``;
       sty.width = `100%`;
+      sty.height = ``;
       setMode();
     } else if (inf?.pos && (!inf.drawer || inf.drawer === SlideState.SHOWN)) {
       sty.transform = `translate(${inf.pos.x}px, ${inf.pos.y}px)`;
       sty.width = `${inf.pos.width}px`;
+      // Match the space the mount reserved so the card fills it exactly
+      // instead of overlapping the message list.
+      sty.height = `${inf.height}px`;
       setMode();
     } else if (!inCall()) {
       const y = inf?.pos.y ?? ref.getBoundingClientRect().y;
@@ -129,6 +142,7 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
       y = float[0] === "t" ? PAD_Y : `calc(100vh - var(--flt-h) - ${PAD_Y})`;
     sty.transform = `translate(${x}, ${y})`;
     sty.width = "";
+    sty.height = "";
     setMode("floating");
   }
 
@@ -195,8 +209,10 @@ const Float = styled("div", {
     position: "fixed",
     zIndex: 10,
     pointerEvents: "none",
-    transition: "all .3s cubic-bezier(1, 0, 0, 1)",
-    height: "40vh",
+    // Height is driven inline by the space the mount reserved and must track
+    // the drag frame by frame, so it is deliberately left out of the transition.
+    transition:
+      "transform .3s cubic-bezier(1, 0, 0, 1), width .3s cubic-bezier(1, 0, 0, 1)",
     touchAction: "none",
   },
   variants: {
@@ -230,12 +246,28 @@ const Float = styled("div", {
   ],
 });
 
-/** 'Marker' to send position information for mounting the floating call card */
+/**
+ * 'Marker' that reserves the call card's space in the channel column and
+ * reports its position for mounting the floating card.
+ *
+ * Reserving real height here is what keeps the message list and the composer
+ * out of the way: they are siblings below this marker, so growing the stage
+ * only ever eats into the (flex-grow) message list.
+ */
 export function VoiceChannelCallCardMount(props: { channel: Channel }) {
   const voice = useVoice();
   const state = useState();
   const setInfo = useContext(callCardContext)!;
   let ref: HTMLDivElement | undefined;
+
+  const inThisCall = () => voice.channel()?.id === props.channel.id;
+
+  const height = () => {
+    if (!voice.showCard(props.channel)) return 0;
+    return inThisCall()
+      ? state.layout.getVoiceStageHeight()
+      : PREVIEW_STAGE_HEIGHT;
+  };
 
   function updateInfo() {
     const vc = voice.channel();
@@ -244,6 +276,7 @@ export function VoiceChannelCallCardMount(props: { channel: Channel }) {
         ? {
             channel: props.channel,
             pos: ref!.getBoundingClientRect(),
+            height: height(),
             drawer: state.appDrawer()?.state,
           }
         : undefined,
@@ -262,7 +295,13 @@ export function VoiceChannelCallCardMount(props: { channel: Channel }) {
     setInfo();
   });
 
-  return <div ref={ref!} />;
+  return (
+    <div
+      ref={ref!}
+      style={{ height: `${height()}px`, "flex-shrink": "0" }}
+      aria-hidden="true"
+    />
+  );
 }
 
 /**
@@ -285,18 +324,97 @@ function VoiceCallCard(props: {
             <VoiceCallCardActiveRoom />
           </Show>
         </Card>
+        <Show when={props.inCall && !props.fullscreen}>
+          <VoiceStageResizeHandle />
+        </Show>
       </Base>
     </Show>
+  );
+}
+
+/**
+ * Drag handle along the bottom edge of the call card.
+ *
+ * Resizes only the stage; the message list absorbs the difference and the
+ * composer, which neither grows nor shrinks, stays put.
+ */
+function VoiceStageResizeHandle() {
+  const state = useState();
+  let startY = 0,
+    startHeight = 0;
+
+  function maxHeight() {
+    return Math.max(
+      VOICE_STAGE_MIN_HEIGHT,
+      window.innerHeight - STAGE_VIEWPORT_RESERVE,
+    );
+  }
+
+  function onPointerDown(event: PointerEvent) {
+    if (event.button !== 0) return;
+    event.preventDefault();
+    startY = event.clientY;
+    startHeight = state.layout.getVoiceStageHeight();
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+  }
+
+  function onPointerMove(event: PointerEvent) {
+    const target = event.currentTarget as HTMLElement;
+    if (!target.hasPointerCapture(event.pointerId)) return;
+    state.layout.setVoiceStageHeight(
+      Math.min(maxHeight(), startHeight + (event.clientY - startY)),
+    );
+  }
+
+  function onPointerUp(event: PointerEvent) {
+    const target = event.currentTarget as HTMLElement;
+    if (target.hasPointerCapture(event.pointerId)) {
+      target.releasePointerCapture(event.pointerId);
+    }
+  }
+
+  /** Keyboard resizing, since a drag handle alone is not accessible. */
+  function onKeyDown(event: KeyboardEvent) {
+    const step = event.shiftKey ? 64 : 16;
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      state.layout.setVoiceStageHeight(
+        state.layout.getVoiceStageHeight() - step,
+      );
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      state.layout.setVoiceStageHeight(
+        Math.min(maxHeight(), state.layout.getVoiceStageHeight() + step),
+      );
+    }
+  }
+
+  return (
+    <ResizeHandle
+      role="separator"
+      tabIndex={0}
+      aria-orientation="horizontal"
+      aria-label="Redimensionar a área de voz"
+      aria-valuenow={state.layout.getVoiceStageHeight()}
+      aria-valuemin={VOICE_STAGE_MIN_HEIGHT}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerUp}
+      onKeyDown={onKeyDown}
+    />
   );
 }
 
 const Base = styled("div", {
   base: {
     left: 0,
-    top: "var(--gap-md)",
+    top: 0,
     padding: "var(--gap-md)",
 
     width: "100%",
+    height: "100%",
+    boxSizing: "border-box",
     position: "absolute",
 
     zIndex: 2,
@@ -309,10 +427,39 @@ const Base = styled("div", {
   variants: {
     fullscreen: {
       true: {
-        top: 0,
-        height: "100%",
         padding: 0,
       },
+    },
+  },
+});
+
+/**
+ * Grab area along the bottom edge of the stage
+ */
+const ResizeHandle = styled("div", {
+  base: {
+    flexShrink: 0,
+    width: "100%",
+    height: "10px",
+    marginBlockStart: "-4px",
+
+    cursor: "ns-resize",
+    touchAction: "none",
+    pointerEvents: "all",
+
+    display: "grid",
+    placeItems: "center",
+
+    "&::after": {
+      content: '""',
+      width: "56px",
+      height: "4px",
+      borderRadius: "var(--borderRadius-full)",
+      background: "var(--md-sys-color-outline-variant)",
+      transition: "var(--transitions-fast) background",
+    },
+    "&:hover::after, &:focus-visible::after": {
+      background: "var(--md-sys-color-primary)",
     },
   },
 });
@@ -352,7 +499,9 @@ const Card = styled("div", {
       active: [true],
       fullscreen: [false],
       css: {
-        height: "40vh",
+        // Fills the height the mount reserved, which the user can drag.
+        flexGrow: 1,
+        minHeight: 0,
       },
     },
   ],

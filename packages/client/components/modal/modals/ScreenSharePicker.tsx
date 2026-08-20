@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/solid/macro";
 import { createFormControl, createFormGroup } from "solid-forms";
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { styled } from "styled-system/jsx";
 
 import { useState } from "@revolt/state";
@@ -38,14 +38,19 @@ export function ScreenSharePickerModal(
   const [tab, setTab] = createSignal<"apps" | "screens">(
     windows().length || !screens().length ? "apps" : "screens",
   );
-  const [selectedIdx, setSelectedIdx] = createSignal<number | null>(null);
+  const [selectedId, setSelectedId] = createSignal<string | null>(null);
   const [fps, setFps] = createSignal(
     voice.screenShareQuality === "text" ? 5 : 30,
   );
 
-  const visible = createMemo(() =>
-    tab() === "apps" ? windows() : screens(),
-  );
+  const visible = createMemo(() => (tab() === "apps" ? windows() : screens()));
+
+  // Arm the shell as soon as there is a choice, so the Go Live click can call
+  // getDisplayMedia with no await in front of it and keep the user gesture.
+  createEffect(() => {
+    const id = selectedId();
+    if (id) props.arm(id, group.controls.audio.value);
+  });
 
   function qualityFromUi(): ScreenShareQualityName {
     const current = group.controls.qualityName.value;
@@ -54,18 +59,23 @@ export function ScreenSharePickerModal(
     return current;
   }
 
-  async function onSubmit() {
-    const idx = selectedIdx();
-    if (!Number.isInteger(idx) || idx === null || idx < 0) return;
+  function goLive() {
+    const sourceId = selectedId();
+    if (!sourceId) return;
 
     const qualityName = qualityFromUi();
     const audio = group.controls.audio.value;
-    const frameRate = qualityName === "text" ? 5 : fps();
 
     voice.screenShareQuality = qualityName;
     voice.screenShareAudio = audio;
 
-    props.callback(idx, qualityName, audio, frameRate);
+    // Synchronous on purpose: capture must stay on the click stack.
+    props.callback({
+      sourceId,
+      qualityName,
+      audio,
+      frameRate: qualityName === "text" ? 5 : fps(),
+    });
     props.onClose();
   }
 
@@ -80,20 +90,24 @@ export function ScreenSharePickerModal(
       title={t`Compartilhar tela`}
     >
       <Layout>
-        <Tabs>
+        <Tabs role="tablist">
           <Tab
             type="button"
+            role="tab"
+            aria-selected={tab() === "apps"}
             active={tab() === "apps"}
             onClick={() => setTab("apps")}
           >
-            <Trans>Aplicativos</Trans>
+            <Trans>Aplicativos</Trans> ({windows().length})
           </Tab>
           <Tab
             type="button"
+            role="tab"
+            aria-selected={tab() === "screens"}
             active={tab() === "screens"}
             onClick={() => setTab("screens")}
           >
-            <Trans>Telas</Trans>
+            <Trans>Telas</Trans> ({screens().length})
           </Tab>
         </Tabs>
 
@@ -110,11 +124,16 @@ export function ScreenSharePickerModal(
               {(source) => (
                 <Item
                   type="button"
-                  selected={selectedIdx() === source.idx}
-                  onClick={() => setSelectedIdx(source.idx)}
+                  aria-pressed={selectedId() === source.id}
+                  selected={selectedId() === source.id}
+                  onClick={() => setSelectedId(source.id)}
+                  onDblClick={() => {
+                    setSelectedId(source.id);
+                    goLive();
+                  }}
                 >
                   <Show
-                    when={source.image}
+                    when={source.thumbnail}
                     fallback={
                       <Placeholder>
                         {tab() === "screens" ? (
@@ -125,9 +144,14 @@ export function ScreenSharePickerModal(
                       </Placeholder>
                     }
                   >
-                    <Thumb src={source.image} alt="" />
+                    <Thumb src={source.thumbnail} alt="" />
                   </Show>
-                  <span>{source.name}</span>
+                  <Caption>
+                    <Show when={source.appIcon}>
+                      <AppIcon src={source.appIcon} alt="" />
+                    </Show>
+                    <span>{source.name}</span>
+                  </Caption>
                 </Item>
               )}
             </For>
@@ -187,8 +211,8 @@ export function ScreenSharePickerModal(
             </Ghost>
             <Live
               type="button"
-              disabled={selectedIdx() === null}
-              onClick={() => void onSubmit()}
+              disabled={selectedId() === null}
+              onClick={goLive}
             >
               <Trans>Go Live</Trans>
             </Live>
@@ -256,14 +280,6 @@ const Item = styled("button", {
     borderRadius: "8px",
     color: "var(--md-sys-color-on-surface)",
     background: "var(--md-sys-color-surface-container-highest)",
-    "& span": {
-      display: "block",
-      padding: "8px 10px 10px",
-      fontSize: "12px",
-      whiteSpace: "nowrap",
-      overflow: "hidden",
-      textOverflow: "ellipsis",
-    },
   },
   variants: {
     selected: {
@@ -271,6 +287,31 @@ const Item = styled("button", {
         outline: "2px solid #e85a2a",
       },
     },
+  },
+});
+
+const Caption = styled("div", {
+  base: {
+    display: "flex",
+    gap: "6px",
+    alignItems: "center",
+    padding: "8px 10px 10px",
+    fontSize: "12px",
+    minWidth: 0,
+    "& span": {
+      whiteSpace: "nowrap",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    },
+  },
+});
+
+const AppIcon = styled("img", {
+  base: {
+    width: "16px",
+    height: "16px",
+    flexShrink: 0,
+    objectFit: "contain",
   },
 });
 

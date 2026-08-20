@@ -20,9 +20,14 @@ import { pendingUpdate } from "../../../../src/serviceWorkerInterface";
 const isMacOS = navigator.platform.startsWith("Mac");
 const isNative = !!window.native;
 
+/** Whether the shell handed window decoration over to the app. */
+const hasCustomFrame = () => !!window.desktopConfig?.get().customFrame;
+
 export function Titlebar() {
+  // Shells without desktopConfig (such as Muchat) keep the native OS frame, so
+  // there is no custom titlebar state to read and no maximise button to draw.
   const [isMaximised, setIsMaximised] = createSignal(
-    isNative ? window.desktopConfig.get().windowState.isMaximised : false,
+    window.desktopConfig?.get().windowState.isMaximised ?? false,
   );
   const { lifecycle } = useClientLifecycle();
 
@@ -36,18 +41,13 @@ export function Titlebar() {
   }
 
   function maximise() {
-    window.native.maximise();
+    window.native?.maximise();
     setIsMaximised((t) => !t);
   }
 
   return (
     <Presence>
-      <Show
-        when={
-          (isNative && window.desktopConfig?.get().customFrame) ||
-          isDisconnected()
-        }
-      >
+      <Show when={(isNative && hasCustomFrame()) || isDisconnected()}>
         <Motion.div
           initial={{ height: 0 }}
           animate={{ height: "29px" }}
@@ -127,8 +127,10 @@ export function Titlebar() {
                 </div>
               </Show>
             </DragHandle>
-            <Show when={isNative && !isMacOS}>
-              <Action onClick={window.native.minimise}>
+            {/* Only a custom frame owns the window buttons; with the native OS
+                frame these would just duplicate the real ones. */}
+            <Show when={isNative && !isMacOS && hasCustomFrame()}>
+              <Action onClick={() => window.native?.minimise()}>
                 <Ripple />
                 <MdMinimize {...symbolSize(20)} />
               </Action>
@@ -141,7 +143,7 @@ export function Titlebar() {
                   <MdCollapseContent {...symbolSize(20)} />
                 </Show>
               </Action>
-              <Action onClick={window.native.close}>
+              <Action onClick={() => window.native?.close()}>
                 <Ripple />
                 <MdClose {...symbolSize(20)} />
               </Action>
