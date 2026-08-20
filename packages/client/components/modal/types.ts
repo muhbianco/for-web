@@ -337,6 +337,7 @@ export type Modals =
         idx: number,
         qualityName: ScreenShareQualityName,
         audio: boolean,
+        frameRate?: number,
       ) => void;
       qualities: { name: string; fullName: string }[];
       sources: {

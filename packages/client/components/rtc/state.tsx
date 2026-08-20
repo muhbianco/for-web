@@ -483,6 +483,7 @@ class Voice {
       const qualities = this.getEnabledScreenShareQualities();
       let screenPickerQualityName: ScreenShareQualityName | undefined;
       let screenPickerAudio: boolean | undefined;
+      let screenPickerFrameRate: number | undefined;
 
       // Register the modal on screen picker handler if it exists
       if (window.native && window.native.onceScreenPicker) {
@@ -496,10 +497,12 @@ class Voice {
               idx: number,
               qualityName: ScreenShareQualityName,
               audio: boolean,
+              frameRate?: number,
             ) => {
               window.native.screenPickerCallback(idx, audio);
               screenPickerQualityName = qualityName;
               screenPickerAudio = audio;
+              screenPickerFrameRate = frameRate;
             },
             sources: sources,
             qualities: Object.keys(qualities).map((k) => {
@@ -556,7 +559,9 @@ class Voice {
 
             if (localTrack.videoTrack) {
               await localTrack.videoTrack.mediaStreamTrack.applyConstraints({
-                frameRate: { max: quality.resolution.frameRate },
+                frameRate: {
+                  max: screenPickerFrameRate || quality.resolution.frameRate,
+                },
                 width:
                   quality.resolution.width === 0
                     ? undefined
