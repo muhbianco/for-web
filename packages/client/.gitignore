@@ -1,4 +1,5 @@
 public/assets
+public/noise-suppression/deepfilternet3/v3/
 
 ## Panda
 styled-system

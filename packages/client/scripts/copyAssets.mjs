@@ -4,6 +4,8 @@ import lnk from "lnk";
 import { lstat, readdir, readlink, rmdir, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 
+import { fetchDeepFilterAssets } from "./fetch-deepfilternet-assets.mjs";
+
 const publicFolder = resolve("public");
 const path = resolve("public", "assets");
 const revoltAssets = resolve("assets");
@@ -32,6 +34,8 @@ async function createSymlink() {
     }
   }
 }
+
+await fetchDeepFilterAssets();
 
 try {
   await lstat(path);

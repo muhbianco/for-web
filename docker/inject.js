@@ -21,6 +21,7 @@ const REPLACEMENTS = {
   __VITE_PROXY_URL__: process.env.VITE_DEV_PROXY_URL,
   __VITE_GIFBOX_URL__: process.env.VITE_DEV_GIFBOX_URL,
   __VITE_RNNOISE_WORKLET_CDN_URL__: process.env.VITE_RNNOISE_WORKLET_CDN_URL,
+  __VITE_DEEPFILTERNET_CDN_URL__: process.env.VITE_DEEPFILTERNET_CDN_URL,
 };
 
 console.log("Preparing injected build...");

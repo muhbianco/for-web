@@ -66,6 +66,11 @@ export default {
    */
   RNNOISE_WORKLET_CDN_URL: getEnv("VITE_RNNOISE_WORKLET_CDN_URL"),
   /**
+   * DeepFilterNet3 WASM/model base URL. Defaults to same-origin
+   * `/noise-suppression/deepfilternet3`.
+   */
+  DEEPFILTERNET_CDN_URL: getEnv("VITE_DEEPFILTERNET_CDN_URL"),
+  /**
    * Session ID to set during development.
    */
   DEVELOPMENT_SESSION_ID: getEnv("VITE_SESSION_ID", true),

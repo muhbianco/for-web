@@ -1,9 +1,51 @@
 import { AudioProcessorOptions, Track, TrackProcessor } from "livekit-client";
+import type { DeepFilterNet3Core } from "deepfilternet3-noise-filter";
 import { RNNoiseNode } from "livekit-rnnoise-processor";
 import { createEffect, createRoot, on } from "solid-js";
 
 import { CONFIGURATION } from "@revolt/common";
 import { Voice } from "@revolt/state/stores/Voice";
+
+import {
+  canUseDeepFilter,
+  usesMachineLearningNoise,
+} from "./deepFilterSupport";
+
+let sharedDeepFilterCore: Promise<DeepFilterNet3Core> | undefined;
+const deepFilterNodes = new WeakMap<BaseAudioContext, AudioWorkletNode>();
+
+function deepFilterCdnUrl(): string {
+  const override = CONFIGURATION.DEEPFILTERNET_CDN_URL;
+  if (override) return override.replace(/\/$/, "");
+
+  const base = import.meta.env.BASE_URL || "/";
+  return new URL(
+    "noise-suppression/deepfilternet3",
+    `${window.location.origin}${base}`,
+  )
+    .toString()
+    .replace(/\/$/, "");
+}
+
+function getDeepFilterCore(): Promise<DeepFilterNet3Core> {
+  if (!sharedDeepFilterCore) {
+    sharedDeepFilterCore = import("deepfilternet3-noise-filter")
+      .then(async ({ DeepFilterNet3Core }) => {
+        const core = new DeepFilterNet3Core({
+          sampleRate: 48000,
+          noiseReductionLevel: 80,
+          assetConfig: { cdnUrl: deepFilterCdnUrl() },
+        });
+        await core.initialize();
+        return core;
+      })
+      .catch((error) => {
+        sharedDeepFilterCore = undefined;
+        throw error;
+      });
+  }
+  return sharedDeepFilterCore;
+}
 
 export class VoiceProcessor implements TrackProcessor<
   Track.Kind.Audio,
@@ -14,8 +56,10 @@ export class VoiceProcessor implements TrackProcessor<
 
   private audioContext?: AudioContext;
   private settings: Voice;
+  private graphToken = 0;
 
   private noiseSuppressionNode?: RNNoiseNode;
+  private deepFilterNode?: AudioWorkletNode;
   private sourceNode?: MediaStreamAudioSourceNode;
   private highpassNode?: BiquadFilterNode;
   private compressorNode?: DynamicsCompressorNode;
@@ -27,24 +71,20 @@ export class VoiceProcessor implements TrackProcessor<
   constructor(voiceSettings: Voice) {
     this.settings = voiceSettings;
 
-    // Create a solid root to track changes to the settings
     createRoot((dispose) => {
-      // On input volume setting change, set the gain
       createEffect(() => {
         this.setGain(this.getSettings().inputVolume);
       });
 
-      // On noise suppression setting change, toggle noise suppression
       createEffect(
         on(
           () => this.getSettings().noiseSupression,
-          (newNoiseSuppresion, oldNoiseSuppression) => {
-            // Only rebuild if noise supression has changed from enhanced to something else or vice versa
+          (next, prev) => {
             if (
-              oldNoiseSuppression &&
-              oldNoiseSuppression !== newNoiseSuppresion &&
-              (newNoiseSuppresion === "enhanced" ||
-                oldNoiseSuppression === "enhanced")
+              prev &&
+              next !== prev &&
+              (usesMachineLearningNoise(prev) ||
+                usesMachineLearningNoise(next))
             ) {
               this.rebuild();
             }
@@ -52,7 +92,6 @@ export class VoiceProcessor implements TrackProcessor<
         ),
       );
 
-      // This is needed to destroy the solid context on unload
       this.disposeSolidjsContext = dispose;
     });
   }
@@ -68,7 +107,8 @@ export class VoiceProcessor implements TrackProcessor<
   }
 
   private rebuild() {
-    this.updateNoiseSuppression(this.audioContext!);
+    if (!this.audioContext) return;
+    void this.updateNoiseSuppression(this.audioContext);
   }
 
   async init(opts: AudioProcessorOptions): Promise<void> {
@@ -84,56 +124,100 @@ export class VoiceProcessor implements TrackProcessor<
   }
 
   async destroy(): Promise<void> {
-    // Destroy the solid context on processor destruction
     this.disposeSolidjsContext();
     this.audioContext = undefined;
+    this.deepFilterNode = undefined;
     return this.teardown();
   }
 
-  private updateNoiseSuppression(context: AudioContext) {
-    if (this.noiseSuppressionNode) {
-      this.compressorNode?.disconnect();
-      this.noiseSuppressionNode.disconnect();
-      this.highpassNode?.disconnect();
-      this.sourceNode?.disconnect();
+  private disconnectNoiseGraph() {
+    this.compressorNode?.disconnect();
+    this.noiseSuppressionNode?.disconnect();
+    this.deepFilterNode?.disconnect();
+    this.highpassNode?.disconnect();
+    this.sourceNode?.disconnect();
+    this.compressorNode = undefined;
+    this.noiseSuppressionNode = undefined;
+    this.highpassNode = undefined;
+  }
+
+  private connectMlChain(nsNode: AudioNode, context: AudioContext) {
+    this.highpassNode = context.createBiquadFilter();
+    this.highpassNode.type = "highpass";
+    this.highpassNode.frequency.value = 50;
+    this.highpassNode.Q.value = Math.SQRT1_2;
+
+    this.compressorNode = context.createDynamicsCompressor();
+    this.compressorNode.threshold.value = -3;
+    this.compressorNode.knee.value = 0;
+    this.compressorNode.ratio.value = 20;
+    this.compressorNode.attack.value = 0.003;
+    this.compressorNode.release.value = 0.05;
+
+    this.sourceNode!.connect(this.highpassNode);
+    this.highpassNode.connect(nsNode);
+    nsNode.connect(this.compressorNode);
+    this.compressorNode.connect(this.gainNode!);
+  }
+
+  private connectRnnoise(context: AudioContext) {
+    this.noiseSuppressionNode = new RNNoiseNode(context);
+    this.connectMlChain(this.noiseSuppressionNode, context);
+  }
+
+  private connectBypass() {
+    this.sourceNode!.connect(this.gainNode!);
+  }
+
+  private async ensureDeepFilterNode(
+    context: AudioContext,
+  ): Promise<AudioWorkletNode> {
+    const cached = deepFilterNodes.get(context);
+    if (cached) {
+      this.deepFilterNode = cached;
+      return cached;
+    }
+    const core = await getDeepFilterCore();
+    const node = await core.createAudioWorkletNode(context);
+    deepFilterNodes.set(context, node);
+    this.deepFilterNode = node;
+    return node;
+  }
+
+  private async updateNoiseSuppression(context: AudioContext) {
+    const token = ++this.graphToken;
+    const mode = this.settings.noiseSupression;
+    this.disconnectNoiseGraph();
+
+    if (!this.sourceNode || !this.gainNode) return;
+
+    if (mode === "advanced") {
+      this.connectRnnoise(context);
+      if (!canUseDeepFilter()) return;
+
+      try {
+        const node = await this.ensureDeepFilterNode(context);
+        if (token !== this.graphToken) return;
+        if (this.settings.noiseSupression !== "advanced") return;
+
+        this.disconnectNoiseGraph();
+        this.connectMlChain(node, context);
+      } catch (error) {
+        console.warn("DeepFilterNet3 failed; staying on RNNoise", error);
+      }
+      return;
     }
 
-    if (this.settings.noiseSupression === "enhanced") {
-      // Create a new highpass filter
-      this.highpassNode = context.createBiquadFilter();
-      this.highpassNode.type = "highpass";
-      this.highpassNode.frequency.value = 50;
-      this.highpassNode.Q.value = Math.SQRT1_2;
-
-      this.noiseSuppressionNode = new RNNoiseNode(this.audioContext!);
-      this.highpassNode.connect(this.noiseSuppressionNode);
-
-      // Create a new dynamics compressor
-      this.compressorNode = context.createDynamicsCompressor();
-      this.compressorNode.threshold.value = -3;
-      this.compressorNode.knee.value = 0;
-      this.compressorNode.ratio.value = 20;
-      this.compressorNode.attack.value = 0.003;
-      this.compressorNode.release.value = 0.05;
-      this.noiseSuppressionNode.connect(this.compressorNode);
-
-      // Connect the compressor to the output gain
-      this.compressorNode.connect(this.gainNode!);
-      // Lastly, connect the source to the highpass node to complete loop
-      this.sourceNode!.connect(this.highpassNode);
-    } else {
-      // Bypass noise suppression and remove all unused nodes
-      this.compressorNode = undefined;
-      this.noiseSuppressionNode = undefined;
-      this.highpassNode = undefined;
-      this.sourceNode!.connect(this.gainNode!);
+    if (mode === "enhanced") {
+      this.connectRnnoise(context);
+      return;
     }
+
+    this.connectBypass();
   }
 
   private async build(opts: AudioProcessorOptions): Promise<void> {
     await this.teardown();
-    // If context was passed, store it for restarts
-    // If no context was passed, this was a restart so use the old context
     let context = opts.audioContext;
     if (!context) {
       context = this.audioContext!;
@@ -147,29 +231,21 @@ export class VoiceProcessor implements TrackProcessor<
       new MediaStream([opts.track]),
     );
 
-    // Create the target gain node for input volume
     this.gainNode = context.createGain();
     this.gainNode.gain.value = this.settings.inputVolume;
 
-    this.updateNoiseSuppression(context);
+    await this.updateNoiseSuppression(context);
 
-    // Create the destination node, connect the gain node and send it off to livekit
     this.destinationNode = context.createMediaStreamDestination();
     this.gainNode.connect(this.destinationNode);
     this.processedTrack = this.destinationNode.stream.getAudioTracks()[0];
   }
 
   private async teardown() {
-    this.sourceNode?.disconnect();
-    this.highpassNode?.disconnect();
-    this.noiseSuppressionNode?.disconnect();
-    this.compressorNode?.disconnect();
+    this.disconnectNoiseGraph();
     this.gainNode?.disconnect();
     this.destinationNode?.disconnect();
     this.sourceNode = undefined;
-    this.highpassNode = undefined;
-    this.noiseSuppressionNode = undefined;
-    this.compressorNode = undefined;
     this.gainNode = undefined;
     this.destinationNode = undefined;
   }

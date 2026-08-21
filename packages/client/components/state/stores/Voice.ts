@@ -3,14 +3,22 @@ import { State } from "..";
 import { AbstractStore } from ".";
 
 /**
- * Possible noise suppresion states. Browser is browser noise suppresion and enhanced is machine learning suppression via RNNoise.
+ * Noise suppression modes.
+ * - browser: WebRTC / Chromium NS
+ * - enhanced: RNNoise (light)
+ * - advanced: DeepFilterNet3, falls back to RNNoise on weak devices
  */
-export type NoiseSuppresionState = "disabled" | "browser" | "enhanced";
+export type NoiseSuppresionState =
+  | "disabled"
+  | "browser"
+  | "enhanced"
+  | "advanced";
 
 const NoiseSuppresionStates: NoiseSuppresionState[] = [
   "disabled",
   "browser",
   "enhanced",
+  "advanced",
 ];
 
 /**
@@ -77,7 +85,7 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   default(): TypeVoice {
     return {
       echoCancellation: true,
-      noiseSupression: "enhanced",
+      noiseSupression: "advanced",
       autoGainControl: true,
       screenShareQuality: "low",
       screenShareQualityAsk: true,

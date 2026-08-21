@@ -1126,6 +1126,10 @@ msgstr "Deafen lower-ranking members in voice call"
 msgid "Deafen Members"
 msgstr "Deafen Members"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet"
+msgstr "DeepFilterNet"
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Default"
@@ -3096,6 +3100,10 @@ msgstr "Stream End"
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Stream Start"
 msgstr "Stream Start"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Stronger against keyboard and TV in the background. Uses more CPU, and falls back to RNNoise on weaker devices."
+msgstr "Stronger against keyboard and TV in the background. Uses more CPU, and falls back to RNNoise on weaker devices."
 
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Submit feature suggestion"

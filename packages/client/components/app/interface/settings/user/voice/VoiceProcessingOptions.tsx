@@ -1,6 +1,7 @@
 import { Trans } from "@lingui/solid/macro";
 
 import { useState } from "@revolt/state";
+import type { NoiseSuppresionState } from "@revolt/state/stores/Voice";
 import { CategoryButton, Checkbox, Column, Text } from "@revolt/ui";
 
 /**
@@ -15,19 +16,29 @@ export function VoiceProcessingOptions() {
         <Trans>Voice Processing</Trans>
       </Text>
       <CategoryButton.Group>
-        <CategoryButton.Select
+        <CategoryButton.Select<NoiseSuppresionState>
           icon={"blank"}
           title={<Trans>Select noise suppression</Trans>}
           options={{
-            disabled: { title: <Trans>Disabled</Trans> },
-            browser: { title: <Trans>Browser</Trans> },
+            advanced: {
+              title: <Trans>DeepFilterNet</Trans>,
+              description: (
+                <Trans>
+                  Stronger against keyboard and TV in the background. Uses more
+                  CPU, and falls back to RNNoise on weaker devices.
+                </Trans>
+              ),
+              shortDesc: <Trans>DeepFilterNet</Trans>,
+            },
             enhanced: {
               title: <Trans>Enhanced</Trans>,
               description: <Trans>Powered by RNNoise</Trans>,
               shortDesc: <Trans>Enhanced (RNNoise)</Trans>,
             },
+            browser: { title: <Trans>Browser</Trans> },
+            disabled: { title: <Trans>Disabled</Trans> },
           }}
-          value={voice.noiseSupression}
+          value={voice.noiseSupression ?? "advanced"}
           onUpdate={(ns) => (voice.noiseSupression = ns)}
         />
         <CategoryButton
