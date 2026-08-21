@@ -1,3 +1,7 @@
+import {
+  shouldUseAndroidCapture,
+  startAndroidDisplayMedia,
+} from "./androidDisplayMedia";
 import { getVirtmic } from "./virtualMic";
 
 export { useVoice, VoiceContext } from "./state";
@@ -53,12 +57,29 @@ navigator.mediaDevices.getUserMedia = async function (constraints) {
   }
 };
 
-const originalMediaCall = navigator.mediaDevices.getDisplayMedia;
+const originalMediaCall = navigator.mediaDevices.getDisplayMedia?.bind(
+  navigator.mediaDevices,
+);
+
+async function captureDisplayMedia(
+  opts?: DisplayMediaStreamOptions,
+): Promise<MediaStream> {
+  if (shouldUseAndroidCapture()) {
+    return startAndroidDisplayMedia(opts);
+  }
+  if (!originalMediaCall) {
+    throw new DOMException(
+      "Este aparelho não consegue compartilhar a tela.",
+      "NotSupportedError",
+    );
+  }
+  return originalMediaCall(opts);
+}
 
 // Resolution and frame rate come from the quality the user picked in the screen
 // share dialog; do not clamp them here or the picker becomes decorative.
 navigator.mediaDevices.getDisplayMedia = async function (opts) {
-  const stream: MediaStream = await originalMediaCall.call(this, opts);
+  const stream: MediaStream = await captureDisplayMedia(opts);
 
   if (opts && opts.audio && window.native?.isWayland?.()) {
     const id = await getVirtmic();

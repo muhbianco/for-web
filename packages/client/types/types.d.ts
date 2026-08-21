@@ -1,5 +1,5 @@
 import type { SolidOptions } from "solid-dnd-directive";
-import { Setter } from "solid-js";
+import type { Accessor, Component, Setter } from "solid-js";
 
 import type { Placement } from "@floating-ui/dom";
 import type { Channel, Client, ServerMember, ServerRole, User } from "stoat.js";
@@ -7,6 +7,17 @@ import type { Channel, Client, ServerMember, ServerRole, User } from "stoat.js";
 declare global {
   interface Window {
     __TAURI__: object;
+    /**
+     * Android WebView shell. Desktop Electron uses `window.native` instead.
+     * Methods are optional so a partial APK still boots the page.
+     */
+    MuchatNative?: {
+      hideSplash(): void;
+      startScreenShare?(width: number, height: number, frameRate: number): void;
+      stopScreenShare?(): void;
+    };
+    /** Installed by the Android getDisplayMedia polyfill while a share is live. */
+    __muchatScreenShare?: (event: string, payload?: string | null) => void;
   }
 }
 

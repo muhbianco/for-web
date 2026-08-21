@@ -6,6 +6,7 @@ import { cva } from "styled-system/css/cva";
 
 import { Ripple } from "./Ripple";
 import { typography } from "./Text";
+import { dispatchPress } from "./nativePress";
 
 type Props = Omit<
   Parameters<typeof button>[0] &
@@ -120,15 +121,8 @@ export function Button(props: Props) {
 
   const [btn, noBtnRest] = splitProps(rest, ["onPress"]);
 
-  // Safari needs a 32ms delay; Electron drops getDisplayMedia user-activation if we wait.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const onPress = (e: any) => {
-    if (window.native) {
-      btn.onPress?.(e);
-      return;
-    }
-    setTimeout(() => btn.onPress?.(e), 32);
-  };
+  const onPress = (e: any) => dispatchPress(btn.onPress, e);
   const btnRest = mergeProps(noBtnRest, { onPress, preventFocusOnPress: true });
 
   const { buttonProps } = createButton(btnRest, () => ref);
