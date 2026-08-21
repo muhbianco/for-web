@@ -23,7 +23,7 @@ import {
 } from "livekit-client";
 import { Channel } from "stoat.js";
 
-import { SoundController, useSound } from "@revolt/client";
+import { SoundController, useClientLifecycle, useSound } from "@revolt/client";
 import { useInstance } from "@revolt/instance";
 import { ModalController, useModals } from "@revolt/modal";
 import type { ScreenShareSelection } from "@revolt/modal/types";
@@ -323,28 +323,67 @@ class Voice {
     });
   }
 
-  disconnect() {
-    this.device.releaseWakeLock();
+  /**
+   * Stop local mic/camera/screenshare tracks so the OS releases the devices
+   * and remote peers stop receiving audio even if Room.disconnect is delayed.
+   */
+  private stopLocalMedia(room: Room) {
     try {
-      const room = this.room();
-      if (!room) return;
+      this.voiceProcessor?.processedTrack?.stop();
+      void this.voiceProcessor?.destroy();
+    } catch {
+      /* processor teardown is best-effort */
+    }
+    this.voiceProcessor = undefined;
 
-      room.removeAllListeners();
-      room.disconnect();
+    for (const pub of room.localParticipant.getTrackPublications()) {
+      try {
+        pub.track?.stop();
+      } catch {
+        /* ignore */
+      }
+      const media = pub.track?.mediaStreamTrack;
+      if (media && media.readyState !== "ended") {
+        try {
+          media.stop();
+        } catch {
+          /* ignore */
+        }
+      }
+    }
+  }
 
-      batch(() => {
-        this.#setState("READY");
-        this.#setRoom();
-        this.#setChannel();
-        this.#setFullscreen(false);
-        this.vidTracks = () => [];
-      });
+  disconnect(opts?: { silent?: boolean }) {
+    this.device.releaseWakeLock();
+    const room = this.room();
 
-      this.screenShareTracks = new Set();
-
-      this.sound.playSound("userLeaveVoice");
+    try {
+      if (room) {
+        this.stopLocalMedia(room);
+        room.removeAllListeners();
+        void room.disconnect(true);
+      }
     } catch (e) {
-      this.onErr(e);
+      if (opts?.silent) {
+        console.error("[voice] disconnect", e);
+      } else {
+        this.onErr(e);
+      }
+    }
+
+    batch(() => {
+      this.#setState("READY");
+      this.#setRoom();
+      this.#setChannel();
+      this.#setFullscreen(false);
+      this.#setVideo(false);
+      this.#setScreenshare(false);
+      this.vidTracks = () => [];
+    });
+    this.screenShareTracks = new Set();
+
+    if (room && !opts?.silent) {
+      this.sound.playSound("userLeaveVoice");
     }
   }
 
@@ -777,7 +816,14 @@ export function VoiceContext(props: { children: JSX.Element }) {
   const modals = useModals();
   const sound = useSound();
   const device = useDevice();
+  const { isLoggedIn } = useClientLifecycle();
   const voice = new Voice(state.voice, modals, sound, device);
+
+  createEffect(() => {
+    if (!isLoggedIn()) {
+      voice.disconnect({ silent: true });
+    }
+  });
 
   return (
     <voiceContext.Provider value={voice}>

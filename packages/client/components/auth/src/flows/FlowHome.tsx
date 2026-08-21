@@ -9,7 +9,7 @@ import { Navigate } from "@revolt/routing";
 import { Button, Column } from "@revolt/ui";
 
 import { useState } from "@revolt/state";
-import Wordmark from "../../../../public/assets/web/wordmark.svg?component-solid";
+import muchatMark from "../muchat-mark.svg";
 
 /**
  * Flow for logging into an account
@@ -27,13 +27,30 @@ export default function FlowHome() {
           </Show>
 
           <Column gap="xl">
-            <Wordmark
-              class={css({
-                width: "60%",
-                margin: "auto",
-                fill: "var(--md-sys-color-on-surface)",
-              })}
-            />
+            <Column gap="md" align>
+              <img
+                src={muchatMark}
+                alt="Muchat"
+                width={64}
+                height={64}
+                class={css({
+                  width: "64px",
+                  height: "64px",
+                  margin: "auto",
+                  borderRadius: "16px",
+                })}
+              />
+              <b
+                style={{
+                  "font-weight": 800,
+                  "font-size": "1.75rem",
+                  "letter-spacing": "-0.03em",
+                  "text-align": "center",
+                }}
+              >
+                Muchat
+              </b>
+            </Column>
 
             <Column>
               <b
@@ -46,20 +63,11 @@ export default function FlowHome() {
                   "text-align": "center",
                 }}
               >
-                <span>
-                  <Trans>
-                    Find your com
-                    <wbr />
-                    munity,
-                    <br />
-                    connect with the world.
-                  </Trans>
-                </span>
+                <Trans>Private chat.</Trans>
               </b>
               <span style={{ "text-align": "center", opacity: "0.5" }}>
                 <Trans>
-                  Stoat is one of the best ways to stay connected with your
-                  friends and community, anywhere, anytime.
+                  Invite-only. You talk with the people you actually invited.
                 </Trans>
               </span>
             </Column>

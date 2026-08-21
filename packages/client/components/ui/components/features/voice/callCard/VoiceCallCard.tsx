@@ -16,6 +16,7 @@ import { createResizeObserver } from "@solid-primitives/resize-observer";
 import { Channel } from "stoat.js";
 import { styled } from "styled-system/jsx";
 
+import { useClientLifecycle } from "@revolt/client";
 import { useVoice } from "@revolt/rtc";
 import { useState } from "@revolt/state";
 import { VOICE_STAGE_MIN_HEIGHT } from "@revolt/state/stores/Layout";
@@ -51,6 +52,7 @@ const callCardContext = createContext<(info?: Info) => void>();
 /** Voice call card context */
 export function VoiceCallCardContext(props: { children: JSX.Element }) {
   const voice = useVoice();
+  const { isLoggedIn } = useClientLifecycle();
   const inCall = () => !!voice.channel();
 
   const [mode, setMode] = createSignal<Mode>();
@@ -178,28 +180,30 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
   return (
     <callCardContext.Provider value={setInfo}>
       {props.children}
-      <Portal mount={document.getElementById("floating")! as HTMLDivElement}>
-        <Float
-          ref={ref}
-          mode={mode()}
-          onPointerDown={mouseDown}
-          fullscreen={voice.fullscreen()}
-        >
-          <Switch>
-            <Match when={mode() && inCall()}>
-              <VoiceCallCardPiP />
-            </Match>
-            <Match when={channel()}>
-              <VoiceCallCard
-                channel={channel()!}
-                inCall={inCall()}
-                showCard={voice.showCard(channel()!)}
-                fullscreen={voice.fullscreen()}
-              />
-            </Match>
-          </Switch>
-        </Float>
-      </Portal>
+      <Show when={isLoggedIn()}>
+        <Portal mount={document.getElementById("floating")! as HTMLDivElement}>
+          <Float
+            ref={ref}
+            mode={mode()}
+            onPointerDown={mouseDown}
+            fullscreen={voice.fullscreen()}
+          >
+            <Switch>
+              <Match when={mode() && inCall()}>
+                <VoiceCallCardPiP />
+              </Match>
+              <Match when={channel()}>
+                <VoiceCallCard
+                  channel={channel()!}
+                  inCall={inCall()}
+                  showCard={voice.showCard(channel()!)}
+                  fullscreen={voice.fullscreen()}
+                />
+              </Match>
+            </Switch>
+          </Float>
+        </Portal>
+      </Show>
     </callCardContext.Provider>
   );
 }

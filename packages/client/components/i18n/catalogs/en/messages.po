@@ -1011,8 +1011,8 @@ msgid "Create a webhook"
 msgstr "Create a webhook"
 
 #: components/auth/src/flows/FlowCreate.tsx
-msgid "Create an account"
-msgstr "Create an account"
+msgid "Create a Muchat account"
+msgstr "Create a Muchat account"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Create and edit server roles"
@@ -1512,8 +1512,8 @@ msgid "Find a community based on your hobbies or interests."
 msgstr "Find a community based on your hobbies or interests."
 
 #: components/auth/src/flows/FlowHome.tsx
-msgid "Find your com<0/>munity,<1/>connect with the world."
-msgstr "Find your com<0/>munity,<1/>connect with the world."
+msgid "Private chat."
+msgstr "Private chat."
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -2051,6 +2051,7 @@ msgid "Mentions Only"
 msgstr "Mentions Only"
 
 #: components/app/menus/UserContextMenu.tsx
+#: components/ui/components/features/profiles/ProfileActions.tsx
 msgid "Message"
 msgstr "Message"
 
@@ -2969,8 +2970,8 @@ msgid "Show send message button"
 msgstr "Show send message button"
 
 #: components/auth/src/flows/FlowLogin.tsx
-msgid "Sign into Stoat"
-msgstr "Sign into Stoat"
+msgid "Sign into Muchat"
+msgstr "Sign into Muchat"
 
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Sign Up"
@@ -3070,8 +3071,8 @@ msgid "Stoat Founder"
 msgstr "Stoat Founder"
 
 #: components/auth/src/flows/FlowHome.tsx
-msgid "Stoat is one of the best ways to stay connected with your friends and community, anywhere, anytime."
-msgstr "Stoat is one of the best ways to stay connected with your friends and community, anywhere, anytime."
+msgid "Invite-only. You talk with the people you actually invited."
+msgstr "Invite-only. You talk with the people you actually invited."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Stoat rocks!"

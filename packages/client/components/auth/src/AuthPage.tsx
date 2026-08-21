@@ -1,18 +1,10 @@
-import { BiLogosGithub } from "solid-icons/bi";
 import { JSX } from "solid-js";
 
-import { Trans } from "@lingui/solid/macro";
 import { styled } from "styled-system/jsx";
 
 import { Titlebar } from "@revolt/app/interface/desktop/Titlebar";
-import { useState } from "@revolt/state";
-import { IconButton, iconSize } from "@revolt/ui";
 
-import MdDarkMode from "@material-design-icons/svg/filled/dark_mode.svg?component-solid";
-
-import background from "./background.jpg";
 import { FlowBase } from "./flows/Flow";
-import bluesky from "./flows/bluesky.svg";
 
 /**
  * Authentication page layout
@@ -43,12 +35,12 @@ const Root = styled("div", {
     height: "100%",
     paddingBottom: "env(keyboard-inset-height)",
 
-    color: "var(--md-sys-color-on-surface)",
-    background: "var(--md-sys-color-surface)",
-    // background: `var(--url)`,
-    // backgroundPosition: "center",
-    // backgroundRepeat: "no-repeat",
-    // backgroundSize: "cover",
+    color: "#f3efe6",
+    background: "#141210",
+
+    "& a": {
+      color: "#8a8378",
+    },
   },
 });
 
@@ -68,114 +60,31 @@ const Nav = styled("div", {
 });
 
 /**
- * Navigation items
- */
-const NavItems = styled("div", {
-  base: {
-    gap: "10px",
-    display: "flex",
-    alignItems: "center",
-
-    fontSize: "0.9em",
-  },
-  variants: {
-    variant: {
-      default: {
-        "& > *": {
-          textAlign: "center",
-        },
-      },
-      stack: {
-        md: {
-          flexDirection: "column",
-        },
-      },
-    },
-  },
-  defaultVariants: {
-    variant: "default",
-  },
-});
-
-/**
- * Link with an icon inside
- */
-const LinkWithIcon = styled("a", {
-  base: { height: "24px" },
-});
-
-/**
- * Middot-like bullet
- */
-const Bullet = styled("div", {
-  base: {
-    height: "5px",
-    width: "5px",
-    background: "grey",
-    borderRadius: "50%",
-
-    md: {
-      display: "none",
-    },
-  },
-});
-
-/**
  * Authentication page
  */
 export function AuthPage(props: { children: JSX.Element }) {
-  const state = useState();
-
   return (
-    <Root>
+    <Root
+      style={{
+        "--md-sys-color-surface": "#141210",
+        "--md-sys-color-on-surface": "#f3efe6",
+        "--md-sys-color-surface-container": "#1c1a17",
+        "--md-sys-color-primary": "#e85a2a",
+        "--md-sys-color-on-primary": "#141210",
+        "--md-sys-color-secondary-container": "#2b2926",
+        "--md-sys-color-on-secondary-container": "#f3efe6",
+      }}
+    >
       <Titlebar />
-      <Base
-        style={{ "--url": `url('${background}')` }}
-        css={{ scrollbar: "hidden" }}
-      >
+      <Base css={{ scrollbar: "hidden" }}>
         <Nav>
           <div />
-          <IconButton
-            variant="tonal"
-            onPress={() =>
-              state.theme.setMode(
-                state.theme.activeTheme.darkMode ? "light" : "dark",
-              )
-            }
-          >
-            <MdDarkMode {...iconSize("24px")} />
-          </IconButton>
         </Nav>
         <FlowBase>{props.children}</FlowBase>
         <Nav>
-          <NavItems variant="stack">
-            <NavItems>
-              <LinkWithIcon href="https://github.com/stoatchat" target="_blank">
-                <BiLogosGithub size={24} />
-              </LinkWithIcon>
-              <LinkWithIcon
-                href="https://bsky.app/profile/stoat.chat"
-                target="_blank"
-              >
-                <img
-                  src={bluesky}
-                  style={{ height: "22px", "padding-top": "3px" }}
-                />
-              </LinkWithIcon>
-            </NavItems>
-            <Bullet />
-            <NavItems>
-              <a href="https://stoat.chat/about" target="_blank">
-                <Trans>About</Trans>
-              </a>
-              <a href="https://stoat.chat/terms" target="_blank">
-                <Trans>Terms of Service</Trans>
-              </a>
-              <a href="https://stoat.chat/privacy" target="_blank">
-                <Trans>Privacy Policy</Trans>
-              </a>
-            </NavItems>
-          </NavItems>
+          <a href="https://muhbianco.com.br" target="_blank" rel="noreferrer">
+            muhbianco.com.br
+          </a>
         </Nav>
       </Base>
     </Root>

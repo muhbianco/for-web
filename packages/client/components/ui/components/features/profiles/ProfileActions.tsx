@@ -31,7 +31,7 @@ export function ProfileActions(props: {
   const { openModal } = useModals();
 
   const [publicBot] = createResource(
-    () => props.user.bot && props.user.id,
+    () => !props.member && props.user.bot && props.user.id,
     (id) =>
       client()
         .bots.fetchPublic(id)
@@ -77,8 +77,15 @@ export function ProfileActions(props: {
           Cancel friend request
         </Button>
       </Show>
-      <Show when={props.user.relationship === "Friend"}>
-        <Button onPress={openDm}>Message</Button>
+      <Show
+        when={
+          props.user.relationship === "Friend" ||
+          (props.user.bot && !props.user.self)
+        }
+      >
+        <Button onPress={openDm}>
+          <Trans>Message</Trans>
+        </Button>
       </Show>
       <Show when={publicBot()}>
         <Button

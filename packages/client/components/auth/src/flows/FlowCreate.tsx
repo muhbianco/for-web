@@ -58,7 +58,7 @@ export default function FlowCreate() {
 
   return (
     <>
-      <FlowTitle subtitle={<Trans>Create an account</Trans>} emoji="wave">
+      <FlowTitle subtitle={<Trans>Create a Muchat account</Trans>} emoji="wave">
         <Trans>Hello!</Trans>
       </FlowTitle>
       <Form onSubmit={create} captcha={config.features.captcha.key}>
