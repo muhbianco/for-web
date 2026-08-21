@@ -9,32 +9,37 @@ import { Symbol } from "../../utils/Symbol";
 
 const IDLE: AppUpdatePayload = { state: "idle" };
 
+const [update, setUpdate] = createSignal<AppUpdatePayload>(IDLE);
+let listening = false;
+
 /**
  * Track the desktop shell's auto updater.
  *
  * The shell may finish checking before this app mounts, so we prime from
- * getUpdateState() instead of relying on the broadcast alone.
+ * getUpdateState() instead of relying on the broadcast alone. Shared so the
+ * titlebar, banner, and settings page see one lifecycle.
  */
-function createDesktopUpdate() {
-  const [update, setUpdate] = createSignal<AppUpdatePayload>(IDLE);
+function ensureDesktopUpdateListener() {
+  const native = window.native;
+  if (!native?.onAppUpdate || listening) return;
+  listening = true;
 
-  onMount(() => {
-    const native = window.native;
-    if (!native?.onAppUpdate) return;
+  native.onAppUpdate((payload) => setUpdate(payload ?? IDLE));
+  void native
+    .getUpdateState?.()
+    .then((payload) =>
+      // Do not clobber a live event that landed while we were asking.
+      setUpdate((current) =>
+        current.state === "idle" ? (payload ?? IDLE) : current,
+      ),
+    )
+    .catch(() => {
+      /* an older shell may not expose this yet */
+    });
+}
 
-    native.onAppUpdate((payload) => setUpdate(payload ?? IDLE));
-    void native
-      .getUpdateState?.()
-      .then((payload) =>
-        // Do not clobber a live event that landed while we were asking.
-        setUpdate((current) =>
-          current.state === "idle" ? (payload ?? IDLE) : current,
-        ),
-      )
-      .catch(() => {
-        /* an older shell may not expose this yet */
-      });
-  });
+export function useDesktopUpdate() {
+  onMount(() => ensureDesktopUpdateListener());
 
   const name = () => {
     const { version } = update();
@@ -55,13 +60,13 @@ function createDesktopUpdate() {
 /**
  * Banner offering the pending desktop update.
  *
- * Renders nothing in the browser or when the app is already up to date.
+ * Hidden when the custom titlebar already shows the same notice.
  */
 export function DesktopUpdateBanner() {
-  const { state, name, percent, pending, install } = createDesktopUpdate();
+  const { state, name, percent, pending, install } = useDesktopUpdate();
 
   return (
-    <Show when={pending()}>
+    <Show when={pending() && !window.native?.hasCustomFrame?.()}>
       <Banner role="status">
         <Switch>
           <Match when={state() === "available"}>
@@ -102,7 +107,7 @@ export function DesktopUpdateBanner() {
  * Mirrors the banner so an update stays reachable after it scrolls away.
  */
 export function DesktopUpdateSection() {
-  const { state, name, percent, pending, install } = createDesktopUpdate();
+  const { state, name, percent, pending, install } = useDesktopUpdate();
 
   return (
     <Show when={window.native?.onAppUpdate}>

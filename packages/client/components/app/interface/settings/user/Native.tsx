@@ -50,6 +50,13 @@ declare global {
       minimise(): void;
       maximise(): void;
       close(): void;
+      /** Windows Muchat shell: renderer owns the titlebar. */
+      hasCustomFrame?(): boolean;
+      /** Windows 10: clip with CSS because DWM will not round the HWND. */
+      usesCssRoundedCorners?(): boolean;
+      getWindowState?(): Promise<{ maximised: boolean }>;
+      onWindowState?(onState: (payload: { maximised: boolean }) => void): void;
+      setWindowBackground?(color: string): void;
       /** Screens and windows offered by the shell for its own picker. */
       listScreenSources?(): Promise<
         {
@@ -71,8 +78,8 @@ declare global {
     };
 
     /**
-     * Only the upstream Stoat desktop build ships this; the Muchat shell uses
-     * the native window frame and its own tray handling, so treat it as absent.
+     * Only the upstream Stoat desktop build ships this. Muchat uses a
+     * frameless window on Windows and its own tray handling.
      */
     desktopConfig?: {
       get(): DesktopConfig;

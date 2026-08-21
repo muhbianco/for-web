@@ -80,6 +80,10 @@ export function LoadTheme() {
 
     for (const meta of document.head.querySelectorAll("meta[name=theme-color]"))
       (meta as HTMLMetaElement).content = color;
+
+    if (typeof color === "string" && color.startsWith("#")) {
+      window.native?.setWindowBackground?.(color);
+    }
   });
 
   return <Masks />;

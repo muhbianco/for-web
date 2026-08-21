@@ -43,6 +43,7 @@ import "@revolt/ui/styles";
 
 import { AndroidNag } from "./AndroidNag";
 import AuthPage from "./Auth";
+import { applyDesktopChrome } from "./desktopChrome";
 import Interface from "./Interface";
 import "./index.css";
 import { DevelopmentPage } from "./interface/Development";
@@ -178,6 +179,8 @@ const routes = () => (
 );
 
 const snackbarCtrl = new SnackbarController();
+
+applyDesktopChrome();
 
 render(
   () => (

@@ -1,4 +1,4 @@
-import { Match, Show, Switch, createSignal } from "solid-js";
+import { Match, Show, Switch, createSignal, onMount } from "solid-js";
 import { Motion, Presence } from "solid-motionone";
 
 import { css } from "styled-system/css";
@@ -7,6 +7,7 @@ import { styled } from "styled-system/jsx";
 import { useClientLifecycle } from "@revolt/client";
 import { State, TransitionType } from "@revolt/client/Controller";
 import { Button, Ripple, symbolSize, typography } from "@revolt/ui";
+import { useDesktopUpdate } from "@revolt/ui/components/features/desktop/DesktopUpdate";
 
 import MdBuild from "@material-symbols/svg-400/outlined/build.svg?component-solid";
 import MdClose from "@material-symbols/svg-400/outlined/close.svg?component-solid";
@@ -21,15 +22,27 @@ const isMacOS = navigator.platform.startsWith("Mac");
 const isNative = !!window.native;
 
 /** Whether the shell handed window decoration over to the app. */
-const hasCustomFrame = () => !!window.desktopConfig?.get().customFrame;
+const hasCustomFrame = () => !!window.native?.hasCustomFrame?.();
 
 export function Titlebar() {
-  // Shells without desktopConfig (such as Muchat) keep the native OS frame, so
-  // there is no custom titlebar state to read and no maximise button to draw.
-  const [isMaximised, setIsMaximised] = createSignal(
-    window.desktopConfig?.get().windowState.isMaximised ?? false,
-  );
+  const [isMaximised, setIsMaximised] = createSignal(false);
   const { lifecycle } = useClientLifecycle();
+  const desktopUpdate = useDesktopUpdate();
+
+  onMount(() => {
+    const native = window.native;
+    if (!native?.hasCustomFrame?.()) return;
+
+    native.onWindowState?.((state) => {
+      setIsMaximised(Boolean(state?.maximised));
+    });
+    void native
+      .getWindowState?.()
+      .then((state) => setIsMaximised(Boolean(state?.maximised)))
+      .catch(() => {
+        /* an older shell may not expose this yet */
+      });
+  });
 
   function isDisconnected() {
     return [
@@ -38,11 +51,6 @@ export function Titlebar() {
       State.Reconnecting,
       State.Offline,
     ].includes(lifecycle.state());
-  }
-
-  function maximise() {
-    window.native?.maximise();
-    setIsMaximised((t) => !t);
   }
 
   return (
@@ -82,7 +90,6 @@ export function Titlebar() {
                 <Match when={lifecycle.state() === State.Connecting}>
                   Connecting
                 </Match>
-                {/* <Match when={lifecycle.state() === State.Connected}>Connected</Match> */}
                 <Match when={lifecycle.state() === State.Disconnected}>
                   Disconnected
                   <a
@@ -91,6 +98,9 @@ export function Titlebar() {
                         type: TransitionType.Retry,
                       })
                     }
+                    style={{
+                      "-webkit-app-region": "no-drag",
+                    }}
                   >
                     <strong> (reconnect now)</strong>
                   </a>
@@ -114,6 +124,20 @@ export function Titlebar() {
                   </a>
                 </Match>
               </Switch>
+              <Show when={desktopUpdate.pending()}>
+                <UpdateNotice
+                  type="button"
+                  disabled={desktopUpdate.state() === "downloading"}
+                  onClick={() => desktopUpdate.install()}
+                  style={{
+                    "-webkit-app-region": "no-drag",
+                  }}
+                >
+                  {desktopUpdate.state() === "downloading"
+                    ? `Update disponível ${desktopUpdate.percent()}%`
+                    : "Update disponível"}
+                </UpdateNotice>
+              </Show>
               <Show when={pendingUpdate()}>
                 {" "}
                 <div
@@ -127,14 +151,18 @@ export function Titlebar() {
                 </div>
               </Show>
             </DragHandle>
-            {/* Only a custom frame owns the window buttons; with the native OS
-                frame these would just duplicate the real ones. */}
             <Show when={isNative && !isMacOS && hasCustomFrame()}>
-              <Action onClick={() => window.native?.minimise()}>
+              <Action
+                onClick={() => window.native?.minimise()}
+                style={{ "-webkit-app-region": "no-drag" }}
+              >
                 <Ripple />
                 <MdMinimize {...symbolSize(20)} />
               </Action>
-              <Action onClick={maximise}>
+              <Action
+                onClick={() => window.native?.maximise()}
+                style={{ "-webkit-app-region": "no-drag" }}
+              >
                 <Ripple />
                 <Show
                   when={isMaximised()}
@@ -143,7 +171,10 @@ export function Titlebar() {
                   <MdCollapseContent {...symbolSize(20)} />
                 </Show>
               </Action>
-              <Action onClick={() => window.native?.close()}>
+              <Action
+                onClick={() => window.native?.close()}
+                style={{ "-webkit-app-region": "no-drag" }}
+              >
                 <Ripple />
                 <MdClose {...symbolSize(20)} />
               </Action>
@@ -231,5 +262,22 @@ const Action = styled("a", {
 
     height: "100%",
     aspectRatio: "3/2",
+  },
+});
+
+const UpdateNotice = styled("button", {
+  base: {
+    border: 0,
+    cursor: "pointer",
+    font: "inherit",
+    fontWeight: 600,
+    padding: "2px 8px",
+    borderRadius: "var(--borderRadius-full)",
+    color: "#141210",
+    background: "#e85a2a",
+    "&:disabled": {
+      opacity: 0.7,
+      cursor: "default",
+    },
   },
 });
