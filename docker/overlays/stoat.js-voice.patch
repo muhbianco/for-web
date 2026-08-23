@@ -1,0 +1,75 @@
+diff --git a/src/Client.ts b/src/Client.ts
+index 74d952ae..13a4fe56 100644
+--- a/src/Client.ts
++++ b/src/Client.ts
+@@ -100,6 +100,17 @@ export type Events = {
+   emojiCreate: [emoji: Emoji];
+   emojiDelete: [emoji: HydratedEmoji];
+ 
++  voiceChannelJoin: [channel: Channel, userId: string];
++  voiceChannelLeave: [channel: Channel, userId: string];
++  voiceCallUpdate: [
++    event: {
++      initiatorId: string;
++      channelId: string;
++      startedAt: string | null;
++      ended: boolean;
++    },
++  ];
++
+   userSlowmodes: [];
+ };
+ 
+diff --git a/src/events/v1.ts b/src/events/v1.ts
+index bfc71828..b6a5c409 100644
+--- a/src/events/v1.ts
++++ b/src/events/v1.ts
+@@ -205,6 +205,14 @@ type ServerMessage =
+       node: string;
+       token: string;
+     }
++  | {
++      type: "VoiceCallUpdate";
++      initiator_id?: string;
++      channel_id?: string;
++      id?: string;
++      started_at?: string | null;
++      ended: boolean;
++    }
+   | {
+       type: "UserSlowmodes";
+       slowmodes: UserSlowmodes[];
+@@ -996,7 +1004,7 @@ export async function handleEvent(
+           event.state.id,
+           new VoiceParticipant(client, event.state),
+         );
+-        // todo: event
++        client.emit("voiceChannelJoin", channel, event.state.id);
+       }
+       break;
+     }
+@@ -1004,7 +1012,7 @@ export async function handleEvent(
+       const channel = client.channels.getOrPartial(event.id);
+       if (channel) {
+         channel.voiceParticipants.delete(event.user);
+-        // todo: event
++        client.emit("voiceChannelLeave", channel, event.user);
+       }
+       break;
+     }
+@@ -1024,6 +1032,15 @@ export async function handleEvent(
+       // todo
+       break;
+     }
++    case "VoiceCallUpdate": {
++      client.emit("voiceCallUpdate", {
++        initiatorId: event.initiator_id ?? "",
++        channelId: event.channel_id ?? event.id ?? "",
++        startedAt: event.started_at ?? null,
++        ended: event.ended,
++      });
++      break;
++    }
+     case "UserSlowmodes": {
+       for (const slowmode of event.slowmodes) {
+         const channel = client.channels.getOrPartial(slowmode.channel_id);

@@ -4,6 +4,7 @@ import { useModals } from "@revolt/modal";
 import { useSmartParams } from "@revolt/routing";
 import { useState } from "@revolt/state";
 import { Slider, Symbol, Text } from "@revolt/ui";
+import { useVoice, startPrivateCall } from "@revolt/rtc";
 import { useNavigate } from "@solidjs/router";
 import { type JSX, Match, Show, Switch } from "solid-js";
 import type { Channel, Message, ServerMember, User } from "stoat.js";
@@ -34,6 +35,7 @@ export function UserContextMenu(props: {
   const client = useClient();
   const navigate = useNavigate();
   const { openModal, modals, showError } = useModals();
+  const voice = useVoice();
 
   // server context
   const params = useSmartParams();
@@ -43,6 +45,13 @@ export function UserContextMenu(props: {
    */
   function openDm() {
     props.user.openDM().then((channel) => navigate(channel.path));
+    props.onClose?.();
+  }
+
+  function startCall() {
+    void startPrivateCall(voice, props.user).then((channel) =>
+      navigate(channel.path),
+    );
     props.onClose?.();
   }
 
@@ -449,6 +458,18 @@ export function UserContextMenu(props: {
           onClick={openDm}
         >
           <Trans>Message</Trans>
+        </ContextMenuButton>
+      </Show>
+      <Show when={props.user.relationship === "Friend"}>
+        <ContextMenuButton
+          symbol={
+            <IconSlot>
+              <Symbol size={16}>call</Symbol>
+            </IconSlot>
+          }
+          onClick={startCall}
+        >
+          <Trans>Call</Trans>
         </ContextMenuButton>
       </Show>
       <Show when={props.channel?.type === "TextChannel"}>

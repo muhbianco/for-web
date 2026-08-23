@@ -15,7 +15,23 @@ declare global {
       hideSplash(): void;
       startScreenShare?(width: number, height: number, frameRate: number): void;
       stopScreenShare?(): void;
+      startVoiceSession?(title: string): void;
+      stopVoiceSession?(): void;
+      fcmToken?(): string;
     };
+    native?: {
+      showIncomingCall?: () => void;
+      [key: string]: unknown;
+    };
+    __muchatPendingIncoming?: { action: string; channelId?: string };
+    __muchatIncomingCall?: (
+      action: string,
+      channelId?: string,
+      callerId?: string,
+      callerName?: string,
+    ) => void;
+    __muchatVoiceCommand?: (command: string) => void;
+    __muchatFcmToken?: (token: string) => void;
     /** Installed by the Android getDisplayMedia polyfill while a share is live. */
     __muchatScreenShare?: (event: string, payload?: string | null) => void;
   }

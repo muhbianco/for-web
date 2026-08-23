@@ -8,6 +8,7 @@ import { styled } from "styled-system/jsx";
 import { UserContextMenu } from "@revolt/app";
 import { useClient } from "@revolt/client";
 import { useModals } from "@revolt/modal";
+import { useVoice, startPrivateCall } from "@revolt/rtc";
 
 import MdCancel from "@material-design-icons/svg/filled/cancel.svg?component-solid";
 import MdEdit from "@material-design-icons/svg/filled/edit.svg?component-solid";
@@ -29,6 +30,7 @@ export function ProfileActions(props: {
   const navigate = useNavigate();
   const client = useClient();
   const { openModal } = useModals();
+  const voice = useVoice();
 
   const [publicBot] = createResource(
     () => !props.member && props.user.bot && props.user.id,
@@ -44,6 +46,13 @@ export function ProfileActions(props: {
    */
   function openDm() {
     props.user.openDM().then((channel) => navigate(channel.path));
+    props.onClose();
+  }
+
+  function startCall() {
+    void startPrivateCall(voice, props.user).then((channel) =>
+      navigate(channel.path),
+    );
     props.onClose();
   }
 
@@ -86,6 +95,11 @@ export function ProfileActions(props: {
         <Button onPress={openDm}>
           <Trans>Message</Trans>
         </Button>
+        <Show when={props.user.relationship === "Friend"}>
+          <Button variant="tonal" onPress={startCall}>
+            <Trans>Call</Trans>
+          </Button>
+        </Show>
       </Show>
       <Show when={publicBot()}>
         <Button

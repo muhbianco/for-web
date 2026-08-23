@@ -16,11 +16,16 @@ import { Titlebar } from "@revolt/app/interface/desktop/Titlebar";
 import { useClient, useClientLifecycle } from "@revolt/client";
 import { State } from "@revolt/client/Controller";
 import { NotificationsWorker } from "@revolt/client/NotificationsWorker";
+import { CallPushWorker } from "@revolt/client/CallPushWorker";
 import { useModals } from "@revolt/modal";
 import { Navigate, useBeforeLeave, useLocation } from "@revolt/routing";
 import { useState } from "@revolt/state";
 import { LAYOUT_SECTIONS } from "@revolt/state/stores/Layout";
 import { LoadingScreen } from "@revolt/ui";
+import {
+  IncomingCallOverlay,
+  CallRingListener,
+} from "@revolt/ui/components/features/voice/IncomingCallOverlay";
 
 import { SlideDrawer } from "../components/ui/components/navigation/SlideDrawer";
 import { Sidebar } from "./interface/Sidebar";
@@ -134,6 +139,9 @@ const Interface = (props: { children: JSX.Element }) => {
         </Switch>
 
         <NotificationsWorker />
+        <CallPushWorker />
+        <CallRingListener />
+        <IncomingCallOverlay />
       </AppRoot>
     </MessageCache>
   );

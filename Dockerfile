@@ -3,7 +3,7 @@
 # ============================================
 FROM node:24-alpine AS builder
 
-RUN apk add --no-cache git python3 make g++
+RUN apk add --no-cache git python3 make g++ patch
 
 # Install pnpm
 RUN corepack enable && corepack prepare pnpm@11.3.0 --activate
@@ -14,6 +14,12 @@ WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 
 COPY packages/ packages/
+
+# VoiceCallUpdate lives in our fork overlay: packages/stoat.js is still the
+# upstream submodule, which VPS `git submodule update` resets to a clean SHA.
+COPY docker/overlays/stoat.js-voice.patch /tmp/stoat.js-voice.patch
+RUN grep -q 'voiceCallUpdate' packages/stoat.js/src/Client.ts || \
+  patch -p1 -d packages/stoat.js < /tmp/stoat.js-voice.patch
 
 # Copy panda config needed by client's "prepare" lifecycle script (panda codegen)
 COPY packages/client/panda.config.ts packages/client/

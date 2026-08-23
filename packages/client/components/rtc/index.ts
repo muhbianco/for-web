@@ -5,6 +5,7 @@ import {
 import { getVirtmic } from "./virtualMic";
 
 export { useVoice, VoiceContext } from "./state";
+export { notifyPushRing, registerPushToken, startPrivateCall } from "./callPush";
 
 export { InRoom } from "./components/InRoom";
 export { RoomAudioManager } from "./components/RoomAudioManager";

@@ -39,6 +39,7 @@ import { Device, useDevice } from "@revolt/common";
 import { InRoom } from "./components/InRoom";
 import { RoomAudioManager } from "./components/RoomAudioManager";
 import { VoiceProcessor } from "./VoiceProcessor";
+import { notifyPushRing, privateCallTargets } from "./callPush";
 
 type State =
   | "READY"
@@ -46,6 +47,12 @@ type State =
   | "CONNECTING"
   | "CONNECTED"
   | "RECONNECTING";
+
+export type CallRing = {
+  direction: "incoming" | "outgoing";
+  channel: Channel;
+  userId: string;
+};
 
 type ScreenShareQuality = {
   name: ScreenShareQualityName;
@@ -85,6 +92,10 @@ class Voice {
 
   showBar: Accessor<boolean>;
   #setShowBar: Setter<boolean>;
+
+  ring: Accessor<CallRing | undefined>;
+  #setRing: Setter<CallRing | undefined>;
+  #ringTimer?: ReturnType<typeof setTimeout>;
 
   private sound: SoundController;
   private device: Device;
@@ -141,6 +152,11 @@ class Voice {
     const [showBar, setShowBar] = createSignal(true);
     this.showBar = showBar;
     this.#setShowBar = setShowBar;
+
+    const [ring, setRing] = createSignal<CallRing>();
+    this.ring = ring;
+    this.#setRing = setRing;
+    this.#ringTimer = undefined;
 
     const inst = useInstance();
     this.config = inst.config;
@@ -202,7 +218,11 @@ class Voice {
     });
   }
 
-  async connect(channel: Channel, auth?: { url: string; token: string }) {
+  async connect(
+    channel: Channel,
+    auth?: { url: string; token: string },
+    opts?: { recipients?: string[] },
+  ) {
     this.disconnect();
 
     this.device.setWakeLocked();
@@ -261,6 +281,8 @@ class Voice {
         }
       }
       this.sound.playSound("userJoinVoice");
+      this.clearRing();
+      this.syncNativeVoiceSession();
     });
 
     room.addListener("disconnected", () => this.#setState("DISCONNECTED"));
@@ -315,7 +337,22 @@ class Voice {
     );
 
     if (!auth) {
-      auth = await channel.joinCall(selected);
+      const startingPrivate =
+        (channel.type === "DirectMessage" || channel.type === "Group") &&
+        channel.voiceParticipants.size === 0;
+      const recipients =
+        opts?.recipients ??
+        (startingPrivate ? privateCallTargets(channel) : undefined);
+      auth = await channel.joinCall(selected, true, recipients);
+      if (startingPrivate) {
+        const peerId = recipients?.[0] ?? channel.recipient?.id ?? "";
+        this.beginOutgoingRing(channel, peerId);
+        if (peerId) {
+          void notifyPushRing(channel, peerId).catch(() => {
+            /* push is best-effort; WS ring still works */
+          });
+        }
+      }
     }
 
     await room.connect(auth.url, auth.token, {
@@ -355,6 +392,8 @@ class Voice {
 
   disconnect(opts?: { silent?: boolean }) {
     this.device.releaseWakeLock();
+    this.clearRing();
+    this.syncNativeVoiceSession(true);
     const room = this.room();
 
     try {
@@ -792,6 +831,63 @@ class Voice {
 
   get speakingPermission() {
     return !!this.channel()?.havePermission("Speak");
+  }
+
+  beginIncomingRing(channel: Channel, userId: string) {
+    if (this.channel()?.id === channel.id) return;
+    if (this.ring()?.channel.id === channel.id) return;
+    this.clearRing();
+    this.#setRing({ direction: "incoming", channel, userId });
+    this.sound.startRingtone("ringtoneIncoming");
+    try {
+      window.native?.showIncomingCall?.();
+    } catch {
+      /* desktop shell is optional */
+    }
+    this.#ringTimer = setTimeout(() => this.clearRing(), 30_000);
+  }
+
+  beginOutgoingRing(channel: Channel, userId: string) {
+    this.clearRing();
+    this.#setRing({ direction: "outgoing", channel, userId });
+    this.sound.startRingtone("ringtoneOutgoing");
+    this.#ringTimer = setTimeout(() => this.clearRing(), 30_000);
+  }
+
+  clearRing() {
+    if (this.#ringTimer) {
+      clearTimeout(this.#ringTimer);
+      this.#ringTimer = undefined;
+    }
+    this.sound.stopRingtone();
+    this.#setRing(undefined);
+  }
+
+  async acceptIncoming() {
+    const incoming = this.ring();
+    if (!incoming || incoming.direction !== "incoming") return;
+    const channel = incoming.channel;
+    this.clearRing();
+    await this.connect(channel);
+  }
+
+  declineIncoming() {
+    this.clearRing();
+  }
+
+  private syncNativeVoiceSession(forceStop?: boolean) {
+    const native = window.MuchatNative;
+    if (!native?.startVoiceSession) return;
+    const channel = this.channel();
+    if (!forceStop && this.state() === "CONNECTED" && channel) {
+      const title =
+        channel.type === "DirectMessage"
+          ? (channel.recipient?.displayName ?? "Chamada")
+          : (channel.name ?? "Voz");
+      native.startVoiceSession(title);
+    } else {
+      native.stopVoiceSession?.();
+    }
   }
 
   private onErr(e: unknown) {

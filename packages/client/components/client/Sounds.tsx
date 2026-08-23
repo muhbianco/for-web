@@ -25,6 +25,7 @@ export class SoundController {
   node?: HTMLAudioElement;
 
   lastPlayedSound?: keyof TypeSounds;
+  private ringtone?: HTMLAudioElement;
 
   constructor(soundState: Sounds) {
     this.soundState = soundState;
@@ -32,6 +33,8 @@ export class SoundController {
     this.isPlaying = this.isPlaying.bind(this);
     this.canPlay = this.canPlay.bind(this);
     this.playSound = this.playSound.bind(this);
+    this.startRingtone = this.startRingtone.bind(this);
+    this.stopRingtone = this.stopRingtone.bind(this);
   }
 
   /**
@@ -137,6 +140,32 @@ export class SoundController {
     this.lastPlayedSound = sound;
     this.node.play();
     return true;
+  }
+
+  /**
+   * Loop a ringtone until {@link stopRingtone} — independent of one-shot sounds.
+   */
+  startRingtone(kind: "ringtoneIncoming" | "ringtoneOutgoing"): boolean {
+    if (!this.soundState.enabled(kind)) return false;
+    this.stopRingtone();
+    const node = new Audio(
+      kind === "ringtoneIncoming"
+        ? ringtoneIncomingSound
+        : ringtoneOutgoingSound,
+    );
+    node.loop = true;
+    this.ringtone = node;
+    void node.play().catch(() => {
+      /* autoplay can fail until a user gesture; overlay click retries */
+    });
+    return true;
+  }
+
+  stopRingtone(): void {
+    if (!this.ringtone) return;
+    this.ringtone.pause();
+    this.ringtone.src = "";
+    this.ringtone = undefined;
   }
 }
 

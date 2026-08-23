@@ -17,6 +17,8 @@ import { styled } from "styled-system/jsx";
 import { UserContextMenu } from "@revolt/app";
 import { useClient } from "@revolt/client";
 import { useModals } from "@revolt/modal";
+import { useVoice, startPrivateCall } from "@revolt/rtc";
+import { useNavigate } from "@solidjs/router";
 import {
   Avatar,
   Badge,
@@ -278,6 +280,16 @@ function Entry(
 ) {
   const { openModal } = useModals();
   const [local, remote] = splitProps(props, ["user"]);
+  const voice = useVoice();
+  const navigate = useNavigate();
+
+  function startCall(event: MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    void startPrivateCall(voice, local.user).then((channel) =>
+      navigate(channel.path),
+    );
+  }
 
   return (
     <a
@@ -304,6 +316,25 @@ function Entry(
           }
         />
         <OverflowingText>{local.user.displayName}</OverflowingText>
+        <Show when={local.user.relationship === "Friend"}>
+          <span onClick={startCall}>
+            <IconButton
+              onPress={() =>
+                void startPrivateCall(voice, local.user).then((channel) =>
+                  navigate(channel.path),
+                )
+              }
+              use:floating={{
+                tooltip: {
+                  placement: "left",
+                  content: "Ligar",
+                },
+              }}
+            >
+              <Symbol>call</Symbol>
+            </IconButton>
+          </span>
+        </Show>
       </ListItem>
     </a>
   );
