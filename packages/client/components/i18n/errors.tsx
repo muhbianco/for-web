@@ -132,6 +132,8 @@ export function useError() {
           return t`This account is not activated! Please check your account's inbox and try again.`;
         case "TotpAlreadyEnabled":
           return t`Multi-factor authentication is already enabled for this account.`;
+        case "OperationFailed":
+          return t`This email already has a Muchat account. Sign in, or use a different email. A Gmail address with + is the same account.`;
 
         // unreachable errors (in theory)
         case "FileTooLarge":

@@ -34,12 +34,25 @@ export default function FlowCreate() {
     const captcha = data.get("captcha") as string;
     const invite = data.get("invite") as string;
 
-    await api.post("/auth/account/create", {
-      email,
-      password,
-      captcha,
-      ...(invite ? { invite } : {}),
-    });
+    try {
+      await api.post("/auth/account/create", {
+        email,
+        password,
+        captcha,
+        ...(invite ? { invite } : {}),
+      });
+    } catch (err) {
+      const type =
+        err && typeof err === "object" && "type" in err
+          ? String((err as { type: string }).type)
+          : "";
+      if (type === "OperationFailed") {
+        throw new Error(
+          "Este e-mail já tem conta no Muchat. Entre, ou use outro e-mail. Gmail com + não conta como e-mail novo.",
+        );
+      }
+      throw err;
+    }
 
     if (!config.features.email) {
       await login(
