@@ -5,7 +5,7 @@ import { Trans } from "@lingui/solid/macro";
 import { useClientLifecycle } from "@revolt/client";
 import { State, TransitionType } from "@revolt/client/Controller";
 import { useModals } from "@revolt/modal";
-import { Navigate } from "@revolt/routing";
+import { Navigate, useNavigate } from "@revolt/routing";
 import {
   Button,
   CircularProgress,
@@ -18,7 +18,13 @@ import {
 import MdArrowBack from "@material-design-icons/svg/filled/arrow_back.svg?component-solid";
 
 import { useState } from "@revolt/state";
+
+import {
+  apiErrorType,
+  shouldPromptCheckEmail,
+} from "./accountActivation";
 import { FlowTitle } from "./Flow";
+import { setFlowCheckEmail } from "./FlowCheck";
 import { Fields, Form } from "./Form";
 
 /**
@@ -27,6 +33,7 @@ import { Fields, Form } from "./Form";
 export default function FlowLogin() {
   const state = useState();
   const modals = useModals();
+  const navigate = useNavigate();
   const { lifecycle, isLoggedIn, login, selectUsername } = useClientLifecycle();
 
   /**
@@ -39,13 +46,27 @@ export default function FlowLogin() {
 
     if (!email || !password) return;
 
-    await login(
-      {
-        email,
-        password,
-      },
-      modals,
-    );
+    try {
+      await login(
+        {
+          email,
+          password,
+        },
+        modals,
+      );
+    } catch (err) {
+      if (
+        shouldPromptCheckEmail({
+          emailVerificationEnabled: false,
+          loginErrorType: apiErrorType(err),
+        })
+      ) {
+        setFlowCheckEmail(email);
+        navigate("/login/check", { replace: true });
+        return;
+      }
+      throw err;
+    }
   }
 
   /**

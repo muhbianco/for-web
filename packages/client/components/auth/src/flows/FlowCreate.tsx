@@ -9,6 +9,12 @@ import { Button, iconSize, Row } from "@revolt/ui";
 
 import MdArrowBack from "@material-design-icons/svg/filled/arrow_back.svg?component-solid";
 
+import {
+  OPERATION_FAILED,
+  apiErrorType,
+  emailVerificationEnabled,
+  shouldPromptCheckEmail,
+} from "./accountActivation";
 import { FlowTitle } from "./Flow";
 import { setFlowCheckEmail } from "./FlowCheck";
 import { Fields, Form } from "./Form";
@@ -24,6 +30,11 @@ export default function FlowCreate() {
   const { login } = useClientLifecycle();
   const { config } = useInstance();
 
+  function goCheckEmail(address: string) {
+    setFlowCheckEmail(address);
+    navigate("/login/check", { replace: true });
+  }
+
   /**
    * Create an account
    * @param data Form Data
@@ -34,6 +45,7 @@ export default function FlowCreate() {
     const captcha = data.get("captcha") as string;
     const invite = data.get("invite") as string;
 
+    let created = false;
     try {
       await api.post("/auth/account/create", {
         email,
@@ -41,20 +53,37 @@ export default function FlowCreate() {
         captcha,
         ...(invite ? { invite } : {}),
       });
+      created = true;
     } catch (err) {
-      const type =
-        err && typeof err === "object" && "type" in err
-          ? String((err as { type: string }).type)
-          : "";
-      if (type === "OperationFailed") {
-        throw new Error(
-          "Este e-mail já tem conta no Muchat. Entre, ou use outro e-mail. Gmail com + não conta como e-mail novo.",
-        );
+      if (apiErrorType(err) !== OPERATION_FAILED) {
+        throw err;
       }
-      throw err;
     }
 
-    if (!config.features.email) {
+    let live: { features?: { email?: boolean } } | undefined;
+    try {
+      live = (await api.get("/")) as { features?: { email?: boolean } };
+    } catch {
+      live = undefined;
+    }
+
+    const verifyEmail = emailVerificationEnabled(
+      live,
+      Boolean(config.features.email),
+    );
+
+    if (
+      created &&
+      shouldPromptCheckEmail({
+        emailVerificationEnabled: verifyEmail,
+        loginErrorType: "",
+      })
+    ) {
+      goCheckEmail(email);
+      return;
+    }
+
+    try {
       await login(
         {
           email,
@@ -63,9 +92,22 @@ export default function FlowCreate() {
         modals,
       );
       navigate("/login/auth", { replace: true });
-    } else {
-      setFlowCheckEmail(email);
-      navigate("/login/check", { replace: true });
+    } catch (err) {
+      if (
+        shouldPromptCheckEmail({
+          emailVerificationEnabled: false,
+          loginErrorType: apiErrorType(err),
+        })
+      ) {
+        goCheckEmail(email);
+        return;
+      }
+      if (!created) {
+        throw new Error(
+          "Este e-mail já tem conta no Muchat. Entre, ou use outro e-mail. Gmail com + não conta como e-mail novo.",
+        );
+      }
+      throw err;
     }
   }
 

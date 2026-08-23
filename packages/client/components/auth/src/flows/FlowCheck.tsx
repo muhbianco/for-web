@@ -3,7 +3,7 @@ import { Show } from "solid-js";
 import { Trans } from "@lingui/solid/macro";
 
 import { useNavigate } from "@revolt/routing";
-import { Button, Row, iconSize } from "@revolt/ui";
+import { Button, Column, Row, Text, iconSize } from "@revolt/ui";
 
 import MdArrowBack from "@material-design-icons/svg/filled/arrow_back.svg?component-solid";
 
@@ -13,7 +13,7 @@ import { MailProvider } from "./MailProvider";
 /**
  * Keep track of email within the same session
  */
-let email = "postmaster@revolt.wtf";
+let email = "";
 
 /**
  * Persist email information temporarily
@@ -33,24 +33,35 @@ export default function FlowCheck() {
       <FlowTitle
         subtitle={
           <Trans>
-            We've sent you a verification email. Please allow up to 10 minutes
-            for it to arrive.
+            We've sent you a verification email. Open it and click the link to
+            activate your account. Please allow up to 10 minutes for it to
+            arrive.
           </Trans>
         }
         emoji="mail"
       >
         <Trans>Check your mail!</Trans>
       </FlowTitle>
-      <Row align justify>
-        <a href="..">
+      <Show when={email}>
+        <Text class="label">{email}</Text>
+      </Show>
+      <Column gap="lg">
+        <Row align justify>
+          <a href="..">
+            <Button variant="text">
+              <MdArrowBack {...iconSize("1.2em")} /> <Trans>Back</Trans>
+            </Button>
+          </a>
+          <Show when={email}>
+            <MailProvider email={email} />
+          </Show>
+        </Row>
+        <a href="/login/resend">
           <Button variant="text">
-            <MdArrowBack {...iconSize("1.2em")} /> <Trans>Back</Trans>
+            <Trans>Resend verification</Trans>
           </Button>
         </a>
-        <Show when={email}>
-          <MailProvider email={email} />
-        </Show>
-      </Row>
+      </Column>
       {import.meta.env.DEV && (
         <div
           style={{

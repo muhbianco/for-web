@@ -129,7 +129,7 @@ export function useError() {
         case "CompromisedPassword":
           return t`This password has previously appeared in security leaks, please use another password.`;
         case "UnverifiedAccount":
-          return t`This account is not activated! Please check your account's inbox and try again.`;
+          return t`This account is not activated yet. Open the verification email we sent and click the link.`;
         case "TotpAlreadyEnabled":
           return t`Multi-factor authentication is already enabled for this account.`;
         case "OperationFailed":
