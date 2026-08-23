@@ -37,6 +37,7 @@ import {
   SnackbarProvider,
 } from "@revolt/ui";
 import { DesktopUpdateBanner } from "@revolt/ui/components/features/desktop/DesktopUpdate";
+import { WebDownloadBanner } from "@revolt/ui/components/features/desktop/WebDownload";
 
 /* @refresh reload */
 import "@revolt/ui/styles";
@@ -196,6 +197,7 @@ render(
             </Route>
           </Router>
           <DesktopUpdateBanner />
+          <WebDownloadBanner />
           {/* <ReportBug /> */}
         </SnackbarProvider>
       </I18nProvider>

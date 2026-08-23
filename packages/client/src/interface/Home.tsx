@@ -178,13 +178,13 @@ export function HomePage() {
             </Switch>
             <CategoryButton
               variant="tertiary"
-              onClick={() => window.open("https://ko-fi.com/stoatchat")}
+              onClick={() => window.open("/doar", "_blank", "noopener,noreferrer")}
               description={
                 <Trans>Support the project by donating - thank you!</Trans>
               }
               icon={<MdPayments />}
             >
-              <Trans>Donate to Stoat</Trans>
+              <Trans>Donate to Muchat</Trans>
             </CategoryButton>
           </SeparatedColumn>
           <SeparatedColumn>
