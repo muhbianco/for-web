@@ -7,7 +7,11 @@ import { styled } from "styled-system/jsx";
 import { useClientLifecycle } from "@revolt/client";
 import { State, TransitionType } from "@revolt/client/Controller";
 import { Button, Ripple, symbolSize, typography } from "@revolt/ui";
-import { useDesktopUpdate } from "@revolt/ui/components/features/desktop/DesktopUpdate";
+import { MuchatWordmark } from "@revolt/ui/components/features/branding/MuchatWordmark";
+import {
+  useDesktopUpdate,
+  useWebClientStale,
+} from "@revolt/ui/components/features/desktop/DesktopUpdate";
 
 import MdBuild from "@material-symbols/svg-400/outlined/build.svg?component-solid";
 import MdClose from "@material-symbols/svg-400/outlined/close.svg?component-solid";
@@ -15,7 +19,6 @@ import MdCollapseContent from "@material-symbols/svg-400/outlined/collapse_conte
 import MdExpandContent from "@material-symbols/svg-400/outlined/expand_content.svg?component-solid";
 import MdMinimize from "@material-symbols/svg-400/outlined/minimize.svg?component-solid";
 
-import Wordmark from "../../../../public/assets/web/wordmark.svg?component-solid";
 import { pendingUpdate } from "../../../../src/serviceWorkerInterface";
 
 const isMacOS = navigator.platform.startsWith("Mac");
@@ -28,6 +31,7 @@ export function Titlebar() {
   const [isMaximised, setIsMaximised] = createSignal(false);
   const { lifecycle } = useClientLifecycle();
   const desktopUpdate = useDesktopUpdate();
+  const webClient = useWebClientStale();
 
   onMount(() => {
     const native = window.native;
@@ -69,9 +73,10 @@ export function Titlebar() {
                 "-webkit-app-region": "drag",
               }}
             >
-              <Wordmark
+              <MuchatWordmark
                 class={css({
                   height: "18px",
+                  fontSize: "15px",
                   marginBlockStart: "1px",
                 })}
               />{" "}
@@ -124,11 +129,15 @@ export function Titlebar() {
                   </a>
                 </Match>
               </Switch>
-              <Show when={desktopUpdate.pending()}>
+              <Show when={desktopUpdate.pending() || webClient.stale()}>
                 <UpdateNotice
                   type="button"
                   disabled={desktopUpdate.state() === "downloading"}
-                  onClick={() => desktopUpdate.install()}
+                  onClick={() =>
+                    desktopUpdate.pending()
+                      ? desktopUpdate.install()
+                      : webClient.apply()
+                  }
                   style={{
                     "-webkit-app-region": "no-drag",
                   }}

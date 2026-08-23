@@ -4,13 +4,20 @@ import { styled } from "styled-system/jsx";
 
 import type { AppUpdatePayload } from "@revolt/app/interface/settings/user/Native";
 
+import { pendingUpdate } from "../../../../../src/serviceWorkerInterface";
+
 import { CategoryButton } from "../../design/CategoryButton";
 import { Symbol } from "../../utils/Symbol";
 
 const IDLE: AppUpdatePayload = { state: "idle" };
 
 const [update, setUpdate] = createSignal<AppUpdatePayload>(IDLE);
+const [webStale, setWebStale] = createSignal(false);
 let listening = false;
+let webPollStarted = false;
+
+const ASSET_JS_RE = /\/assets\/[^"' ]+\.js/g;
+const WEB_POLL_MS = 60_000;
 
 /**
  * Track the desktop shell's auto updater.
@@ -38,6 +45,57 @@ function ensureDesktopUpdateListener() {
     });
 }
 
+function loadedAssetFingerprint() {
+  return [
+    ...document.querySelectorAll("script[src], link[rel='modulepreload']"),
+  ]
+    .map((el) =>
+      (el.getAttribute("src") || el.getAttribute("href") || "").replace(
+        /^https?:\/\/[^/]+/,
+        "",
+      ),
+    )
+    .filter((src) => src.includes("/assets/") && src.endsWith(".js"))
+    .sort()
+    .join();
+}
+
+function publishedAssetFingerprint(html: string) {
+  return [...html.matchAll(ASSET_JS_RE)].map((match) => match[0]).sort().join();
+}
+
+/**
+ * Desktop keeps one window open for hours. A new web build is picked up by
+ * reloading — this poll shows the same Atualizar pill without a new .exe.
+ */
+function ensureWebClientPoll() {
+  if (webPollStarted || !window.native) return;
+  webPollStarted = true;
+
+  const check = async () => {
+    if (pendingUpdate()) {
+      setWebStale(true);
+      return;
+    }
+    try {
+      const html = await fetch(`/?_=${Date.now()}`, { cache: "no-store" }).then(
+        (r) => r.text(),
+      );
+      const current = loadedAssetFingerprint();
+      const published = publishedAssetFingerprint(html);
+      if (current && published && current !== published) setWebStale(true);
+    } catch {
+      /* offline or unexpected index shape */
+    }
+  };
+
+  void check();
+  window.setInterval(check, WEB_POLL_MS);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") void check();
+  });
+}
+
 export function useDesktopUpdate() {
   onMount(() => ensureDesktopUpdateListener());
 
@@ -57,16 +115,31 @@ export function useDesktopUpdate() {
   };
 }
 
+export function useWebClientStale() {
+  onMount(() => ensureWebClientPoll());
+
+  return {
+    stale: webStale,
+    apply: () => {
+      const apply = pendingUpdate();
+      if (apply) apply();
+      else window.location.reload();
+    },
+  };
+}
+
 /**
- * Banner offering the pending desktop update.
+ * Banner offering a pending .exe update or a newer web client.
  *
- * Hidden when the custom titlebar already shows the same notice.
+ * Shown even with the custom titlebar so the pill is hard to miss. Web
+ * reloads never go through electron-updater.
  */
 export function DesktopUpdateBanner() {
   const { state, name, percent, pending, install } = useDesktopUpdate();
+  const web = useWebClientStale();
 
   return (
-    <Show when={pending() && !window.native?.hasCustomFrame?.()}>
+    <Show when={pending() || web.stale()}>
       <Banner role="status">
         <Switch>
           <Match when={state() === "available"}>
@@ -95,6 +168,12 @@ export function DesktopUpdateBanner() {
               Tentar de novo
             </Action>
           </Match>
+          <Match when={web.stale()}>
+            <span>Nova interface pronta</span>
+            <Action type="button" onClick={() => web.apply()}>
+              Atualizar
+            </Action>
+          </Match>
         </Switch>
       </Banner>
     </Show>
@@ -108,15 +187,19 @@ export function DesktopUpdateBanner() {
  */
 export function DesktopUpdateSection() {
   const { state, name, percent, pending, install } = useDesktopUpdate();
+  const web = useWebClientStale();
 
   return (
-    <Show when={window.native?.onAppUpdate}>
+    <Show when={window.native}>
       <CategoryButton.Group>
         <CategoryButton
           icon={<Symbol>system_update</Symbol>}
           action={
-            <Show when={pending() && state() !== "downloading"}>
-              <Action type="button" onClick={install}>
+            <Show when={(pending() && state() !== "downloading") || web.stale()}>
+              <Action
+                type="button"
+                onClick={() => (pending() ? install() : web.apply())}
+              >
                 {state() === "ready" ? "Reiniciar e instalar" : "Atualizar"}
               </Action>
             </Show>
@@ -134,6 +217,9 @@ export function DesktopUpdateSection() {
               </Match>
               <Match when={state() === "error"}>
                 A última tentativa de atualizar falhou.
+              </Match>
+              <Match when={web.stale()}>
+                Tem uma interface nova. Atualizar recarrega o app.
               </Match>
             </Switch>
           }
