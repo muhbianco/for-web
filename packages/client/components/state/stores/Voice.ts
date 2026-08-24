@@ -1,25 +1,19 @@
 import { State } from "..";
 
 import { AbstractStore } from ".";
+import {
+  applyNoiseSuppressionSchema,
+  isNoiseSuppressionMode,
+  type NoiseSuppresionState,
+} from "./noiseSuppressionPolicy";
 
 /**
  * Noise suppression modes.
  * - browser: WebRTC / Chromium NS
  * - enhanced: RNNoise (light)
- * - advanced: DeepFilterNet3, falls back to RNNoise on weak devices
+ * - advanced: DeepFilterNet3, falls back to RNNoise on weaker devices
  */
-export type NoiseSuppresionState =
-  | "disabled"
-  | "browser"
-  | "enhanced"
-  | "advanced";
-
-const NoiseSuppresionStates: NoiseSuppresionState[] = [
-  "disabled",
-  "browser",
-  "enhanced",
-  "advanced",
-];
+export type { NoiseSuppresionState };
 
 /**
  * Possible screen share qualities. Low is 720p@30fps, high 1080p@30fps and text is source@5fps.
@@ -42,6 +36,8 @@ export interface TypeVoice {
 
   echoCancellation: boolean;
   noiseSupression: NoiseSuppresionState;
+  /** Bump when the default engine changes so stored DeepFilter opt-in is not wiped twice. */
+  noiseSuppressionSchema: number;
   autoGainControl: boolean;
 
   screenShareQuality: ScreenShareQualityName;
@@ -85,7 +81,8 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   default(): TypeVoice {
     return {
       echoCancellation: true,
-      noiseSupression: "advanced",
+      noiseSupression: "enhanced",
+      noiseSuppressionSchema: 1,
       autoGainControl: true,
       screenShareQuality: "low",
       screenShareQualityAsk: true,
@@ -124,16 +121,21 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
     }
 
     // migrate legacy noise suppression to new suppression state
+    let parsedMode: NoiseSuppresionState | undefined;
     if ((input.noiseSupression as unknown) === "true") {
-      data.noiseSupression = "enhanced";
+      parsedMode = "enhanced";
     } else if ((input.noiseSupression as unknown) === "false") {
-      data.noiseSupression = "disabled";
-    } else if (
-      input.noiseSupression &&
-      NoiseSuppresionStates.includes(input.noiseSupression)
-    ) {
-      data.noiseSupression = input.noiseSupression;
+      parsedMode = "disabled";
+    } else if (isNoiseSuppressionMode(input.noiseSupression)) {
+      parsedMode = input.noiseSupression;
     }
+
+    const migrated = applyNoiseSuppressionSchema(
+      parsedMode,
+      input.noiseSuppressionSchema,
+    );
+    data.noiseSupression = migrated.noiseSupression;
+    data.noiseSuppressionSchema = migrated.noiseSuppressionSchema;
 
     if (typeof input.autoGainControl === "boolean") {
       data.autoGainControl = input.autoGainControl;

@@ -5,6 +5,7 @@ import {
 import { getVirtmic } from "./virtualMic";
 
 export { useVoice, VoiceContext } from "./state";
+export type { VoiceEngineId, VoiceEngineStatus } from "./voiceEngineStatus";
 export { notifyPushRing, registerPushToken, startPrivateCall } from "./callPush";
 
 export { InRoom } from "./components/InRoom";

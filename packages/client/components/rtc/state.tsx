@@ -5,6 +5,7 @@ import {
   createEffect,
   createSignal,
   JSX,
+  on,
   onCleanup,
   Setter,
   useContext,
@@ -30,7 +31,10 @@ import { ModalController, useModals } from "@revolt/modal";
 import type { ScreenShareSelection } from "@revolt/modal/types";
 import { useState } from "@revolt/state";
 import {
-  NoiseSuppresionState,
+  captureAutoGainEnabled,
+  captureBrowserNoiseSuppression,
+} from "@revolt/state/stores/noiseSuppressionPolicy";
+import {
   ScreenShareQualityName,
   Voice as VoiceSettings,
 } from "@revolt/state/stores/Voice";
@@ -41,6 +45,11 @@ import { InRoom } from "./components/InRoom";
 import { RoomAudioManager } from "./components/RoomAudioManager";
 import { VoiceProcessor } from "./VoiceProcessor";
 import { notifyPushRing, privateCallTargets } from "./callPush";
+import { canUseDeepFilter } from "./deepFilterSupport";
+import {
+  IDLE_VOICE_ENGINE_STATUS,
+  type VoiceEngineStatus,
+} from "./voiceEngineStatus";
 
 type State =
   | "READY"
@@ -107,6 +116,9 @@ class Voice {
   private screenShareTracks: Set<string>;
   private voiceProcessor?: VoiceProcessor;
 
+  engineStatus: Accessor<VoiceEngineStatus>;
+  #setEngineStatus: Setter<VoiceEngineStatus>;
+
   constructor(
     voiceSettings: VoiceSettings,
     modals: ModalController,
@@ -159,6 +171,12 @@ class Voice {
     this.#setRing = setRing;
     this.#ringTimer = undefined;
 
+    const [engineStatus, setEngineStatus] = createSignal<VoiceEngineStatus>(
+      IDLE_VOICE_ENGINE_STATUS,
+    );
+    this.engineStatus = engineStatus;
+    this.#setEngineStatus = setEngineStatus;
+
     const inst = useInstance();
     this.config = inst.config;
     this.limits = inst.limits;
@@ -175,47 +193,106 @@ class Voice {
   private settingsListeners() {
     const getSettings = () => this.#settings;
 
-    const setEchoCancellation = (echoCancellation: boolean) => {
-      const track = this.getMicrophoneTrack()?.audioTrack;
-      if (track) {
-        track.constraints.echoCancellation = echoCancellation;
-      }
-    };
+    createEffect(
+      on(
+        () =>
+          [
+            getSettings().echoCancellation,
+            getSettings().autoGainControl,
+            getSettings().noiseSupression,
+          ] as const,
+        () => {
+          void this.applyCaptureConstraints();
+        },
+        { defer: true },
+      ),
+    );
+  }
 
-    const setAutoGainControl = (autoGainControl: boolean) => {
-      const track = this.getMicrophoneTrack()?.audioTrack;
-      if (track) {
-        track.constraints.autoGainControl = autoGainControl;
-      }
+  private captureAudioOptions() {
+    const mode = this.#settings.noiseSupression;
+    return {
+      echoCancellation: this.#settings.echoCancellation ?? true,
+      autoGainControl: captureAutoGainEnabled(
+        mode,
+        this.#settings.autoGainControl,
+      ),
+      noiseSuppression: captureBrowserNoiseSuppression(mode),
+      voiceIsolation: captureBrowserNoiseSuppression(mode),
     };
+  }
 
-    const setNoiseSuppression = (noiseSuppression: NoiseSuppresionState) => {
-      const track = this.getMicrophoneTrack()?.audioTrack;
-      if (track) {
-        if (noiseSuppression === "browser") {
-          track.constraints.noiseSuppression = true;
-          //@ts-expect-error voiceIsolation is not yet standard, but it supported by livekit and most chromium based browsers, including electron.
-          track.constraints.voiceIsolation = true;
-        } else {
-          track.constraints.noiseSuppression = false;
-          //@ts-expect-error voiceIsolation is not yet standard, but it supported by livekit and most chromium based browsers, including electron.
-          track.constraints.voiceIsolation = false;
-        }
+  private async applyCaptureConstraints() {
+    const publication = this.getMicrophoneTrack();
+    const track = publication?.audioTrack;
+    if (!track) {
+      this.syncEngineStatus();
+      return;
+    }
+
+    const capture = this.captureAudioOptions();
+    track.constraints.echoCancellation = capture.echoCancellation;
+    track.constraints.autoGainControl = capture.autoGainControl;
+    track.constraints.noiseSuppression = capture.noiseSuppression;
+    //@ts-expect-error voiceIsolation is not yet standard, but it supported by livekit and most chromium based browsers, including electron.
+    track.constraints.voiceIsolation = capture.voiceIsolation;
+
+    try {
+      await track.restartTrack();
+    } catch (error) {
+      console.warn("[voice] restartTrack failed", error);
+    }
+
+    await this.ensureVoiceProcessor(publication, true);
+    this.syncEngineStatus();
+  }
+
+  private async ensureVoiceProcessor(
+    publication?: LocalTrackPublication,
+    forceReplace = false,
+  ) {
+    const pub = publication ?? this.getMicrophoneTrack();
+    const track = pub?.audioTrack;
+    if (!track || track.source !== Track.Source.Microphone) return;
+
+    if (forceReplace && track.getProcessor()) {
+      try {
+        await track.stopProcessor();
+      } catch (error) {
+        console.warn("[voice] stopProcessor", error);
       }
-    };
+      this.voiceProcessor = undefined;
+    }
 
-    const restartTrack = () => {
-      const track = this.getMicrophoneTrack()?.audioTrack;
-      if (track) {
-        track.restartTrack();
-      }
-    };
+    if (!track.getProcessor()) {
+      this.voiceProcessor = new VoiceProcessor(this.#settings, () =>
+        this.syncEngineStatus(),
+      );
+      await track.setProcessor(this.voiceProcessor);
+    }
+  }
 
-    createEffect(() => {
-      setEchoCancellation(getSettings().echoCancellation ?? true);
-      setAutoGainControl(getSettings().autoGainControl ?? true);
-      setNoiseSuppression(getSettings().noiseSupression ?? "browser");
-      restartTrack();
+  private syncEngineStatus() {
+    const publication = this.getMicrophoneTrack();
+    const media = publication?.audioTrack?.mediaStreamTrack;
+    const hardware = media?.getSettings?.();
+    const snapshot = this.voiceProcessor?.getSnapshot();
+    const inCall =
+      this.state() === "CONNECTED" ||
+      this.state() === "CONNECTING" ||
+      this.state() === "RECONNECTING";
+
+    this.#setEngineStatus({
+      engine: inCall ? (snapshot?.engine ?? "idle") : "idle",
+      selectedMode: this.#settings.noiseSupression,
+      sampleRate: snapshot?.sampleRate,
+      processorAttached: !!publication?.audioTrack?.getProcessor(),
+      inCall,
+      echoCancellation: hardware?.echoCancellation,
+      autoGainControl: hardware?.autoGainControl,
+      noiseSuppression: hardware?.noiseSuppression,
+      lastError: snapshot?.lastError,
+      canUseDeepFilter: canUseDeepFilter(),
     });
   }
 
@@ -231,10 +308,7 @@ class Voice {
     const room = new Room({
       audioCaptureDefaults: {
         deviceId: this.#settings.preferredAudioInputDevice,
-        echoCancellation: this.#settings.echoCancellation,
-        noiseSuppression: this.#settings.noiseSupression === "browser",
-        autoGainControl: this.#settings.autoGainControl,
-        voiceIsolation: this.#settings.noiseSupression === "browser",
+        ...this.captureAudioOptions(),
       },
       audioOutput: {
         deviceId: this.#settings.preferredAudioOutputDevice,
@@ -290,11 +364,7 @@ class Voice {
 
     room.addListener("localTrackPublished", (pub) => {
       if (pub.audioTrack && pub.audioTrack.source === Track.Source.Microphone) {
-        if (!pub.audioTrack.getProcessor()) {
-          pub.audioTrack?.setProcessor(
-            (this.voiceProcessor = new VoiceProcessor(this.#settings)),
-          );
-        }
+        void this.ensureVoiceProcessor(pub).then(() => this.syncEngineStatus());
       }
     });
 
@@ -419,7 +489,9 @@ class Voice {
       this.#setVideo(false);
       this.#setScreenshare(false);
       this.vidTracks = () => [];
+      this.#setEngineStatus(IDLE_VOICE_ENGINE_STATUS);
     });
+    this.voiceProcessor = undefined;
     this.screenShareTracks = new Set();
 
     if (room && !opts?.silent) {

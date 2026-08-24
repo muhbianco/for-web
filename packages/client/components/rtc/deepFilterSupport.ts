@@ -25,16 +25,11 @@ function isMobileUserAgent(): boolean {
 }
 
 export function canUseDeepFilter(): boolean {
+  if (typeof navigator === "undefined") return false;
   if (typeof AudioContext === "undefined") return false;
   if (typeof AudioWorkletNode === "undefined") return false;
   if (typeof WebAssembly === "undefined") return false;
   if (isMobileUserAgent()) return false;
   if ((navigator.hardwareConcurrency ?? 2) < WEAK_CPU_CORES) return false;
   return hasWasmSimd();
-}
-
-export function usesMachineLearningNoise(
-  mode: string | undefined,
-): mode is "enhanced" | "advanced" {
-  return mode === "enhanced" || mode === "advanced";
 }

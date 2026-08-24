@@ -3440,6 +3440,22 @@ msgstr "Canal de voz"
 msgid "Voice Processing"
 msgstr "Processamento de voz"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "This only changes what other people hear from you, not what you hear from them."
+msgstr "Isto só altera o que os outros ouvem de você, não o que você ouve deles."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "What is actually running"
+msgstr "O que está realmente ligado"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live engine. The dropdown only stores your preference until then."
+msgstr "Entre numa chamada para ver o motor ao vivo. O menu só guarda a preferência até lá."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "You selected DeepFilterNet; RNNoise is running instead."
+msgstr "Você escolheu DeepFilterNet; o que está a correr é RNNoise."
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Volume"
