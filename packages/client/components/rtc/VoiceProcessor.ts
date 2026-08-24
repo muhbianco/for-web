@@ -5,6 +5,7 @@ import { createEffect, createRoot } from "solid-js";
 
 import { CONFIGURATION } from "@revolt/common";
 import { Voice } from "@revolt/state/stores/Voice";
+import { gateThresholdsFromSensitivity } from "@revolt/state/stores/noiseSuppressionPolicy";
 
 import { canUseDeepFilter } from "./deepFilterSupport";
 import { addPatchedDeepFilterModule } from "./patchDeepFilterWorklet";
@@ -18,6 +19,9 @@ export interface VoiceProcessorSnapshot {
   engine: VoiceEngineId;
   sampleRate?: number;
   lastError?: string;
+  inputRms?: number;
+  gateOpen?: boolean;
+  gateOpenThreshold?: number;
 }
 
 function deepFilterCdnUrl(): string {
@@ -72,6 +76,9 @@ export class VoiceProcessor implements TrackProcessor<
   private engine: VoiceEngineId = "bypass";
   private onStatus?: () => void;
   private sourceTrack?: MediaStreamTrack;
+  private lastRms?: number;
+  private gateOpen = false;
+  private gateOpenThreshold?: number;
 
   private noiseSuppressionNode?: RNNoiseNode;
   private deepFilterNode?: AudioWorkletNode;
@@ -91,6 +98,7 @@ export class VoiceProcessor implements TrackProcessor<
     createRoot((dispose) => {
       createEffect(() => {
         this.setGain(this.getSettings().inputVolume);
+        this.applyGateSettings();
       });
       this.disposeSolidjsContext = dispose;
     });
@@ -104,6 +112,9 @@ export class VoiceProcessor implements TrackProcessor<
       engine: this.engine,
       sampleRate: graphContext?.sampleRate,
       lastError: this.lastError,
+      inputRms: this.lastRms,
+      gateOpen: this.gateOpen,
+      gateOpenThreshold: this.gateOpenThreshold,
     };
   }
 
@@ -115,6 +126,39 @@ export class VoiceProcessor implements TrackProcessor<
     if (this.gainNode) {
       this.gainNode.gain.value = newGain;
     }
+  }
+
+  private applyGateSettings() {
+    const auto = this.settings.autoInputSensitivity;
+    const { open, close } = gateThresholdsFromSensitivity(
+      this.settings.inputSensitivity,
+    );
+    const params = this.gateNode?.parameters;
+    if (!params) return;
+    const openParam = params.get("openThreshold");
+    const closeParam = params.get("closeThreshold");
+    const autoParam = params.get("autoMode");
+    if (openParam) openParam.value = open;
+    if (closeParam) closeParam.value = close;
+    if (autoParam) autoParam.value = auto ? 1 : 0;
+    if (!auto) this.gateOpenThreshold = open;
+  }
+
+  private listenToGate(gate: AudioWorkletNode) {
+    gate.port.onmessage = (event: MessageEvent) => {
+      const data = event.data as {
+        rms?: number;
+        open?: boolean;
+        threshold?: number;
+      };
+      if (typeof data?.rms !== "number") return;
+      this.lastRms = data.rms;
+      this.gateOpen = !!data.open;
+      if (typeof data.threshold === "number") {
+        this.gateOpenThreshold = data.threshold;
+      }
+      this.emitStatus();
+    };
   }
 
   private emitStatus() {
@@ -150,6 +194,9 @@ export class VoiceProcessor implements TrackProcessor<
   }
 
   private disconnectNoiseGraph() {
+    if (this.gateNode) {
+      this.gateNode.port.onmessage = null;
+    }
     this.compressorNode?.disconnect();
     this.gateNode?.disconnect();
     this.noiseSuppressionNode?.disconnect();
@@ -158,6 +205,9 @@ export class VoiceProcessor implements TrackProcessor<
     this.sourceNode?.disconnect();
     this.compressorNode = undefined;
     this.gateNode = undefined;
+    this.lastRms = undefined;
+    this.gateOpen = false;
+    this.gateOpenThreshold = undefined;
     this.noiseSuppressionNode = undefined;
     this.highpassNode = undefined;
   }
@@ -289,6 +339,8 @@ export class VoiceProcessor implements TrackProcessor<
         if (token !== this.graphToken) return;
         if (this.settings.noiseSupression !== "advanced") return;
         this.gateNode = gate;
+        this.listenToGate(gate);
+        this.applyGateSettings();
         this.connectMlChain(node, context, gate);
         this.engine = "deepfilter";
         this.lastError = undefined;

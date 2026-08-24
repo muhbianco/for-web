@@ -293,6 +293,9 @@ class Voice {
       noiseSuppression: hardware?.noiseSuppression,
       lastError: snapshot?.lastError,
       canUseDeepFilter: canUseDeepFilter(),
+      inputRms: snapshot?.inputRms,
+      gateOpen: snapshot?.gateOpen,
+      gateOpenThreshold: snapshot?.gateOpenThreshold,
     });
   }
 

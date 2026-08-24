@@ -18,6 +18,9 @@ export interface VoiceEngineStatus {
   noiseSuppression?: boolean;
   lastError?: string;
   canUseDeepFilter?: boolean;
+  inputRms?: number;
+  gateOpen?: boolean;
+  gateOpenThreshold?: number;
 }
 
 export const IDLE_VOICE_ENGINE_STATUS: VoiceEngineStatus = {

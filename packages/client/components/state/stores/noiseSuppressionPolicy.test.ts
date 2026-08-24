@@ -5,8 +5,15 @@ import {
   applyNoiseSuppressionSchema,
   captureAutoGainEnabled,
   captureBrowserNoiseSuppression,
+  clampInputSensitivity,
+  DEFAULT_INPUT_SENSITIVITY,
+  GATE_HYSTERESIS,
+  GATE_OPEN_RMS_MAX,
+  GATE_OPEN_RMS_MIN,
+  gateThresholdsFromSensitivity,
   isNoiseSuppressionMode,
   NOISE_SUPPRESSION_SCHEMA,
+  rmsToMeter,
 } from "./noiseSuppressionPolicy.ts";
 
 test("rolls the broken DeepFilter default back to RNNoise once", () => {
@@ -50,4 +57,26 @@ test("browser NS constraint only in browser mode", () => {
   assert.equal(captureBrowserNoiseSuppression("enhanced"), false);
   assert.equal(isNoiseSuppressionMode("advanced"), true);
   assert.equal(isNoiseSuppressionMode("true"), false);
+});
+
+test("sensitivity slider maps to a wider gate at the left", () => {
+  const quiet = gateThresholdsFromSensitivity(0);
+  const tight = gateThresholdsFromSensitivity(1);
+  const mid = gateThresholdsFromSensitivity(DEFAULT_INPUT_SENSITIVITY);
+  assert.ok(quiet.open < mid.open);
+  assert.ok(mid.open < tight.open);
+  assert.equal(quiet.close, quiet.open * GATE_HYSTERESIS);
+  assert.equal(quiet.open, GATE_OPEN_RMS_MIN);
+  assert.equal(tight.open, GATE_OPEN_RMS_MAX);
+  assert.ok(mid.open < 0.02);
+});
+
+test("sensitivity clamp and meter stay in range", () => {
+  assert.equal(clampInputSensitivity(undefined), DEFAULT_INPUT_SENSITIVITY);
+  assert.equal(clampInputSensitivity(-2), 0);
+  assert.equal(clampInputSensitivity(4), 1);
+  assert.equal(rmsToMeter(0), 0);
+  assert.equal(rmsToMeter(GATE_OPEN_RMS_MIN), 0);
+  assert.equal(rmsToMeter(GATE_OPEN_RMS_MAX), 1);
+  assert.equal(rmsToMeter(GATE_OPEN_RMS_MAX * 4), 1);
 });

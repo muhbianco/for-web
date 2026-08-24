@@ -3456,6 +3456,30 @@ msgstr "Entre numa chamada para ver o motor ao vivo. O menu só guarda a prefer�
 msgid "You selected DeepFilterNet; RNNoise is running instead."
 msgstr "Você escolheu DeepFilterNet; o que está a correr é RNNoise."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sensitivity"
+msgstr "Sensibilidade do microfone"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "How loud you need to speak before others hear you. Left is more sensitive."
+msgstr "Define o quão alto você precisa falar para os outros te ouvirem. Esquerda é mais sensível."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Automatically determine input sensitivity"
+msgstr "Detectar sensibilidade automaticamente"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live meter."
+msgstr "Entre numa chamada para ver o medidor ao vivo."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "More sensitive"
+msgstr "Mais sensível"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Less sensitive"
+msgstr "Menos sensível"
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Volume"

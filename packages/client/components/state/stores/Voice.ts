@@ -3,6 +3,8 @@ import { State } from "..";
 import { AbstractStore } from ".";
 import {
   applyNoiseSuppressionSchema,
+  clampInputSensitivity,
+  DEFAULT_INPUT_SENSITIVITY,
   isNoiseSuppressionMode,
   type NoiseSuppresionState,
 } from "./noiseSuppressionPolicy";
@@ -39,6 +41,10 @@ export interface TypeVoice {
   /** Bump when the default engine changes so stored DeepFilter opt-in is not wiped twice. */
   noiseSuppressionSchema: number;
   autoGainControl: boolean;
+  /** Discord-style gate: when true, the worklet tracks the noise floor. */
+  autoInputSensitivity: boolean;
+  /** 0 = most sensitive, 1 = least. Only used when autoInputSensitivity is false. */
+  inputSensitivity: number;
 
   screenShareQuality: ScreenShareQualityName;
   screenShareQualityAsk: boolean;
@@ -84,6 +90,8 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       noiseSupression: "enhanced",
       noiseSuppressionSchema: 1,
       autoGainControl: true,
+      autoInputSensitivity: false,
+      inputSensitivity: DEFAULT_INPUT_SENSITIVITY,
       screenShareQuality: "low",
       screenShareQualityAsk: true,
       screenShareAudio: true,
@@ -140,6 +148,12 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
     if (typeof input.autoGainControl === "boolean") {
       data.autoGainControl = input.autoGainControl;
     }
+
+    if (typeof input.autoInputSensitivity === "boolean") {
+      data.autoInputSensitivity = input.autoInputSensitivity;
+    }
+
+    data.inputSensitivity = clampInputSensitivity(input.inputSensitivity);
 
     if (
       input.screenShareQuality &&
@@ -324,6 +338,20 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   }
 
   /**
+   * Set whether the DeepFilter gate tracks the noise floor
+   */
+  set autoInputSensitivity(value: boolean) {
+    this.set("autoInputSensitivity", value);
+  }
+
+  /**
+   * Set manual gate sensitivity (0 = most sensitive)
+   */
+  set inputSensitivity(value: number) {
+    this.set("inputSensitivity", clampInputSensitivity(value));
+  }
+
+  /**
    * Set screen share quality
    */
   set screenShareQuality(value: ScreenShareQualityName) {
@@ -412,6 +440,20 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
    */
   get autoGainControl(): boolean | undefined {
     return this.get().autoGainControl;
+  }
+
+  /**
+   * Get whether the DeepFilter gate tracks the noise floor
+   */
+  get autoInputSensitivity(): boolean {
+    return this.get().autoInputSensitivity;
+  }
+
+  /**
+   * Get manual gate sensitivity (0 = most sensitive)
+   */
+  get inputSensitivity(): number {
+    return this.get().inputSensitivity;
   }
 
   /**

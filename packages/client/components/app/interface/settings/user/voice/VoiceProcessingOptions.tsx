@@ -1,11 +1,13 @@
 import { Show } from "solid-js";
 import { Trans } from "@lingui/solid/macro";
+import { styled } from "styled-system/jsx";
 
 import { useVoice } from "@revolt/rtc";
 import type { VoiceEngineId } from "@revolt/rtc/voiceEngineStatus";
 import { useState } from "@revolt/state";
 import type { NoiseSuppresionState } from "@revolt/state/stores/Voice";
-import { CategoryButton, Checkbox, Column, Text } from "@revolt/ui";
+import { rmsToMeter } from "@revolt/state/stores/noiseSuppressionPolicy";
+import { CategoryButton, Checkbox, Column, Slider, Text } from "@revolt/ui";
 
 function engineLabel(engine: VoiceEngineId) {
   switch (engine) {
@@ -39,6 +41,18 @@ export function VoiceProcessingOptions() {
     const current = status();
     const rate = current.sampleRate ? ` @ ${current.sampleRate} Hz` : "";
     return `Engine: ${engineLabel(current.engine)}${rate} · processor: ${current.processorAttached ? "yes" : "no"} · capture AGC: ${yesNo(current.autoGainControl)} · browser NS: ${yesNo(current.noiseSuppression)}`;
+  };
+
+  const meterLevel = () => {
+    if (status().engine !== "deepfilter") return 0;
+    return rmsToMeter(status().inputRms ?? 0);
+  };
+
+  const meterThreshold = () => {
+    if (voice.autoInputSensitivity && status().gateOpenThreshold != null) {
+      return rmsToMeter(status().gateOpenThreshold);
+    }
+    return voice.inputSensitivity;
   };
 
   return (
@@ -93,6 +107,72 @@ export function VoiceProcessingOptions() {
           <Trans>Automatic Gain Control</Trans>
         </CategoryButton>
       </CategoryButton.Group>
+      <Show when={voice.noiseSupression === "advanced"}>
+        <Column gap="sm">
+          <Text class="title">
+            <Trans>Microphone sensitivity</Trans>
+          </Text>
+          <Text class="label" size="small">
+            <Trans>
+              How loud you need to speak before others hear you. Left is more
+              sensitive.
+            </Trans>
+          </Text>
+          <CategoryButton.Group>
+            <CategoryButton
+              icon="blank"
+              action={<Checkbox checked={voice.autoInputSensitivity} />}
+              onClick={() =>
+                (voice.autoInputSensitivity = !voice.autoInputSensitivity)
+              }
+            >
+              <Trans>Automatically determine input sensitivity</Trans>
+            </CategoryButton>
+          </CategoryButton.Group>
+          <Show
+            when={status().inCall && status().engine === "deepfilter"}
+            fallback={
+              <Text class="label" size="small">
+                <Trans>Join a voice call to see the live meter.</Trans>
+              </Text>
+            }
+          >
+            <MeterTrack
+              role="meter"
+              aria-valuemin={0}
+              aria-valuemax={1}
+              aria-valuenow={meterLevel()}
+            >
+              <MeterFill
+                data-open={status().gateOpen ? "true" : "false"}
+                style={{ width: `${Math.round(meterLevel() * 100)}%` }}
+              />
+              <MeterMark
+                style={{ left: `${Math.round(meterThreshold() * 100)}%` }}
+              />
+            </MeterTrack>
+          </Show>
+          <SensitivityLabels>
+            <Text class="label" size="small">
+              <Trans>More sensitive</Trans>
+            </Text>
+            <Text class="label" size="small">
+              <Trans>Less sensitive</Trans>
+            </Text>
+          </SensitivityLabels>
+          <Slider
+            min={0}
+            max={1}
+            step={0.01}
+            disabled={voice.autoInputSensitivity}
+            value={voice.inputSensitivity}
+            onInput={(event) =>
+              (voice.inputSensitivity = Number(event.currentTarget.value))
+            }
+            labelFormatter={(label) => (label * 100).toFixed(0) + "%"}
+          />
+        </Column>
+      </Show>
       <Column gap="sm">
         <Text class="label">
           <Trans>What is actually running</Trans>
@@ -129,3 +209,41 @@ export function VoiceProcessingOptions() {
     </Column>
   );
 }
+
+const MeterTrack = styled("div", {
+  base: {
+    position: "relative",
+    height: "10px",
+    overflow: "hidden",
+    borderRadius: "var(--borderRadius-md)",
+    background: "var(--md-sys-color-surface-container-highest)",
+  },
+});
+
+const MeterFill = styled("div", {
+  base: {
+    height: "100%",
+    background: "var(--md-sys-color-outline)",
+    "&[data-open='true']": {
+      background: "var(--md-sys-color-primary)",
+    },
+  },
+});
+
+const MeterMark = styled("div", {
+  base: {
+    position: "absolute",
+    top: 0,
+    width: "2px",
+    height: "100%",
+    transform: "translateX(-1px)",
+    background: "var(--md-sys-color-on-surface)",
+  },
+});
+
+const SensitivityLabels = styled("div", {
+  base: {
+    display: "flex",
+    justifyContent: "space-between",
+  },
+});

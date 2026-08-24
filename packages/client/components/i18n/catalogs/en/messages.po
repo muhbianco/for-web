@@ -3571,6 +3571,30 @@ msgstr "Join a voice call to see the live engine. The dropdown only stores your 
 msgid "You selected DeepFilterNet; RNNoise is running instead."
 msgstr "You selected DeepFilterNet; RNNoise is running instead."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sensitivity"
+msgstr "Microphone sensitivity"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "How loud you need to speak before others hear you. Left is more sensitive."
+msgstr "How loud you need to speak before others hear you. Left is more sensitive."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Automatically determine input sensitivity"
+msgstr "Automatically determine input sensitivity"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live meter."
+msgstr "Join a voice call to see the live meter."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "More sensitive"
+msgstr "More sensitive"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Less sensitive"
+msgstr "Less sensitive"
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Volume"
