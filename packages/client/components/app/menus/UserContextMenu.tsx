@@ -16,6 +16,9 @@ import {
   ContextMenuDivider,
 } from "./ContextMenu";
 import { NotificationContextMenu } from "./shared/NotificationContextMenu";
+import { findVoiceChannel } from "./voiceUser";
+
+const lastVoiceAlertAt = new Map<string, number>();
 
 /**
  * Context menu for users
@@ -138,14 +141,52 @@ export function UserContextMenu(props: {
   }
 
   /**
+   * Voice channel the target is currently in, if any
+   */
+  function targetVoiceChannel() {
+    return findVoiceChannel(
+      client(),
+      props.user.id,
+      props.member?.server,
+    );
+  }
+
+  function isInVoice() {
+    return !!props.inVoice || !!targetVoiceChannel();
+  }
+
+  /**
    * Whether this member can be disconnected from voice
    */
   function canDisconnectFromVoice() {
+    const member = alertMember();
     return (
-      props.inVoice &&
+      isInVoice() &&
       !props.user.self &&
       !props.isScreenshare &&
-      props.member?.server?.havePermission("MoveMembers")
+      !!member?.server?.havePermission("MoveMembers")
+    );
+  }
+
+  function alertMember() {
+    if (props.member) return props.member;
+    const channel = targetVoiceChannel();
+    if (!channel?.serverId) return;
+    return client().serverMembers.getByKey({
+      server: channel.serverId,
+      user: props.user.id,
+    });
+  }
+
+  function canSendVoiceAlert() {
+    const channel = targetVoiceChannel();
+    const member = alertMember();
+    if (!channel || !member || props.user.self || props.isScreenshare) {
+      return false;
+    }
+    return (
+      channel.havePermission("SendVoiceAlert") ||
+      member.server?.havePermission("SendVoiceAlert")
     );
   }
 
@@ -154,8 +195,27 @@ export function UserContextMenu(props: {
    */
   async function disconnectFromVoice() {
     try {
-      await props.member!.edit({ remove: ["VoiceChannel"] });
+      await alertMember()!.edit({ remove: ["VoiceChannel"] });
     } catch (err) {
+      showError(err);
+    }
+    props.onClose?.();
+  }
+
+  async function sendVoiceAlert() {
+    const member = alertMember();
+    if (!member) return;
+    const now = Date.now();
+    const previous = lastVoiceAlertAt.get(member.id.user) ?? 0;
+    if (now - previous < 8000) {
+      props.onClose?.();
+      return;
+    }
+    lastVoiceAlertAt.set(member.id.user, now);
+    try {
+      await member.sendVoiceAlert();
+    } catch (err) {
+      lastVoiceAlertAt.delete(member.id.user);
       showError(err);
     }
     props.onClose?.();
@@ -375,6 +435,51 @@ export function UserContextMenu(props: {
             destructive
           >
             <Trans>Remove from call</Trans>
+          </ContextMenuButton>
+        </Show>
+        <Show when={canSendVoiceAlert()}>
+          <ContextMenuButton
+            symbol={
+              <IconSlot>
+                <Symbol size={16}>notifications_active</Symbol>
+              </IconSlot>
+            }
+            onClick={() => void sendVoiceAlert()}
+          >
+            <Trans>Send Alert</Trans>
+          </ContextMenuButton>
+        </Show>
+        <ContextMenuDivider />
+      </Show>
+      <Show
+        when={
+          (!props.inVoice || props.user.self || props.isScreenshare) &&
+          (canDisconnectFromVoice() || canSendVoiceAlert())
+        }
+      >
+        <Show when={canDisconnectFromVoice()}>
+          <ContextMenuButton
+            symbol={
+              <IconSlot>
+                <Symbol size={16}>call_end</Symbol>
+              </IconSlot>
+            }
+            onClick={() => void disconnectFromVoice()}
+            destructive
+          >
+            <Trans>Remove from call</Trans>
+          </ContextMenuButton>
+        </Show>
+        <Show when={canSendVoiceAlert()}>
+          <ContextMenuButton
+            symbol={
+              <IconSlot>
+                <Symbol size={16}>notifications_active</Symbol>
+              </IconSlot>
+            }
+            onClick={() => void sendVoiceAlert()}
+          >
+            <Trans>Send Alert</Trans>
           </ContextMenuButton>
         </Show>
         <ContextMenuDivider />

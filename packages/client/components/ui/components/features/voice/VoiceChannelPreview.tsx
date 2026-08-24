@@ -19,6 +19,7 @@ import { InRoom } from "@revolt/rtc";
 import { Avatar, Ripple, typography } from "../../design";
 import { Row } from "../../layout";
 
+import { useVoiceMemberDrag } from "./VoiceMemberDrag";
 import { VoiceStatefulUserIcons } from "./VoiceStatefulUserIcons";
 
 /**
@@ -32,7 +33,7 @@ export function VoiceChannelPreview(props: { channel: Channel }) {
       channelId={props.channel.id}
       fallback={<VariantPreview channel={props.channel} />}
     >
-      <VariantLive />
+      <VariantLive channel={props.channel} />
     </InRoom>
   );
 }
@@ -40,7 +41,7 @@ export function VoiceChannelPreview(props: { channel: Channel }) {
 /**
  * Use API as the source of truth
  */
-function VariantLive() {
+function VariantLive(props: { channel: Channel }) {
   const tracks = useTracks(
     [{ source: Track.Source.Camera, withPlaceholder: true }],
     { onlySubscribed: false },
@@ -48,7 +49,9 @@ function VariantLive() {
 
   return (
     <Base>
-      <TrackLoop tracks={tracks}>{() => <ParticipantLive />}</TrackLoop>
+      <TrackLoop tracks={tracks}>
+        {() => <ParticipantLive channel={props.channel} />}
+      </TrackLoop>
     </Base>
   );
 }
@@ -61,7 +64,12 @@ function VariantPreview(props: { channel: Channel }) {
     <Show when={props.channel.voiceParticipants.size}>
       <Base>
         <For each={[...props.channel.voiceParticipants.values()]}>
-          {(participant) => <ParticipantPreview participant={participant} />}
+          {(participant) => (
+            <ParticipantPreview
+              channel={props.channel}
+              participant={participant}
+            />
+          )}
         </For>
       </Base>
     </Show>
@@ -71,7 +79,7 @@ function VariantPreview(props: { channel: Channel }) {
 /**
  * Live variant of participant
  */
-function ParticipantLive() {
+function ParticipantLive(props: { channel: Channel }) {
   const participant = useEnsureParticipant();
 
   const isMuted = useIsMuted({
@@ -83,6 +91,7 @@ function ParticipantLive() {
 
   return (
     <CommonUser
+      channel={props.channel}
       userId={participant.identity}
       speaking={isSpeaking()}
       muted={isMuted()}
@@ -97,9 +106,13 @@ function ParticipantLive() {
 /**
  * Preview variant of participant
  */
-function ParticipantPreview(props: { participant: VoiceParticipant }) {
+function ParticipantPreview(props: {
+  channel: Channel;
+  participant: VoiceParticipant;
+}) {
   return (
     <CommonUser
+      channel={props.channel}
       userId={props.participant.userId}
       speaking={false}
       muted={!props.participant.isPublishing()}
@@ -114,6 +127,7 @@ function ParticipantPreview(props: { participant: VoiceParticipant }) {
  * Component used for both variants
  */
 function CommonUser(props: {
+  channel: Channel;
   userId: string;
   speaking: boolean;
   muted: boolean;
@@ -130,10 +144,27 @@ function CommonUser(props: {
   ]);
 
   const user = useUser(() => rest.userId);
+  const drag = useVoiceMemberDrag();
 
   return (
     <div
       class={previewUser({ speaking: rest.speaking })}
+      style={{
+        cursor: drag?.canDragMembers(props.channel) && !user().user?.self
+          ? "grab"
+          : undefined,
+      }}
+      onPointerDown={(event) => {
+        const member = user().member;
+        if (!member || !drag) return;
+        drag.beginUserDrag(
+          event,
+          member,
+          props.channel,
+          user().username,
+          user().avatar,
+        );
+      }}
       use:floating={{
         userCard: {
           user: user().user!,
@@ -143,7 +174,7 @@ function CommonUser(props: {
           <UserContextMenu
             user={user().user!}
             member={user().member}
-            inVoice={rest.isLive}
+            inVoice
           />
         ),
       }}

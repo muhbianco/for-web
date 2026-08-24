@@ -35,6 +35,10 @@ import {
 } from "@revolt/ui";
 import { VoiceChannelPreview } from "@revolt/ui/components/features/voice/VoiceChannelPreview";
 import { VoiceDock } from "@revolt/ui/components/features/voice/VoiceDock";
+import {
+  VoiceMemberDragProvider,
+  useVoiceMemberDrag,
+} from "@revolt/ui/components/features/voice/VoiceMemberDrag";
 import { createDragHandle } from "@revolt/ui/components/utils/Draggable";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
@@ -228,6 +232,7 @@ export const ServerSidebar = (props: Props) => {
         style={{ "flex-grow": 1, "margin-bottom": "var(--gap-md)" }}
         use:floating={props.menuGenerator(props.server)}
       >
+        <VoiceMemberDragProvider>
         <Draggable
           dragHandles
           type="category"
@@ -250,6 +255,7 @@ export const ServerSidebar = (props: Props) => {
             />
           )}
         </Draggable>
+        </VoiceMemberDragProvider>
       </div>
       <VoiceDock />
     </SidebarBase>
@@ -366,6 +372,7 @@ function Category(
         </div>
       </Show>
       <Draggable
+        dragHandles
         type="channels"
         items={channels()}
         onChange={(channelIds) => {
@@ -387,6 +394,8 @@ function Category(
             channel={entry.item}
             active={entry.item.id === props.channelId}
             menuGenerator={props.menuGenerator}
+            dragDisabled={entry.dragDisabled}
+            setDragDisabled={entry.setDragDisabled}
           />
         )}
       </Draggable>
@@ -452,12 +461,16 @@ const CategoryBase = styled("div", {
  * Server channel entry
  */
 function Entry(
-  props: { channel: Channel; active: boolean } & Pick<Props, "menuGenerator">,
+  props: { channel: Channel; active: boolean } & Pick<Props, "menuGenerator"> & {
+    dragDisabled: Accessor<boolean>;
+    setDragDisabled: Setter<boolean>;
+  },
 ) {
   const state = useState();
   const voice = useVoice();
   const { openModal } = useModals();
   const { isMobile } = useDevice();
+  const voiceDrag = useVoiceMemberDrag();
 
   const canEditChannel = createMemo(() =>
     (["ManageChannel", "ManagePermissions", "ManageWebhooks"] as const).some(
@@ -502,7 +515,17 @@ function Entry(
   );
 
   return (
+    <div
+      data-voice-drop={props.channel.isVoice ? props.channel.id : undefined}
+      style={{
+        outline: voiceDrag?.isDropTarget(props.channel.id)
+          ? "2px solid var(--md-sys-color-primary)"
+          : undefined,
+        "border-radius": "8px",
+      }}
+    >
     <Column gap="sm">
+      <div {...createDragHandle(props.dragDisabled, props.setDragDisabled)}>
       <MenuButton
         href={`/server/${props.channel.serverId}/channel/${props.channel.id}`}
         onClick={onEntryClick}
@@ -575,9 +598,11 @@ function Entry(
           <TextWithEmoji content={props.channel.name!} />
         </OverflowingText>
       </MenuButton>
+      </div>
 
       <VoiceChannelPreview channel={props.channel} />
     </Column>
+    </div>
   );
 }
 

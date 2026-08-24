@@ -430,6 +430,15 @@ export function ChannelPermissionsEditor(props: Props) {
       },
     },
     {
+      key: "SendVoiceAlert",
+      value: 2n ** 41n,
+      title: t`Send Alert`,
+      description: {
+        TextChannel: t`Send a short sound alert to a member in a voice channel`,
+        Server: t`Send a short sound alert to a member in a voice channel`,
+      },
+    },
+    {
       key: "Listen",
       value: 2n ** 36n,
       title: t`Listen`,

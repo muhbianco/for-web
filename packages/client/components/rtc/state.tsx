@@ -5,6 +5,7 @@ import {
   createEffect,
   createSignal,
   JSX,
+  onCleanup,
   Setter,
   useContext,
 } from "solid-js";
@@ -21,9 +22,9 @@ import {
   Track,
   VideoResolution,
 } from "livekit-client";
-import { Channel } from "stoat.js";
+import { Channel, Client } from "stoat.js";
 
-import { SoundController, useClientLifecycle, useSound } from "@revolt/client";
+import { SoundController, useClient, useClientLifecycle, useSound } from "@revolt/client";
 import { useInstance } from "@revolt/instance";
 import { ModalController, useModals } from "@revolt/modal";
 import type { ScreenShareSelection } from "@revolt/modal/types";
@@ -900,6 +901,56 @@ class Voice {
     if ((e as Error)?.name === "NotAllowedError") return;
     this.openModal({ type: "error2", error: e });
   }
+
+  /**
+   * Drop the local LiveKit session if we were kicked from this channel.
+   */
+  handleVoiceChannelLeave(channelId: string, userId: string) {
+    if (this.channel()?.id !== channelId) return;
+    const me = this.channel()?.client.user?.id;
+    if (me && userId === me) {
+      this.disconnect({ silent: true });
+    }
+  }
+
+  /**
+   * Reconnect after an admin moved us into another voice channel.
+   */
+  async handleVoiceChannelMoved(
+    client: Client,
+    event: {
+      node: string;
+      from?: string;
+      to?: string;
+      token: string;
+    },
+  ) {
+    if (!event.to) return;
+    if (
+      this.channel() &&
+      event.from &&
+      this.channel()!.id !== event.from
+    ) {
+      return;
+    }
+    const dest = client.channels.get(event.to);
+    if (!dest) return;
+    const nodes = this.config.features.livekit.nodes as {
+      name: string;
+      public_url: string;
+    }[];
+    const node = nodes.find((item) => item.name === event.node);
+    this.sound.playSound("userMoved");
+    if (node) {
+      await this.connect(dest, { url: node.public_url, token: event.token });
+    } else {
+      await this.connect(dest);
+    }
+  }
+
+  playVoiceAlert() {
+    this.sound.playSound("ringtoneIncoming", true, 1800);
+  }
 }
 
 const voiceContext = createContext<Voice>(null as unknown as Voice);
@@ -912,6 +963,7 @@ export function VoiceContext(props: { children: JSX.Element }) {
   const modals = useModals();
   const sound = useSound();
   const device = useDevice();
+  const client = useClient();
   const { isLoggedIn } = useClientLifecycle();
   const voice = new Voice(state.voice, modals, sound, device);
 
@@ -919,6 +971,30 @@ export function VoiceContext(props: { children: JSX.Element }) {
     if (!isLoggedIn()) {
       voice.disconnect({ silent: true });
     }
+  });
+
+  createEffect(() => {
+    const c = client();
+    const onLeave = (channel: Channel, userId: string) => {
+      voice.handleVoiceChannelLeave(channel.id, userId);
+    };
+    const onMoved = (event: {
+      node: string;
+      from?: string;
+      to?: string;
+      token: string;
+    }) => {
+      void voice.handleVoiceChannelMoved(c, event);
+    };
+    const onAlert = () => voice.playVoiceAlert();
+    c.addListener("voiceChannelLeave", onLeave);
+    c.addListener("userMoveVoiceChannel", onMoved);
+    c.addListener("voiceAlert", onAlert);
+    onCleanup(() => {
+      c.removeListener("voiceChannelLeave", onLeave);
+      c.removeListener("userMoveVoiceChannel", onMoved);
+      c.removeListener("voiceAlert", onAlert);
+    });
   });
 
   return (

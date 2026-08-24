@@ -75,7 +75,7 @@ export class SoundController {
    * @param force Bypass canPlay check
    * @returns Whether the sound played
    */
-  playSound(sound: keyof TypeSounds, force?: boolean): boolean {
+  playSound(sound: keyof TypeSounds, force?: boolean, durationMs?: number): boolean {
     if (!force && !this.canPlay(sound)) {
       return false;
     }
@@ -139,6 +139,15 @@ export class SoundController {
     }
     this.lastPlayedSound = sound;
     this.node.play();
+    if (durationMs && this.node) {
+      const el = this.node;
+      window.setTimeout(() => {
+        if (this.node === el) {
+          el.pause();
+          el.currentTime = 0;
+        }
+      }, durationMs);
+    }
     return true;
   }
 

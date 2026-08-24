@@ -1,13 +1,20 @@
 diff --git a/src/Client.ts b/src/Client.ts
-index 74d952ae..13a4fe56 100644
+index 74d952ae..6f5e6b21 100644
 --- a/src/Client.ts
 +++ b/src/Client.ts
-@@ -100,6 +100,17 @@ export type Events = {
+@@ -100,6 +100,24 @@ export type Events = {
    emojiCreate: [emoji: Emoji];
    emojiDelete: [emoji: HydratedEmoji];
  
 +  voiceChannelJoin: [channel: Channel, userId: string];
 +  voiceChannelLeave: [channel: Channel, userId: string];
++  voiceChannelMove: [userId: string, from: Channel, to: Channel];
++  userMoveVoiceChannel: [
++    event: { node: string; from?: string; to?: string; token: string },
++  ];
++  voiceAlert: [
++    event: { from: string; serverId: string; channelId: string },
++  ];
 +  voiceCallUpdate: [
 +    event: {
 +      initiatorId: string;
@@ -20,14 +27,43 @@ index 74d952ae..13a4fe56 100644
    userSlowmodes: [];
  };
  
+diff --git a/src/classes/ServerMember.ts b/src/classes/ServerMember.ts
+index 7e33585d..4a99cde1 100644
+--- a/src/classes/ServerMember.ts
++++ b/src/classes/ServerMember.ts
+@@ -246,6 +246,15 @@ export class ServerMember {
+     );
+   }
+ 
++  /**
++   * Send a short sound alert to this member if they are in a voice channel
++   */
++  async sendVoiceAlert(): Promise<void> {
++    await this.#collection.client.api.post(
++      `/servers/${this.id.server as ""}/members/${this.id.user as ""}/voice_alert` as never,
++    );
++  }
++
+   /**
+    * Ban this member from the server
+    * @param options Ban options
 diff --git a/src/events/v1.ts b/src/events/v1.ts
-index bfc71828..b6a5c409 100644
+index bfc71828..1a81e62a 100644
 --- a/src/events/v1.ts
 +++ b/src/events/v1.ts
-@@ -205,6 +205,14 @@ type ServerMessage =
+@@ -204,6 +204,22 @@ type ServerMessage =
+       type: "UserMoveVoiceChannel";
        node: string;
        token: string;
-     }
++      from?: string;
++      to?: string;
++    }
++  | {
++      type: "VoiceAlert";
++      from: string;
++      server_id: string;
++      channel_id: string;
++    }
 +  | {
 +      type: "VoiceCallUpdate";
 +      initiator_id?: string;
@@ -35,11 +71,10 @@ index bfc71828..b6a5c409 100644
 +      id?: string;
 +      started_at?: string | null;
 +      ended: boolean;
-+    }
+     }
    | {
        type: "UserSlowmodes";
-       slowmodes: UserSlowmodes[];
-@@ -996,7 +1004,7 @@ export async function handleEvent(
+@@ -996,7 +1012,7 @@ export async function handleEvent(
            event.state.id,
            new VoiceParticipant(client, event.state),
          );
@@ -48,7 +83,7 @@ index bfc71828..b6a5c409 100644
        }
        break;
      }
-@@ -1004,7 +1012,7 @@ export async function handleEvent(
+@@ -1004,12 +1020,26 @@ export async function handleEvent(
        const channel = client.channels.getOrPartial(event.id);
        if (channel) {
          channel.voiceParticipants.delete(event.user);
@@ -57,10 +92,47 @@ index bfc71828..b6a5c409 100644
        }
        break;
      }
-@@ -1024,6 +1032,15 @@ export async function handleEvent(
-       // todo
+     case "VoiceChannelMove": {
+-      // todo
++      const from = client.channels.getOrPartial(event.from);
++      const to = client.channels.getOrPartial(event.to);
++      const existing = from?.voiceParticipants.get(event.user);
++      from?.voiceParticipants.delete(event.user);
++      if (to) {
++        const participant =
++          existing ?? new VoiceParticipant(client, event.state);
++        if (existing) {
++          participant.update(event.state);
++        }
++        to.voiceParticipants.set(event.user, participant);
++      }
++      if (from && to) {
++        client.emit("voiceChannelMove", event.user, from, to);
++      }
        break;
      }
+     case "UserVoiceStateUpdate": {
+@@ -1021,7 +1051,29 @@ export async function handleEvent(
+       break;
+     }
+     case "UserMoveVoiceChannel": {
+-      // todo
++      client.emit("userMoveVoiceChannel", {
++        node: event.node,
++        from: event.from,
++        to: event.to,
++        token: event.token,
++      });
++      break;
++    }
++    case "VoiceAlert": {
++      client.emit("voiceAlert", {
++        from: event.from,
++        serverId: event.server_id,
++        channelId: event.channel_id,
++      });
++      break;
++    }
 +    case "VoiceCallUpdate": {
 +      client.emit("voiceCallUpdate", {
 +        initiatorId: event.initiator_id ?? "",
@@ -68,8 +140,31 @@ index bfc71828..b6a5c409 100644
 +        startedAt: event.started_at ?? null,
 +        ended: event.ended,
 +      });
-+      break;
-+    }
+       break;
+     }
      case "UserSlowmodes": {
-       for (const slowmode of event.slowmodes) {
-         const channel = client.channels.getOrPartial(slowmode.channel_id);
+diff --git a/src/permissions/definitions.ts b/src/permissions/definitions.ts
+index ebd917e9..c50c3779 100644
+--- a/src/permissions/definitions.ts
++++ b/src/permissions/definitions.ts
+@@ -83,8 +83,10 @@ export const Permission = {
+   DeafenMembers: 2n ** 34n,
+   /// Move members between voice channels
+   MoveMembers: 2n ** 35n,
+-  /// Move members between voice channels
++  /// Hear others in a voice call
+   Listen: 2n ** 36n,
++  /// Send a short sound alert to a member in a voice channel
++  SendVoiceAlert: 2n ** 41n,
+ 
+   // * Mention permissions
+   /// Mention @everyone or @online
+@@ -96,7 +98,7 @@ export const Permission = {
+   ViewAuditLogs: 2n ** 40n,
+ 
+   // * Misc. permissions
+-  // % Bits 41 to 52: free area
++  // % Bits 42 to 52: free area
+   // % Bits 53 to 64: do not use
+ 
+   // * Grant all permissions
