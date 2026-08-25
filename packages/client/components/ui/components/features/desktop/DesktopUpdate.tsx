@@ -4,8 +4,6 @@ import { styled } from "styled-system/jsx";
 
 import type { AppUpdatePayload } from "@revolt/app/interface/settings/user/Native";
 
-import { pendingUpdate } from "../../../../../src/serviceWorkerInterface";
-
 import { CategoryButton } from "../../design/CategoryButton";
 import { Symbol } from "../../utils/Symbol";
 
@@ -16,7 +14,7 @@ const [webStale, setWebStale] = createSignal(false);
 let listening = false;
 let webPollStarted = false;
 
-const ASSET_JS_RE = /\/assets\/[^"' ]+\.js/g;
+const ENTRY_JS_RE = /\/assets\/index-[^"' ]+\.js/;
 const WEB_POLL_MS = 60_000;
 
 /**
@@ -45,45 +43,45 @@ function ensureDesktopUpdateListener() {
     });
 }
 
-function loadedAssetFingerprint() {
-  return [
-    ...document.querySelectorAll("script[src], link[rel='modulepreload']"),
-  ]
-    .map((el) =>
-      (el.getAttribute("src") || el.getAttribute("href") || "").replace(
-        /^https?:\/\/[^/]+/,
-        "",
-      ),
-    )
-    .filter((src) => src.includes("/assets/") && src.endsWith(".js"))
-    .sort()
-    .join();
+function loadedEntryBundle() {
+  for (const el of document.querySelectorAll("script[src]")) {
+    const src = (el.getAttribute("src") || "").replace(/^https?:\/\/[^/]+/, "");
+    const match = src.match(ENTRY_JS_RE);
+    if (match) return match[0];
+  }
+  return "";
 }
 
-function publishedAssetFingerprint(html: string) {
-  return [...html.matchAll(ASSET_JS_RE)].map((match) => match[0]).sort().join();
+function publishedEntryBundle(html: string) {
+  return html.match(ENTRY_JS_RE)?.[0] ?? "";
+}
+
+function applyWebClientUpdate() {
+  const url = new URL(window.location.href);
+  url.searchParams.set("_", String(Date.now()));
+  window.location.replace(url.toString());
 }
 
 /**
  * Desktop keeps one window open for hours. A new web build is picked up by
  * reloading — this poll shows the same Atualizar pill without a new .exe.
+ *
+ * Compare only the Vite entry bundle. Live modulepreload links grow as the
+ * SPA loads routes, so a full /assets/*.js fingerprint is a permanent false
+ * positive.
  */
 function ensureWebClientPoll() {
   if (webPollStarted || !window.native) return;
   webPollStarted = true;
 
   const check = async () => {
-    if (pendingUpdate()) {
-      setWebStale(true);
-      return;
-    }
     try {
       const html = await fetch(`/?_=${Date.now()}`, { cache: "no-store" }).then(
         (r) => r.text(),
       );
-      const current = loadedAssetFingerprint();
-      const published = publishedAssetFingerprint(html);
-      if (current && published && current !== published) setWebStale(true);
+      const current = loadedEntryBundle();
+      const published = publishedEntryBundle(html);
+      setWebStale(Boolean(current && published && current !== published));
     } catch {
       /* offline or unexpected index shape */
     }
@@ -121,9 +119,7 @@ export function useWebClientStale() {
   return {
     stale: webStale,
     apply: () => {
-      const apply = pendingUpdate();
-      if (apply) apply();
-      else window.location.reload();
+      applyWebClientUpdate();
     },
   };
 }

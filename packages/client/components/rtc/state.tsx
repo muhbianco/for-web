@@ -115,6 +115,7 @@ class Voice {
   private limits;
   private screenShareTracks: Set<string>;
   private voiceProcessor?: VoiceProcessor;
+  #moving = false;
 
   engineStatus: Accessor<VoiceEngineStatus>;
   #setEngineStatus: Setter<VoiceEngineStatus>;
@@ -363,7 +364,10 @@ class Voice {
       this.syncNativeVoiceSession();
     });
 
-    room.addListener("disconnected", () => this.#setState("DISCONNECTED"));
+    room.addListener("disconnected", () => {
+      if (this.#moving) return;
+      this.#setState("DISCONNECTED");
+    });
 
     room.addListener("localTrackPublished", (pub) => {
       if (pub.audioTrack && pub.audioTrack.source === Track.Source.Microphone) {
@@ -401,16 +405,14 @@ class Voice {
       }
     });
 
-    // Gather latency
-    const selected = await Promise.any(
-      this.config.features.livekit.nodes.map(async (node) => {
-        return fetch(node.public_url.replace("wss", "https")).then(() => {
-          return node.name;
-        });
-      }),
-    );
-
     if (!auth) {
+      const selected = await Promise.any(
+        this.config.features.livekit.nodes.map(async (node) => {
+          return fetch(node.public_url.replace("wss", "https")).then(() => {
+            return node.name;
+          });
+        }),
+      );
       const startingPrivate =
         (channel.type === "DirectMessage" || channel.type === "Group") &&
         channel.voiceParticipants.size === 0;
@@ -979,8 +981,11 @@ class Voice {
 
   /**
    * Drop the local LiveKit session if we were kicked from this channel.
+   * A leave for the previous room during an admin move is expected — do not
+   * tear down the reconnect.
    */
   handleVoiceChannelLeave(channelId: string, userId: string) {
+    if (this.#moving) return;
     if (this.channel()?.id !== channelId) return;
     const me = this.channel()?.client.user?.id;
     if (me && userId === me) {
@@ -1008,18 +1013,39 @@ class Voice {
     ) {
       return;
     }
-    const dest = client.channels.get(event.to);
-    if (!dest) return;
-    const nodes = this.config.features.livekit.nodes as {
-      name: string;
-      public_url: string;
-    }[];
-    const node = nodes.find((item) => item.name === event.node);
-    this.sound.playSound("userMoved");
-    if (node) {
-      await this.connect(dest, { url: node.public_url, token: event.token });
-    } else {
-      await this.connect(dest);
+
+    this.#moving = true;
+    try {
+      let dest = client.channels.get(event.to);
+      if (!dest) {
+        dest = await client.channels.fetch(event.to);
+      }
+      if (!dest) return;
+
+      const nodes = this.config.features.livekit.nodes as {
+        name: string;
+        public_url: string;
+      }[];
+      const node = nodes.find((item) => item.name === event.node);
+      this.sound.playSound("userMoved");
+      try {
+        if (node && event.token) {
+          await this.connect(dest, {
+            url: node.public_url,
+            token: event.token,
+          });
+        } else {
+          await this.connect(dest);
+        }
+      } catch (error) {
+        console.error("[voice] move reconnect failed, retry joinCall", error);
+        await this.connect(dest);
+      }
+    } catch (error) {
+      console.error("[voice] move failed", error);
+      this.onErr(error);
+    } finally {
+      this.#moving = false;
     }
   }
 

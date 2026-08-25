@@ -74,6 +74,8 @@ declare global {
       onAppUpdate?(onUpdate: (payload: AppUpdatePayload) => void): void;
       getUpdateState?(): Promise<AppUpdatePayload>;
       installAppUpdate?(): void;
+      getOpenAtLogin?(): Promise<boolean>;
+      setOpenAtLogin?(enabled: boolean): Promise<boolean>;
       isWayland?(): boolean;
     };
 
@@ -107,12 +109,25 @@ export default function Native() {
   }
 
   onMount(async () => {
+    if (window.native?.getOpenAtLogin) {
+      try {
+        setAutostart(await window.native.getOpenAtLogin());
+      } catch {
+        /* an older shell may not expose this yet */
+      }
+      return;
+    }
     if (!desktopConfig) return;
     const value = await desktopConfig.getAutostart();
     setAutostart(value);
   });
 
   async function toggleAutostart() {
+    if (window.native?.setOpenAtLogin) {
+      const saved = await window.native.setOpenAtLogin(!autostart());
+      setAutostart(Boolean(saved));
+      return;
+    }
     if (!desktopConfig) return;
     const newValue = !autostart();
     const savedValue = await desktopConfig.setAutostart(newValue);
@@ -150,6 +165,19 @@ export default function Native() {
 
   return (
     <Column gap="lg">
+      <Show when={window.native?.getOpenAtLogin}>
+        <CategoryButton.Group>
+          <CategoryButton
+            action={<Checkbox checked={autostart()} />}
+            onClick={() => void toggleAutostart()}
+            icon={<Symbol>exit_to_app</Symbol>}
+            description="O Muchat abre quando você entra no Windows."
+          >
+            Abrir Muchat ao inicializar o Windows
+          </CategoryButton>
+        </CategoryButton.Group>
+      </Show>
+
       <Show when={desktopConfig}>
         <CategoryButton.Group>
           <CategoryButton

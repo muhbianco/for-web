@@ -142,12 +142,14 @@ export function Titlebar() {
                     "-webkit-app-region": "no-drag",
                   }}
                 >
-                  {desktopUpdate.state() === "downloading"
-                    ? `Update disponível ${desktopUpdate.percent()}%`
-                    : "Update disponível"}
+                  {desktopUpdate.pending()
+                    ? desktopUpdate.state() === "downloading"
+                      ? `Update disponível ${desktopUpdate.percent()}%`
+                      : "Update disponível"
+                    : "Nova interface"}
                 </UpdateNotice>
               </Show>
-              <Show when={pendingUpdate()}>
+              <Show when={pendingUpdate() && !isNative}>
                 {" "}
                 <div
                   style={{
