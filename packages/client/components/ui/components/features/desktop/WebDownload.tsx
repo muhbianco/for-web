@@ -4,6 +4,8 @@ import { styled } from "styled-system/jsx";
 
 import { Symbol } from "../../utils/Symbol";
 
+import { nativeDownloadHref } from "./microsoftStore";
+
 function isNativeShell() {
   return Boolean(window.native || window.MuchatNative);
 }
@@ -19,7 +21,13 @@ export function WebDownloadBanner() {
     <Show when={!isNativeShell() && !dismissed()}>
       <Banner>
         <span>Muchat fica melhor no app</span>
-        <Action href="/download" target="_blank" rel="noopener noreferrer">
+        <Action
+          href={nativeDownloadHref(
+            typeof navigator === "undefined" ? "" : navigator.userAgent,
+          )}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
           Baixar
         </Action>
         <Close
