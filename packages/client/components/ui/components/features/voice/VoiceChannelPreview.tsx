@@ -14,7 +14,7 @@ import { styled } from "styled-system/jsx";
 
 import { UserContextMenu } from "@revolt/app";
 import { useUser } from "@revolt/markdown/users";
-import { InRoom } from "@revolt/rtc";
+import { InRoom, useIsDeafened } from "@revolt/rtc";
 
 import { Avatar, Ripple, typography } from "../../design";
 import { Row } from "../../layout";
@@ -39,7 +39,7 @@ export function VoiceChannelPreview(props: { channel: Channel }) {
 }
 
 /**
- * Use API as the source of truth
+ * Use LiveKit as the source of truth (we are in this room)
  */
 function VariantLive(props: { channel: Channel }) {
   const tracks = useTracks(
@@ -57,7 +57,7 @@ function VariantLive(props: { channel: Channel }) {
 }
 
 /**
- * Use LiveKit as the source of truth
+ * Use API as the source of truth (we are not in this room)
  */
 function VariantPreview(props: { channel: Channel }) {
   return (
@@ -88,14 +88,15 @@ function ParticipantLive(props: { channel: Channel }) {
   });
 
   const isSpeaking = useIsSpeaking(participant);
+  const isDeafened = useIsDeafened(participant);
 
   return (
     <CommonUser
       channel={props.channel}
       userId={participant.identity}
       speaking={isSpeaking()}
-      muted={isMuted()}
-      deafened={false}
+      muted={isMuted() || isDeafened()}
+      deafened={isDeafened()}
       camera={false}
       screenshare={false}
       isLive
@@ -115,7 +116,9 @@ function ParticipantPreview(props: {
       channel={props.channel}
       userId={props.participant.userId}
       speaking={false}
-      muted={!props.participant.isPublishing()}
+      muted={
+        !props.participant.isPublishing() || !props.participant.isReceiving()
+      }
       deafened={!props.participant.isReceiving()}
       camera={props.participant.isCamera()}
       screenshare={props.participant.isScreensharing()}

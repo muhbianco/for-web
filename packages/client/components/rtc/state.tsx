@@ -43,6 +43,10 @@ import { VoiceCallCardContext } from "@revolt/ui/components/features/voice/callC
 import { Device, useDevice } from "@revolt/common";
 import { InRoom } from "./components/InRoom";
 import { RoomAudioManager } from "./components/RoomAudioManager";
+import {
+  VOICE_DEAFENED_ATTR,
+  deafenAttributeValue,
+} from "./deafenAttribute";
 import { VoiceProcessor } from "./VoiceProcessor";
 import { notifyPushRing, privateCallTargets } from "./callPush";
 import { canUseDeepFilter } from "./deepFilterSupport";
@@ -362,6 +366,7 @@ class Voice {
       this.sound.playSound("userJoinVoice");
       this.clearRing();
       this.syncNativeVoiceSession();
+      this.publishDeafenState();
     });
 
     room.addListener("disconnected", () => {
@@ -517,6 +522,7 @@ class Voice {
       if (fromMute) {
         this.#settings.micOn = room.localParticipant.isMicrophoneEnabled;
       }
+      this.publishDeafenState();
       if (this.#settings.deafen) {
         this.sound.playSound("deafen");
       } else {
@@ -951,6 +957,23 @@ class Voice {
 
   declineIncoming() {
     this.clearRing();
+  }
+
+  /**
+   * Broadcast headset-off so everyone in the LiveKit room can show it
+   * next to the name. Token may omit canUpdateOwnMetadata; local UI
+   * still uses the Voice store.
+   */
+  private publishDeafenState() {
+    const room = this.room();
+    if (!room) return;
+    void room.localParticipant
+      .setAttributes({
+        [VOICE_DEAFENED_ATTR]: deafenAttributeValue(this.#settings.deafen),
+      })
+      .catch((error) => {
+        console.warn("[voice] deafen attribute not published", error);
+      });
   }
 
   private syncNativeVoiceSession(forceStop?: boolean) {
