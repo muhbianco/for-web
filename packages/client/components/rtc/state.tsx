@@ -214,6 +214,12 @@ class Voice {
     );
   }
 
+  /**
+   * One noise suppressor per signal path: browser NS / voiceIsolation are only
+   * requested in "browser" mode. In ML modes (DeepFilter / RNNoise) the
+   * VoiceProcessor owns suppression and browser AGC is off so it does not pump
+   * the residual noise floor. See VoiceProcessor.ts for the full chain.
+   */
   private captureAudioOptions() {
     const mode = this.#settings.noiseSupression;
     return {
@@ -301,6 +307,8 @@ class Voice {
       inputRms: snapshot?.inputRms,
       gateOpen: snapshot?.gateOpen,
       gateOpenThreshold: snapshot?.gateOpenThreshold,
+      deepFilterAttenDb: snapshot?.deepFilterAttenDb,
+      noiseFloorDb: snapshot?.noiseFloorDb,
     });
   }
 
@@ -345,6 +353,8 @@ class Voice {
       this.#setState("CONNECTING");
       this.#setVideo(false);
       this.#setScreenshare(false);
+      this.#setFocus(undefined);
+      this.#setShowBar(true);
     });
 
     room.addListener("connected", () => {
@@ -498,6 +508,8 @@ class Voice {
       this.#setFullscreen(false);
       this.#setVideo(false);
       this.#setScreenshare(false);
+      this.#setFocus(undefined);
+      this.#setShowBar(true);
       this.vidTracks = () => [];
       this.#setEngineStatus(IDLE_VOICE_ENGINE_STATUS);
     });
@@ -867,11 +879,31 @@ class Voice {
     return `${t.source}_${t.participant.sid}`;
   }
 
+  /**
+   * "Watch" a track: show it as the main stage tile (Discord-style focus).
+   * Refused when there is only one tile, since the grid already is that tile.
+   */
+  focus(t: TrackReferenceOrPlaceholder) {
+    if (this.vidTracks().length < 2) return;
+    this.#setFocus(this.trackId(t));
+  }
+
+  /**
+   * "Stop watching": back to the plain grid. Also called automatically when
+   * the focused track is unpublished or its participant leaves (see
+   * VoiceCallCardActiveRoom), and on connect / disconnect.
+   */
+  clearFocus() {
+    this.#setFocus(undefined);
+    this.#setShowBar(true);
+  }
+
   toggleFocus(t?: TrackReferenceOrPlaceholder) {
-    const id = t ? this.trackId(t) : undefined;
-    this.#setFocus(
-      this.focusId() === id || this.vidTracks().length < 2 ? undefined : id,
-    );
+    if (!t || this.isFocus(t)) {
+      this.clearFocus();
+      return;
+    }
+    this.focus(t);
   }
 
   isFocus(t: TrackReferenceOrPlaceholder) {

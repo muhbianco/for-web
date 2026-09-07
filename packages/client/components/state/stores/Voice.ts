@@ -2,20 +2,24 @@ import { State } from "..";
 
 import { AbstractStore } from ".";
 import {
+  type DeepFilterSensitivity,
+  type NoiseSuppresionState,
   applyNoiseSuppressionSchema,
   clampInputSensitivity,
+  DEFAULT_DEEPFILTER_SENSITIVITY,
   DEFAULT_INPUT_SENSITIVITY,
+  DEFAULT_NOISE_SUPPRESSION,
   isNoiseSuppressionMode,
-  type NoiseSuppresionState,
+  NOISE_SUPPRESSION_SCHEMA,
 } from "./noiseSuppressionPolicy";
 
 /**
  * Noise suppression modes.
  * - browser: WebRTC / Chromium NS
  * - enhanced: RNNoise (light)
- * - advanced: DeepFilterNet3, falls back to RNNoise on weaker devices
+ * - advanced: DeepFilterNet3 (default), falls back to RNNoise on weaker devices
  */
-export type { NoiseSuppresionState };
+export type { DeepFilterSensitivity, NoiseSuppresionState };
 
 /**
  * Possible screen share qualities. Low is 720p@30fps, high 1080p@30fps and text is source@5fps.
@@ -38,12 +42,16 @@ export interface TypeVoice {
 
   echoCancellation: boolean;
   noiseSupression: NoiseSuppresionState;
-  /** Bump when the default engine changes so stored DeepFilter opt-in is not wiped twice. */
+  /** Bump when the default engine changes so a migration runs once per device. */
   noiseSuppressionSchema: number;
   autoGainControl: boolean;
-  /** Discord-style gate: when true, the worklet tracks the noise floor. */
-  autoInputSensitivity: boolean;
-  /** 0 = most sensitive, 1 = least. Only used when autoInputSensitivity is false. */
+  /**
+   * DeepFilter strength. "auto" adapts the attenuation limit to the measured
+   * noise floor and lets the gate track the floor (Discord-style). Fixed
+   * presets use `inputSensitivity` for the gate.
+   */
+  deepFilterSensitivity: DeepFilterSensitivity;
+  /** 0 = most sensitive, 1 = least. Only used when deepFilterSensitivity is not "auto". */
   inputSensitivity: number;
 
   screenShareQuality: ScreenShareQualityName;
@@ -87,10 +95,10 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   default(): TypeVoice {
     return {
       echoCancellation: true,
-      noiseSupression: "enhanced",
-      noiseSuppressionSchema: 1,
+      noiseSupression: DEFAULT_NOISE_SUPPRESSION,
+      noiseSuppressionSchema: NOISE_SUPPRESSION_SCHEMA,
       autoGainControl: true,
-      autoInputSensitivity: false,
+      deepFilterSensitivity: DEFAULT_DEEPFILTER_SENSITIVITY,
       inputSensitivity: DEFAULT_INPUT_SENSITIVITY,
       screenShareQuality: "low",
       screenShareQualityAsk: true,
@@ -138,19 +146,18 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       parsedMode = input.noiseSupression;
     }
 
+    // `autoInputSensitivity` (schema 1) is folded into deepFilterSensitivity.
     const migrated = applyNoiseSuppressionSchema(
       parsedMode,
       input.noiseSuppressionSchema,
+      input.deepFilterSensitivity,
     );
     data.noiseSupression = migrated.noiseSupression;
     data.noiseSuppressionSchema = migrated.noiseSuppressionSchema;
+    data.deepFilterSensitivity = migrated.deepFilterSensitivity;
 
     if (typeof input.autoGainControl === "boolean") {
       data.autoGainControl = input.autoGainControl;
-    }
-
-    if (typeof input.autoInputSensitivity === "boolean") {
-      data.autoInputSensitivity = input.autoInputSensitivity;
     }
 
     data.inputSensitivity = clampInputSensitivity(input.inputSensitivity);
@@ -338,10 +345,10 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   }
 
   /**
-   * Set whether the DeepFilter gate tracks the noise floor
+   * Set DeepFilter strength preset
    */
-  set autoInputSensitivity(value: boolean) {
-    this.set("autoInputSensitivity", value);
+  set deepFilterSensitivity(value: DeepFilterSensitivity) {
+    this.set("deepFilterSensitivity", value);
   }
 
   /**
@@ -443,10 +450,17 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   }
 
   /**
-   * Get whether the DeepFilter gate tracks the noise floor
+   * Get DeepFilter strength preset
+   */
+  get deepFilterSensitivity(): DeepFilterSensitivity {
+    return this.get().deepFilterSensitivity;
+  }
+
+  /**
+   * Whether the DeepFilter gate tracks the noise floor (auto preset)
    */
   get autoInputSensitivity(): boolean {
-    return this.get().autoInputSensitivity;
+    return this.get().deepFilterSensitivity === "auto";
   }
 
   /**

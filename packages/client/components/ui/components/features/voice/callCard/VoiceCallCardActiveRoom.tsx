@@ -1,11 +1,11 @@
 import { useLingui } from "@lingui/solid/macro";
 import { createResizeObserver } from "@solid-primitives/resize-observer";
-import { createEffect, For, onMount, Show } from "solid-js";
+import { createEffect, For, onCleanup, onMount, Show } from "solid-js";
 import { TrackLoop } from "solid-livekit-components";
 import { styled } from "styled-system/jsx";
 
 import { InRoom, useVoice } from "@revolt/rtc";
-import { IconButton } from "@revolt/ui/components/design";
+import { Button, IconButton } from "@revolt/ui/components/design";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 import { scrollableStyles } from "@revolt/ui/directives";
 
@@ -70,9 +70,24 @@ function Participants() {
     return `max(${TILE_MIN_WIDTH}, ${vidWidth}% - var(--gap-md))`;
   };
 
-  // Clear out any focus when the track that was focused is no longer available.
+  // Auto "stop watching": the focused track was unpublished, its participant
+  // left (vidTracks is reactive to both), or we are down to a single tile.
   createEffect(() => {
-    if (!voice.focusTrack()) voice.toggleFocus();
+    if (!voice.focusId()) return;
+    if (!voice.focusTrack() || voice.vidTracks().length < 2) {
+      voice.clearFocus();
+    }
+  });
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key === "Escape" && voice.focusId() && !voice.fullscreen()) {
+      voice.clearFocus();
+    }
+  };
+
+  onMount(() => {
+    document.addEventListener("keydown", onKeyDown);
+    onCleanup(() => document.removeEventListener("keydown", onKeyDown));
   });
 
   onMount(() => {
@@ -138,6 +153,7 @@ function Participants() {
 
 function FocusedParticipant() {
   const voice = useVoice();
+  const { t } = useLingui();
 
   return (
     <Show when={voice.focusTrack()}>
@@ -145,6 +161,17 @@ function FocusedParticipant() {
         {() => (
           <FocusBox>
             <ParticipantTile focus />
+            <StopWatching>
+              <Button
+                size="xs"
+                variant="tonal"
+                onPress={() => voice.clearFocus()}
+                aria-label={t`Stop watching`}
+              >
+                <Symbol size={18}>close_fullscreen</Symbol>
+                {t`Stop watching`}
+              </Button>
+            </StopWatching>
           </FocusBox>
         )}
       </TrackLoop>
@@ -262,11 +289,24 @@ const Grid = styled("div", {
 
 const FocusBox = styled("div", {
   base: {
+    position: "relative",
     height: 0,
     flexGrow: 1,
     display: "flex",
     flexDirection: "column",
     justifyContent: "center",
     margin: "0 auto",
+  },
+});
+
+/** "Stop watching" pinned to the top-right corner of the focused tile. */
+const StopWatching = styled("div", {
+  base: {
+    position: "absolute",
+    top: "var(--gap-md)",
+    right: "var(--gap-md)",
+    zIndex: 1,
+    display: "flex",
+    gap: "var(--gap-sm)",
   },
 });

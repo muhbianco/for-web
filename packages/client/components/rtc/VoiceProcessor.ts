@@ -1,19 +1,59 @@
-import { AudioProcessorOptions, Track, TrackProcessor } from "livekit-client";
 import type { DeepFilterNet3Core } from "deepfilternet3-noise-filter";
+import { AudioProcessorOptions, Track, TrackProcessor } from "livekit-client";
 import { RNNoiseNode } from "livekit-rnnoise-processor";
 import { createEffect, createRoot } from "solid-js";
 
 import { CONFIGURATION } from "@revolt/common";
 import { Voice } from "@revolt/state/stores/Voice";
-import { gateThresholdsFromSensitivity } from "@revolt/state/stores/noiseSuppressionPolicy";
+import {
+  DEEPFILTER_ATTEN_DB,
+  DEEPFILTER_AUTO_STEP_DB,
+  deepFilterAttenDb,
+  gateThresholdsFromSensitivity,
+  rmsToDbfs,
+} from "@revolt/state/stores/noiseSuppressionPolicy";
 
 import { canUseDeepFilter } from "./deepFilterSupport";
 import { addPatchedDeepFilterModule } from "./patchDeepFilterWorklet";
 import { ensureRmsGateNode } from "./rmsGateWorklet";
 import type { VoiceEngineId } from "./voiceEngineStatus";
 
+/**
+ * Microphone processing pipeline (runs on the LocalAudioTrack, i.e. on raw
+ * PCM *before* the Opus encoder and before LiveKit publishes the track).
+ *
+ *   getUserMedia (EC on, AGC off in ML modes, browser NS off in ML modes)
+ *     -> highpass 50 Hz
+ *     -> ONE neural noise suppressor: DeepFilterNet3 (default) or RNNoise
+ *     -> RMS gate (DeepFilter only, sits *after* the suppressor)
+ *     -> brickwall compressor (limiter)
+ *     -> input gain
+ *     -> processedTrack -> Opus -> LiveKit
+ *
+ * Rule: exactly one noise suppressor per signal path. Browser NS /
+ * voiceIsolation are only requested when the user picks the "browser" mode
+ * (see noiseSuppressionPolicy.captureBrowserNoiseSuppression); DeepFilter and
+ * RNNoise are never wired at the same time. Stacking suppressors produces
+ * metallic / "2004 phone" artifacts.
+ *
+ * Fallback: when "advanced" (DeepFilter) is selected but the device fails
+ * canUseDeepFilter(), the 48 kHz context cannot be created, or the worklet
+ * fails to load, we silently wire RNNoise instead and only console.warn +
+ * surface `lastError` in the settings diagnostics. Never browser NS.
+ *
+ * DeepFilter strength: `noiseReductionLevel` / `setSuppressionLevel` map to
+ * DeepFilterNet's `atten_lim_db`. The "auto" preset measures the pre-filter
+ * noise floor while the gate is closed (nobody talking) and picks the limit
+ * from that; fixed presets use DEEPFILTER_ATTEN_DB.
+ */
+
 let sharedDeepFilterCore: Promise<DeepFilterNet3Core> | undefined;
 const deepFilterNodes = new WeakMap<BaseAudioContext, AudioWorkletNode>();
+
+/** How often the auto preset samples the pre-filter noise floor. */
+const NOISE_FLOOR_POLL_MS = 200;
+/** EMA coefficient for the noise floor (slow: fans, not keystrokes). */
+const NOISE_FLOOR_EMA = 0.1;
 
 export interface VoiceProcessorSnapshot {
   engine: VoiceEngineId;
@@ -22,6 +62,10 @@ export interface VoiceProcessorSnapshot {
   inputRms?: number;
   gateOpen?: boolean;
   gateOpenThreshold?: number;
+  /** Current DeepFilter attenuation limit (dB). */
+  deepFilterAttenDb?: number;
+  /** Estimated pre-filter background noise (dBFS), auto preset only. */
+  noiseFloorDb?: number;
 }
 
 function deepFilterCdnUrl(): string {
@@ -43,7 +87,8 @@ function getDeepFilterCore(): Promise<DeepFilterNet3Core> {
       .then(async ({ DeepFilterNet3Core }) => {
         const core = new DeepFilterNet3Core({
           sampleRate: 48000,
-          noiseReductionLevel: 80,
+          // Initial atten_lim; applyDeepFilterStrength() overrides it live.
+          noiseReductionLevel: DEEPFILTER_ATTEN_DB.strong,
           assetConfig: { cdnUrl: deepFilterCdnUrl() },
         });
         await core.initialize();
@@ -79,6 +124,11 @@ export class VoiceProcessor implements TrackProcessor<
   private lastRms?: number;
   private gateOpen = false;
   private gateOpenThreshold?: number;
+  private deepFilterCore?: DeepFilterNet3Core;
+  private deepFilterAttenDb?: number;
+  private noiseFloorDb?: number;
+  private noiseFloorTimer?: ReturnType<typeof setInterval>;
+  private analyserNode?: AnalyserNode;
 
   private noiseSuppressionNode?: RNNoiseNode;
   private deepFilterNode?: AudioWorkletNode;
@@ -99,6 +149,7 @@ export class VoiceProcessor implements TrackProcessor<
       createEffect(() => {
         this.setGain(this.getSettings().inputVolume);
         this.applyGateSettings();
+        this.applyDeepFilterStrength();
       });
       this.disposeSolidjsContext = dispose;
     });
@@ -115,6 +166,10 @@ export class VoiceProcessor implements TrackProcessor<
       inputRms: this.lastRms,
       gateOpen: this.gateOpen,
       gateOpenThreshold: this.gateOpenThreshold,
+      deepFilterAttenDb:
+        this.engine === "deepfilter" ? this.deepFilterAttenDb : undefined,
+      noiseFloorDb:
+        this.engine === "deepfilter" ? this.noiseFloorDb : undefined,
     };
   }
 
@@ -142,6 +197,64 @@ export class VoiceProcessor implements TrackProcessor<
     if (closeParam) closeParam.value = close;
     if (autoParam) autoParam.value = auto ? 1 : 0;
     if (!auto) this.gateOpenThreshold = open;
+  }
+
+  /**
+   * Push the DeepFilter attenuation limit for the current preset. Auto uses
+   * the tracked noise floor; changes smaller than DEEPFILTER_AUTO_STEP_DB are
+   * ignored so the model is not re-tuned on every poll.
+   */
+  private applyDeepFilterStrength() {
+    const sensitivity = this.settings.deepFilterSensitivity;
+    if (!this.deepFilterCore || this.engine !== "deepfilter") return;
+    const target = deepFilterAttenDb(sensitivity, this.noiseFloorDb);
+    if (
+      this.deepFilterAttenDb !== undefined &&
+      Math.abs(target - this.deepFilterAttenDb) < DEEPFILTER_AUTO_STEP_DB
+    ) {
+      return;
+    }
+    this.deepFilterAttenDb = target;
+    this.deepFilterCore.setSuppressionLevel(target);
+    this.emitStatus();
+  }
+
+  /**
+   * Sample the pre-DeepFilter signal while the gate is closed (no speech) and
+   * keep a slow EMA of the room noise floor for the auto preset.
+   */
+  private startNoiseFloorTracking(context: AudioContext, tap: AudioNode) {
+    this.stopNoiseFloorTracking();
+    const analyser = context.createAnalyser();
+    analyser.fftSize = 2048;
+    tap.connect(analyser);
+    this.analyserNode = analyser;
+    const buffer = new Float32Array(analyser.fftSize);
+    this.noiseFloorTimer = setInterval(() => {
+      if (this.engine !== "deepfilter" || !this.analyserNode) return;
+      analyser.getFloatTimeDomainData(buffer);
+      let sum = 0;
+      for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
+      const db = rmsToDbfs(Math.sqrt(sum / buffer.length));
+      // Gate open = someone talking; that is not the floor.
+      if (this.gateOpen) return;
+      this.noiseFloorDb =
+        this.noiseFloorDb === undefined
+          ? db
+          : this.noiseFloorDb + (db - this.noiseFloorDb) * NOISE_FLOOR_EMA;
+      if (this.settings.deepFilterSensitivity === "auto") {
+        this.applyDeepFilterStrength();
+      }
+    }, NOISE_FLOOR_POLL_MS);
+  }
+
+  private stopNoiseFloorTracking() {
+    if (this.noiseFloorTimer) {
+      clearInterval(this.noiseFloorTimer);
+      this.noiseFloorTimer = undefined;
+    }
+    this.analyserNode?.disconnect();
+    this.analyserNode = undefined;
   }
 
   private listenToGate(gate: AudioWorkletNode) {
@@ -189,6 +302,7 @@ export class VoiceProcessor implements TrackProcessor<
       this.dfContext = undefined;
     }
     this.deepFilterNode = undefined;
+    this.deepFilterCore = undefined;
     this.engine = "bypass";
     this.emitStatus();
   }
@@ -197,6 +311,9 @@ export class VoiceProcessor implements TrackProcessor<
     if (this.gateNode) {
       this.gateNode.port.onmessage = null;
     }
+    this.stopNoiseFloorTracking();
+    this.deepFilterAttenDb = undefined;
+    this.noiseFloorDb = undefined;
     this.compressorNode?.disconnect();
     this.gateNode?.disconnect();
     this.noiseSuppressionNode?.disconnect();
@@ -281,14 +398,11 @@ export class VoiceProcessor implements TrackProcessor<
       return cached;
     }
     const core = await getDeepFilterCore();
+    this.deepFilterCore = core;
     const worklet = context.audioWorklet;
     const addModule = worklet.addModule.bind(worklet);
     worklet.addModule = (moduleURL: string | URL, options?: WorkletOptions) =>
-      addPatchedDeepFilterModule(
-        addModule,
-        moduleURL,
-        options,
-      );
+      addPatchedDeepFilterModule(addModule, moduleURL, options);
     try {
       const node = await core.createAudioWorkletNode(context);
       deepFilterNodes.set(context, node);
@@ -344,6 +458,9 @@ export class VoiceProcessor implements TrackProcessor<
         this.connectMlChain(node, context, gate);
         this.engine = "deepfilter";
         this.lastError = undefined;
+        // Pre-filter tap for the auto preset; applies the initial atten_lim.
+        this.startNoiseFloorTracking(context, this.highpassNode!);
+        this.applyDeepFilterStrength();
         return;
       } catch (error) {
         this.lastError = errorMessage(error);

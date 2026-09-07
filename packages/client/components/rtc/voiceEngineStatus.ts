@@ -21,6 +21,10 @@ export interface VoiceEngineStatus {
   inputRms?: number;
   gateOpen?: boolean;
   gateOpenThreshold?: number;
+  /** DeepFilter attenuation limit currently applied (dB). */
+  deepFilterAttenDb?: number;
+  /** Estimated background noise before DeepFilter (dBFS). */
+  noiseFloorDb?: number;
 }
 
 export const IDLE_VOICE_ENGINE_STATUS: VoiceEngineStatus = {
