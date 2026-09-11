@@ -22,6 +22,7 @@ import { isGif } from "@revolt/common/lib/gifs";
 import { useTime } from "@revolt/i18n";
 import { Markdown } from "@revolt/markdown";
 import { startsWithPackPUA } from "@revolt/markdown/emoji/UnicodeEmoji";
+import { stripTtsPrefix } from "@revolt/rtc/tts";
 import { useState } from "@revolt/state";
 import {
   Attachment,
@@ -143,6 +144,11 @@ export function Message(props: Props) {
   // Derive pronouns member takes precedence over author
   const pronouns = () =>
     props.message.member?.pronouns ?? props.message.author?.pronouns;
+
+  /**
+   * Body of a `/tts` message without the command, shown with a speaker icon
+   */
+  const ttsBody = () => stripTtsPrefix(props.message.content);
 
   return (
     <MessageContext message={props.message} reactPicker={reactPicker}>
@@ -361,7 +367,19 @@ export function Message(props: Props) {
           </Match>
           <Match when={props.message.content && !isOnlyGIF()}>
             <BreakText>
-              <Markdown content={props.message.content!} />
+              <Show
+                when={ttsBody()}
+                fallback={<Markdown content={props.message.content!} />}
+              >
+                {(body) => (
+                  <TtsLine>
+                    <Tooltip content={t`Read aloud in voice`} placement="top">
+                      <Symbol size={18}>record_voice_over</Symbol>
+                    </Tooltip>
+                    <Markdown content={body()} />
+                  </TtsLine>
+                )}
+              </Show>
             </BreakText>
           </Match>
         </Switch>
@@ -403,6 +421,29 @@ const avatarContainer = cva({
   base: {
     height: "fit-content",
     borderRadius: "var(--borderRadius-circle)",
+  },
+});
+
+/**
+ * `/tts` message: speaker icon beside the spoken text
+ */
+const TtsLine = styled("div", {
+  base: {
+    display: "flex",
+    alignItems: "flex-start",
+    gap: "var(--gap-sm)",
+    minWidth: 0,
+
+    "& > :first-child": {
+      flexShrink: 0,
+      marginTop: "0.15em",
+      color: "var(--md-sys-color-on-surface-variant)",
+    },
+
+    "& > :last-child": {
+      flex: 1,
+      minWidth: 0,
+    },
   },
 });
 

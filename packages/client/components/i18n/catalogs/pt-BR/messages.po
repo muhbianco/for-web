@@ -4039,3 +4039,47 @@ msgstr "O DeepFilterNet não conseguiu iniciar neste dispositivo, então o RNNoi
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Stop watching"
 msgstr "Parar de assistir"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Text-to-speech"
+msgstr "Texto para voz"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
+msgstr "Digite /tts seguido da mensagem no chat de um canal de voz e todo mundo conectado nele ouve, falado pelo próprio dispositivo."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Turn off to keep seeing /tts messages without hearing them."
+msgstr "Desligue para continuar vendo as mensagens /tts sem ouvi-las."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Read /tts messages aloud"
+msgstr "Ler mensagens /tts em voz alta"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Uses your output volume."
+msgstr "Usa o seu volume de saída."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Test voice"
+msgstr "Testar voz"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "This is how /tts sounds on this device."
+msgstr "É assim que o /tts soa neste dispositivo."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "This device has no speech synthesis, so /tts messages stay silent here."
+msgstr "Este dispositivo não tem síntese de voz, então as mensagens /tts ficam mudas aqui."
+
+#: components/app/interface/channels/text/Message.tsx
+msgid "Read aloud in voice"
+msgstr "Lida em voz alta na call"
+
+#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
+msgid "message"
+msgstr "mensagem"
+
+#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
+msgid "Read aloud to everyone in this voice channel"
+msgstr "Lê em voz alta para todo mundo neste canal de voz"

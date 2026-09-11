@@ -1,5 +1,6 @@
 import { Accessor, createMemo } from "solid-js";
 
+import { useLingui } from "@lingui/solid/macro";
 import type {
   Completion,
   CompletionContext,
@@ -34,12 +35,26 @@ const RE_emojiValidFor = /(?<!\w):\w*/;
 const RE_mentionValidFor = /(?<!\w)@\w*/;
 const RE_roleValidFor = /(?<!\w)@\w*/;
 const RE_channelValidFor = /(?<!\w)#\w*/;
+/** Slash commands only at the very start of the message, like Discord. */
+const RE_commandMatch = /\/\w*/;
+const RE_commandValidFor = /^\/\w*$/;
 
 export function codeMirrorAutoCompleteSource(
   searchSpace: Accessor<AutoCompleteSearchSpace>,
 ) {
   const state = useState();
   const client = useClient();
+  const { t } = useLingui();
+
+  const commands = createMemo<Completion[]>(() => [
+    {
+      type: "command",
+      label: "/tts",
+      detail: t`message`,
+      info: t`Read aloud to everyone in this voice channel`,
+      apply: "/tts ",
+    },
+  ]);
 
   const emoji = createMemo(() => {
     return ([] as Completion[]).concat(
@@ -120,6 +135,15 @@ export function codeMirrorAutoCompleteSource(
   return (context: CompletionContext) => {
     if (isInCodeBlock(context.state, context.pos, context.pos)) {
       return null;
+    }
+
+    const command = context.matchBefore(RE_commandMatch);
+    if (command && command.from === 0) {
+      return {
+        from: command.from,
+        options: commands(),
+        validFor: RE_commandValidFor,
+      } as CompletionResult;
     }
 
     const token = context.matchBefore(RE_match);

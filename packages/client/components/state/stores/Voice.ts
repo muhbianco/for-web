@@ -58,6 +58,9 @@ export interface TypeVoice {
   screenShareQualityAsk: boolean;
   screenShareAudio: boolean;
 
+  /** Speak `/tts` messages from the connected voice channel on this device. */
+  ttsEnabled: boolean;
+
   inputVolume: number;
   outputVolume: number;
   deafen: boolean;
@@ -103,6 +106,7 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       screenShareQuality: "low",
       screenShareQualityAsk: true,
       screenShareAudio: true,
+      ttsEnabled: true,
       inputVolume: 1.0,
       outputVolume: 1.0,
       deafen: false,
@@ -175,6 +179,10 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
 
     if (typeof input.screenShareAudio === "boolean") {
       data.screenShareAudio = input.screenShareAudio;
+    }
+
+    if (typeof input.ttsEnabled === "boolean") {
+      data.ttsEnabled = input.ttsEnabled;
     }
 
     if (typeof input.inputVolume === "number") {
@@ -380,6 +388,13 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   }
 
   /**
+   * Set whether `/tts` messages are read aloud
+   */
+  set ttsEnabled(value: boolean) {
+    this.set("ttsEnabled", value);
+  }
+
+  /**
    * Set input volume
    */
   set inputVolume(value: number) {
@@ -489,6 +504,13 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
    */
   get screenShareAudio(): boolean {
     return this.get().screenShareAudio;
+  }
+
+  /**
+   * Get whether `/tts` messages are read aloud
+   */
+  get ttsEnabled(): boolean {
+    return this.get().ttsEnabled;
   }
 
   /**

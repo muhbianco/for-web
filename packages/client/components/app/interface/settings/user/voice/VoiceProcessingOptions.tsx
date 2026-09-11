@@ -42,7 +42,7 @@ export function VoiceProcessingOptions() {
   );
 }
 
-function SectionHeader(props: {
+export function SectionHeader(props: {
   title: JSX.Element;
   description?: JSX.Element;
 }) {

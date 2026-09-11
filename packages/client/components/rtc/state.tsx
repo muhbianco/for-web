@@ -23,7 +23,7 @@ import {
   Track,
   VideoResolution,
 } from "livekit-client";
-import { Channel, Client } from "stoat.js";
+import { Channel, Client, Message } from "stoat.js";
 
 import { SoundController, useClient, useClientLifecycle, useSound } from "@revolt/client";
 import { useInstance } from "@revolt/instance";
@@ -50,6 +50,7 @@ import {
 import { VoiceProcessor } from "./VoiceProcessor";
 import { notifyPushRing, privateCallTargets } from "./callPush";
 import { canUseDeepFilter } from "./deepFilterSupport";
+import { cancelTts, parseTtsCommand, speakTts } from "./tts";
 import {
   IDLE_VOICE_ENGINE_STATUS,
   type VoiceEngineStatus,
@@ -485,6 +486,7 @@ class Voice {
     this.device.releaseWakeLock();
     this.clearRing();
     this.syncNativeVoiceSession(true);
+    cancelTts();
     const room = this.room();
 
     try {
@@ -536,6 +538,7 @@ class Voice {
       }
       this.publishDeafenState();
       if (this.#settings.deafen) {
+        cancelTts();
         this.sound.playSound("deafen");
       } else {
         this.sound.playSound("undeafen");
@@ -1107,6 +1110,31 @@ class Voice {
   playVoiceAlert() {
     this.sound.playSound("ringtoneIncoming", true, 1800);
   }
+
+  /**
+   * Discord-style `/tts`: a message with the command posted in the voice
+   * channel we are connected to is spoken locally on this device. Everyone
+   * in the call runs the same check, so everyone hears it (including the
+   * author). Nothing is published to LiveKit.
+   */
+  handleTtsMessage(message: Message) {
+    if (!this.#settings.ttsEnabled || this.#settings.deafen) return;
+    if (this.state() !== "CONNECTED") return;
+
+    const channel = this.channel();
+    if (!channel || channel.id !== message.channelId) return;
+
+    const author = message.author;
+    if (author?.bot || author?.relationship === "Blocked") return;
+    if (author && this.#settings.getUserMuted(author.id)) return;
+
+    const text = parseTtsCommand(message.contentPlain);
+    if (!text) return;
+
+    speakTts(text, { volume: this.#settings.outputVolume }).catch((error) =>
+      console.warn("[voice] tts failed", error),
+    );
+  }
 }
 
 const voiceContext = createContext<Voice>(null as unknown as Voice);
@@ -1143,13 +1171,16 @@ export function VoiceContext(props: { children: JSX.Element }) {
       void voice.handleVoiceChannelMoved(c, event);
     };
     const onAlert = () => voice.playVoiceAlert();
+    const onMessage = (message: Message) => voice.handleTtsMessage(message);
     c.addListener("voiceChannelLeave", onLeave);
     c.addListener("userMoveVoiceChannel", onMoved);
     c.addListener("voiceAlert", onAlert);
+    c.addListener("messageCreate", onMessage);
     onCleanup(() => {
       c.removeListener("voiceChannelLeave", onLeave);
       c.removeListener("userMoveVoiceChannel", onMoved);
       c.removeListener("voiceAlert", onAlert);
+      c.removeListener("messageCreate", onMessage);
     });
   });
 

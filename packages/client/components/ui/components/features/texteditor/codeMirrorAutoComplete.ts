@@ -76,6 +76,17 @@ const completionTheme = EditorView.theme({
     margin: "6px",
     "border-radius": "var(--borderRadius-circle)",
   },
+  ".cm-command-preview": {
+    display: "inline-block",
+    "font-size": "20px",
+    padding: "var(--gap-xxs)",
+    "user-select": "none",
+  },
+  ".cm-tooltip.cm-tooltip-autocomplete .cm-completionDetail": {
+    "margin-left": "var(--gap-sm)",
+    "font-style": "normal",
+    opacity: 0.7,
+  },
 });
 
 export function codeMirrorAutoComplete(
@@ -107,6 +118,11 @@ export function codeMirrorAutoComplete(
       } else if (completions[0]?.type == "channel") {
         return (
           "autocomplete-tooltip autocomplete-tooltip-channel " +
+          autocompleteScrollbarClasses
+        );
+      } else if (completions[0]?.type == "command") {
+        return (
+          "autocomplete-tooltip autocomplete-tooltip-command " +
           autocompleteScrollbarClasses
         );
       } else {
@@ -144,6 +160,15 @@ export function codeMirrorAutoComplete(
           } else if (completion.type == "channel") {
             const span = document.createElement("span");
             span.classList.add("cm-channel-preview");
+            return span;
+          } else if (completion.type == "command") {
+            const span = document.createElement("span");
+            span.classList.add(
+              "cm-command-preview",
+              "material-symbols-outlined",
+            );
+            span.setAttribute("aria-hidden", "true");
+            span.textContent = "record_voice_over";
             return span;
           } else {
             return null;
