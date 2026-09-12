@@ -13,8 +13,12 @@ import {
   rmsToDbfs,
 } from "@revolt/state/stores/noiseSuppressionPolicy";
 
+import { DeepFilterHealth } from "./deepFilterHealth";
 import { canUseDeepFilter } from "./deepFilterSupport";
-import { addPatchedDeepFilterModule } from "./patchDeepFilterWorklet";
+import {
+  addPatchedDeepFilterModule,
+  isDeepFilterStats,
+} from "./patchDeepFilterWorklet";
 import { ensureRmsGateNode } from "./rmsGateWorklet";
 import type { VoiceEngineId } from "./voiceEngineStatus";
 
@@ -23,12 +27,17 @@ import type { VoiceEngineId } from "./voiceEngineStatus";
  * PCM *before* the Opus encoder and before LiveKit publishes the track).
  *
  *   getUserMedia (EC on, AGC off in ML modes, browser NS off in ML modes)
- *     -> highpass 50 Hz
+ *     -> highpass 50 Hz (explicit mono: a stereo capture is downmixed here)
  *     -> ONE neural noise suppressor: DeepFilterNet3 (default) or RNNoise
  *     -> RMS gate (DeepFilter only, sits *after* the suppressor)
  *     -> brickwall compressor (limiter)
  *     -> input gain
- *     -> processedTrack -> Opus -> LiveKit
+ *     -> processedTrack (mono) -> Opus -> LiveKit
+ *
+ * The whole graph is forced to one channel. The suppressors only look at
+ * channel 0, and a 2-channel destination would make LiveKit publish
+ * `stereo=1`; any node that fills channel 0 only then reaches the listener as
+ * "voice in the left ear only".
  *
  * Rule: exactly one noise suppressor per signal path. Browser NS /
  * voiceIsolation are only requested when the user picks the "browser" mode
@@ -45,6 +54,12 @@ import type { VoiceEngineId } from "./voiceEngineStatus";
  * DeepFilterNet's `atten_lim_db`. The "auto" preset measures the pre-filter
  * noise floor while the gate is closed (nobody talking) and picks the limit
  * from that; fixed presets use DEEPFILTER_ATTEN_DB.
+ *
+ * Overload: the patched worklet reports per-frame timing once a second. When
+ * DeepFilterHealth sees the model falling behind real time for several
+ * seconds (cold WASM, busy CPU right after boot) the chain is rewired to
+ * RNNoise on the same context, keeping the published track, and the reason is
+ * surfaced in `lastError`.
  */
 
 let sharedDeepFilterCore: Promise<DeepFilterNet3Core> | undefined;
@@ -66,6 +81,12 @@ export interface VoiceProcessorSnapshot {
   deepFilterAttenDb?: number;
   /** Estimated pre-filter background noise (dBFS), auto preset only. */
   noiseFloorDb?: number;
+  /** Slowest DeepFilter frame in the last second (ms). */
+  deepFilterMaxFrameMs?: number;
+  /** Share of slow DeepFilter frames in the last second (0-1). */
+  deepFilterSlowRatio?: number;
+  /** True once DeepFilter was replaced by RNNoise because it fell behind. */
+  deepFilterOverloaded?: boolean;
 }
 
 function deepFilterCdnUrl(): string {
@@ -106,6 +127,13 @@ function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+/** Mix whatever arrives at this node's input down to one channel. */
+function forceMono(node: AudioNode) {
+  node.channelCount = 1;
+  node.channelCountMode = "explicit";
+  node.channelInterpretation = "speakers";
+}
+
 export class VoiceProcessor implements TrackProcessor<
   Track.Kind.Audio,
   AudioProcessorOptions
@@ -129,6 +157,10 @@ export class VoiceProcessor implements TrackProcessor<
   private noiseFloorDb?: number;
   private noiseFloorTimer?: ReturnType<typeof setInterval>;
   private analyserNode?: AnalyserNode;
+  private deepFilterHealth?: DeepFilterHealth;
+  /** Set when DeepFilter fell behind on this device; stays on for the call. */
+  private deepFilterOverloaded = false;
+  private degrading = false;
 
   private noiseSuppressionNode?: RNNoiseNode;
   private deepFilterNode?: AudioWorkletNode;
@@ -170,6 +202,15 @@ export class VoiceProcessor implements TrackProcessor<
         this.engine === "deepfilter" ? this.deepFilterAttenDb : undefined,
       noiseFloorDb:
         this.engine === "deepfilter" ? this.noiseFloorDb : undefined,
+      deepFilterMaxFrameMs:
+        this.engine === "deepfilter"
+          ? this.deepFilterHealth?.snapshot().lastMaxMs
+          : undefined,
+      deepFilterSlowRatio:
+        this.engine === "deepfilter"
+          ? this.deepFilterHealth?.snapshot().lastSlowRatio
+          : undefined,
+      deepFilterOverloaded: this.deepFilterOverloaded,
     };
   }
 
@@ -274,6 +315,55 @@ export class VoiceProcessor implements TrackProcessor<
     };
   }
 
+  /**
+   * Per-second frame timing from the patched worklet. Three slow seconds in a
+   * row means the CPU cannot run the model in real time right now; rewire to
+   * RNNoise instead of letting the voice chop.
+   */
+  private listenToDeepFilterStats(
+    node: AudioWorkletNode,
+    context: AudioContext,
+  ) {
+    const health = new DeepFilterHealth();
+    this.deepFilterHealth = health;
+    node.port.onmessage = (event: MessageEvent) => {
+      if (!isDeepFilterStats(event.data)) return;
+      if (this.engine !== "deepfilter" || this.deepFilterNode !== node) return;
+      const overloaded = health.observe(event.data);
+      this.emitStatus();
+      if (overloaded && !this.degrading) {
+        void this.degradeToRnnoise(context, event.data.maxMs);
+      }
+    };
+  }
+
+  private async degradeToRnnoise(context: AudioContext, maxMs: number) {
+    this.degrading = true;
+    const token = ++this.graphToken;
+    try {
+      await RNNoiseNode.loadModule(
+        context,
+        CONFIGURATION.RNNOISE_WORKLET_CDN_URL,
+      );
+      if (token !== this.graphToken || !this.sourceNode || !this.gainNode)
+        return;
+      this.disconnectNoiseGraph();
+      this.deepFilterOverloaded = true;
+      this.connectRnnoise(context);
+      this.lastError = `DeepFilterNet fell behind real time (slowest frame ${maxMs} ms); using RNNoise for this call`;
+      console.warn("[voice]", this.lastError);
+    } catch (error) {
+      // Keep DeepFilter running rather than dropping to no suppression.
+      console.warn(
+        "[voice] RNNoise fallback failed; staying on DeepFilter",
+        error,
+      );
+    } finally {
+      this.degrading = false;
+      this.emitStatus();
+    }
+  }
+
   private emitStatus() {
     this.onStatus?.();
   }
@@ -311,6 +401,10 @@ export class VoiceProcessor implements TrackProcessor<
     if (this.gateNode) {
       this.gateNode.port.onmessage = null;
     }
+    if (this.deepFilterNode) {
+      this.deepFilterNode.port.onmessage = null;
+    }
+    this.deepFilterHealth = undefined;
     this.stopNoiseFloorTracking();
     this.deepFilterAttenDb = undefined;
     this.noiseFloorDb = undefined;
@@ -338,6 +432,9 @@ export class VoiceProcessor implements TrackProcessor<
     this.highpassNode.type = "highpass";
     this.highpassNode.frequency.value = 50;
     this.highpassNode.Q.value = Math.SQRT1_2;
+    // Head of the chain: downmix a stereo capture to mono before any
+    // suppressor sees it (they only process channel 0).
+    forceMono(this.highpassNode);
 
     this.compressorNode = context.createDynamicsCompressor();
     this.compressorNode.threshold.value = -3;
@@ -405,6 +502,9 @@ export class VoiceProcessor implements TrackProcessor<
       addPatchedDeepFilterModule(addModule, moduleURL, options);
     try {
       const node = await core.createAudioWorkletNode(context);
+      // The worklet copies channel 0 to every output channel; keep it at one
+      // so the rest of the chain never widens again.
+      forceMono(node);
       deepFilterNodes.set(context, node);
       this.deepFilterNode = node;
       return node;
@@ -420,7 +520,12 @@ export class VoiceProcessor implements TrackProcessor<
     this.sourceNode = context.createMediaStreamSource(new MediaStream([track]));
     this.gainNode = context.createGain();
     this.gainNode.gain.value = this.settings.inputVolume;
+    // Bypass / browser modes connect source -> gain directly, so the gain
+    // node is the mono point there. The destination defaults to 2 channels,
+    // which is what LiveKit reads as a stereo input.
+    forceMono(this.gainNode);
     this.destinationNode = context.createMediaStreamDestination();
+    this.destinationNode.channelCount = 1;
     this.gainNode.connect(this.destinationNode);
     this.processedTrack = this.destinationNode.stream.getAudioTracks()[0];
   }
@@ -446,6 +551,19 @@ export class VoiceProcessor implements TrackProcessor<
       return;
     }
 
+    if (mode === "advanced" && this.deepFilterOverloaded) {
+      // Already proven too slow during this call; do not retry on rewire.
+      // `context` may be the 48 kHz DeepFilter context, which never saw
+      // RNNoise's worklet; addModule with the same URL is idempotent.
+      await RNNoiseNode.loadModule(
+        context,
+        CONFIGURATION.RNNOISE_WORKLET_CDN_URL,
+      );
+      if (token !== this.graphToken) return;
+      this.connectRnnoise(context);
+      return;
+    }
+
     if (mode === "advanced" && canUseDeepFilter()) {
       try {
         const node = await this.ensureDeepFilterNode(context);
@@ -454,6 +572,7 @@ export class VoiceProcessor implements TrackProcessor<
         if (this.settings.noiseSupression !== "advanced") return;
         this.gateNode = gate;
         this.listenToGate(gate);
+        this.listenToDeepFilterStats(node, context);
         this.applyGateSettings();
         this.connectMlChain(node, context, gate);
         this.engine = "deepfilter";

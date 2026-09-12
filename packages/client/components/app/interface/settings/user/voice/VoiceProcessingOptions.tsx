@@ -343,6 +343,17 @@ function DiagnosticsSection() {
     return t`Moderate (${rounded} dBFS)`;
   };
 
+  /** Slowest DeepFilter frame in the last second and how many were slow. */
+  const frameTimeLabel = () => {
+    const current = status();
+    if (current.deepFilterMaxFrameMs === undefined) return "—";
+    const slowPct = Math.round((current.deepFilterSlowRatio ?? 0) * 100);
+    const maxMs = current.deepFilterMaxFrameMs;
+    return slowPct > 0
+      ? t`max ${maxMs} ms (${slowPct}% slow)`
+      : t`max ${maxMs} ms`;
+  };
+
   const rows = (): { label: string; value: string }[] => {
     const current = status();
     const list = [
@@ -361,8 +372,16 @@ function DiagnosticsSection() {
             : "—",
       });
       list.push({ label: t`Background noise`, value: noiseFloorLabel() });
+      list.push({ label: t`Frame time`, value: frameTimeLabel() });
     }
     list.push(
+      {
+        label: t`Microphone channels`,
+        value:
+          current.inputChannelCount !== undefined
+            ? String(current.inputChannelCount)
+            : "—",
+      },
       {
         label: t`Browser noise suppression`,
         value: yesNo(current.noiseSuppression),
@@ -418,10 +437,22 @@ function DiagnosticsSection() {
             <Notice>
               <Symbol size={18}>info</Symbol>
               <Text class="label" size="small">
-                <Trans>
-                  DeepFilterNet could not start on this device, so RNNoise is
-                  running instead. You still have a single noise suppressor.
-                </Trans>
+                <Show
+                  when={status().deepFilterOverloaded}
+                  fallback={
+                    <Trans>
+                      DeepFilterNet could not start on this device, so RNNoise
+                      is running instead. You still have a single noise
+                      suppressor.
+                    </Trans>
+                  }
+                >
+                  <Trans>
+                    DeepFilterNet could not keep up with your CPU during this
+                    call, so RNNoise took over. Rejoin the call to try
+                    DeepFilterNet again.
+                  </Trans>
+                </Show>
                 <Show when={status().lastError}>
                   {" "}
                   <code>{status().lastError}</code>

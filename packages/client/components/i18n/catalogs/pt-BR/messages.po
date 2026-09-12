@@ -4013,6 +4013,26 @@ msgid "Background noise"
 msgstr "Ruído de fundo"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Frame time"
+msgstr "Tempo por quadro"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms ({slowPct}% slow)"
+msgstr "máx. {maxMs} ms ({slowPct}% lentos)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms"
+msgstr "máx. {maxMs} ms"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone channels"
+msgstr "Canais do microfone"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet could not keep up with your CPU during this call, so RNNoise took over. Rejoin the call to try DeepFilterNet again."
+msgstr "O DeepFilterNet não acompanhou o seu processador nesta chamada, então o RNNoise assumiu. Entre de novo na chamada para tentar o DeepFilterNet outra vez."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Browser noise suppression"
 msgstr "Supressão de ruído do navegador"
 

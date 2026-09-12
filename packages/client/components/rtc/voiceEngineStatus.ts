@@ -25,6 +25,14 @@ export interface VoiceEngineStatus {
   deepFilterAttenDb?: number;
   /** Estimated background noise before DeepFilter (dBFS). */
   noiseFloorDb?: number;
+  /** Channels of the raw microphone capture (before the mono downmix). */
+  inputChannelCount?: number;
+  /** Slowest DeepFilter frame in the last second (ms). */
+  deepFilterMaxFrameMs?: number;
+  /** Share of slow DeepFilter frames in the last second (0-1). */
+  deepFilterSlowRatio?: number;
+  /** DeepFilter was replaced by RNNoise during this call because it fell behind. */
+  deepFilterOverloaded?: boolean;
 }
 
 export const IDLE_VOICE_ENGINE_STATUS: VoiceEngineStatus = {

@@ -286,8 +286,13 @@ class Voice {
 
   private syncEngineStatus() {
     const publication = this.getMicrophoneTrack();
-    const media = publication?.audioTrack?.mediaStreamTrack;
-    const hardware = media?.getSettings?.();
+    const audioTrack = publication?.audioTrack;
+    // `mediaStreamTrack` is the processed track once a processor is attached
+    // (a MediaStreamDestination with no capture settings); read the capture
+    // device's settings instead.
+    const hardware: (MediaTrackSettings & { channelCount?: number }) | undefined =
+      audioTrack?.getSourceTrackSettings?.() ??
+      audioTrack?.mediaStreamTrack?.getSettings?.();
     const snapshot = this.voiceProcessor?.getSnapshot();
     const inCall =
       this.state() === "CONNECTED" ||
@@ -310,6 +315,10 @@ class Voice {
       gateOpenThreshold: snapshot?.gateOpenThreshold,
       deepFilterAttenDb: snapshot?.deepFilterAttenDb,
       noiseFloorDb: snapshot?.noiseFloorDb,
+      inputChannelCount: hardware?.channelCount,
+      deepFilterMaxFrameMs: snapshot?.deepFilterMaxFrameMs,
+      deepFilterSlowRatio: snapshot?.deepFilterSlowRatio,
+      deepFilterOverloaded: snapshot?.deepFilterOverloaded,
     });
   }
 
