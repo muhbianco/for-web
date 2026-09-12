@@ -14,6 +14,7 @@ WORKDIR /build
 COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
 
 COPY packages/ packages/
+COPY patches/ patches/
 
 # VoiceCallUpdate lives in our fork overlay: packages/stoat.js is still the
 # upstream submodule, which VPS `git submodule update` resets to a clean SHA.

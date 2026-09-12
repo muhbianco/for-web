@@ -19,9 +19,11 @@ import {
 import {
   LocalTrackPublication,
   Room,
+  ScreenShareCaptureOptions,
   ScreenSharePresets,
   Track,
-  VideoResolution,
+  VideoEncoding,
+  VideoPresets,
 } from "livekit-client";
 import { Channel, Client, Message } from "stoat.js";
 
@@ -69,11 +71,14 @@ export type CallRing = {
   userId: string;
 };
 
-type ScreenShareQuality = {
+export type VoiceLayout = "fullscreen" | "expanded" | "collapsed" | undefined;
+
+type ScreenShareQuality = Required<
+  Pick<ScreenShareCaptureOptions, "contentHint" | "resolution">
+> & {
   name: ScreenShareQualityName;
-  resolution: VideoResolution;
   fullName: string;
-  contentHint: "detail" | "text" | "motion";
+  encoding: VideoEncoding;
 };
 
 class Voice {
@@ -99,8 +104,8 @@ class Voice {
   screenshare: Accessor<boolean>;
   #setScreenshare: Setter<boolean>;
 
-  fullscreen: Accessor<boolean>;
-  #setFullscreen: Setter<boolean>;
+  layout: Accessor<VoiceLayout>;
+  #setLayout: Setter<VoiceLayout>;
 
   focusId: Accessor<string | undefined>;
   #setFocus: Setter<string | undefined>;
@@ -160,9 +165,9 @@ class Voice {
     this.screenshare = screenshare;
     this.#setScreenshare = setScreenshare;
 
-    const [fullscreen, setFullscreen] = createSignal(false);
-    this.fullscreen = fullscreen;
-    this.#setFullscreen = setFullscreen;
+    const [layout, setLayout] = createSignal<VoiceLayout>();
+    this.layout = layout;
+    this.#setLayout = setLayout;
 
     const [focus, setFocus] = createSignal<string>();
     this.focusId = focus;
@@ -340,12 +345,13 @@ class Voice {
         deviceId: this.#settings.preferredAudioOutputDevice,
       },
       videoCaptureDefaults: {
-        resolution: {
-          width: 1280,
-          height: 720,
-          frameRate: 30,
-        },
+        // TODO: Support higher resolutions based on limits
+        resolution: VideoPresets.h720.resolution,
         deviceId: this.#settings.preferredVideoDevice,
+      },
+      publishDefaults: {
+        videoEncoding: VideoPresets.h720.encoding,
+        screenShareEncoding: ScreenSharePresets.h720fps30.encoding,
       },
     });
 
@@ -363,6 +369,7 @@ class Voice {
       this.#setState("CONNECTING");
       this.#setVideo(false);
       this.#setScreenshare(false);
+      this.#setLayout();
       this.#setFocus(undefined);
       this.#setShowBar(true);
     });
@@ -516,7 +523,7 @@ class Voice {
       this.#setState("READY");
       this.#setRoom();
       this.#setChannel();
-      this.#setFullscreen(false);
+      this.#setLayout();
       this.#setVideo(false);
       this.#setScreenshare(false);
       this.#setFocus(undefined);
@@ -616,6 +623,7 @@ class Voice {
         resolution: ScreenSharePresets.h720fps30.resolution,
         fullName: `720p 30FPS`,
         contentHint: "motion",
+        encoding: ScreenSharePresets.h720fps30.encoding,
       },
     };
 
@@ -631,6 +639,7 @@ class Voice {
         resolution: ScreenSharePresets.h1080fps30.resolution,
         fullName: `1080p 30FPS`,
         contentHint: "motion",
+        encoding: ScreenSharePresets.h1080fps30.encoding,
       };
       const originalResolution = ScreenSharePresets.original.resolution;
       originalResolution.frameRate = 5;
@@ -650,6 +659,7 @@ class Voice {
         resolution: originalResolution,
         fullName: `Source 5FPS`,
         contentHint: "text",
+        encoding: ScreenSharePresets.original.encoding,
       };
     }
 
@@ -768,19 +778,23 @@ class Voice {
     }
 
     room.localParticipant
-      .setScreenShareEnabled(true, {
-        resolution,
-        contentHint: quality.contentHint,
-        audio: wantsAudio
-          ? {
-              autoGainControl: false,
-              echoCancellation: false,
-              noiseSuppression: false,
-              voiceIsolation: false,
-              restrictOwnAudio: true,
-            }
-          : false,
-      })
+      .setScreenShareEnabled(
+        true,
+        {
+          resolution,
+          contentHint: quality.contentHint,
+          audio: wantsAudio
+            ? {
+                autoGainControl: false,
+                echoCancellation: false,
+                noiseSuppression: false,
+                voiceIsolation: false,
+                restrictOwnAudio: true,
+              }
+            : false,
+        },
+        { screenShareEncoding: quality.encoding },
+      )
       .then((localTrack) => this.onScreenshareStarted(localTrack, selection))
       .catch((e) => this.onErr(e));
   }
@@ -883,8 +897,20 @@ class Voice {
     }
   }
 
-  toggleFullscreen(fullscreen: boolean = !this.fullscreen()) {
-    this.#setFullscreen(fullscreen);
+  resetLayout() {
+    this.#setLayout();
+  }
+
+  toggleLayout(type: VoiceLayout) {
+    this.#setLayout((l) => (l === type ? undefined : type));
+  }
+
+  fullscreen() {
+    return this.layout() === "fullscreen";
+  }
+
+  toggleFullscreen(on: boolean = this.layout() !== "fullscreen") {
+    this.#setLayout(on ? "fullscreen" : undefined);
   }
 
   trackId(t: TrackReferenceOrPlaceholder) {
