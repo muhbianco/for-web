@@ -57,6 +57,8 @@ declare global {
       getWindowState?(): Promise<{ maximised: boolean }>;
       onWindowState?(onState: (payload: { maximised: boolean }) => void): void;
       setWindowBackground?(color: string): void;
+      /** Study bot: black out screenshots/recordings while a challenge is on screen. */
+      setContentProtection?(enabled: boolean): void;
       /** Screens and windows offered by the shell for its own picker. */
       listScreenSources?(): Promise<
         {

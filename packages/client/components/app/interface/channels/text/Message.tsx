@@ -48,7 +48,9 @@ import {
 } from "../../../menus/UserContextMenu";
 
 import { createIsTimedOut } from "@revolt/common/lib/createIsTimedOut";
+import { parseStudyMessage } from "@revolt/common/lib/studyProtocol";
 import { EditMessage } from "./EditMessage";
+import { StudyProtectedMessage } from "./StudyChallenge";
 
 /**
  * Regex for matching URLs
@@ -151,6 +153,13 @@ export function Message(props: Props) {
    * Body of a `/tts` message without the command, shown with a speaker icon
    */
   const ttsBody = () => stripTtsPrefix(props.message.content);
+
+  /**
+   * Study-bot challenge: rendered without selection/copy (see StudyChallenge)
+   */
+  const study = createMemo(() =>
+    props.message.author?.bot ? parseStudyMessage(props.message.content) : null,
+  );
 
   const timedOut = createIsTimedOut(() => props.message.member?.timeout);
 
@@ -385,6 +394,11 @@ export function Message(props: Props) {
         <Switch>
           <Match when={props.editing}>
             <EditMessage message={props.message} />
+          </Match>
+          <Match when={study()}>
+            {(item) => (
+              <StudyProtectedMessage message={props.message} study={item()} />
+            )}
           </Match>
           <Match when={props.message.content && !isOnlyGIF()}>
             <BreakText>

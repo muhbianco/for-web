@@ -4,6 +4,7 @@ import { Trans } from "@lingui/solid/macro";
 import { File, Message } from "stoat.js";
 
 import { useClient, useUser } from "@revolt/client";
+import { parseStudyMessage } from "@revolt/common/lib/studyProtocol";
 import { useInstance } from "@revolt/instance";
 import { CustomEmoji, UnicodeEmoji } from "@revolt/markdown/emoji";
 import { useModals } from "@revolt/modal";
@@ -199,9 +200,11 @@ export function MessageContextMenu(props: {
         <ContextMenuButton icon={MdMarkChatUnread} onClick={markAsUnread}>
           <Trans>Mark as unread</Trans>
         </ContextMenuButton>
-        <ContextMenuButton icon={MdContentCopy} onClick={copyText}>
-          <Trans>Copy text</Trans>
-        </ContextMenuButton>
+        <Show when={!parseStudyMessage(props.message!.content)}>
+          <ContextMenuButton icon={MdContentCopy} onClick={copyText}>
+            <Trans>Copy text</Trans>
+          </ContextMenuButton>
+        </Show>
 
         <ContextMenuDivider />
 
