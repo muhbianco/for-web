@@ -92,15 +92,25 @@ export function studyStartContent(client: "desktop" | "web"): string {
 }
 
 /**
- * Only the Electron shell counts as desktop. PC browsers cannot black out
- * screenshots, so they are treated like phones: no content, no buttons.
+ * Electron shell that can black out screenshots. PC browsers cannot, and
+ * older Muchat `.exe` builds expose `window.native` without
+ * `setContentProtection`, so they are treated like phones: no content.
  */
 export function isStudyDesktopClient(
   win: Pick<Window, "native"> | undefined = typeof window === "undefined"
     ? undefined
     : window,
 ): boolean {
-  return Boolean(win?.native);
+  return typeof win?.native?.setContentProtection === "function";
+}
+
+/** Installed desktop shell that still cannot black out a study challenge. */
+export function isStaleStudyDesktopShell(
+  win: Pick<Window, "native"> | undefined = typeof window === "undefined"
+    ? undefined
+    : window,
+): boolean {
+  return Boolean(win?.native) && !isStudyDesktopClient(win);
 }
 
 export function studyClientTag(

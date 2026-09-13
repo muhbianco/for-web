@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   STUDY_MARK,
   isStudyDesktopClient,
+  isStaleStudyDesktopShell,
   isStudyMenu,
   isStudyQuestion,
   isStudyTyped,
@@ -92,10 +93,18 @@ test("commands match what the bot accepts", () => {
   );
 });
 
-test("only the Electron shell is a desktop client", () => {
-  assert.equal(isStudyDesktopClient({ native: {} as Window["native"] }), true);
+test("only a shell that can black out screenshots is a desktop client", () => {
+  const protectedNative = {
+    native: { setContentProtection() {} } as Window["native"],
+  };
+  const staleNative = { native: {} as Window["native"] };
+  assert.equal(isStudyDesktopClient(protectedNative), true);
+  assert.equal(isStudyDesktopClient(staleNative), false);
+  assert.equal(isStaleStudyDesktopShell(staleNative), true);
+  assert.equal(isStaleStudyDesktopShell(protectedNative), false);
   assert.equal(isStudyDesktopClient({}), false);
   assert.equal(isStudyDesktopClient(undefined), false);
-  assert.equal(studyClientTag({ native: {} as Window["native"] }), "desktop");
+  assert.equal(studyClientTag(protectedNative), "desktop");
+  assert.equal(studyClientTag(staleNative), "web");
   assert.equal(studyClientTag({}), "web");
 });

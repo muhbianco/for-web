@@ -10,6 +10,7 @@ import {
   STUDY_TYPED_HINTS,
   StudyMessage,
   isStudyDesktopClient,
+  isStaleStudyDesktopShell,
   isStudyMenu,
   isStudyQuestion,
   isStudyTyped,
@@ -193,6 +194,7 @@ export function StudyProtectedMessage(props: {
 }
 
 function StudyNotice(props: { study: StudyMessage }) {
+  const stale = isStaleStudyDesktopShell();
   const what = () => {
     switch (props.study.q) {
       case "u":
@@ -207,14 +209,31 @@ function StudyNotice(props: { study: StudyMessage }) {
   };
   return (
     <Notice>
-      <strong>{what()} — só no app Muchat para PC.</strong>
-      <span>
-        Aqui no navegador ou no celular o conteúdo fica escondido e as respostas
-        não valem. Abra o app no computador e me chame por lá.
-      </span>
-      <a href={STUDY_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
-        Baixar o app
-      </a>
+      <Show
+        when={stale}
+        fallback={
+          <>
+            <strong>{what()} — só no app Muchat para PC.</strong>
+            <span>
+              Aqui no navegador ou no celular o conteúdo fica escondido e as
+              respostas não valem. Abra o app no computador e me chame por lá.
+            </span>
+            <a
+              href={STUDY_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Baixar o app
+            </a>
+          </>
+        }
+      >
+        <strong>{what()} — atualize o app Muchat.</strong>
+        <span>
+          Esta versão não esconde print da tela. Em Configurações → Desktop,
+          instale a atualização e abra o app de novo.
+        </span>
+      </Show>
     </Notice>
   );
 }
