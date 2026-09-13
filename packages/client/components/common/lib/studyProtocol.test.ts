@@ -3,11 +3,13 @@ import test from "node:test";
 
 import {
   STUDY_MARK,
-  isStudyMobileClient,
+  isStudyDesktopClient,
+  isStudyMenu,
   isStudyQuestion,
   parseStudyMessage,
   studyAnswerContent,
   studyClientTag,
+  studyStartContent,
 } from "./studyProtocol.ts";
 
 const ID = "2026-09-14-daily";
@@ -22,18 +24,27 @@ test("parses the bot marker and strips it from the body", () => {
     body: "**Pergunta 3**\nTexto",
   });
   assert.equal(isStudyQuestion(parsed!), true);
+  const material = parseStudyMessage(
+    `${STUDY_MARK}study:${ID}:m${STUDY_MARK}\nOlá`,
+  )!;
+  assert.equal(isStudyQuestion(material), false);
+  assert.equal(isStudyMenu(material), false);
+  const menu = parseStudyMessage(
+    `${STUDY_MARK}study:menu00:u${STUDY_MARK}\nOi!`,
+  )!;
+  assert.equal(isStudyMenu(menu), true);
   assert.equal(
     isStudyQuestion(
-      parseStudyMessage(`${STUDY_MARK}study:${ID}:m${STUDY_MARK}\nOlá`)!,
+      parseStudyMessage(`${STUDY_MARK}study:${ID}:8${STUDY_MARK}\nx`)!,
     ),
-    false,
+    true,
   );
 });
 
 test("ignores ordinary messages and forged markers", () => {
   assert.equal(parseStudyMessage("study:abc:1"), null);
   assert.equal(
-    parseStudyMessage(`${STUDY_MARK}study:${ID}:9${STUDY_MARK}\nx`),
+    parseStudyMessage(`${STUDY_MARK}study:${ID}:0${STUDY_MARK}\nx`),
     null,
   );
   assert.equal(
@@ -44,7 +55,7 @@ test("ignores ordinary messages and forged markers", () => {
   assert.equal(parseStudyMessage(undefined), null);
 });
 
-test("answer content matches what the bot accepts", () => {
+test("commands match what the bot accepts", () => {
   const study = parseStudyMessage(
     `${STUDY_MARK}study:${ID}:2${STUDY_MARK}\nx`,
   )!;
@@ -54,48 +65,15 @@ test("answer content matches what the bot accepts", () => {
   );
   assert.match(
     studyAnswerContent(study, "A", "web"),
-    /^study:[A-Za-z0-9_-]{6,48}:[1-5]:[A-D]:(desktop|web)$/,
+    /^study:[A-Za-z0-9_-]{6,48}:[1-9]:[A-D]:(desktop|web)$/,
   );
+  assert.equal(studyStartContent("desktop"), "study:start:desktop");
 });
 
-test("phones are refused, desktop and PC browsers allowed", () => {
-  assert.equal(
-    isStudyMobileClient(
-      { MuchatNative: { hideSplash() {} } },
-      "Mozilla/5.0 (Linux; Android 14) Muchat/1.2",
-    ),
-    true,
-  );
-  assert.equal(
-    isStudyMobileClient(
-      {},
-      "Mozilla/5.0 (Linux; Android 14) Chrome/120 Mobile",
-    ),
-    true,
-  );
-  assert.equal(
-    isStudyMobileClient({}, "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0)"),
-    true,
-  );
-  assert.equal(
-    isStudyMobileClient(
-      {},
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120",
-    ),
-    false,
-  );
-  assert.equal(
-    isStudyMobileClient(
-      { native: {} as Window["native"] },
-      "Mozilla/5.0 (Windows NT 10.0) Electron/33",
-    ),
-    false,
-  );
-  assert.equal(isStudyMobileClient(undefined, ""), false);
-});
-
-test("client tag distinguishes the Electron shell", () => {
+test("only the Electron shell is a desktop client", () => {
+  assert.equal(isStudyDesktopClient({ native: {} as Window["native"] }), true);
+  assert.equal(isStudyDesktopClient({}), false);
+  assert.equal(isStudyDesktopClient(undefined), false);
   assert.equal(studyClientTag({ native: {} as Window["native"] }), "desktop");
   assert.equal(studyClientTag({}), "web");
-  assert.equal(studyClientTag(undefined), "web");
 });

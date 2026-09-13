@@ -5,21 +5,25 @@
  *
  *     \u2063study:<challenge_id>:<q>\u2063\n<body>
  *
- * `q` is `m` (reading material), `1`..`5` (question) or `r` (result).
- * Answers only count when sent as `study:<id>:<q>:<A-D>:<desktop|web>`,
- * which only the protected UI produces — loose text and phones are refused.
+ * `q` is `u` (menu), `m` (reading material), `1`..`9` (question) or `r`
+ * (result). Only the Electron desktop shell renders the body; browsers and
+ * the Android WebView show a notice instead. Commands the bot accepts:
+ *
+ *     study:start:desktop                          start today's challenge
+ *     study:<id>:<q>:<A-D>:<desktop|web>           answer a question
  */
 
 export const STUDY_MARK = "\u2063";
 export const STUDY_LETTERS = ["A", "B", "C", "D"] as const;
+export const STUDY_DOWNLOAD_URL = "https://chat.muhbianco.com.br/download";
 
 const RE_STUDY = new RegExp(
-  `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(m|[1-5]|r)${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
+  `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(u|m|[1-9]|r)${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
 );
 
 export type StudyMessage = {
   challengeId: string;
-  /** `m`, `1`..`5` or `r` */
+  /** `u`, `m`, `1`..`9` or `r` */
   q: string;
   body: string;
 };
@@ -34,7 +38,11 @@ export function parseStudyMessage(
 }
 
 export function isStudyQuestion(study: StudyMessage): boolean {
-  return /^[1-5]$/.test(study.q);
+  return /^[1-9]$/.test(study.q);
+}
+
+export function isStudyMenu(study: StudyMessage): boolean {
+  return study.q === "u";
 }
 
 export function studyAnswerContent(
@@ -45,24 +53,20 @@ export function studyAnswerContent(
   return `study:${study.challengeId}:${study.q}:${letter}:${client}`;
 }
 
+export function studyStartContent(client: "desktop" | "web"): string {
+  return `study:start:${client}`;
+}
+
 /**
- * Phones are out for now: no content protection there. The Android WebView
- * exposes `MuchatNative` and tags its UA with `Muchat/`; browsers on phones
- * are caught by the UA family.
+ * Only the Electron shell counts as desktop. PC browsers cannot black out
+ * screenshots, so they are treated like phones: no content, no buttons.
  */
-export function isStudyMobileClient(
-  win: Pick<Window, "MuchatNative" | "native"> | undefined = typeof window ===
-  "undefined"
+export function isStudyDesktopClient(
+  win: Pick<Window, "native"> | undefined = typeof window === "undefined"
     ? undefined
     : window,
-  userAgent: string = typeof navigator === "undefined"
-    ? ""
-    : navigator.userAgent,
 ): boolean {
-  if (!win) return false;
-  if (win.MuchatNative) return true;
-  if (win.native) return false;
-  return /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+  return Boolean(win?.native);
 }
 
 export function studyClientTag(
@@ -70,5 +74,5 @@ export function studyClientTag(
     ? undefined
     : window,
 ): "desktop" | "web" {
-  return win?.native ? "desktop" : "web";
+  return isStudyDesktopClient(win) ? "desktop" : "web";
 }
