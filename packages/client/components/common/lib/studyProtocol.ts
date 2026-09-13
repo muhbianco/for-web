@@ -79,6 +79,10 @@ export function isStudyMenu(study: StudyMessage): boolean {
   return study.q === "u";
 }
 
+export function isStudyReading(study: StudyMessage): boolean {
+  return study.q === "m";
+}
+
 export function studyAnswerContent(
   study: StudyMessage,
   letter: string,

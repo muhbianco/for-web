@@ -12,6 +12,7 @@ import {
   isStudyDesktopClient,
   isStaleStudyDesktopShell,
   isStudyMenu,
+  isStudyReading,
   isStudyQuestion,
   isStudyTyped,
   studyAnswerContent,
@@ -111,6 +112,18 @@ export function StudyProtectedMessage(props: {
               onPress={() => send(studyStartContent(studyClientTag()), "start")}
             >
               Começar o desafio de hoje
+            </Button>
+          </Answers>
+        </Show>
+        <Show when={isStudyReading(props.study)}>
+          <Answers>
+            <Button
+              size="sm"
+              variant="filled"
+              isDisabled={busy() || !!sent()}
+              onPress={() => send("pronto", "ready")}
+            >
+              Pronto, começar as perguntas
             </Button>
           </Answers>
         </Show>

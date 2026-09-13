@@ -6,6 +6,7 @@ import {
   isStudyDesktopClient,
   isStaleStudyDesktopShell,
   isStudyMenu,
+  isStudyReading,
   isStudyQuestion,
   isStudyTyped,
   parseStudyMessage,
@@ -44,10 +45,12 @@ test("parses the bot marker and strips it from the body", () => {
   )!;
   assert.equal(isStudyQuestion(material), false);
   assert.equal(isStudyMenu(material), false);
+  assert.equal(isStudyReading(material), true);
   const menu = parseStudyMessage(
     `${STUDY_MARK}study:menu00:u${STUDY_MARK}\nOi!`,
   )!;
   assert.equal(isStudyMenu(menu), true);
+  assert.equal(isStudyReading(menu), false);
   assert.equal(
     isStudyQuestion(
       parseStudyMessage(`${STUDY_MARK}study:${ID}:8${STUDY_MARK}\nx`)!,
