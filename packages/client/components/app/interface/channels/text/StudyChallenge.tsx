@@ -6,13 +6,17 @@ import { styled } from "styled-system/jsx";
 import {
   STUDY_DOWNLOAD_URL,
   STUDY_LETTERS,
+  STUDY_MAX_TYPED,
+  STUDY_TYPED_HINTS,
   StudyMessage,
   isStudyDesktopClient,
   isStudyMenu,
   isStudyQuestion,
+  isStudyTyped,
   studyAnswerContent,
   studyClientTag,
   studyStartContent,
+  studyTypedContent,
 } from "@revolt/common/lib/studyProtocol";
 import { Markdown } from "@revolt/markdown";
 import { Button } from "@revolt/ui";
@@ -50,7 +54,17 @@ export function StudyProtectedMessage(props: {
 }) {
   const [sent, setSent] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
+  const [typed, setTyped] = createSignal("");
   const desktop = isStudyDesktopClient();
+  const typedHint = () =>
+    props.study.kind === "mc" ? "" : STUDY_TYPED_HINTS[props.study.kind];
+  const multiline = () => props.study.kind === "text";
+
+  function submitTyped() {
+    const value = typed().trim();
+    if (!value) return;
+    void send(studyTypedContent(props.study, value, studyClientTag()), value);
+  }
 
   onMount(() => {
     if (desktop) acquireContentProtection();
@@ -99,7 +113,60 @@ export function StudyProtectedMessage(props: {
             </Button>
           </Answers>
         </Show>
-        <Show when={isStudyQuestion(props.study)}>
+        <Show when={isStudyTyped(props.study)}>
+          <TypedForm
+            onSubmit={(event) => {
+              event.preventDefault();
+              submitTyped();
+            }}
+          >
+            <Show
+              when={multiline()}
+              fallback={
+                <TypedInput
+                  type="text"
+                  maxLength={STUDY_MAX_TYPED}
+                  placeholder={typedHint()}
+                  value={typed()}
+                  disabled={busy() || !!sent()}
+                  autocomplete="off"
+                  spellcheck={false}
+                  onInput={(event) => setTyped(event.currentTarget.value)}
+                  onPaste={block}
+                />
+              }
+            >
+              <TypedArea
+                rows={3}
+                maxLength={STUDY_MAX_TYPED}
+                placeholder={typedHint()}
+                value={typed()}
+                disabled={busy() || !!sent()}
+                spellcheck={false}
+                onInput={(event) => setTyped(event.currentTarget.value)}
+                onPaste={block}
+                onKeyDown={(event) => {
+                  if (
+                    event.key === "Enter" &&
+                    (event.ctrlKey || event.metaKey)
+                  ) {
+                    event.preventDefault();
+                    submitTyped();
+                  }
+                }}
+              />
+            </Show>
+            <Button
+              size="sm"
+              variant="filled"
+              isDisabled={busy() || !!sent() || !typed().trim()}
+              onPress={submitTyped}
+            >
+              {sent() ? "Enviado" : "Enviar resposta"}
+            </Button>
+          </TypedForm>
+        </Show>
+        <Show when={isStudyQuestion(props.study) && props.study.kind === "mc"}>
           <Answers>
             <For each={STUDY_LETTERS}>
               {(letter) => (
@@ -174,6 +241,48 @@ const Answers = styled("div", {
     marginTop: "var(--gap-md)",
     flexWrap: "wrap",
   },
+});
+
+const TypedForm = styled("form", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "var(--gap-sm)",
+    marginTop: "var(--gap-md)",
+    maxWidth: "64ch",
+    alignItems: "flex-start",
+
+    // the answer field itself must stay editable inside the protected block
+    "& input, & textarea": {
+      userSelect: "text",
+      WebkitUserSelect: "text",
+    },
+  },
+});
+
+const fieldBase = {
+  width: "100%",
+  padding: "var(--gap-sm) var(--gap-md)",
+  borderRadius: "var(--borderRadius-md)",
+  border: "1px solid var(--md-sys-color-outline-variant)",
+  background: "var(--md-sys-color-surface-container-low)",
+  color: "var(--md-sys-color-on-surface)",
+  fontFamily: "inherit",
+  fontSize: "1em",
+  outline: "none",
+
+  "&:focus": {
+    borderColor: "var(--md-sys-color-primary)",
+  },
+  "&:disabled": {
+    opacity: 0.6,
+  },
+} as const;
+
+const TypedInput = styled("input", { base: fieldBase });
+
+const TypedArea = styled("textarea", {
+  base: { ...fieldBase, resize: "vertical", minHeight: "4.5em" },
 });
 
 const Notice = styled("div", {
