@@ -1,5 +1,6 @@
 public/assets
 public/noise-suppression/deepfilternet3/v3/
+public/noise-suppression/silero-vad/v5/
 
 ## Panda
 styled-system

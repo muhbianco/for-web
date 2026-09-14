@@ -53,6 +53,11 @@ export interface TypeVoice {
   deepFilterSensitivity: DeepFilterSensitivity;
   /** 0 = most sensitive, 1 = least. Only used when deepFilterSensitivity is not "auto". */
   inputSensitivity: number;
+  /**
+   * Open the microphone on speech (Silero VAD) instead of on loudness alone.
+   * Off = legacy RMS gate. Only affects the DeepFilter chain.
+   */
+  voiceGate: boolean;
 
   screenShareQuality: ScreenShareQualityName;
   screenShareQualityAsk: boolean;
@@ -103,6 +108,7 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       autoGainControl: true,
       deepFilterSensitivity: DEFAULT_DEEPFILTER_SENSITIVITY,
       inputSensitivity: DEFAULT_INPUT_SENSITIVITY,
+      voiceGate: true,
       screenShareQuality: "low",
       screenShareQualityAsk: true,
       screenShareAudio: true,
@@ -165,6 +171,10 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
     }
 
     data.inputSensitivity = clampInputSensitivity(input.inputSensitivity);
+
+    if (typeof input.voiceGate === "boolean") {
+      data.voiceGate = input.voiceGate;
+    }
 
     if (
       input.screenShareQuality &&
@@ -367,6 +377,13 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   }
 
   /**
+   * Set whether the microphone gate needs speech (VAD) to open
+   */
+  set voiceGate(value: boolean) {
+    this.set("voiceGate", value);
+  }
+
+  /**
    * Set screen share quality
    */
   set screenShareQuality(value: ScreenShareQualityName) {
@@ -483,6 +500,13 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
    */
   get inputSensitivity(): number {
     return this.get().inputSensitivity;
+  }
+
+  /**
+   * Whether the microphone gate needs speech (VAD) to open
+   */
+  get voiceGate(): boolean {
+    return this.get().voiceGate;
   }
 
   /**

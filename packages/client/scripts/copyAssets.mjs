@@ -5,6 +5,7 @@ import { lstat, readdir, readlink, rmdir, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { fetchDeepFilterAssets } from "./fetch-deepfilternet-assets.mjs";
+import { fetchSileroVadAssets } from "./fetch-silero-vad-assets.mjs";
 
 const publicFolder = resolve("public");
 const path = resolve("public", "assets");
@@ -36,6 +37,7 @@ async function createSymlink() {
 }
 
 await fetchDeepFilterAssets();
+await fetchSileroVadAssets();
 
 try {
   await lstat(path);

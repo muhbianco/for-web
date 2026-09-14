@@ -4118,3 +4118,39 @@ msgstr "mensagem"
 #: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
 msgid "Read aloud to everyone in this voice channel"
 msgstr "Lê em voz alta para todo mundo neste canal de voz"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Open microphone on voice only"
+msgstr "Abrir microfone só com voz"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "The microphone opens only when it hears speech, not just when something is loud. Dog barks, keyboards and door slams while you are quiet stay muted. Adds about 30 ms of delay."
+msgstr "O microfone abre só quando detecta fala, não só quando algo está alto. Latido, teclado e porta batendo enquanto você está calado continuam mudos. Adiciona cerca de 30 ms de atraso."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone gate"
+msgstr "Gate do microfone"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Voice detection (Silero)"
+msgstr "Detecção de voz (Silero)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loudness only"
+msgstr "Só volume"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loudness only (voice detection off)"
+msgstr "Só volume (detecção de voz desligada)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Speech probability"
+msgstr "Probabilidade de fala"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{pct}% ({0} ms)"
+msgstr "{pct}% ({0} ms)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Voice detection could not start, so the microphone gate is using loudness only for this call."
+msgstr "A detecção de voz não conseguiu iniciar, então o gate do microfone está usando só o volume nesta chamada."

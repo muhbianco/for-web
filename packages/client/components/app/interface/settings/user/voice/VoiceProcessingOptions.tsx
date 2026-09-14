@@ -232,6 +232,22 @@ function MicrophoneSensitivitySection(props: { live: boolean }) {
           </Trans>
         }
       />
+      <CategoryButton.Group>
+        <CategoryButton
+          icon={<Symbol>record_voice_over</Symbol>}
+          description={
+            <Trans>
+              The microphone opens only when it hears speech, not just when
+              something is loud. Dog barks, keyboards and door slams while you
+              are quiet stay muted. Adds about 30 ms of delay.
+            </Trans>
+          }
+          action={<Checkbox checked={voice.voiceGate} />}
+          onClick={() => (voice.voiceGate = !voice.voiceGate)}
+        >
+          <Trans>Open microphone on voice only</Trans>
+        </CategoryButton>
+      </CategoryButton.Group>
       <Card>
         <CardRow>
           <Text class="label">
@@ -354,6 +370,28 @@ function DiagnosticsSection() {
       : t`max ${maxMs} ms`;
   };
 
+  const gateLabel = () => {
+    const current = status();
+    switch (current.vadEngine) {
+      case "silero":
+        return t`Voice detection (Silero)`;
+      case "rms-only":
+        return t`Loudness only`;
+      case "off":
+        return t`Loudness only (voice detection off)`;
+      default:
+        return "—";
+    }
+  };
+
+  const speechProbLabel = () => {
+    const current = status();
+    if (current.speechProb === undefined) return "—";
+    const pct = Math.round(current.speechProb * 100);
+    const ms = current.vadInferMs;
+    return ms !== undefined ? t`${pct}% (${ms.toFixed(1)} ms)` : `${pct}%`;
+  };
+
   const rows = (): { label: string; value: string }[] => {
     const current = status();
     const list = [
@@ -373,6 +411,10 @@ function DiagnosticsSection() {
       });
       list.push({ label: t`Background noise`, value: noiseFloorLabel() });
       list.push({ label: t`Frame time`, value: frameTimeLabel() });
+      list.push({ label: t`Microphone gate`, value: gateLabel() });
+      if (current.vadEngine === "silero") {
+        list.push({ label: t`Speech probability`, value: speechProbLabel() });
+      }
     }
     list.push(
       {
@@ -457,6 +499,18 @@ function DiagnosticsSection() {
                   {" "}
                   <code>{status().lastError}</code>
                 </Show>
+              </Text>
+            </Notice>
+          </Show>
+          <Show when={status().engine === "deepfilter" && status().vadError}>
+            <Notice>
+              <Symbol size={18}>info</Symbol>
+              <Text class="label" size="small">
+                <Trans>
+                  Voice detection could not start, so the microphone gate is
+                  using loudness only for this call.
+                </Trans>{" "}
+                <code>{status().vadError}</code>
               </Text>
             </Notice>
           </Show>

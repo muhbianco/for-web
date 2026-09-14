@@ -5,6 +5,8 @@ packages:
 allowBuilds:
   "@swc/core": true
   esbuild: true
+  # onnxruntime-web transitive; its postinstall only prints a sponsor notice.
+  protobufjs: false
 minimumReleaseAgeExclude:
   - stoat-api
 nodeLinker: isolated

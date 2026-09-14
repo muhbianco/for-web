@@ -1,5 +1,7 @@
 import type { NoiseSuppresionState } from "@revolt/state/stores/Voice";
 
+import type { VadEngineId } from "./vadPolicy";
+
 export type VoiceEngineId =
   | "idle"
   | "deepfilter"
@@ -33,6 +35,14 @@ export interface VoiceEngineStatus {
   deepFilterSlowRatio?: number;
   /** DeepFilter was replaced by RNNoise during this call because it fell behind. */
   deepFilterOverloaded?: boolean;
+  /** What decides the microphone gate: Silero VAD, RMS only, or the gate is off. */
+  vadEngine?: VadEngineId;
+  /** Latest speech probability (0-1) while Silero is live. */
+  speechProb?: number;
+  /** Last Silero inference wall time (ms). */
+  vadInferMs?: number;
+  /** Why the VAD is not running, if it is not. */
+  vadError?: string;
 }
 
 export const IDLE_VOICE_ENGINE_STATUS: VoiceEngineStatus = {

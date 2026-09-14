@@ -71,6 +71,11 @@ export default {
    */
   DEEPFILTERNET_CDN_URL: getEnv("VITE_DEEPFILTERNET_CDN_URL"),
   /**
+   * Silero VAD model + onnxruntime WASM base URL (voice gate). Defaults to
+   * same-origin `/noise-suppression/silero-vad`.
+   */
+  SILERO_VAD_CDN_URL: getEnv("VITE_SILERO_VAD_CDN_URL"),
+  /**
    * Session ID to set during development.
    */
   DEVELOPMENT_SESSION_ID: getEnv("VITE_SESSION_ID", true),

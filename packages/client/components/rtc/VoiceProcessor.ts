@@ -19,7 +19,13 @@ import {
   addPatchedDeepFilterModule,
   isDeepFilterStats,
 } from "./patchDeepFilterWorklet";
-import { ensureRmsGateNode } from "./rmsGateWorklet";
+import {
+  attachVadPort,
+  detachVadPort,
+  ensureRmsGateNode,
+} from "./rmsGateWorklet";
+import { VadClient, canUseVadWorker } from "./vadClient";
+import type { VadEngineId } from "./vadPolicy";
 import type { VoiceEngineId } from "./voiceEngineStatus";
 
 /**
@@ -29,10 +35,17 @@ import type { VoiceEngineId } from "./voiceEngineStatus";
  *   getUserMedia (EC on, AGC off in ML modes, browser NS off in ML modes)
  *     -> highpass 50 Hz (explicit mono: a stereo capture is downmixed here)
  *     -> ONE neural noise suppressor: DeepFilterNet3 (default) or RNNoise
- *     -> RMS gate (DeepFilter only, sits *after* the suppressor)
+ *     -> voice gate (DeepFilter only, sits *after* the suppressor)
+ *          RMS + Silero VAD speech probability; 32 ms lookahead
  *     -> brickwall compressor (limiter)
  *     -> input gain
  *     -> processedTrack (mono) -> Opus -> LiveKit
+ *
+ * Voice gate: the RMS gate alone opens on anything loud (dog bark, keyboard).
+ * A Silero VAD Worker (see vadWorker.ts) scores each 32 ms frame; the gate
+ * needs "loud AND probably speech" to open. If the Worker fails to load or
+ * stops answering, the worklet falls back to RMS by itself (vadEngine
+ * "rms-only"); voice never goes silent because of the VAD.
  *
  * The whole graph is forced to one channel. The suppressors only look at
  * channel 0, and a 2-channel destination would make LiveKit publish
@@ -87,6 +100,14 @@ export interface VoiceProcessorSnapshot {
   deepFilterSlowRatio?: number;
   /** True once DeepFilter was replaced by RNNoise because it fell behind. */
   deepFilterOverloaded?: boolean;
+  /** Which signal decides the gate right now. */
+  vadEngine?: VadEngineId;
+  /** Latest Silero speech probability (0-1) while the VAD is live. */
+  speechProb?: number;
+  /** Last VAD inference wall time (ms). */
+  vadInferMs?: number;
+  /** Why the VAD is not running, if it is not. */
+  vadError?: string;
 }
 
 function deepFilterCdnUrl(): string {
@@ -162,6 +183,12 @@ export class VoiceProcessor implements TrackProcessor<
   private deepFilterOverloaded = false;
   private degrading = false;
 
+  private vadClient?: VadClient;
+  private vadActive = false;
+  private speechProb?: number;
+  private vadInferMs?: number;
+  private vadError?: string;
+
   private noiseSuppressionNode?: RNNoiseNode;
   private deepFilterNode?: AudioWorkletNode;
   private gateNode?: AudioWorkletNode;
@@ -182,6 +209,18 @@ export class VoiceProcessor implements TrackProcessor<
         this.setGain(this.getSettings().inputVolume);
         this.applyGateSettings();
         this.applyDeepFilterStrength();
+      });
+      // Toggling the voice gate mid-call starts/stops the Worker; the
+      // `vadMode` param above already tells the worklet which path to use.
+      createEffect(() => {
+        const wanted = this.getSettings().voiceGate;
+        if (!this.gateNode || this.engine !== "deepfilter") return;
+        if (wanted && !this.vadClient) {
+          this.startVad(this.gateNode, this.graphToken);
+        } else if (!wanted && this.vadClient) {
+          this.stopVad();
+          this.emitStatus();
+        }
       });
       this.disposeSolidjsContext = dispose;
     });
@@ -211,7 +250,17 @@ export class VoiceProcessor implements TrackProcessor<
           ? this.deepFilterHealth?.snapshot().lastSlowRatio
           : undefined,
       deepFilterOverloaded: this.deepFilterOverloaded,
+      vadEngine: this.vadEngine(),
+      speechProb: this.vadActive ? this.speechProb : undefined,
+      vadInferMs: this.vadActive ? this.vadInferMs : undefined,
+      vadError: this.vadError,
     };
+  }
+
+  private vadEngine(): VadEngineId | undefined {
+    if (this.engine !== "deepfilter" || !this.gateNode) return undefined;
+    if (!this.settings.voiceGate) return "off";
+    return this.vadActive ? "silero" : "rms-only";
   }
 
   private getSettings(): Voice {
@@ -234,10 +283,72 @@ export class VoiceProcessor implements TrackProcessor<
     const openParam = params.get("openThreshold");
     const closeParam = params.get("closeThreshold");
     const autoParam = params.get("autoMode");
+    const vadParam = params.get("vadMode");
     if (openParam) openParam.value = open;
     if (closeParam) closeParam.value = close;
     if (autoParam) autoParam.value = auto ? 1 : 0;
+    if (vadParam) vadParam.value = this.settings.voiceGate ? 1 : 0;
     if (!auto) this.gateOpenThreshold = open;
+  }
+
+  /**
+   * Spin up the Silero Worker for this gate. Non-blocking: the gate runs as
+   * a plain RMS gate until the Worker reports ready, and stays that way if
+   * it never does. Failures are logged and shown in diagnostics only.
+   */
+  private startVad(gate: AudioWorkletNode, token: number) {
+    this.stopVad();
+    this.vadError = undefined;
+    if (!this.settings.voiceGate) return;
+    if (!canUseVadWorker()) {
+      this.vadError =
+        "this browser cannot run the VAD worker; using the RMS gate";
+      this.emitStatus();
+      return;
+    }
+    let client: VadClient;
+    try {
+      client = new VadClient();
+    } catch (error) {
+      this.vadError = `VAD worker failed to start: ${errorMessage(error)}`;
+      console.warn("[voice]", this.vadError);
+      this.emitStatus();
+      return;
+    }
+    this.vadClient = client;
+    client.ready
+      .then(({ loadMs }) => {
+        if (token !== this.graphToken || this.vadClient !== client) {
+          client.close();
+          return;
+        }
+        attachVadPort(gate, client.gatePort);
+        console.info(`[voice] Silero VAD ready in ${Math.round(loadMs)} ms`);
+      })
+      .catch((error) => {
+        if (this.vadClient === client) {
+          this.vadClient = undefined;
+          this.vadError = `VAD unavailable, using the RMS gate: ${errorMessage(error)}`;
+          console.warn("[voice]", this.vadError);
+        }
+        client.close();
+        this.emitStatus();
+      });
+  }
+
+  private stopVad() {
+    if (this.gateNode && this.vadClient) {
+      try {
+        detachVadPort(this.gateNode);
+      } catch {
+        // gate may already be gone
+      }
+    }
+    this.vadClient?.close();
+    this.vadClient = undefined;
+    this.vadActive = false;
+    this.speechProb = undefined;
+    this.vadInferMs = undefined;
   }
 
   /**
@@ -304,6 +415,9 @@ export class VoiceProcessor implements TrackProcessor<
         rms?: number;
         open?: boolean;
         threshold?: number;
+        vadActive?: boolean;
+        prob?: number;
+        inferMs?: number;
       };
       if (typeof data?.rms !== "number") return;
       this.lastRms = data.rms;
@@ -311,6 +425,10 @@ export class VoiceProcessor implements TrackProcessor<
       if (typeof data.threshold === "number") {
         this.gateOpenThreshold = data.threshold;
       }
+      this.vadActive = !!data.vadActive;
+      this.speechProb = typeof data.prob === "number" ? data.prob : undefined;
+      this.vadInferMs =
+        typeof data.inferMs === "number" ? data.inferMs : undefined;
       this.emitStatus();
     };
   }
@@ -398,6 +516,7 @@ export class VoiceProcessor implements TrackProcessor<
   }
 
   private disconnectNoiseGraph() {
+    this.stopVad();
     if (this.gateNode) {
       this.gateNode.port.onmessage = null;
     }
@@ -577,6 +696,7 @@ export class VoiceProcessor implements TrackProcessor<
         this.connectMlChain(node, context, gate);
         this.engine = "deepfilter";
         this.lastError = undefined;
+        this.startVad(gate, token);
         // Pre-filter tap for the auto preset; applies the initial atten_lim.
         this.startNoiseFloorTracking(context, this.highpassNode!);
         this.applyDeepFilterStrength();

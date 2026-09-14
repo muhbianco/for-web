@@ -324,6 +324,10 @@ class Voice {
       deepFilterMaxFrameMs: snapshot?.deepFilterMaxFrameMs,
       deepFilterSlowRatio: snapshot?.deepFilterSlowRatio,
       deepFilterOverloaded: snapshot?.deepFilterOverloaded,
+      vadEngine: snapshot?.vadEngine,
+      speechProb: snapshot?.speechProb,
+      vadInferMs: snapshot?.vadInferMs,
+      vadError: snapshot?.vadError,
     });
   }
 
