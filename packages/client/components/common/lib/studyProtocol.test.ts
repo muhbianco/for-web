@@ -20,6 +20,8 @@ import {
   studyRereadContent,
   studyStartContent,
   studyTypedContent,
+  isStudyProfile,
+  studyProfileContent,
 } from "./studyProtocol.ts";
 
 const ID = "2026-09-14-daily";
@@ -66,6 +68,10 @@ test("parses the bot marker and strips it from the body", () => {
   )!;
   assert.equal(isStudyMenu(menu), true);
   assert.equal(isStudyReading(menu), false);
+  const profile = parseStudyMessage(
+    `${STUDY_MARK}study:menu00:p${STUDY_MARK}\nNasceu quando?`,
+  )!;
+  assert.equal(isStudyProfile(profile), true);
   assert.equal(
     isStudyQuestion(
       parseStudyMessage(`${STUDY_MARK}study:${ID}:8${STUDY_MARK}\nx`)!,
@@ -102,6 +108,10 @@ test("commands match what the bot accepts", () => {
   );
   assert.equal(studyStartContent("desktop"), "study:start:desktop");
   assert.equal(studyRereadContent("desktop"), "study:reread:desktop");
+  assert.equal(
+    studyProfileContent("1988-11-27", "desktop"),
+    "study:profile:desktop:1988-11-27",
+  );
   assert.equal(
     studyTypedContent(study, "  V F V F\r\n", "desktop"),
     `study:${ID}:2:T:desktop:V F V F`,

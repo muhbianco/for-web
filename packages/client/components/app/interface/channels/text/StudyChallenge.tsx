@@ -1,4 +1,4 @@
-import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 import { Message as MessageInterface } from "stoat.js";
 import { styled } from "styled-system/jsx";
@@ -13,6 +13,7 @@ import {
   isStudyDesktopClient,
   isStaleStudyDesktopShell,
   isStudyMenu,
+  isStudyProfile,
   isStudyReadingStart,
   isStudyQuestion,
   isStudyTyped,
@@ -20,6 +21,7 @@ import {
   stripStudyGo,
   studyAnswerContent,
   studyClientTag,
+  studyProfileContent,
   studyRereadContent,
   studyStartContent,
   studyTypedContent,
@@ -155,6 +157,13 @@ export function StudyProtectedMessage(props: {
               Começar o desafio de hoje
             </Button>
           </Answers>
+        </Show>
+        <Show when={isStudyProfile(props.study)}>
+          <ProfileDobForm
+            busy={busy()}
+            sent={sent()}
+            onSubmit={(iso) => send(studyProfileContent(iso, studyClientTag()), iso)}
+          />
         </Show>
         <Show when={isStudyReadingStart(props.study)}>
           <Answers>
@@ -299,12 +308,127 @@ export function StudyProtectedMessage(props: {
   );
 }
 
+const MONTHS = [
+  "janeiro",
+  "fevereiro",
+  "março",
+  "abril",
+  "maio",
+  "junho",
+  "julho",
+  "agosto",
+  "setembro",
+  "outubro",
+  "novembro",
+  "dezembro",
+];
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+function ProfileDobForm(props: {
+  busy: boolean;
+  sent: string | null;
+  onSubmit: (iso: string) => void;
+}) {
+  const now = new Date();
+  const maxYear = now.getFullYear() - 4;
+  const minYear = now.getFullYear() - 120;
+  const years = Array.from(
+    { length: maxYear - minYear + 1 },
+    (_, index) => maxYear - index,
+  );
+  const [day, setDay] = createSignal("");
+  const [month, setMonth] = createSignal("");
+  const [year, setYear] = createSignal("");
+  const dayCount = createMemo(() => {
+    const monthValue = Number(month());
+    const yearValue = Number(year());
+    if (!monthValue || !yearValue) return 31;
+    return daysInMonth(yearValue, monthValue);
+  });
+  const iso = createMemo(() => {
+    const dayValue = Number(day());
+    const monthValue = Number(month());
+    const yearValue = Number(year());
+    if (!dayValue || !monthValue || !yearValue) return "";
+    if (dayValue > daysInMonth(yearValue, monthValue)) return "";
+    return `${yearValue}-${String(monthValue).padStart(2, "0")}-${String(dayValue).padStart(2, "0")}`;
+  });
+
+  createEffect(() => {
+    if (Number(day()) > dayCount()) setDay("");
+  });
+
+  return (
+    <TypedForm
+      onSubmit={(event) => {
+        event.preventDefault();
+        const value = iso();
+        if (value) props.onSubmit(value);
+      }}
+    >
+      <SelectRow>
+        <StudySelect
+          aria-label="Dia"
+          value={day()}
+          disabled={props.busy || !!props.sent}
+          onChange={(event) => setDay(event.currentTarget.value)}
+        >
+          <option value="">Dia</option>
+          <For each={Array.from({ length: dayCount() }, (_, index) => index + 1)}>
+            {(value) => <option value={String(value)}>{value}</option>}
+          </For>
+        </StudySelect>
+        <StudySelect
+          aria-label="Mês"
+          value={month()}
+          disabled={props.busy || !!props.sent}
+          onChange={(event) => setMonth(event.currentTarget.value)}
+        >
+          <option value="">Mês</option>
+          <For each={MONTHS}>
+            {(name, index) => (
+              <option value={String(index() + 1)}>{name}</option>
+            )}
+          </For>
+        </StudySelect>
+        <StudySelect
+          aria-label="Ano"
+          value={year()}
+          disabled={props.busy || !!props.sent}
+          onChange={(event) => setYear(event.currentTarget.value)}
+        >
+          <option value="">Ano</option>
+          <For each={years}>
+            {(value) => <option value={String(value)}>{value}</option>}
+          </For>
+        </StudySelect>
+      </SelectRow>
+      <Button
+        size="sm"
+        variant="filled"
+        isDisabled={props.busy || !!props.sent || !iso()}
+        onPress={() => {
+          const value = iso();
+          if (value) props.onSubmit(value);
+        }}
+      >
+        {props.sent ? "Enviado" : "Cadastrar"}
+      </Button>
+    </TypedForm>
+  );
+}
+
 function StudyNotice(props: { study: StudyMessage }) {
   const stale = isStaleStudyDesktopShell();
   const what = () => {
     switch (props.study.q) {
       case "u":
         return "Menu do desafio";
+      case "p":
+        return "Data de nascimento";
       case "m":
         return "Texto do desafio";
       case "k":
@@ -390,10 +514,19 @@ const TypedForm = styled("form", {
     alignItems: "flex-start",
 
     // the answer field itself must stay editable inside the protected block
-    "& input, & textarea": {
+    "& input, & textarea, & select": {
       userSelect: "text",
       WebkitUserSelect: "text",
     },
+  },
+});
+
+const SelectRow = styled("div", {
+  base: {
+    display: "flex",
+    gap: "var(--gap-sm)",
+    flexWrap: "wrap",
+    width: "100%",
   },
 });
 
@@ -415,6 +548,15 @@ const fieldBase = {
     opacity: 0.6,
   },
 } as const;
+
+const StudySelect = styled("select", {
+  base: {
+    ...fieldBase,
+    width: "auto",
+    minWidth: "7em",
+    flex: "1 1 7em",
+  },
+});
 
 const TypedInput = styled("input", { base: fieldBase });
 

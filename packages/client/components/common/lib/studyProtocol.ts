@@ -5,8 +5,8 @@
  *
  *     \u2063study:<challenge_id>:<q>\u2063\n<body>
  *
- * `q` is `u` (menu), `m` (reading material), `k` (reread), `1`..`9`
- * (question) or `r` (result). Questions also carry the input kind:
+ * `q` is `u` (menu), `p` (birth date), `m` (reading material), `k` (reread),
+ * `1`..`9` (question) or `r` (result). Questions also carry the input kind:
  * `\u2063study:<id>:<q>:<mc|text|blank|order|tf>\u2063`.
  *
  * The last reading chunk also contains `\u2063go\u2063` in the body: only that
@@ -18,6 +18,7 @@
  *
  *     study:start:desktop                          start today's challenge
  *     study:reread:desktop                         reread the story
+ *     study:profile:desktop:YYYY-MM-DD             birth date from the menus
  *     study:<id>:<q>:<A-D>:<desktop|web>           multiple choice answer
  *     study:<id>:<q>:T:<desktop|web>:<text>        typed answer
  */
@@ -31,12 +32,12 @@ export const STUDY_MAX_TYPED = 1200;
 export type StudyKind = "mc" | "text" | "blank" | "order" | "tf";
 
 const RE_STUDY = new RegExp(
-  `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(u|m|k|[1-9]|r)(?::(mc|text|blank|order|tf))?${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
+  `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(u|m|k|p|[1-9]|r)(?::(mc|text|blank|order|tf))?${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
 );
 
 export type StudyMessage = {
   challengeId: string;
-  /** `u`, `m`, `k`, `1`..`9` or `r` */
+  /** `u`, `p`, `m`, `k`, `1`..`9` or `r` */
   q: string;
   /** input kind for questions; `mc` when the bot did not say */
   kind: StudyKind;
@@ -85,6 +86,10 @@ export function isStudyMenu(study: StudyMessage): boolean {
   return study.q === "u";
 }
 
+export function isStudyProfile(study: StudyMessage): boolean {
+  return study.q === "p";
+}
+
 export function isStudyReading(study: StudyMessage): boolean {
   return study.q === "m";
 }
@@ -119,6 +124,13 @@ export function studyStartContent(client: "desktop" | "web"): string {
 
 export function studyRereadContent(client: "desktop" | "web"): string {
   return `study:reread:${client}`;
+}
+
+export function studyProfileContent(
+  isoDate: string,
+  client: "desktop" | "web",
+): string {
+  return `study:profile:${client}:${isoDate}`;
 }
 
 /**
