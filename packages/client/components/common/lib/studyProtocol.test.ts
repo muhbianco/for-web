@@ -2,16 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  STUDY_GO,
   STUDY_MARK,
+  hasStudyGo,
   isStudyDesktopClient,
   isStaleStudyDesktopShell,
   isStudyMenu,
   isStudyReading,
+  isStudyReadingStart,
+  isStudyReread,
   isStudyQuestion,
   isStudyTyped,
   parseStudyMessage,
+  stripStudyGo,
   studyAnswerContent,
   studyClientTag,
+  studyRereadContent,
   studyStartContent,
   studyTypedContent,
 } from "./studyProtocol.ts";
@@ -40,12 +46,21 @@ test("parses the bot marker and strips it from the body", () => {
     parseStudyMessage(`${STUDY_MARK}study:${ID}:4:poem${STUDY_MARK}\nx`),
     null,
   );
-  const material = parseStudyMessage(
-    `${STUDY_MARK}study:${ID}:m${STUDY_MARK}\nOlá`,
+  const reread = parseStudyMessage(
+    `${STUDY_MARK}study:${ID}:k${STUDY_MARK}\nTrecho`,
   )!;
-  assert.equal(isStudyQuestion(material), false);
-  assert.equal(isStudyMenu(material), false);
-  assert.equal(isStudyReading(material), true);
+  assert.equal(isStudyReread(reread), true);
+  assert.equal(isStudyReading(reread), false);
+  const last = parseStudyMessage(
+    `${STUDY_MARK}study:${ID}:m${STUDY_MARK}\nFim\n${STUDY_GO}`,
+  )!;
+  assert.equal(isStudyReadingStart(last), true);
+  assert.equal(hasStudyGo(last.body), true);
+  assert.equal(stripStudyGo(last.body).includes(STUDY_GO), false);
+  const mid = parseStudyMessage(
+    `${STUDY_MARK}study:${ID}:m${STUDY_MARK}\nMeio`,
+  )!;
+  assert.equal(isStudyReadingStart(mid), false);
   const menu = parseStudyMessage(
     `${STUDY_MARK}study:menu00:u${STUDY_MARK}\nOi!`,
   )!;
@@ -86,6 +101,7 @@ test("commands match what the bot accepts", () => {
     /^study:[A-Za-z0-9_-]{6,48}:[1-9]:[A-D]:(desktop|web)$/,
   );
   assert.equal(studyStartContent("desktop"), "study:start:desktop");
+  assert.equal(studyRereadContent("desktop"), "study:reread:desktop");
   assert.equal(
     studyTypedContent(study, "  V F V F\r\n", "desktop"),
     `study:${ID}:2:T:desktop:V F V F`,

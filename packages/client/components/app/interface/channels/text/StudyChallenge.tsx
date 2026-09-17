@@ -1,8 +1,9 @@
-import { For, Show, createSignal, onCleanup, onMount } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup, onMount } from "solid-js";
 
 import { Message as MessageInterface } from "stoat.js";
 import { styled } from "styled-system/jsx";
 
+import { useClient } from "@revolt/client";
 import {
   STUDY_DOWNLOAD_URL,
   STUDY_LETTERS,
@@ -12,11 +13,14 @@ import {
   isStudyDesktopClient,
   isStaleStudyDesktopShell,
   isStudyMenu,
-  isStudyReading,
+  isStudyReadingStart,
   isStudyQuestion,
   isStudyTyped,
+  parseStudyMessage,
+  stripStudyGo,
   studyAnswerContent,
   studyClientTag,
+  studyRereadContent,
   studyStartContent,
   studyTypedContent,
 } from "@revolt/common/lib/studyProtocol";
@@ -57,10 +61,29 @@ export function StudyProtectedMessage(props: {
   const [sent, setSent] = createSignal<string | null>(null);
   const [busy, setBusy] = createSignal(false);
   const [typed, setTyped] = createSignal("");
+  const [rereadOpen, setRereadOpen] = createSignal(false);
+  const [rereadIndex, setRereadIndex] = createSignal(0);
   const desktop = isStudyDesktopClient();
+  const client = useClient();
   const typedHint = () =>
     props.study.kind === "mc" ? "" : STUDY_TYPED_HINTS[props.study.kind];
   const multiline = () => props.study.kind === "text";
+  const visibleBody = () => stripStudyGo(props.study.body);
+
+  const storyParts = createMemo(() => {
+    const challengeId = props.study.challengeId;
+    const channelId = props.message.channelId;
+    const found: { id: string; body: string }[] = [];
+    for (const msg of client().messages.toList()) {
+      if (msg.channelId !== channelId) continue;
+      const parsed = parseStudyMessage(msg.content);
+      if (!parsed || parsed.challengeId !== challengeId) continue;
+      if (parsed.q !== "m" && parsed.q !== "k") continue;
+      found.push({ id: msg.id, body: stripStudyGo(parsed.body) });
+    }
+    found.sort((a, b) => a.id.localeCompare(b.id));
+    return found.map((item) => item.body).filter(Boolean);
+  });
 
   function submitTyped() {
     const value = typed().trim();
@@ -93,6 +116,24 @@ export function StudyProtectedMessage(props: {
     }
   }
 
+  async function requestReread() {
+    const parts = storyParts();
+    if (parts.length) {
+      setRereadIndex(0);
+      setRereadOpen(true);
+      return;
+    }
+    if (busy()) return;
+    setBusy(true);
+    try {
+      await props.message.channel?.sendMessage({
+        content: studyRereadContent(studyClientTag()),
+      });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
     <Show when={desktop} fallback={<StudyNotice study={props.study} />}>
       <Protected
@@ -102,7 +143,7 @@ export function StudyProtectedMessage(props: {
         onDragStart={block}
         data-study-protected
       >
-        <Markdown content={props.study.body} />
+        <Markdown content={visibleBody()} />
         <Show when={isStudyMenu(props.study)}>
           <Answers>
             <Button
@@ -115,7 +156,7 @@ export function StudyProtectedMessage(props: {
             </Button>
           </Answers>
         </Show>
-        <Show when={isStudyReading(props.study)}>
+        <Show when={isStudyReadingStart(props.study)}>
           <Answers>
             <Button
               size="sm"
@@ -126,6 +167,58 @@ export function StudyProtectedMessage(props: {
               Pronto, começar as perguntas
             </Button>
           </Answers>
+        </Show>
+        <Show when={isStudyQuestion(props.study)}>
+          <Answers>
+            <Button
+              size="sm"
+              variant="tonal"
+              isDisabled={busy()}
+              onPress={() => void requestReread()}
+            >
+              Reler história
+            </Button>
+          </Answers>
+        </Show>
+        <Show when={rereadOpen()}>
+          <RereadBox>
+            <Markdown
+              content={
+                storyParts()[rereadIndex()] || "Vamos olhar a história de novo?"
+              }
+            />
+            <Answers>
+              <Show when={storyParts().length > 1}>
+                <Button
+                  size="sm"
+                  variant="tonal"
+                  isDisabled={rereadIndex() <= 0}
+                  onPress={() => setRereadIndex((i) => Math.max(0, i - 1))}
+                >
+                  Trecho anterior
+                </Button>
+                <Button
+                  size="sm"
+                  variant="tonal"
+                  isDisabled={rereadIndex() >= storyParts().length - 1}
+                  onPress={() =>
+                    setRereadIndex((i) =>
+                      Math.min(storyParts().length - 1, i + 1),
+                    )
+                  }
+                >
+                  Próximo trecho
+                </Button>
+              </Show>
+              <Button
+                size="sm"
+                variant="filled"
+                onPress={() => setRereadOpen(false)}
+              >
+                Voltar à pergunta
+              </Button>
+            </Answers>
+          </RereadBox>
         </Show>
         <Show when={isStudyTyped(props.study)}>
           <TypedForm
@@ -214,6 +307,8 @@ function StudyNotice(props: { study: StudyMessage }) {
         return "Menu do desafio";
       case "m":
         return "Texto do desafio";
+      case "k":
+        return "História (releitura)";
       case "r":
         return "Resultado do desafio";
       default:
@@ -272,6 +367,16 @@ const Answers = styled("div", {
     gap: "var(--gap-sm)",
     marginTop: "var(--gap-md)",
     flexWrap: "wrap",
+  },
+});
+
+const RereadBox = styled("div", {
+  base: {
+    marginTop: "var(--gap-md)",
+    padding: "var(--gap-md)",
+    borderRadius: "var(--borderRadius-md)",
+    background: "var(--md-sys-color-surface-container-high)",
+    maxWidth: "64ch",
   },
 });
 

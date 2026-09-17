@@ -5,19 +5,25 @@
  *
  *     \u2063study:<challenge_id>:<q>\u2063\n<body>
  *
- * `q` is `u` (menu), `m` (reading material), `1`..`9` (question) or `r`
- * (result). Questions also carry the input kind:
+ * `q` is `u` (menu), `m` (reading material), `k` (reread), `1`..`9`
+ * (question) or `r` (result). Questions also carry the input kind:
  * `\u2063study:<id>:<q>:<mc|text|blank|order|tf>\u2063`.
+ *
+ * The last reading chunk also contains `\u2063go\u2063` in the body: only that
+ * message shows the Start-questions button. Intermediate `m` chunks stay
+ * protected on older apps, without the button.
  *
  * Only the Electron desktop shell renders the body; browsers and the Android
  * WebView show a notice instead. Commands the bot accepts:
  *
  *     study:start:desktop                          start today's challenge
+ *     study:reread:desktop                         reread the story
  *     study:<id>:<q>:<A-D>:<desktop|web>           multiple choice answer
  *     study:<id>:<q>:T:<desktop|web>:<text>        typed answer
  */
 
 export const STUDY_MARK = "\u2063";
+export const STUDY_GO = `${STUDY_MARK}go${STUDY_MARK}`;
 export const STUDY_LETTERS = ["A", "B", "C", "D"] as const;
 export const STUDY_DOWNLOAD_URL = "https://chat.muhbianco.com.br/download";
 export const STUDY_MAX_TYPED = 1200;
@@ -25,12 +31,12 @@ export const STUDY_MAX_TYPED = 1200;
 export type StudyKind = "mc" | "text" | "blank" | "order" | "tf";
 
 const RE_STUDY = new RegExp(
-  `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(u|m|[1-9]|r)(?::(mc|text|blank|order|tf))?${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
+  `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(u|m|k|[1-9]|r)(?::(mc|text|blank|order|tf))?${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
 );
 
 export type StudyMessage = {
   challengeId: string;
-  /** `u`, `m`, `1`..`9` or `r` */
+  /** `u`, `m`, `k`, `1`..`9` or `r` */
   q: string;
   /** input kind for questions; `mc` when the bot did not say */
   kind: StudyKind;
@@ -83,6 +89,22 @@ export function isStudyReading(study: StudyMessage): boolean {
   return study.q === "m";
 }
 
+export function isStudyReread(study: StudyMessage): boolean {
+  return study.q === "k";
+}
+
+export function hasStudyGo(body: string): boolean {
+  return body.includes(STUDY_GO);
+}
+
+export function stripStudyGo(body: string): string {
+  return body.split(STUDY_GO).join("").trimEnd();
+}
+
+export function isStudyReadingStart(study: StudyMessage): boolean {
+  return isStudyReading(study) && hasStudyGo(study.body);
+}
+
 export function studyAnswerContent(
   study: StudyMessage,
   letter: string,
@@ -93,6 +115,10 @@ export function studyAnswerContent(
 
 export function studyStartContent(client: "desktop" | "web"): string {
   return `study:start:${client}`;
+}
+
+export function studyRereadContent(client: "desktop" | "web"): string {
+  return `study:reread:${client}`;
 }
 
 /**
