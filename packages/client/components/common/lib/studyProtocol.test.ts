@@ -6,6 +6,9 @@ import {
   STUDY_MARK,
   hasStudyGo,
   isStudyDesktopClient,
+  isStudyAndroidClient,
+  isStudyProtectedClient,
+  isStaleStudyAndroidShell,
   isStaleStudyDesktopShell,
   isStudyMenu,
   isStudyReading,
@@ -104,13 +107,19 @@ test("commands match what the bot accepts", () => {
   );
   assert.match(
     studyAnswerContent(study, "A", "web"),
-    /^study:[A-Za-z0-9_-]{6,48}:[1-9]:[A-D]:(desktop|web)$/,
+    /^study:[A-Za-z0-9_-]{6,48}:[1-9]:[A-D]:(desktop|web|android)$/,
   );
   assert.equal(studyStartContent("desktop"), "study:start:desktop");
+  assert.equal(studyStartContent("android"), "study:start:android");
   assert.equal(studyRereadContent("desktop"), "study:reread:desktop");
+  assert.equal(studyRereadContent("android"), "study:reread:android");
   assert.equal(
     studyProfileContent("1988-11-27", "desktop"),
     "study:profile:desktop:1988-11-27",
+  );
+  assert.equal(
+    studyProfileContent("1988-11-27", "android"),
+    "study:profile:android:1988-11-27",
   );
   assert.equal(
     studyTypedContent(study, "  V F V F\r\n", "desktop"),
@@ -122,11 +131,22 @@ test("commands match what the bot accepts", () => {
   );
 });
 
-test("only a shell that can black out screenshots is a desktop client", () => {
+test("trusted shells are Electron with setContentProtection or the APK", () => {
   const protectedNative = {
     native: { setContentProtection() {} } as Window["native"],
   };
   const staleNative = { native: {} as Window["native"] };
+  const apk = {
+    MuchatNative: {
+      hideSplash() {},
+      setContentProtection() {},
+    },
+  };
+  const staleApk = {
+    MuchatNative: {
+      hideSplash() {},
+    },
+  };
   assert.equal(isStudyDesktopClient(protectedNative), true);
   assert.equal(isStudyDesktopClient(staleNative), false);
   assert.equal(isStaleStudyDesktopShell(staleNative), true);
@@ -136,4 +156,13 @@ test("only a shell that can black out screenshots is a desktop client", () => {
   assert.equal(studyClientTag(protectedNative), "desktop");
   assert.equal(studyClientTag(staleNative), "web");
   assert.equal(studyClientTag({}), "web");
+  assert.equal(isStudyAndroidClient(apk), true);
+  assert.equal(isStudyAndroidClient(staleApk), false);
+  assert.equal(isStudyProtectedClient(apk), true);
+  assert.equal(isStudyProtectedClient(protectedNative), true);
+  assert.equal(isStudyProtectedClient(staleApk), false);
+  assert.equal(isStaleStudyAndroidShell(staleApk), true);
+  assert.equal(isStaleStudyAndroidShell(apk), false);
+  assert.equal(studyClientTag(apk), "android");
+  assert.equal(studyClientTag(staleApk), "web");
 });

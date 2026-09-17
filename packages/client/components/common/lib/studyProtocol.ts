@@ -13,14 +13,16 @@
  * message shows the Start-questions button. Intermediate `m` chunks stay
  * protected on older apps, without the button.
  *
- * Only the Electron desktop shell renders the body; browsers and the Android
- * WebView show a notice instead. Commands the bot accepts:
+ * Only a trusted native shell (Electron with `setContentProtection`, or the
+ * Muchat APK with `MuchatNative.setContentProtection`) renders the body.
+ * Browsers and the Chrome WebView show a notice instead. Commands the bot
+ * accepts:
  *
- *     study:start:desktop                          start today's challenge
- *     study:reread:desktop                         reread the story
- *     study:profile:desktop:YYYY-MM-DD             birth date from the menus
- *     study:<id>:<q>:<A-D>:<desktop|web>           multiple choice answer
- *     study:<id>:<q>:T:<desktop|web>:<text>        typed answer
+ *     study:start:desktop|android                  start today's challenge
+ *     study:reread:desktop|android                 reread the story
+ *     study:profile:desktop|android:YYYY-MM-DD     birth date from the menus
+ *     study:<id>:<q>:<A-D>:<desktop|web|android>   multiple choice answer
+ *     study:<id>:<q>:T:<desktop|web|android>:<text> typed answer
  */
 
 export const STUDY_MARK = "\u2063";
@@ -30,6 +32,19 @@ export const STUDY_DOWNLOAD_URL = "https://chat.muhbianco.com.br/download";
 export const STUDY_MAX_TYPED = 1200;
 
 export type StudyKind = "mc" | "text" | "blank" | "order" | "tf";
+export type StudyClient = "desktop" | "web" | "android";
+
+type StudyWin = {
+  native?: Window["native"];
+  MuchatNative?: Window["MuchatNative"];
+} | undefined;
+
+function studyWin(
+  win?: StudyWin,
+): StudyWin {
+  if (win) return win;
+  return typeof window === "undefined" ? undefined : window;
+}
 
 const RE_STUDY = new RegExp(
   `^${STUDY_MARK}study:([A-Za-z0-9_-]{6,48}):(u|m|k|p|[1-9]|r)(?::(mc|text|blank|order|tf))?${STUDY_MARK}\\r?\\n?([\\s\\S]*)$`,
@@ -76,7 +91,7 @@ export const STUDY_TYPED_HINTS: Record<Exclude<StudyKind, "mc">, string> = {
 export function studyTypedContent(
   study: StudyMessage,
   text: string,
-  client: "desktop" | "web",
+  client: StudyClient,
 ): string {
   const clean = text.replace(/\r\n/g, "\n").trim().slice(0, STUDY_MAX_TYPED);
   return `study:${study.challengeId}:${study.q}:T:${client}:${clean}`;
@@ -113,22 +128,22 @@ export function isStudyReadingStart(study: StudyMessage): boolean {
 export function studyAnswerContent(
   study: StudyMessage,
   letter: string,
-  client: "desktop" | "web",
+  client: StudyClient,
 ): string {
   return `study:${study.challengeId}:${study.q}:${letter}:${client}`;
 }
 
-export function studyStartContent(client: "desktop" | "web"): string {
+export function studyStartContent(client: StudyClient): string {
   return `study:start:${client}`;
 }
 
-export function studyRereadContent(client: "desktop" | "web"): string {
+export function studyRereadContent(client: StudyClient): string {
   return `study:reread:${client}`;
 }
 
 export function studyProfileContent(
   isoDate: string,
-  client: "desktop" | "web",
+  client: StudyClient,
 ): string {
   return `study:profile:${client}:${isoDate}`;
 }
@@ -138,27 +153,41 @@ export function studyProfileContent(
  * older Muchat `.exe` builds expose `window.native` without
  * `setContentProtection`, so they are treated like phones: no content.
  */
-export function isStudyDesktopClient(
-  win: Pick<Window, "native"> | undefined = typeof window === "undefined"
-    ? undefined
-    : window,
-): boolean {
-  return typeof win?.native?.setContentProtection === "function";
+export function isStudyDesktopClient(win?: StudyWin): boolean {
+  return typeof studyWin(win)?.native?.setContentProtection === "function";
+}
+
+/** APK shell that can set FLAG_SECURE. Browser WebViews only have no such method. */
+export function isStudyAndroidClient(win?: StudyWin): boolean {
+  return typeof studyWin(win)?.MuchatNative?.setContentProtection === "function";
+}
+
+/** Trusted native shell: Electron or the Muchat APK. */
+export function isStudyProtectedClient(win?: StudyWin): boolean {
+  return isStudyDesktopClient(win) || isStudyAndroidClient(win);
 }
 
 /** Installed desktop shell that still cannot black out a study challenge. */
-export function isStaleStudyDesktopShell(
-  win: Pick<Window, "native"> | undefined = typeof window === "undefined"
-    ? undefined
-    : window,
-): boolean {
-  return Boolean(win?.native) && !isStudyDesktopClient(win);
+export function isStaleStudyDesktopShell(win?: StudyWin): boolean {
+  return Boolean(studyWin(win)?.native) && !isStudyDesktopClient(win);
 }
 
-export function studyClientTag(
-  win: Pick<Window, "native"> | undefined = typeof window === "undefined"
-    ? undefined
-    : window,
-): "desktop" | "web" {
-  return isStudyDesktopClient(win) ? "desktop" : "web";
+/** Installed APK that still cannot set FLAG_SECURE. */
+export function isStaleStudyAndroidShell(win?: StudyWin): boolean {
+  return Boolean(studyWin(win)?.MuchatNative) && !isStudyAndroidClient(win);
+}
+
+export function studyClientTag(win?: StudyWin): StudyClient {
+  if (isStudyAndroidClient(win)) return "android";
+  if (isStudyDesktopClient(win)) return "desktop";
+  return "web";
+}
+
+export function setStudyContentProtection(enabled: boolean, win?: StudyWin): void {
+  const target = studyWin(win);
+  const desktop = target?.native?.setContentProtection;
+  if (typeof desktop === "function") {
+    (desktop as (value: boolean) => void)(enabled);
+  }
+  target?.MuchatNative?.setContentProtection?.(enabled);
 }

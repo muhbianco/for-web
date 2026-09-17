@@ -13,6 +13,7 @@ declare global {
      */
     MuchatNative?: {
       hideSplash(): void;
+      setContentProtection?(enabled: boolean): void;
       startScreenShare?(width: number, height: number, frameRate: number): void;
       stopScreenShare?(): void;
       startVoiceSession?(title: string): void;

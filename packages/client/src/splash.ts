@@ -32,6 +32,7 @@ export function dismissBootSplash() {
 
   const splash = document.getElementById(SPLASH_ID);
   if (splash) {
+    splash.style.pointerEvents = "none";
     splash.style.transition = `opacity ${FADE_MS}ms ease`;
     splash.style.opacity = "0";
     setTimeout(() => splash.remove(), FADE_MS);

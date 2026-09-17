@@ -10,7 +10,8 @@ import {
   STUDY_MAX_TYPED,
   STUDY_TYPED_HINTS,
   StudyMessage,
-  isStudyDesktopClient,
+  isStudyProtectedClient,
+  isStaleStudyAndroidShell,
   isStaleStudyDesktopShell,
   isStudyMenu,
   isStudyProfile,
@@ -18,6 +19,7 @@ import {
   isStudyQuestion,
   isStudyTyped,
   parseStudyMessage,
+  setStudyContentProtection,
   stripStudyGo,
   studyAnswerContent,
   studyClientTag,
@@ -38,23 +40,24 @@ let protectedOnScreen = 0;
 function acquireContentProtection() {
   protectedOnScreen += 1;
   if (protectedOnScreen === 1) {
-    window.native?.setContentProtection?.(true);
+    setStudyContentProtection(true);
   }
 }
 
 function releaseContentProtection() {
   protectedOnScreen = Math.max(0, protectedOnScreen - 1);
   if (protectedOnScreen === 0) {
-    window.native?.setContentProtection?.(false);
+    setStudyContentProtection(false);
   }
 }
 
 /**
  * Menu / reading material / question / result from the study bot.
  *
- * Desktop shell: body without selection, copy or context menu, screenshots
- * blacked out, Start and A–D buttons. Anywhere else (PC browser, Android
- * WebView, phones): the body is hidden and a notice points to the app.
+ * Trusted native shell: body without selection, copy or context menu,
+ * screenshots blacked out, Start and A–D buttons. Anywhere else (PC
+ * browser, Chrome WebView, phones without the APK): the body is hidden
+ * and a notice points to the app.
  */
 export function StudyProtectedMessage(props: {
   message: MessageInterface;
@@ -65,7 +68,7 @@ export function StudyProtectedMessage(props: {
   const [typed, setTyped] = createSignal("");
   const [rereadOpen, setRereadOpen] = createSignal(false);
   const [rereadIndex, setRereadIndex] = createSignal(0);
-  const desktop = isStudyDesktopClient();
+  const protectedClient = isStudyProtectedClient();
   const client = useClient();
   const typedHint = () =>
     props.study.kind === "mc" ? "" : STUDY_TYPED_HINTS[props.study.kind];
@@ -94,10 +97,10 @@ export function StudyProtectedMessage(props: {
   }
 
   onMount(() => {
-    if (desktop) acquireContentProtection();
+    if (protectedClient) acquireContentProtection();
   });
   onCleanup(() => {
-    if (desktop) releaseContentProtection();
+    if (protectedClient) releaseContentProtection();
   });
 
   const block = (event: Event) => {
@@ -137,7 +140,7 @@ export function StudyProtectedMessage(props: {
   }
 
   return (
-    <Show when={desktop} fallback={<StudyNotice study={props.study} />}>
+    <Show when={protectedClient} fallback={<StudyNotice study={props.study} />}>
       <Protected
         onCopy={block}
         onCut={block}
@@ -422,7 +425,8 @@ function ProfileDobForm(props: {
 }
 
 function StudyNotice(props: { study: StudyMessage }) {
-  const stale = isStaleStudyDesktopShell();
+  const staleDesktop = isStaleStudyDesktopShell();
+  const staleAndroid = isStaleStudyAndroidShell();
   const what = () => {
     switch (props.study.q) {
       case "u":
@@ -442,29 +446,43 @@ function StudyNotice(props: { study: StudyMessage }) {
   return (
     <Notice>
       <Show
-        when={stale}
+        when={staleAndroid}
         fallback={
-          <>
-            <strong>{what()} — só no app Muchat para PC.</strong>
+          <Show
+            when={staleDesktop}
+            fallback={
+              <>
+                <strong>{what()} — só no app Muchat para PC ou Android.</strong>
+                <span>
+                  Aqui no navegador o conteúdo fica escondido e as respostas não
+                  valem. Abra o app no computador ou o APK Muchat.
+                </span>
+                <a
+                  href={STUDY_DOWNLOAD_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Baixar o app
+                </a>
+              </>
+            }
+          >
+            <strong>{what()} — atualize o app Muchat.</strong>
             <span>
-              Aqui no navegador ou no celular o conteúdo fica escondido e as
-              respostas não valem. Abra o app no computador e me chame por lá.
+              Esta versão não esconde print da tela. Em Configurações → Desktop,
+              instale a atualização e abra o app de novo.
             </span>
-            <a
-              href={STUDY_DOWNLOAD_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Baixar o app
-            </a>
-          </>
+          </Show>
         }
       >
-        <strong>{what()} — atualize o app Muchat.</strong>
+        <strong>{what()} — atualize o app Muchat no Android.</strong>
         <span>
-          Esta versão não esconde print da tela. Em Configurações → Desktop,
-          instale a atualização e abra o app de novo.
+          Esta versão não esconde print da tela. Baixe o APK novo e instale por
+          cima do atual.
         </span>
+        <a href={STUDY_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+          Baixar o APK
+        </a>
       </Show>
     </Notice>
   );

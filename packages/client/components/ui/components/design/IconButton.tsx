@@ -6,7 +6,7 @@ import { cva } from "styled-system/css/cva";
 
 import { Ripple } from "./Ripple";
 import { typography } from "./Text";
-import { dispatchPress } from "./nativePress";
+import { apkClickFallback, dispatchPress } from "./nativePress";
 
 type Props = Omit<
   Parameters<typeof iconButton2>[0] &
@@ -53,6 +53,12 @@ export function IconButton(props: Props) {
       {...passthrough}
       {...buttonProps}
       ref={ref}
+      onClick={(event) => {
+        const nested = buttonProps.onClick;
+        if (typeof nested === "function") nested(event);
+        if (buttonProps.disabled) return;
+        apkClickFallback(btn.onPress, event);
+      }}
       class={iconButton2({
         ...style,
         disabled: buttonProps.disabled,
