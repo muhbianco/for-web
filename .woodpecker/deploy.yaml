@@ -1,0 +1,38 @@
+# Push no main = deploy do web do Muchat (chat.muhbianco.com.br). Imagem LOCAL no host
+# (muchat-web:<sha12> + :latest; compose usa pull_policy: never) → `docker compose -p stoat up web`
+# em /usr/src/stoat. Rollback: `docker tag muchat-web:<sha anterior> muchat-web:latest` e o mesmo up.
+when:
+  - event: push
+    branch: main
+
+depends_on: [ci]
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.10.1
+    settings:
+      recursive: false
+      depth: 50
+      partial: false
+
+steps:
+  build:
+    image: muhrilobianco/ci-deployer:1
+    pull: true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    commands:
+      - git submodule update --init --depth 1 packages/stoat.js packages/solid-livekit-components
+      - hel1-build --image muchat-web --tag ${CI_COMMIT_SHA:0:12} --extra-tag latest --local
+
+  deploy:
+    image: muhrilobianco/ci-deployer:1
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /var/lib/hel1-deploy:/var/lib/hel1-deploy
+      - /usr/src/stoat:/usr/src/stoat:ro
+    commands:
+      - >-
+        hel1-deploy exec --app muchat-web --tag ${CI_COMMIT_SHA:0:12}
+        --smoke https://chat.muhbianco.com.br/login
+        -- sh -ec 'cd /usr/src/stoat && docker compose -p stoat up -d --no-deps web'

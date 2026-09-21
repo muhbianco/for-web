@@ -1,0 +1,36 @@
+# CI do fork do cliente web do Muchat. O portão é o build da imagem (pnpm install frozen, build dos
+# pacotes, lingui, vite) — o mesmo Dockerfile de produção, sem push. Lint e tipos rodam juntos.
+# Os workflows herdados do upstream em .github/ ficam desligados no GitHub (Settings → Actions).
+when:
+  - branch: main
+    event: [push, pull_request, manual]
+
+clone:
+  git:
+    image: woodpeckerci/plugin-git:2.10.1
+    settings:
+      recursive: false
+
+steps:
+  submodules:
+    image: muhrilobianco/ci-deployer:1
+    pull: true
+    commands:
+      # packages/client/assets fica de fora (update = none, host interno do upstream).
+      - git submodule update --init --depth 1 packages/stoat.js packages/solid-livekit-components
+
+  lint-types:
+    image: node:24-alpine
+    depends_on: [submodules]
+    commands:
+      - apk add --no-cache git python3 make g++ patch >/dev/null
+      - corepack enable
+      - grep -q 'voiceCallUpdate' packages/stoat.js/src/Client.ts || patch -p1 -d packages/stoat.js < docker/overlays/stoat.js-voice.patch
+      - pnpm install --frozen-lockfile
+      - pnpm --filter stoat.js build
+      - pnpm --filter solid-livekit-components build
+      - pnpm --filter client exec lingui compile --typescript
+      - pnpm --filter client exec node scripts/copyAssets.mjs
+      - pnpm --filter client exec panda codegen
+      - pnpm exec eslint --ext .ts,.tsx packages/client
+      - pnpm --filter client exec tsc --noEmit
