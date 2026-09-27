@@ -17,6 +17,7 @@ import {
 } from "solid-livekit-components";
 
 import {
+  AudioPresets,
   LocalTrackPublication,
   Room,
   ScreenShareCaptureOptions,
@@ -27,7 +28,12 @@ import {
 } from "livekit-client";
 import { Channel, Client, Message } from "stoat.js";
 
-import { SoundController, useClient, useClientLifecycle, useSound } from "@revolt/client";
+import {
+  SoundController,
+  useClient,
+  useClientLifecycle,
+  useSound,
+} from "@revolt/client";
 import { useInstance } from "@revolt/instance";
 import { ModalController, useModals } from "@revolt/modal";
 import type { ScreenShareSelection } from "@revolt/modal/types";
@@ -43,20 +49,27 @@ import {
 import { VoiceCallCardContext } from "@revolt/ui/components/features/voice/callCard/VoiceCallCard";
 
 import { Device, useDevice } from "@revolt/common";
+import { notifyPushRing, privateCallTargets } from "./callPush";
+import {
+  type CallStatsSnapshot,
+  CallStatsCollector,
+  IDLE_CALL_STATS,
+} from "./callStats";
 import { InRoom } from "./components/InRoom";
 import { RoomAudioManager } from "./components/RoomAudioManager";
-import {
-  VOICE_DEAFENED_ATTR,
-  deafenAttributeValue,
-} from "./deafenAttribute";
-import { VoiceProcessor } from "./VoiceProcessor";
-import { notifyPushRing, privateCallTargets } from "./callPush";
+import { deafenAttributeValue, VOICE_DEAFENED_ATTR } from "./deafenAttribute";
 import { canUseDeepFilter } from "./deepFilterSupport";
+import {
+  normaliseFrameRate,
+  screenShareEncoding,
+  screenShareLabel,
+} from "./screenSharePresets";
 import { cancelTts, parseTtsCommand, speakTts } from "./tts";
 import {
-  IDLE_VOICE_ENGINE_STATUS,
   type VoiceEngineStatus,
+  IDLE_VOICE_ENGINE_STATUS,
 } from "./voiceEngineStatus";
+import { VoiceProcessor } from "./VoiceProcessor";
 
 type State =
   | "READY"
@@ -130,6 +143,11 @@ class Voice {
   engineStatus: Accessor<VoiceEngineStatus>;
   #setEngineStatus: Setter<VoiceEngineStatus>;
 
+  /** Network side of the diagnostics; engineStatus covers the DSP side. */
+  callStats: Accessor<CallStatsSnapshot>;
+  #setCallStats: Setter<CallStatsSnapshot>;
+  #statsCollector: CallStatsCollector;
+
   constructor(
     voiceSettings: VoiceSettings,
     modals: ModalController,
@@ -187,6 +205,14 @@ class Voice {
     );
     this.engineStatus = engineStatus;
     this.#setEngineStatus = setEngineStatus;
+
+    const [callStats, setCallStats] =
+      createSignal<CallStatsSnapshot>(IDLE_CALL_STATS);
+    this.callStats = callStats;
+    this.#setCallStats = setCallStats;
+    this.#statsCollector = new CallStatsCollector((snapshot) =>
+      this.#setCallStats(snapshot),
+    );
 
     const inst = useInstance();
     this.config = inst.config;
@@ -295,7 +321,9 @@ class Voice {
     // `mediaStreamTrack` is the processed track once a processor is attached
     // (a MediaStreamDestination with no capture settings); read the capture
     // device's settings instead.
-    const hardware: (MediaTrackSettings & { channelCount?: number }) | undefined =
+    const hardware:
+      | (MediaTrackSettings & { channelCount?: number })
+      | undefined =
       audioTrack?.getSourceTrackSettings?.() ??
       audioTrack?.mediaStreamTrack?.getSettings?.();
     const snapshot = this.voiceProcessor?.getSnapshot();
@@ -356,7 +384,22 @@ class Voice {
       publishDefaults: {
         videoEncoding: VideoPresets.h720.encoding,
         screenShareEncoding: ScreenSharePresets.h720fps30.encoding,
+        // Audio used to ride on livekit's defaults, which only hold while the
+        // published track is mono. VoiceProcessor forces mono today, but the
+        // day someone changes that, `red` would switch itself off in silence
+        // and we would lose our only real protection against packet loss.
+        // RED resends the previous payload alongside the current one, so a
+        // single lost packet is still heard; it is worth the extra bandwidth.
+        // (`voice_quality` in Revolt.toml is dead config: nothing in the
+        // client reads it. This is the value that actually ships.)
+        audioPreset: AudioPresets.music,
+        dtx: true,
+        red: true,
+        forceStereo: false,
       },
+      // Stop the SFU from pulling layers nobody is subscribed to. Pure upload
+      // saving for whoever is publishing, invisible to everyone else.
+      dynacast: true,
     });
 
     this.vidTracks = useTracks(
@@ -398,6 +441,7 @@ class Voice {
       this.clearRing();
       this.syncNativeVoiceSession();
       this.publishDeafenState();
+      this.#statsCollector.start(room);
     });
 
     room.addListener("disconnected", () => {
@@ -503,6 +547,7 @@ class Voice {
   }
 
   disconnect(opts?: { silent?: boolean }) {
+    this.#statsCollector.stop();
     this.device.releaseWakeLock();
     this.clearRing();
     this.syncNativeVoiceSession(true);
@@ -625,9 +670,9 @@ class Voice {
       low: {
         name: "low",
         resolution: ScreenSharePresets.h720fps30.resolution,
-        fullName: `720p 30FPS`,
+        fullName: screenShareLabel("low"),
         contentHint: "motion",
-        encoding: ScreenSharePresets.h720fps30.encoding,
+        encoding: screenShareEncoding("low"),
       },
     };
 
@@ -641,9 +686,9 @@ class Voice {
       qualities.high = {
         name: "high",
         resolution: ScreenSharePresets.h1080fps30.resolution,
-        fullName: `1080p 30FPS`,
+        fullName: screenShareLabel("high"),
         contentHint: "motion",
-        encoding: ScreenSharePresets.h1080fps30.encoding,
+        encoding: screenShareEncoding("high"),
       };
       const originalResolution = ScreenSharePresets.original.resolution;
       originalResolution.frameRate = 5;
@@ -661,9 +706,9 @@ class Voice {
       qualities.text = {
         name: "text",
         resolution: originalResolution,
-        fullName: `Source 5FPS`,
+        fullName: screenShareLabel("text"),
         contentHint: "text",
-        encoding: ScreenSharePresets.original.encoding,
+        encoding: screenShareEncoding("text"),
       };
     }
 
@@ -776,10 +821,15 @@ class Voice {
       ? selection.audio
       : this.#settings.screenShareAudio;
 
-    const resolution = { ...quality.resolution };
-    if (selection?.frameRate) {
-      resolution.frameRate = selection.frameRate;
-    }
+    // The frame rate has to reach the *encoding* as well, not just the
+    // capture: livekit caps every layer at the encoding's maxFramerate, so
+    // passing a 30 fps preset while capturing 60 published 30 and burned the
+    // sender's CPU for nothing. See screenSharePresets.ts.
+    // `quality` may have fallen back to "low" when the picked one is not
+    // enabled, so derive from the resolved quality, not the requested name.
+    const frameRate = normaliseFrameRate(quality.name, selection?.frameRate);
+    const resolution = { ...quality.resolution, frameRate };
+    const encoding = screenShareEncoding(quality.name, frameRate);
 
     room.localParticipant
       .setScreenShareEnabled(
@@ -797,7 +847,7 @@ class Voice {
               }
             : false,
         },
-        { screenShareEncoding: quality.encoding },
+        { screenShareEncoding: encoding },
       )
       .then((localTrack) => this.onScreenshareStarted(localTrack, selection))
       .catch((e) => this.onErr(e));
@@ -876,15 +926,23 @@ class Voice {
 
     const qualities = this.getEnabledScreenShareQualities();
     const quality = qualities[qualityName] ?? qualities.low!;
-    const { width, height, frameRate } = quality.resolution;
+    // The browser path has no FPS control, so this resolves to the default
+    // (or 5 for source mode), exactly as before.
+    const frameRate = normaliseFrameRate(quality.name);
 
     try {
-      await videoTrack.mediaStreamTrack.applyConstraints({
-        frameRate: { max: frameRate },
-        width: width === 0 ? undefined : { ideal: width, max: width },
-        height: height === 0 ? undefined : { ideal: height, max: height },
-      });
-      videoTrack.mediaStreamTrack.contentHint = quality.contentHint;
+      // Our own livekit-client patch: re-applies the capture constraints AND
+      // swaps publishOptions.screenShareEncoding, then recomputes the sender
+      // encodings. The old raw applyConstraints() only moved the capture, so
+      // switching quality mid-call left the previous bitrate/frame rate on
+      // the wire.
+      await videoTrack.applyScreenShareConstraints(
+        {
+          resolution: { ...quality.resolution, frameRate },
+          contentHint: quality.contentHint,
+        },
+        screenShareEncoding(quality.name, frameRate),
+      );
 
       if (!audio) {
         const screenAudioTrack = room.localParticipant.getTrackPublication(
@@ -1103,11 +1161,7 @@ class Voice {
     },
   ) {
     if (!event.to) return;
-    if (
-      this.channel() &&
-      event.from &&
-      this.channel()!.id !== event.from
-    ) {
+    if (this.channel() && event.from && this.channel()!.id !== event.from) {
       return;
     }
 

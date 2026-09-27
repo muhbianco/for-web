@@ -3,6 +3,7 @@ import { Show } from "solid-js";
 import { useInstance } from "@revolt/instance";
 import { Column } from "@revolt/ui";
 
+import { CallDiagnosticsOptions } from "./CallDiagnosticsOptions";
 import { ScreenShareOptions } from "./ScreenShareOptions";
 import { TextToSpeechOptions } from "./TextToSpeechOptions";
 import { VoiceInputOptions } from "./VoiceInputOptions";
@@ -22,6 +23,7 @@ export function VoiceSettings() {
       <Show when={limits().video}>
         <ScreenShareOptions />
       </Show>
+      <CallDiagnosticsOptions />
     </Column>
   );
 }

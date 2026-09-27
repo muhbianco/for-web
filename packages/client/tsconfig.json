@@ -14,6 +14,10 @@
       "vite-plugin-pwa/client"
     ],
     "noEmit": true,
+    // The `node --test` suites import their subject with an explicit .ts
+    // extension, which is how node resolves them. Safe here because nothing
+    // is emitted from this config.
+    "allowImportingTsExtensions": true,
     "isolatedModules": true,
     "resolveJsonModule": true,
     "skipLibCheck": true,
