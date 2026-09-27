@@ -359,6 +359,9 @@ class Voice {
       speechProb: snapshot?.speechProb,
       vadInferMs: snapshot?.vadInferMs,
       vadError: snapshot?.vadError,
+      silentMsPerSec: snapshot?.silentMsPerSec,
+      longestSilentRunMs: snapshot?.longestSilentRunMs,
+      outputPeak: snapshot?.outputPeak,
     });
   }
 

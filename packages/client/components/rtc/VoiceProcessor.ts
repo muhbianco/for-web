@@ -19,6 +19,12 @@ import {
   addPatchedDeepFilterModule,
   isDeepFilterStats,
 } from "./patchDeepFilterWorklet";
+import { ensureProductionMeterNode } from "./productionMeter";
+import {
+  type ProductionStats,
+  isProductionStats,
+  silentMsPerSec,
+} from "./productionMeterProcessor";
 import {
   attachVadPort,
   detachVadPort,
@@ -100,6 +106,12 @@ export interface VoiceProcessorSnapshot {
   deepFilterStatWindows?: number;
   /** Frames in the last window the worklet reported. */
   deepFilterStatFrames?: number;
+  /** Milliseconds of digital silence the chain emitted per second. */
+  silentMsPerSec?: number;
+  /** Longest unbroken run of emitted silence in the last window (ms). */
+  longestSilentRunMs?: number;
+  /** Loudest sample that left the chain in the last window. */
+  outputPeak?: number;
   /** Share of slow DeepFilter frames in the last second (0-1). */
   deepFilterSlowRatio?: number;
   /** True once DeepFilter was replaced by RNNoise because it fell behind. */
@@ -201,6 +213,8 @@ export class VoiceProcessor implements TrackProcessor<
   private compressorNode?: DynamicsCompressorNode;
   private gainNode?: GainNode;
   private destinationNode?: MediaStreamAudioDestinationNode;
+  private meterNode?: AudioWorkletNode;
+  private lastProduction?: ProductionStats;
 
   private disposeSolidjsContext: () => void = () => {};
 
@@ -266,6 +280,15 @@ export class VoiceProcessor implements TrackProcessor<
       speechProb: this.vadActive ? this.speechProb : undefined,
       vadInferMs: this.vadActive ? this.vadInferMs : undefined,
       vadError: this.vadError,
+      silentMsPerSec: this.lastProduction
+        ? silentMsPerSec(this.lastProduction)
+        : undefined,
+      longestSilentRunMs: this.lastProduction
+        ? Math.round(
+            (this.lastProduction.longestSilentRun * 128 * 1000) / 48000,
+          )
+        : undefined,
+      outputPeak: this.lastProduction?.peak,
     };
   }
 
@@ -657,8 +680,36 @@ export class VoiceProcessor implements TrackProcessor<
     forceMono(this.gainNode);
     this.destinationNode = context.createMediaStreamDestination();
     this.destinationNode.channelCount = 1;
-    this.gainNode.connect(this.destinationNode);
+
+    // The meter sits between the chain and what LiveKit publishes, so it sees
+    // exactly the samples that go on the wire. If it cannot be created the
+    // chain still works — a missing measurement must never cost audio.
+    try {
+      this.meterNode = await ensureProductionMeterNode(context);
+      this.listenToProduction(this.meterNode);
+      this.gainNode.connect(this.meterNode);
+      this.meterNode.connect(this.destinationNode);
+    } catch (error) {
+      console.warn("[voice] production meter unavailable", error);
+      this.meterNode = undefined;
+      this.gainNode.connect(this.destinationNode);
+    }
+
     this.processedTrack = this.destinationNode.stream.getAudioTracks()[0];
+  }
+
+  /**
+   * Digital silence leaving the chain is the signal the receiver sees as
+   * concealment: Web Audio renders zeros when the source underfeeds it, Opus
+   * DTX then stops sending, and the far end invents audio to cover the gap.
+   */
+  private listenToProduction(node: AudioWorkletNode) {
+    node.port.onmessage = (event: MessageEvent) => {
+      if (!isProductionStats(event.data)) return;
+      if (this.meterNode !== node) return;
+      this.lastProduction = event.data;
+      this.emitStatus();
+    };
   }
 
   private async wireGraph(context: AudioContext): Promise<void> {
@@ -764,6 +815,12 @@ export class VoiceProcessor implements TrackProcessor<
   private async teardown() {
     this.disconnectNoiseGraph();
     this.gainNode?.disconnect();
+    if (this.meterNode) {
+      this.meterNode.port.onmessage = null;
+      this.meterNode.disconnect();
+      this.meterNode = undefined;
+    }
+    this.lastProduction = undefined;
     this.destinationNode?.disconnect();
     this.sourceNode = undefined;
     this.gainNode = undefined;

@@ -178,6 +178,14 @@ msgstr "{device} Hz (não bate com {context} Hz)"
 #~ msgid "{m} minutes"
 #~ msgstr "{m} minutes"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{ms} ms/s"
+msgstr "{ms} ms/s"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{ms} ms/s (maior trecho {run} ms)"
+msgstr "{ms} ms/s (maior trecho {run} ms)"
+
 #. placeholder {0}: ms.toFixed(1)
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{pct}% ({0} ms)"
@@ -2581,10 +2589,18 @@ msgstr "My Bots"
 msgid "Nada para mostrar nesta aba."
 msgstr "Nada para mostrar nesta aba."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "nada saindo da cadeia"
+msgstr "nada saindo da cadeia"
+
 #: components/modal/modals/CreateCategory.tsx
 #: components/modal/modals/RenameSession.tsx
 msgid "Name"
 msgstr "Name"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "nenhum"
+msgstr "nenhum"
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Neutral"
@@ -3493,6 +3509,10 @@ msgstr "Sign into Muchat"
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Sign Up"
 msgstr "Sign Up"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Silêncio publicado"
+msgstr "Silêncio publicado"
 
 #: components/app/interface/channels/text/Message.tsx
 msgid "Silent"

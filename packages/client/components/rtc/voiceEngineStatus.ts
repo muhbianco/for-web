@@ -65,6 +65,20 @@ export interface VoiceEngineStatus {
   vadInferMs?: number;
   /** Why the VAD is not running, if it is not. */
   vadError?: string;
+  /**
+   * Milliseconds of digital silence this chain published per second.
+   *
+   * The measurement that matters for "my voice arrives chopped": Web Audio
+   * renders zeros when the source underfeeds the graph, Opus DTX then stops
+   * sending, and the listener's decoder invents audio to cover the gap — which
+   * is what showed up as concealment with zero packet loss. Measured at the
+   * end of the chain, on the samples LiveKit actually publishes.
+   */
+  silentMsPerSec?: number;
+  /** Longest unbroken run of published silence in the last window (ms). */
+  longestSilentRunMs?: number;
+  /** Loudest sample published in the last window; 0 means a dead chain. */
+  outputPeak?: number;
 }
 
 export const IDLE_VOICE_ENGINE_STATUS: VoiceEngineStatus = {

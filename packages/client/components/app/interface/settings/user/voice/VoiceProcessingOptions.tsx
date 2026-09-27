@@ -398,6 +398,21 @@ function DiagnosticsSection() {
     return `${device} Hz`;
   };
 
+  /**
+   * Silence this machine published. The number that tells the person talking
+   * whether *their* chain is the source of the chopping — every other line in
+   * this panel describes what arrives, which is the wrong end.
+   */
+  const publishedSilenceLabel = () => {
+    const current = status();
+    const ms = current.silentMsPerSec;
+    if (ms === undefined) return "—";
+    if (current.outputPeak === 0) return t`nada saindo da cadeia`;
+    const run = current.longestSilentRunMs;
+    if (ms === 0) return t`nenhum`;
+    return run ? t`${ms} ms/s (maior trecho ${run} ms)` : t`${ms} ms/s`;
+  };
+
   const gateLabel = () => {
     const current = status();
     switch (current.vadEngine) {
@@ -433,6 +448,8 @@ function DiagnosticsSection() {
       // does the browser resamples between two clocks and the published
       // timeline drifts away from real time.
       { label: t`Microphone sample rate`, value: deviceRateLabel() },
+      // Medido no fim da cadeia, nas amostras que o LiveKit publica.
+      { label: t`Silêncio publicado`, value: publishedSilenceLabel() },
     ];
     if (current.engine === "deepfilter") {
       list.push({

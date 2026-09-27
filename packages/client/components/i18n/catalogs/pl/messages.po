@@ -177,6 +177,14 @@ msgstr ""
 #~ msgid "{m} minutes"
 #~ msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{ms} ms/s"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{ms} ms/s (maior trecho {run} ms)"
+msgstr ""
+
 #. placeholder {0}: ms.toFixed(1)
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{pct}% ({0} ms)"
@@ -2555,10 +2563,18 @@ msgstr "Moje boty"
 msgid "Nada para mostrar nesta aba."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "nada saindo da cadeia"
+msgstr ""
+
 #: components/modal/modals/CreateCategory.tsx
 #: components/modal/modals/RenameSession.tsx
 msgid "Name"
 msgstr "Nazwa"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "nenhum"
+msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Neutral"
@@ -3468,6 +3484,10 @@ msgstr ""
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Sign Up"
 msgstr "Zarejestruj się"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Silêncio publicado"
+msgstr ""
 
 #: components/app/interface/channels/text/Message.tsx
 msgid "Silent"
