@@ -2,12 +2,12 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  TTS_MAX_CHARS,
   type TtsVoiceLike,
   isTtsCommand,
   parseTtsCommand,
   pickTtsVoice,
   stripTtsPrefix,
+  TTS_MAX_CHARS,
 } from "./tts.ts";
 
 test("recognises the /tts prefix case-insensitively and only as a word", () => {
@@ -66,9 +66,13 @@ test("prefers an exact pt-BR voice, neural/online first", () => {
       default: true,
     }),
     voice("Microsoft Maria - Portuguese (Brazil)", "pt-BR"),
-    voice("Microsoft Francisca Online (Natural) - Portuguese (Brazil)", "pt-BR", {
-      localService: false,
-    }),
+    voice(
+      "Microsoft Francisca Online (Natural) - Portuguese (Brazil)",
+      "pt-BR",
+      {
+        localService: false,
+      },
+    ),
     voice("Google português do Brasil", "pt_BR", { localService: false }),
   ];
   assert.equal(

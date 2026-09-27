@@ -398,6 +398,10 @@ msgstr "Avancé"
 #~ msgid "Affects all roles and users"
 #~ msgstr "Affecte tous les rôles et utilisateurs"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "aguardando a primeira janela"
+msgstr ""
+
 #: src/interface/Friends.tsx
 msgid "All"
 msgstr "Tous"
@@ -2270,6 +2274,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "max {maxMs} ms ({slowPct}% slow)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms (só {frames} quadros na janela)"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
@@ -4219,6 +4227,10 @@ msgstr "avec {0}"
 #: components/ui/components/features/voice/callCard/VoiceCallCardPreview.tsx
 msgid "with {0} others"
 msgstr "avec {0} autres"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "worklet não está reportando"
+msgstr ""
 
 #: components/modal/modals/CreateGroupOrServer.tsx
 msgid "Would you like to create a new group or server?"

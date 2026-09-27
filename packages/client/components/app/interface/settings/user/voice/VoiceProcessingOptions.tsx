@@ -359,10 +359,26 @@ function DiagnosticsSection() {
     return t`Moderate (${rounded} dBFS)`;
   };
 
-  /** Slowest DeepFilter frame in the last second and how many were slow. */
+  /**
+   * Slowest DeepFilter frame in the last second and how many were slow.
+   *
+   * A dash here used to mean three different things at once: not measured
+   * yet, the worklet never reported, and the window was too thin to judge.
+   * They are told apart now, because the middle one is a defect and it hid
+   * for weeks behind the same character.
+   */
   const frameTimeLabel = () => {
     const current = status();
-    if (current.deepFilterMaxFrameMs === undefined) return "—";
+    const windows = current.deepFilterStatWindows;
+    if (windows === 0) return t`worklet não está reportando`;
+    if (current.deepFilterMaxFrameMs === undefined) {
+      return windows === undefined ? "—" : t`aguardando a primeira janela`;
+    }
+    const frames = current.deepFilterStatFrames;
+    if (frames !== undefined && frames < 50) {
+      const maxMs = current.deepFilterMaxFrameMs;
+      return t`max ${maxMs} ms (só ${frames} quadros na janela)`;
+    }
     const slowPct = Math.round((current.deepFilterSlowRatio ?? 0) * 100);
     const maxMs = current.deepFilterMaxFrameMs;
     return slowPct > 0

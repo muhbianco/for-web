@@ -287,6 +287,8 @@ function buildReport(
         deviceSampleRate: engine.inputSampleRate,
         inputChannelCount: engine.inputChannelCount,
         deepFilterMaxFrameMs: engine.deepFilterMaxFrameMs,
+        deepFilterStatWindows: engine.deepFilterStatWindows,
+        deepFilterStatFrames: engine.deepFilterStatFrames,
         deepFilterSlowRatio: engine.deepFilterSlowRatio,
         deepFilterOverloaded: engine.deepFilterOverloaded,
         deepFilterAttenDb: engine.deepFilterAttenDb,

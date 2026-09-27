@@ -10,7 +10,10 @@ const WASM_SIMD_PROBE = new Uint8Array([
 const WEAK_CPU_CORES = 4;
 
 function hasWasmSimd(): boolean {
-  if (typeof WebAssembly === "undefined" || typeof WebAssembly.validate !== "function") {
+  if (
+    typeof WebAssembly === "undefined" ||
+    typeof WebAssembly.validate !== "function"
+  ) {
     return false;
   }
   try {

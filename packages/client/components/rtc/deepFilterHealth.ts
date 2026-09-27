@@ -15,6 +15,10 @@ export const DF_SLOW_WINDOWS_TO_DEGRADE = 3;
 export const DF_MIN_FRAMES_PER_WINDOW = 50;
 
 export interface DeepFilterHealthSnapshot {
+  /** Stat windows received from the worklet. Zero means it never reported. */
+  windows: number;
+  /** Frames in the last window; below DF_MIN_FRAMES_PER_WINDOW is not judged. */
+  lastFrames?: number;
   /** Slowest frame in the last window (ms). */
   lastMaxMs?: number;
   /** Share of slow frames in the last window (0-1). */
@@ -25,19 +29,31 @@ export interface DeepFilterHealthSnapshot {
 
 export class DeepFilterHealth {
   private slowWindows = 0;
+  private windows = 0;
+  private lastFrames?: number;
   private lastMaxMs?: number;
   private lastSlowRatio?: number;
 
-  /** Returns true when the caller should fall back to RNNoise. */
+  /**
+   * Returns true when the caller should fall back to RNNoise.
+   *
+   * Recording and judging are deliberately separate. A thin window must not
+   * trigger degradation, but it must still be *visible*: the first version
+   * returned early and left lastMaxMs undefined, which the settings panel
+   * rendered as "—". That dash was read as "nothing to see here" for weeks
+   * while it actually meant "this measurement never arrived".
+   */
   observe(
     stats: Pick<DeepFilterStats, "frames" | "slowFrames" | "maxMs">,
   ): boolean {
+    this.windows += 1;
+    this.lastFrames = stats.frames;
+    this.lastMaxMs = stats.maxMs;
+    this.lastSlowRatio = stats.frames > 0 ? stats.slowFrames / stats.frames : 0;
     if (stats.frames < DF_MIN_FRAMES_PER_WINDOW) {
       return false;
     }
     const ratio = stats.slowFrames / stats.frames;
-    this.lastMaxMs = stats.maxMs;
-    this.lastSlowRatio = ratio;
     if (ratio >= DF_SLOW_RATIO) {
       this.slowWindows += 1;
     } else {
@@ -48,6 +64,8 @@ export class DeepFilterHealth {
 
   snapshot(): DeepFilterHealthSnapshot {
     return {
+      windows: this.windows,
+      lastFrames: this.lastFrames,
       lastMaxMs: this.lastMaxMs,
       lastSlowRatio: this.lastSlowRatio,
       slowWindows: this.slowWindows,

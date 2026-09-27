@@ -96,6 +96,10 @@ export interface VoiceProcessorSnapshot {
   noiseFloorDb?: number;
   /** Slowest DeepFilter frame in the last second (ms). */
   deepFilterMaxFrameMs?: number;
+  /** Stat windows received from the DeepFilter worklet. 0 = never reported. */
+  deepFilterStatWindows?: number;
+  /** Frames in the last window the worklet reported. */
+  deepFilterStatFrames?: number;
   /** Share of slow DeepFilter frames in the last second (0-1). */
   deepFilterSlowRatio?: number;
   /** True once DeepFilter was replaced by RNNoise because it fell behind. */
@@ -244,6 +248,14 @@ export class VoiceProcessor implements TrackProcessor<
       deepFilterMaxFrameMs:
         this.engine === "deepfilter"
           ? this.deepFilterHealth?.snapshot().lastMaxMs
+          : undefined,
+      deepFilterStatWindows:
+        this.engine === "deepfilter"
+          ? (this.deepFilterHealth?.snapshot().windows ?? 0)
+          : undefined,
+      deepFilterStatFrames:
+        this.engine === "deepfilter"
+          ? this.deepFilterHealth?.snapshot().lastFrames
           : undefined,
       deepFilterSlowRatio:
         this.engine === "deepfilter"

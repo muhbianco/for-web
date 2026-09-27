@@ -27,7 +27,9 @@ test("consecutive slow seconds degrade", () => {
   assert.equal(health.snapshot().lastSlowRatio, 0.6);
 });
 
-test("windows with almost no frames are ignored", () => {
+test("windows with almost no frames are recorded but not judged", () => {
+  // They must not degrade the engine, but they must still be visible: the
+  // panel showed "—" for a dash that actually meant "never measured".
   const health = new DeepFilterHealth();
   const idle = {
     frames: DF_MIN_FRAMES_PER_WINDOW - 1,
@@ -37,5 +39,16 @@ test("windows with almost no frames are ignored", () => {
   for (let i = 0; i < DF_SLOW_WINDOWS_TO_DEGRADE + 2; i++) {
     assert.equal(health.observe(idle), false);
   }
+  const snapshot = health.snapshot();
+  assert.equal(snapshot.slowWindows, 0, "janela fina não conta para degradar");
+  assert.equal(snapshot.lastMaxMs, 20, "mas o número aparece");
+  assert.equal(snapshot.lastFrames, DF_MIN_FRAMES_PER_WINDOW - 1);
+  assert.equal(snapshot.windows, DF_SLOW_WINDOWS_TO_DEGRADE + 2);
+});
+
+test("sem nenhuma janela, dá para distinguir de uma janela boa", () => {
+  // Este é o estado que estávamos vendo em produção e não sabíamos ler.
+  const health = new DeepFilterHealth();
+  assert.equal(health.snapshot().windows, 0);
   assert.equal(health.snapshot().lastMaxMs, undefined);
 });

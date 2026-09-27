@@ -44,6 +44,15 @@ export interface VoiceEngineStatus {
   inputChannelCount?: number;
   /** Slowest DeepFilter frame in the last second (ms). */
   deepFilterMaxFrameMs?: number;
+  /**
+   * Stat windows received from the DeepFilter worklet since the graph opened.
+   * Zero while the engine is DeepFilter means the worklet is not reporting at
+   * all — a different failure from "the frames are fast", and the one the
+   * panel used to hide behind a dash.
+   */
+  deepFilterStatWindows?: number;
+  /** Frames in the last window the worklet reported. */
+  deepFilterStatFrames?: number;
   /** Share of slow DeepFilter frames in the last second (0-1). */
   deepFilterSlowRatio?: number;
   /** DeepFilter was replaced by RNNoise during this call because it fell behind. */

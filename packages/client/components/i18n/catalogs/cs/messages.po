@@ -347,6 +347,10 @@ msgstr "Pokročilé"
 #~ msgid "Affects all roles and users"
 #~ msgstr "Ovlivňuje všechny role a členy"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "aguardando a primeira janela"
+msgstr ""
+
 #: src/interface/Friends.tsx
 msgid "All"
 msgstr "Všechny"
@@ -2219,6 +2223,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "max {maxMs} ms ({slowPct}% slow)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms (só {frames} quadros na janela)"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
@@ -4167,6 +4175,10 @@ msgstr ""
 #. placeholder {0}: names.length
 #: components/ui/components/features/voice/callCard/VoiceCallCardPreview.tsx
 msgid "with {0} others"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "worklet não está reportando"
 msgstr ""
 
 #: components/modal/modals/CreateGroupOrServer.tsx

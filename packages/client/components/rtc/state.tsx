@@ -351,6 +351,8 @@ class Voice {
       noiseFloorDb: snapshot?.noiseFloorDb,
       inputChannelCount: hardware?.channelCount,
       deepFilterMaxFrameMs: snapshot?.deepFilterMaxFrameMs,
+      deepFilterStatWindows: snapshot?.deepFilterStatWindows,
+      deepFilterStatFrames: snapshot?.deepFilterStatFrames,
       deepFilterSlowRatio: snapshot?.deepFilterSlowRatio,
       deepFilterOverloaded: snapshot?.deepFilterOverloaded,
       vadEngine: snapshot?.vadEngine,

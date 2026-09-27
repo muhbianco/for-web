@@ -4,10 +4,14 @@ import {
 } from "./androidDisplayMedia";
 import { getVirtmic } from "./virtualMic";
 
+export {
+  notifyPushRing,
+  registerPushToken,
+  startPrivateCall,
+} from "./callPush";
 export { useVoice, VoiceContext } from "./state";
 export { useIsDeafened } from "./useIsDeafened";
 export type { VoiceEngineId, VoiceEngineStatus } from "./voiceEngineStatus";
-export { notifyPushRing, registerPushToken, startPrivateCall } from "./callPush";
 
 export { InRoom } from "./components/InRoom";
 export { RoomAudioManager } from "./components/RoomAudioManager";
