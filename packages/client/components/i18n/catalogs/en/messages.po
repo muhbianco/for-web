@@ -42,6 +42,10 @@ msgstr "dddd [at] LT"
 msgid "(changes are being saved…)"
 msgstr "(changes are being saved…)"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "(recebendo)"
+msgstr "(recebendo)"
+
 #. placeholder {0}: props.count
 #: components/ui/components/features/messaging/elements/BlockedMessage.tsx
 msgid "{0, plural, one {# blocked message} other {# blocked messages}}"
@@ -58,7 +62,7 @@ msgstr "{0, plural, one {Drop a file} other {Drop # files}}"
 
 #. placeholder {0}: users() .slice(0, -1) .map((user) => user!.username) .join(", ")
 #. placeholder {1}: users().slice(-1)[0]!.username
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "{0} and {1} are typing…"
 msgstr "{0} and {1} are typing…"
 
@@ -83,7 +87,7 @@ msgid "{0} files exceed the maximum size limit of {maxSizeFormatted} and were no
 msgstr "{0} files exceed the maximum size limit of {maxSizeFormatted} and were not uploaded."
 
 #. placeholder {0}: users()[0]!.username
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "{0} is typing…"
 msgstr "{0} is typing…"
 
@@ -140,6 +144,11 @@ msgstr "{0} was kicked"
 msgid "{0} was removed by {1}"
 msgstr "{0} was removed by {1}"
 
+#. placeholder {0}: props.member.user?.username
+#: components/modal/modals/TimeoutMember.tsx
+msgid "{0} will not be able to interact with the server until the timeout expires."
+msgstr "{0} will not be able to interact with the server until the timeout expires."
+
 #. placeholder {0}: page() * itemsPerPage() + 1
 #. placeholder {1}: Math.min( props.itemCount!, page() * itemsPerPage() + itemsPerPage(), )
 #. placeholder {2}: props.itemCount
@@ -152,6 +161,11 @@ msgstr "{0}-{1} of {2}"
 msgid "{0}'s roles"
 msgstr "{0}'s roles"
 
+#. placeholder {0}: props.member.user?.username
+#: components/modal/modals/RemoveTimeout.tsx
+msgid "{0}'s timeout will be removed and they will be able to interact with the server again."
+msgstr "{0}'s timeout will be removed and they will be able to interact with the server again."
+
 #: src/interface/channels/text/Composition.tsx
 #~ msgid "{h} hours"
 #~ msgstr "{h} hours"
@@ -159,6 +173,11 @@ msgstr "{0}'s roles"
 #: src/interface/channels/text/Composition.tsx
 #~ msgid "{m} minutes"
 #~ msgstr "{m} minutes"
+
+#. placeholder {0}: ms.toFixed(1)
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{pct}% ({0} ms)"
+msgstr "{pct}% ({0} ms)"
 
 #: src/interface/channels/text/Composition.tsx
 #~ msgid "{sec} seconds"
@@ -313,6 +332,15 @@ msgstr "24 hours"
 #~ msgid "7 days"
 #~ msgstr "7 days"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "A chamada está saudável"
+msgstr "A chamada está saudável"
+
+#. placeholder {0}: v.who
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "A conexão de {0} está instável"
+msgstr "A conexão de {0} está instável"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Able to access channels on this server"
 msgstr "Able to access channels on this server"
@@ -326,10 +354,11 @@ msgid "Able to speak in voice call"
 msgstr "Able to speak in voice call"
 
 #: components/auth/src/AuthPage.tsx
-msgid "About"
-msgstr "About"
+#~ msgid "About"
+#~ msgstr "About"
 
 #: components/modal/modals/SignOutSessions.tsx
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
 msgid "Accept"
 msgstr "Accept"
 
@@ -413,9 +442,17 @@ msgstr "All Systems Operational"
 msgid "Allow members to change name and avatar per-message"
 msgstr "Allow members to change name and avatar per-message"
 
-#: components/app/interface/settings/user/bots/ViewBot.tsx
+#: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Allow others to add your bot to their servers from Discover"
 msgstr "Allow others to add your bot to their servers from Discover"
+
+#: components/app/interface/settings/user/bots/ViewBot.tsx
+msgid "Allow others to invite your bot"
+msgstr "Allow others to invite your bot"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Allow others to join your server from Discover"
+msgstr "Allow others to join your server from Discover"
 
 #: components/i18n/errors.tsx
 msgid "Already friends with this user."
@@ -437,6 +474,10 @@ msgstr "An error occurred."
 #: components/i18n/errors.tsx
 msgid "An internal error occurred. ({0})"
 msgstr "An internal error occurred. ({0})"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Aplicativos"
+msgstr "Aplicativos"
 
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
@@ -485,14 +526,34 @@ msgstr "Assign Roles"
 msgid "Audio disabled by browser"
 msgstr "Audio disabled by browser"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Áudio enviado"
+msgstr "Áudio enviado"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Áudio reconstruído"
+msgstr "Áudio reconstruído"
+
 #: components/app/interface/settings/user/Account.tsx
 #: components/modal/modals/MFAFlow.tsx
 msgid "Authenticator App"
 msgstr "Authenticator App"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Automatic Gain Control"
-msgstr "Automatic Gain Control"
+msgid "Automatic (recommended)"
+msgstr "Automatic (recommended)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Automatic gain control"
+msgstr "Automatic gain control"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Automatic Gain Control"
+#~ msgstr "Automatic Gain Control"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Automatically determine input sensitivity"
+#~ msgstr "Automatically determine input sensitivity"
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Avatar"
@@ -507,9 +568,17 @@ msgstr "Avatar"
 msgid "Back"
 msgstr "Back"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Background noise"
+msgstr "Background noise"
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Badges"
 msgstr "Badges"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Balanced removal for everyday calls."
+msgstr "Balanced removal for everyday calls."
 
 #: components/modal/modals/BanMember.tsx
 #: components/modal/modals/BanNonMember.tsx
@@ -552,6 +621,14 @@ msgstr "Banner"
 msgid "Bans"
 msgstr "Bans"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Being sent"
+msgstr "Being sent"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Best against keyboard, fans and TV in the background. Uses more CPU and falls back to RNNoise on weaker devices."
+msgstr "Best against keyboard, fans and TV in the background. Uses more CPU and falls back to RNNoise on weaker devices."
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Block user"
 msgstr "Block user"
@@ -573,16 +650,36 @@ msgid "Browser"
 msgstr "Browser"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Browser Echo Cancellation"
-msgstr "Browser Echo Cancellation"
+#~ msgid "Browser Echo Cancellation"
+#~ msgstr "Browser Echo Cancellation"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Browser gain control"
+msgstr "Browser gain control"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Browser noise suppression"
+msgstr "Browser noise suppression"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #~ msgid "Browser Noise Supression"
 #~ msgstr "Browser Noise Supression"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
+msgstr "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Buffer"
+msgstr "Buffer"
+
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Bug Tracker"
 msgstr "Bug Tracker"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Built-in browser noise suppression only."
+msgstr "Built-in browser noise suppression only."
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -606,9 +703,26 @@ msgstr "Bypass Slowmode"
 msgid "Bypasses slowmode in channels"
 msgstr "Bypasses slowmode in channels"
 
+#: components/app/menus/UserContextMenu.tsx
+#: components/ui/components/features/profiles/ProfileActions.tsx
+msgid "Call"
+msgstr "Call"
+
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
+msgid "Calling…"
+msgstr "Calling…"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Câmera"
+msgstr "Câmera"
+
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Can't find the perfect GIF? Head to Gifbox and upload your own for everyone to use."
 msgstr "Can't find the perfect GIF? Head to Gifbox and upload your own for everyone to use."
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Can't get discover request status right now"
+msgstr "Can't get discover request status right now"
 
 #: components/auth/src/flows/FlowLogin.tsx
 #: components/modal/modals/AddBot.tsx
@@ -629,6 +743,7 @@ msgstr "Can't find the perfect GIF? Head to Gifbox and upload your own for every
 #: components/modal/modals/Onboarding.tsx
 #: components/modal/modals/PinMessage.tsx
 #: components/modal/modals/RemoveMember.tsx
+#: components/modal/modals/RemoveTimeout.tsx
 #: components/modal/modals/RenameSession.tsx
 #: components/modal/modals/ReportContent.tsx
 #: components/modal/modals/ResetBotToken.tsx
@@ -636,8 +751,14 @@ msgstr "Can't find the perfect GIF? Head to Gifbox and upload your own for every
 #: components/modal/modals/ScreenShareSettings.tsx
 #: components/modal/modals/ServerIdentity.tsx
 #: components/modal/modals/SignOutSessions.tsx
+#: components/modal/modals/TimeoutMember.tsx
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
 msgid "Cancel"
 msgstr "Cancel"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Cancel discover request"
+msgstr "Cancel discover request"
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Cancel friend request"
@@ -646,6 +767,10 @@ msgstr "Cancel friend request"
 #: components/app/menus/DraftMessageContextMenu.tsx
 msgid "Cancel message"
 msgstr "Cancel message"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Cancel your discover request and remove it from the review queue"
+msgstr "Cancel your discover request and remove it from the review queue"
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Cannot delete account until servers are deleted or transferred"
@@ -723,6 +848,10 @@ msgstr "Change your profile per-server"
 #~ msgid "Changelog"
 #~ msgstr "Changelog"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Changes what other people hear from you, not what you hear from them. Only one suppressor runs at a time."
+msgstr "Changes what other people hear from you, not what you hear from them. Only one suppressor runs at a time."
+
 #: components/app/interface/settings/channel/Overview.tsx
 msgid "Channel Description"
 msgstr "Channel Description"
@@ -752,6 +881,11 @@ msgstr "Channels"
 msgid "Chat Input"
 msgstr "Chat Input"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Check back often to see if your {0} has been approved!"
+msgstr "Check back often to see if your {0} has been approved!"
+
 #: components/auth/src/flows/FlowCheck.tsx
 msgid "Check your mail!"
 msgstr "Check your mail!"
@@ -763,6 +897,10 @@ msgstr "Choose a username"
 #: components/modal/modals/Onboarding.tsx
 msgid "Choose username"
 msgstr "Choose username"
+
+#: components/app/interface/settings/user/Native.tsx
+msgid "Chromium:"
+msgstr "Chromium:"
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Clear status"
@@ -829,9 +967,21 @@ msgstr "Close conversation with {0}?"
 msgid "Code"
 msgstr "Code"
 
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Collapse call window"
+msgstr "Collapse call window"
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Coming soon! 👀"
 msgstr "Coming soon! 👀"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Como a rede está se comportando agora, por pessoa. Abra isto durante uma chamada com problema e copie o resultado."
+msgstr "Como a rede está se comportando agora, por pessoa. Abra isto durante uma chamada com problema e copie o resultado."
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Compartilhar tela"
+msgstr "Compartilhar tela"
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Configure a way to get back into your account in case your 2FA is lost"
@@ -866,6 +1016,11 @@ msgstr "Connected"
 msgid "Connecting"
 msgstr "Connecting"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Contact support to remove this {0} from discover"
+msgstr "Contact support to remove this {0} from discover"
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Content breaks one or more laws"
 msgstr "Content breaks one or more laws"
@@ -891,6 +1046,14 @@ msgstr "Contribute a language"
 msgid "Conversations"
 msgstr "Conversations"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Copiado"
+msgstr "Copiado"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Copiar diagnóstico"
+msgstr "Copiar diagnóstico"
+
 #: components/ui/components/features/profiles/ProfileBanner.tsx
 msgid "Copied!"
 msgstr "Copied!"
@@ -910,6 +1073,10 @@ msgstr "Copy file link"
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "Copy ID"
 msgstr "Copy ID"
+
+#: components/app/interface/settings/server/invites/ListServerInvites.tsx
+msgid "Copy invite link"
+msgstr "Copy invite link"
 
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "Copy Invite URL"
@@ -966,6 +1133,10 @@ msgstr "Could not find what you requested."
 msgid "Couldn't fetch Stoat configuration from {hStr}."
 msgstr "Couldn't fetch Stoat configuration from {hStr}."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "CPU"
+msgstr "CPU"
+
 #: components/app/interface/settings/server/emojis/EmojiList.tsx
 #: components/modal/modals/CreateBot.tsx
 #: components/modal/modals/CreateCategory.tsx
@@ -989,6 +1160,10 @@ msgstr "Create a channel before inviting others!"
 msgid "Create a group or server"
 msgstr "Create a group or server"
 
+#: components/auth/src/flows/FlowCreate.tsx
+msgid "Create a Muchat account"
+msgstr "Create a Muchat account"
+
 #: components/modal/modals/CreateBot.tsx
 msgid "Create a new bot"
 msgstr "Create a new bot"
@@ -1009,10 +1184,6 @@ msgstr "Create a new group"
 #: components/modal/modals/CreateWebhook.tsx
 msgid "Create a webhook"
 msgstr "Create a webhook"
-
-#: components/auth/src/flows/FlowCreate.tsx
-msgid "Create a Muchat account"
-msgstr "Create a Muchat account"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Create and edit server roles"
@@ -1115,6 +1286,7 @@ msgstr "Date format"
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Deafen"
 msgstr "Deafen"
 
@@ -1126,9 +1298,33 @@ msgstr "Deafen lower-ranking members in voice call"
 msgid "Deafen Members"
 msgstr "Deafen Members"
 
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
+msgid "Decline"
+msgstr "Decline"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Decodificador"
+msgstr "Decodificador"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "DeepFilterNet"
-msgstr "DeepFilterNet"
+#~ msgid "DeepFilterNet"
+#~ msgstr "DeepFilterNet"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet (recommended)"
+msgstr "DeepFilterNet (recommended)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet could not keep up with your CPU during this call, so RNNoise took over. Rejoin the call to try DeepFilterNet again."
+msgstr "DeepFilterNet could not keep up with your CPU during this call, so RNNoise took over. Rejoin the call to try DeepFilterNet again."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet could not start on this device, so RNNoise is running instead. You still have a single noise suppressor."
+msgstr "DeepFilterNet could not start on this device, so RNNoise is running instead. You still have a single noise suppressor."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet strength"
+msgstr "DeepFilterNet strength"
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
@@ -1160,7 +1356,7 @@ msgstr "Degraded Performance"
 msgid "Delete"
 msgstr "Delete"
 
-#. placeholder {0}: props.bot.user!.displayName
+#. placeholder {0}: props.bot.user?.displayName ?? props.bot.id
 #. placeholder {0}: props.channel.name
 #. placeholder {0}: props.role.name
 #: components/modal/modals/DeleteBot.tsx
@@ -1230,6 +1426,10 @@ msgstr "Desktop"
 msgid "Developer Documentation"
 msgstr "Developer Documentation"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Diagnóstico da chamada"
+msgstr "Diagnóstico da chamada"
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Disable Account"
 msgstr "Disable Account"
@@ -1248,12 +1448,17 @@ msgid "Disconnected"
 msgstr "Disconnected"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Discord RPC"
-msgstr "Discord RPC"
+#~ msgid "Discord RPC"
+#~ msgstr "Discord RPC"
+
+#: components/app/interface/settings/ServerSettings.tsx
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Discover"
+msgstr "Discover"
 
 #: src/interface/Home.tsx
-msgid "Discover Stoat"
-msgstr "Discover Stoat"
+#~ msgid "Discover Stoat"
+#~ msgstr "Discover Stoat"
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Display & Text"
@@ -1300,8 +1505,12 @@ msgid "Donate"
 msgstr "Donate"
 
 #: src/interface/Home.tsx
-msgid "Donate to Stoat"
-msgstr "Donate to Stoat"
+msgid "Donate to Muchat"
+msgstr "Donate to Muchat"
+
+#: src/interface/Home.tsx
+#~ msgid "Donate to Stoat"
+#~ msgstr "Donate to Stoat"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Donated to Stoat"
@@ -1314,6 +1523,14 @@ msgstr "Done"
 #: components/modal/modals/ReportContent.tsx
 msgid "Drugs or illegal goods"
 msgstr "Drugs or illegal goods"
+
+#: components/modal/modals/TimeoutMember.tsx
+msgid "Duration"
+msgstr "Duration"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Echo cancellation"
+msgstr "Echo cancellation"
 
 #. placeholder {0}: props.member.displayName
 #: components/modal/modals/UserProfileRoles.tsx
@@ -1412,8 +1629,13 @@ msgid "Enable transparency glass/blur effects (slow on older machines)"
 msgstr "Enable transparency glass/blur effects (slow on older machines)"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "End call"
 msgstr "End call"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Engine"
+msgstr "Engine"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Enhanced"
@@ -1458,6 +1680,10 @@ msgstr "Enter your invite code."
 msgid "Enter your preferred username."
 msgstr "Enter your preferred username."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Entre em uma chamada para ver os números."
+msgstr "Entre em uma chamada para ver os números."
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
@@ -1497,6 +1723,10 @@ msgstr "Failed to send"
 msgid "Failed to verify!"
 msgstr "Failed to verify!"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Fans, street, other people talking."
+msgstr "Fans, street, other people talking."
+
 #: components/app/interface/settings/user/Feedback.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Feedback"
@@ -1508,12 +1738,8 @@ msgid "File must be smaller than {0}"
 msgstr "File must be smaller than {0}"
 
 #: src/interface/Home.tsx
-msgid "Find a community based on your hobbies or interests."
-msgstr "Find a community based on your hobbies or interests."
-
-#: components/auth/src/flows/FlowHome.tsx
-msgid "Private chat."
-msgstr "Private chat."
+#~ msgid "Find a community based on your hobbies or interests."
+#~ msgstr "Find a community based on your hobbies or interests."
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -1546,6 +1772,14 @@ msgstr "For 3 hours"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "For 8 hours"
 msgstr "For 8 hours"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "FPS"
+msgstr "FPS"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Frame time"
+msgstr "Frame time"
 
 #: src/interface/Friends.tsx
 #: src/interface/navigation/channels/HomeSidebar.tsx
@@ -1593,14 +1827,13 @@ msgid "GIFs are now powered by Gifbox"
 msgstr "GIFs are now powered by Gifbox"
 
 #: src/interface/Home.tsx
-msgid "Give feedback on Stoat"
-msgstr "Give feedback on Stoat"
+#~ msgid "Give feedback on Stoat"
+#~ msgstr "Give feedback on Stoat"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Give us some detail"
 msgstr "Give us some detail"
 
-#: components/modal/modals/ScreenSharePicker.tsx
 #: components/modal/modals/ScreenShareSettings.tsx
 msgid "Go"
 msgstr "Go"
@@ -1612,12 +1845,15 @@ msgstr "Go"
 msgid "Go back to login"
 msgstr "Go back to login"
 
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Go Live"
+msgstr "Go Live"
+
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Go to account settings to edit your username"
 msgstr "Go to account settings to edit your username"
 
 #: components/app/interface/settings/user/Feedback.tsx
-#: src/interface/Home.tsx
 msgid "Go to the Stoat Lounge"
 msgstr "Go to the Stoat Lounge"
 
@@ -1697,6 +1933,14 @@ msgstr "Hoist Role"
 msgid "Home"
 msgstr "Home"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "How aggressively background noise is removed. Stronger settings remove more noise but can make your voice sound less natural."
+msgstr "How aggressively background noise is removed. Stronger settings remove more noise but can make your voice sound less natural."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "How loud you need to speak before others hear you. Left is more sensitive."
+#~ msgstr "How loud you need to speak before others hear you. Left is more sensitive."
+
 #: src/interface/channels/AgeGate.tsx
 msgid "I confirm that I am at least 18 years old."
 msgstr "I confirm that I am at least 18 years old."
@@ -1708,6 +1952,10 @@ msgstr "I understand the consequences"
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "ID copied to clipboard"
 msgstr "ID copied to clipboard"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Ida e volta"
+msgstr "Ida e volta"
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -1732,13 +1980,21 @@ msgstr "Impersonation"
 msgid "In the meantime, install Stoat from Google Play for a faster, smoother experience designed for Android."
 msgstr "In the meantime, install Stoat from Google Play for a faster, smoother experience designed for Android."
 
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
+msgid "Incoming call"
+msgstr "Incoming call"
+
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Input Volume"
 msgstr "Input Volume"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Instead of closing, Stoat will hide in your tray."
-msgstr "Instead of closing, Stoat will hide in your tray."
+msgid "Instead of closing, Muchat will hide in your tray."
+msgstr "Instead of closing, Muchat will hide in your tray."
+
+#: components/app/interface/settings/user/Native.tsx
+#~ msgid "Instead of closing, Stoat will hide in your tray."
+#~ msgstr "Instead of closing, Stoat will hide in your tray."
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Interface Font"
@@ -1769,6 +2025,10 @@ msgstr "Invite Others"
 msgid "Invite URL copied to clipboard"
 msgstr "Invite URL copied to clipboard"
 
+#: components/auth/src/flows/FlowHome.tsx
+msgid "Invite-only. You talk with the people you actually invited."
+msgstr "Invite-only. You talk with the people you actually invited."
+
 #: components/app/interface/settings/server/invites/ListServerInvites.tsx
 msgid "Inviter"
 msgstr "Inviter"
@@ -1789,6 +2049,14 @@ msgstr "irrelevant joke badge 2"
 msgid "ISO Standard (YYYY-MM-DD)"
 msgstr "ISO Standard (YYYY-MM-DD)"
 
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Janela"
+msgstr "Janela"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Jitter"
+msgstr "Jitter"
+
 #: components/modal/modals/Invite.tsx
 #: components/modal/modals/JoinServer.tsx
 msgid "Join"
@@ -1798,12 +2066,23 @@ msgstr "Join"
 msgid "Join a server"
 msgstr "Join a server"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Join a voice call to see the live engine. The dropdown only stores your preference until then."
+#~ msgstr "Join a voice call to see the live engine. The dropdown only stores your preference until then."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live engine. Your choices above are saved and applied when you connect."
+msgstr "Join a voice call to see the live engine. Your choices above are saved and applied when you connect."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live meter."
+msgstr "Join a voice call to see the live meter."
+
 #: src/interface/channels/ChannelHeader.tsx
 #~ msgid "Join call"
 #~ msgstr "Join call"
 
 #: components/app/interface/settings/user/Feedback.tsx
-#: src/interface/Home.tsx
 msgid "Join the Stoat Lounge"
 msgstr "Join the Stoat Lounge"
 
@@ -1828,6 +2107,10 @@ msgstr "Jump to the beginning"
 #: components/modal/modals/ChannelToggleMature.tsx
 msgid "Keep as is"
 msgstr "Keep as is"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Keeps your voice the most natural."
+msgstr "Keeps your voice the most natural."
 
 #: components/modal/modals/KickMember.tsx
 msgid "Kick"
@@ -1863,8 +2146,12 @@ msgid "Latest"
 msgstr "Latest"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Launch Stoat when you log into your computer."
-msgstr "Launch Stoat when you log into your computer."
+msgid "Launch Muchat when you log into your computer."
+msgstr "Launch Muchat when you log into your computer."
+
+#: components/app/interface/settings/user/Native.tsx
+#~ msgid "Launch Stoat when you log into your computer."
+#~ msgstr "Launch Stoat when you log into your computer."
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Learn more"
@@ -1894,22 +2181,42 @@ msgstr "Leave group"
 msgid "Leave server"
 msgstr "Leave server"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Less sensitive"
+#~ msgstr "Less sensitive"
+
 #: components/app/interface/settings/user/Native.tsx
-msgid "Let Stoat use its own custom titlebar."
-msgstr "Let Stoat use its own custom titlebar."
+msgid "Let Muchat use its own custom titlebar."
+msgstr "Let Muchat use its own custom titlebar."
+
+#: components/app/interface/settings/user/Native.tsx
+#~ msgid "Let Stoat use its own custom titlebar."
+#~ msgstr "Let Stoat use its own custom titlebar."
 
 #: src/interface/Home.tsx
-msgid "Let us know how we can improve our app by giving us feedback."
-msgstr "Let us know how we can improve our app by giving us feedback."
+#~ msgid "Let us know how we can improve our app by giving us feedback."
+#~ msgstr "Let us know how we can improve our app by giving us feedback."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Light"
 msgstr "Light"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Light (quiet room)"
+msgstr "Light (quiet room)"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "limitada por"
+msgstr "limitada por"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Listen"
 msgstr "Listen"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Live view of the audio chain while you are in a call."
+msgstr "Live view of the audio chain while you are in a call."
 
 #. placeholder {0}: humanFileSize(props.file.size ?? 0)
 #: components/ui/components/features/messaging/elements/TextFile.tsx
@@ -1940,6 +2247,18 @@ msgstr "Login"
 #: components/app/interface/settings/user/Sessions.tsx
 msgid "Logs you out of all sessions except this device."
 msgstr "Logs you out of all sessions except this device."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loud ({rounded} dBFS)"
+msgstr "Loud ({rounded} dBFS)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loudness only"
+msgstr "Loudness only"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loudness only (voice detection off)"
+msgstr "Loudness only (voice detection off)"
 
 #: components/app/interface/settings/server/emojis/EmojiList.tsx
 msgid "Lowercase letters, numbers and underscores only."
@@ -2011,13 +2330,37 @@ msgstr "Mark this channel as mature?"
 msgid "Masquerade"
 msgstr "Masquerade"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms"
+msgstr "max {maxMs} ms"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms ({slowPct}% slow)"
+msgstr "max {maxMs} ms ({slowPct}% slow)"
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Maximize call window"
+msgstr "Maximize call window"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Measures your background noise while you are silent and adjusts the strength and the microphone threshold for you."
+msgstr "Measures your background noise while you are silent and adjusts the strength and the microphone threshold for you."
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Medindo…"
+msgstr "Medindo…"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Medium (home office)"
+msgstr "Medium (home office)"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Members"
 msgstr "Members"
 
 #. placeholder {0}: slowmodeWaitTime()
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Members can send one message every {0}."
 msgstr "Members can send one message every {0}."
 
@@ -2049,6 +2392,10 @@ msgstr "Mentions"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Mentions Only"
 msgstr "Mentions Only"
+
+#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
+msgid "message"
+msgstr "message"
 
 #: components/app/menus/UserContextMenu.tsx
 #: components/ui/components/features/profiles/ProfileActions.tsx
@@ -2093,6 +2440,18 @@ msgstr "Messaging"
 msgid "MFA setup canceled."
 msgstr "MFA setup canceled."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone channels"
+msgstr "Microphone channels"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone gate"
+msgstr "Microphone gate"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sensitivity"
+msgstr "Microphone sensitivity"
+
 #: components/app/interface/settings/user/Native.tsx
 msgid "Minimise to Tray"
 msgstr "Minimise to Tray"
@@ -2100,6 +2459,10 @@ msgstr "Minimise to Tray"
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "Missing permission"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Moderate ({rounded} dBFS)"
+msgstr "Moderate ({rounded} dBFS)"
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Monochrome"
@@ -2113,6 +2476,10 @@ msgstr "Monospace Font"
 msgid "More Contrast"
 msgstr "More Contrast"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "More sensitive"
+#~ msgstr "More sensitive"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Move Members"
 msgstr "Move Members"
@@ -2121,6 +2488,14 @@ msgstr "Move Members"
 msgid "Move members between voice channels"
 msgstr "Move members between voice channels"
 
+#: components/app/interface/settings/user/Native.tsx
+msgid "Muchat for Desktop"
+msgstr "Muchat for Desktop"
+
+#: components/app/interface/settings/user/Native.tsx
+msgid "Muchat will start in the system tray."
+msgstr "Muchat will start in the system tray."
+
 #: components/i18n/errors.tsx
 msgid "Multi-factor authentication is already enabled for this account."
 msgstr "Multi-factor authentication is already enabled for this account."
@@ -2128,6 +2503,7 @@ msgstr "Multi-factor authentication is already enabled for this account."
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/app/menus/UserContextMenu.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Mute"
 msgstr "Mute"
 
@@ -2155,6 +2531,10 @@ msgstr "Mute Server"
 msgid "Muted"
 msgstr "Muted"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Muted by the gate"
+msgstr "Muted by the gate"
+
 #: components/app/menus/ServerContextMenu.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
 #: src/interface/navigation/servers/ServerList.tsx
@@ -2176,6 +2556,10 @@ msgstr "My Account"
 #: components/app/interface/settings/UserSettings.tsx
 msgid "My Bots"
 msgstr "My Bots"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Nada para mostrar nesta aba."
+msgstr "Nada para mostrar nesta aba."
 
 #: components/modal/modals/CreateCategory.tsx
 #: components/modal/modals/RenameSession.tsx
@@ -2232,6 +2616,14 @@ msgstr "No role overrides have been configured."
 msgid "Nobody here right now!"
 msgstr "Nobody here right now!"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Noise removed"
+msgstr "Noise removed"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Noise suppression"
+msgstr "Noise suppression"
+
 #: components/app/menus/ServerContextMenu.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "None"
@@ -2240,6 +2632,10 @@ msgstr "None"
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Normal"
 msgstr "Normal"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Not in a call"
+msgstr "Not in a call"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Not of minimum age to use the platform"
@@ -2251,6 +2647,7 @@ msgstr "Not of minimum age to use the platform"
 msgid "Notifications"
 msgstr "Notifications"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #: components/ui/components/features/messaging/composition/MessageReplyPreview.tsx
 msgid "Off"
 msgstr "Off"
@@ -2280,6 +2677,7 @@ msgstr "OK"
 msgid "Oldest"
 msgstr "Oldest"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #: components/ui/components/features/messaging/composition/MessageReplyPreview.tsx
 msgid "On"
 msgstr "On"
@@ -2308,6 +2706,10 @@ msgstr "Ongoing Maintenance"
 msgid "Online"
 msgstr "Online"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Only loud speech"
+msgstr "Only loud speech"
+
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Only mentions will notify you"
 msgstr "Only mentions will notify you"
@@ -2332,6 +2734,10 @@ msgstr "Open channel settings"
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Open file"
 msgstr "Open file"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Open microphone on voice only"
+msgstr "Open microphone on voice only"
 
 #: components/app/menus/ServerContextMenu.tsx
 msgid "Open server settings"
@@ -2380,6 +2786,14 @@ msgstr "Password changed successfully."
 msgid "Pending"
 msgstr "Pending"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Perda"
+msgstr "Perda"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Perda do seu áudio"
+msgstr "Perda do seu áudio"
+
 #: components/app/interface/settings/ChannelSettings.tsx
 msgid "Permissions"
 msgstr "Permissions"
@@ -2393,12 +2807,16 @@ msgid "Permissions available without any role"
 msgstr "Permissions available without any role"
 
 #: components/modal/modals/ScreenSharePicker.tsx
-msgid "Pick a Screen to Share"
-msgstr "Pick a Screen to Share"
+#~ msgid "Pick a Screen to Share"
+#~ msgstr "Pick a Screen to Share"
 
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Pick a username that you want people to be able to find you by. This can be changed later in your user settings."
 msgstr "Pick a username that you want people to be able to find you by. This can be changed later in your user settings."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Picks up whispers"
+msgstr "Picks up whispers"
 
 #: components/modal/modals/PinMessage.tsx
 msgid "Pin"
@@ -2446,8 +2864,12 @@ msgid "Please select a reason"
 msgstr "Please select a reason"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Powered by RNNoise"
-msgstr "Powered by RNNoise"
+#~ msgid "Powered by RNNoise"
+#~ msgstr "Powered by RNNoise"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Powered by RNNoise. Light on CPU."
+msgstr "Powered by RNNoise. Light on CPU."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Preview"
@@ -2458,12 +2880,16 @@ msgid "Privacy"
 msgstr "Privacy"
 
 #: components/auth/src/AuthPage.tsx
-msgid "Privacy Policy"
-msgstr "Privacy Policy"
+#~ msgid "Privacy Policy"
+#~ msgstr "Privacy Policy"
 
 #: components/markdown/plugins/anchors.tsx
 msgid "Private Channel"
 msgstr "Private Channel"
+
+#: components/auth/src/flows/FlowHome.tsx
+msgid "Private chat."
+msgstr "Private chat."
 
 #: components/app/interface/settings/UserSettings.tsx
 #: components/app/menus/UserContextMenu.tsx
@@ -2487,6 +2913,18 @@ msgstr "Pronouns"
 msgid "Provided email or password is wrong."
 msgstr "Provided email or password is wrong."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Qualidade"
+msgstr "Qualidade"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Quality"
+msgstr "Quality"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Quiet ({rounded} dBFS)"
+msgstr "Quiet ({rounded} dBFS)"
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Raid or spam attack"
 msgstr "Raid or spam attack"
@@ -2499,6 +2937,18 @@ msgstr "React"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "React to messages with emoji"
 msgstr "React to messages with emoji"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Read /tts messages aloud"
+msgstr "Read /tts messages aloud"
+
+#: components/app/interface/channels/text/Message.tsx
+msgid "Read aloud in voice"
+msgstr "Read aloud in voice"
+
+#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
+msgid "Read aloud to everyone in this voice channel"
+msgstr "Read aloud to everyone in this voice channel"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Read Message History"
@@ -2525,6 +2975,16 @@ msgstr "Reason"
 #: components/modal/modals/ReportContent.tsx
 msgid "Reason for report"
 msgstr "Reason for report"
+
+#. placeholder {0}: (dr.status as { Denied: string | null }) .Denied
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Reason: {0}"
+msgstr "Reason: {0}"
+
+#. placeholder {0}: (dr.status as { Removed: string | null }) .Removed
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Reason: {0} Contact support for more information."
+msgstr "Reason: {0} Contact support for more information."
 
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive notifications while the app is open and in the background."
@@ -2599,6 +3059,10 @@ msgid "Remove friend"
 msgstr "Remove friend"
 
 #: components/app/menus/UserContextMenu.tsx
+msgid "Remove from call"
+msgstr "Remove from call"
+
+#: components/app/menus/UserContextMenu.tsx
 #: components/modal/modals/RemoveMember.tsx
 msgid "Remove Member"
 msgstr "Remove Member"
@@ -2610,6 +3074,11 @@ msgstr "Remove other members' avatars"
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Remove reaction"
 msgstr "Remove reaction"
+
+#: components/app/menus/UserContextMenu.tsx
+#: components/modal/modals/RemoveTimeout.tsx
+msgid "Remove Timeout"
+msgstr "Remove Timeout"
 
 #: components/app/interface/settings/user/Sessions.tsx
 #: components/modal/modals/EditCategory.tsx
@@ -2627,8 +3096,8 @@ msgid "Rename Session"
 msgstr "Rename Session"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Rep Stoat using Discord rich presence."
-msgstr "Rep Stoat using Discord rich presence."
+#~ msgid "Rep Stoat using Discord rich presence."
+#~ msgstr "Rep Stoat using Discord rich presence."
 
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Reply"
@@ -2659,6 +3128,7 @@ msgstr "Report user"
 msgid "Resend"
 msgstr "Resend"
 
+#: components/auth/src/flows/FlowCheck.tsx
 #: components/auth/src/flows/FlowLogin.tsx
 #: components/auth/src/flows/FlowResend.tsx
 msgid "Resend verification"
@@ -2694,6 +3164,11 @@ msgstr "Reset Token"
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Responsibly disclosed security issues"
 msgstr "Responsibly disclosed security issues"
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Restore call window"
+msgstr "Restore call window"
 
 #: components/app/menus/DraftMessageContextMenu.tsx
 msgid "Retry sending"
@@ -2740,6 +3215,10 @@ msgstr "Roles"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "Roles with No Overrides"
 msgstr "Roles with No Overrides"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Sample rate"
+msgstr "Sample rate"
 
 #: components/app/interface/settings/channel/Overview.tsx
 #: components/app/interface/settings/channel/webhooks/ViewWebhook.tsx
@@ -2815,8 +3294,8 @@ msgid "Select members to add"
 msgstr "Select members to add"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Select noise suppression"
-msgstr "Select noise suppression"
+#~ msgid "Select noise suppression"
+#~ msgstr "Select noise suppression"
 
 #: components/app/interface/settings/user/voice/ScreenShareOptions.tsx
 msgid "Select screen share quality"
@@ -2829,6 +3308,15 @@ msgstr "Select video input"
 #: components/app/interface/settings/user/Language.tsx
 msgid "Select your language"
 msgstr "Select your language"
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Send a short sound alert to a member in a voice channel"
+msgstr "Send a short sound alert to a member in a voice channel"
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+#: components/app/menus/UserContextMenu.tsx
+msgid "Send Alert"
+msgstr "Send Alert"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Send attachments to chat"
@@ -2861,6 +3349,10 @@ msgstr "Send messages in channels"
 #: components/modal/modals/AddFriend.tsx
 msgid "Send Request"
 msgstr "Send Request"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Send the raw microphone signal."
+msgstr "Send the raw microphone signal."
 
 #: components/app/interface/channels/text/DraftMessage.tsx
 msgid "Sending..."
@@ -2940,7 +3432,11 @@ msgstr "Setup one-time password authenticator"
 msgid "Setup recovery codes"
 msgstr "Setup recovery codes"
 
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Seu computador não está dando conta"
+msgstr "Seu computador não está dando conta"
+
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Several people are typing…"
 msgstr "Several people are typing…"
 
@@ -2954,6 +3450,7 @@ msgid "Share camera or screen in voice call"
 msgstr "Share camera or screen in voice call"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Share screen"
 msgstr "Share screen"
 
@@ -2981,17 +3478,21 @@ msgstr "Sign Up"
 msgid "Silent"
 msgstr "Silent"
 
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode Immune"
 msgstr "Slowmode Immune"
 
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode is enabled."
 msgstr "Slowmode is enabled."
 
 #: components/app/interface/settings/channel/Overview.tsx
 msgid "Slowmode off"
 msgstr "Slowmode off"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "software"
+msgstr "software"
 
 #: components/modal/modals/EditEmail.tsx
 msgid "someone@example.com"
@@ -3014,13 +3515,17 @@ msgstr "Something went wrong! {error}"
 #~ msgid "Something went wrong! Try again later."
 #~ msgstr "Something went wrong! Try again later."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Sound louder than the marker is sent to others; anything quieter is muted. Speak normally and check that the bar passes the marker."
+msgstr "Sound louder than the marker is sent to others; anything quieter is muted. Speak normally and check that the bar passes the marker."
+
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Sounds"
 msgstr "Sounds"
 
 #: components/app/interface/settings/UserSettings.tsx
-msgid "Source Code"
-msgstr "Source Code"
+#~ msgid "Source Code"
+#~ msgstr "Source Code"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Spam or similar platform abuse"
@@ -3029,6 +3534,10 @@ msgstr "Spam or similar platform abuse"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Speak"
 msgstr "Speak"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Speech probability"
+msgstr "Speech probability"
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Spellchecker"
@@ -3063,24 +3572,20 @@ msgid "Stoat Developer"
 msgstr "Stoat Developer"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Stoat for Desktop"
-msgstr "Stoat for Desktop"
+#~ msgid "Stoat for Desktop"
+#~ msgstr "Stoat for Desktop"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Stoat Founder"
 msgstr "Stoat Founder"
-
-#: components/auth/src/flows/FlowHome.tsx
-msgid "Invite-only. You talk with the people you actually invited."
-msgstr "Invite-only. You talk with the people you actually invited."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Stoat rocks!"
 msgstr "Stoat rocks!"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Stoat will start in the system tray."
-msgstr "Stoat will start in the system tray."
+#~ msgid "Stoat will start in the system tray."
+#~ msgstr "Stoat will start in the system tray."
 
 #: src/AndroidNag.tsx
 msgid "Stoat works best as an app"
@@ -3091,8 +3596,17 @@ msgid "Stop camera"
 msgstr "Stop camera"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Stop sharing"
 msgstr "Stop sharing"
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Stop watching"
+msgstr "Stop watching"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Stops your speakers from being heard through your mic."
+msgstr "Stops your speakers from being heard through your mic."
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Stream End"
@@ -3103,8 +3617,24 @@ msgid "Stream Start"
 msgstr "Stream Start"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Stronger against keyboard and TV in the background. Uses more CPU, and falls back to RNNoise on weaker devices."
-msgstr "Stronger against keyboard and TV in the background. Uses more CPU, and falls back to RNNoise on weaker devices."
+msgid "Strength"
+msgstr "Strength"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Strong (noisy place)"
+msgstr "Strong (noisy place)"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Stronger against keyboard and TV in the background. Uses more CPU, and falls back to RNNoise on weaker devices."
+#~ msgstr "Stronger against keyboard and TV in the background. Uses more CPU, and falls back to RNNoise on weaker devices."
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Sua conexão de descida está com problema"
+msgstr "Sua conexão de descida está com problema"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Sua conexão de subida está com problema"
+msgstr "Sua conexão de subida está com problema"
 
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Submit feature suggestion"
@@ -3114,7 +3644,7 @@ msgstr "Submit feature suggestion"
 msgid "Submit feedback"
 msgstr "Submit feedback"
 
-#: components/app/interface/settings/user/bots/ViewBot.tsx
+#: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Submit to Discover"
 msgstr "Submit to Discover"
 
@@ -3154,6 +3684,15 @@ msgstr "System"
 msgid "System message channels"
 msgstr "System message channels"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Tela"
+msgstr "Tela"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Telas"
+msgstr "Telas"
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Tell us what's wrong with this message"
 msgstr "Tell us what's wrong with this message"
@@ -3175,16 +3714,40 @@ msgid "Terms"
 msgstr "Terms"
 
 #: components/auth/src/AuthPage.tsx
-msgid "Terms of Service"
-msgstr "Terms of Service"
+#~ msgid "Terms of Service"
+#~ msgstr "Terms of Service"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Test voice"
+msgstr "Test voice"
 
 #: components/modal/modals/CreateChannel.tsx
 msgid "Text Channel"
 msgstr "Text Channel"
 
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Text-to-speech"
+msgstr "Text-to-speech"
+
 #: components/i18n/errors.tsx
 msgid "That action had no effect."
 msgstr "That action had no effect."
+
+#: components/i18n/errors.tsx
+msgid "The bot has been removed from discover by moderators, the user must contact support."
+msgstr "The bot has been removed from discover by moderators, the user must contact support."
+
+#: components/i18n/errors.tsx
+msgid "The bot is already on discover, the user must contact support to have it removed"
+msgstr "The bot is already on discover, the user must contact support to have it removed"
+
+#: components/i18n/errors.tsx
+msgid "The Discover request is approved or the item has been removed from discover. In either case, the user must contact support."
+msgstr "The Discover request is approved or the item has been removed from discover. In either case, the user must contact support."
+
+#: components/i18n/errors.tsx
+msgid "The Discover request was declined. Declined requests cannot be removed, but the user may submit again."
+msgstr "The Discover request was declined. Declined requests cannot be removed, but the user may submit again."
 
 #. placeholder {0}: file.name
 #: src/interface/channels/text/Composition.tsx
@@ -3192,12 +3755,37 @@ msgid "The file \"{0}\" ({fileSize}) exceeds the maximum size limit of {maxSizeF
 msgstr "The file \"{0}\" ({fileSize}) exceeds the maximum size limit of {maxSizeFormatted}."
 
 #: components/i18n/errors.tsx
+msgid "The item was removed by moderators, and as such future applications are prohibited. Contact support for more information."
+msgstr "The item was removed by moderators, and as such future applications are prohibited. Contact support for more information."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "The marker follows your background noise automatically. Pick Light, Medium or Strong above to set it by hand."
+msgstr "The marker follows your background noise automatically. Pick Light, Medium or Strong above to set it by hand."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "The microphone opens only when it hears speech, not just when something is loud. Dog barks, keyboards and door slams while you are quiet stay muted. Adds about 30 ms of delay."
+msgstr "The microphone opens only when it hears speech, not just when something is loud. Dog barks, keyboards and door slams while you are quiet stay muted. Adds about 30 ms of delay."
+
+#: components/i18n/errors.tsx
 msgid "The password is too short."
 msgstr "The password is too short."
+
+#: components/i18n/errors.tsx
+msgid "The server has been removed from discover by moderators, the user must contact support."
+msgstr "The server has been removed from discover by moderators, the user must contact support."
+
+#: components/i18n/errors.tsx
+msgid "The server is already on discover, the user must contact support to have it removed."
+msgstr "The server is already on discover, the user must contact support to have it removed."
 
 #: components/app/interface/settings/user/Sync.tsx
 msgid "Theme"
 msgstr "Theme"
+
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "This {0} is discoverable"
+msgstr "This {0} is discoverable"
 
 #: components/i18n/errors.tsx
 msgid "This account is not activated yet. Open the verification email we sent and click the link."
@@ -3223,6 +3811,14 @@ msgstr "This channel is not available in your region while we review options on 
 msgid "This content is not available in your region."
 msgstr "This content is not available in your region."
 
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "This device has no speech synthesis, so /tts messages stay silent here."
+msgstr "This device has no speech synthesis, so /tts messages stay silent here."
+
+#: components/i18n/errors.tsx
+msgid "This email already has a Muchat account. Sign in, or use a different email. A Gmail address with + is the same account."
+msgstr "This email already has a Muchat account. Sign in, or use a different email. A Gmail address with + is the same account."
+
 #: components/i18n/errors.tsx
 msgid "This feature is currently disabled."
 msgstr "This feature is currently disabled."
@@ -3239,6 +3835,10 @@ msgstr "This group is too large, you can have up to {0} users."
 #: components/i18n/errors.tsx
 msgid "This has already been sent."
 msgstr "This has already been sent."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "This is how /tts sounds on this device."
+msgstr "This is how /tts sounds on this device."
 
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "This is taking longer than usual."
@@ -3259,6 +3859,10 @@ msgstr "This message is already pinned."
 #: components/i18n/errors.tsx
 msgid "This message is empty and has not been sent."
 msgstr "This message is empty and has not been sent."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "This only changes what other people hear from you, not what you hear from them."
+#~ msgstr "This only changes what other people hear from you, not what you hear from them."
 
 #: components/i18n/errors.tsx
 msgid "This password has previously appeared in security leaks, please use another password."
@@ -3292,9 +3896,32 @@ msgstr "This username is not allowed."
 msgid "This will invalidate the current token and stop any existing instances of the bot from running."
 msgstr "This will invalidate the current token and stop any existing instances of the bot from running."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Threshold"
+msgstr "Threshold"
+
 #: components/app/interface/settings/user/Language.tsx
 msgid "Time format"
 msgstr "Time format"
+
+#. placeholder {0}: props.member!.timeout!.toLocaleString()
+#: src/interface/channels/text/MemberSidebar.tsx
+msgid "Timed out until {0}"
+msgstr "Timed out until {0}"
+
+#. placeholder {0}: props.message.member!.timeout!.toLocaleString()
+#: components/app/interface/channels/text/Message.tsx
+msgid "Timed Out until {0}"
+msgstr "Timed Out until {0}"
+
+#: components/modal/modals/TimeoutMember.tsx
+msgid "Timeout"
+msgstr "Timeout"
+
+#: components/app/menus/UserContextMenu.tsx
+#: components/modal/modals/TimeoutMember.tsx
+msgid "Timeout Member"
+msgstr "Timeout Member"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Timeout Members"
@@ -3316,6 +3943,10 @@ msgstr "Tonal Spot"
 msgid "Traditional (DD/MM/YYYY)"
 msgstr "Traditional (DD/MM/YYYY)"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Travamentos"
+msgstr "Travamentos"
+
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Trending GIFs"
 msgstr "Trending GIFs"
@@ -3323,6 +3954,14 @@ msgstr "Trending GIFs"
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Troubleshooting"
 msgstr "Troubleshooting"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Turn off to keep seeing /tts messages without hearing them."
+msgstr "Turn off to keep seeing /tts messages without hearing them."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
+msgstr "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Unblock user"
@@ -3335,6 +3974,7 @@ msgstr "Uncaught Stoat error: {0}"
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Undeafen"
 msgstr "Undeafen"
 
@@ -3361,6 +4001,7 @@ msgstr "Unmark this channel as mature?"
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Unmute"
 msgstr "Unmute"
 
@@ -3393,6 +4034,16 @@ msgstr "Unsolicited advertising or spam"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Until I turn it back on"
 msgstr "Until I turn it back on"
+
+#. placeholder {0}: current.deepFilterAttenDb
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "up to {0} dB"
+msgstr "up to {0} dB"
+
+#. placeholder {0}: DEEPFILTER_ATTEN_DB[level]
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Up to {0} dB of noise removed."
+msgstr "Up to {0} dB of noise removed."
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Upload Files"
@@ -3481,6 +4132,10 @@ msgstr "Users will be asked to confirm their age before opening this channel."
 msgid "Users will no longer be asked to confirm their age before joining this channel.<0/> Please ensure the content is appropriate for all ages."
 msgstr "Users will no longer be asked to confirm their age before joining this channel.<0/> Please ensure the content is appropriate for all ages."
 
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Uses your output volume."
+msgstr "Uses your output volume."
+
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 #~ msgid "Using default microphone"
 #~ msgstr "Using default microphone"
@@ -3505,6 +4160,10 @@ msgstr "Version:"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Video"
 msgstr "Video"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Vídeo"
+msgstr "Vídeo"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "View Channel"
@@ -3538,6 +4197,10 @@ msgstr "View status page"
 msgid "Viewing older messages"
 msgstr "Viewing older messages"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Você (enviando)"
+msgstr "Você (enviando)"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Voice"
@@ -3551,53 +4214,33 @@ msgstr "Voice & Video"
 msgid "Voice Channel"
 msgstr "Voice Channel"
 
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Voice Processing"
-msgstr "Voice Processing"
+#: components/ui/components/features/voice/VoiceDock.tsx
+msgid "Voice controls"
+msgstr "Voice controls"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "This only changes what other people hear from you, not what you hear from them."
-msgstr "This only changes what other people hear from you, not what you hear from them."
+msgid "Voice detection (Silero)"
+msgstr "Voice detection (Silero)"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "What is actually running"
-msgstr "What is actually running"
+msgid "Voice detection could not start, so the microphone gate is using loudness only for this call."
+msgstr "Voice detection could not start, so the microphone gate is using loudness only for this call."
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Join a voice call to see the live engine. The dropdown only stores your preference until then."
-msgstr "Join a voice call to see the live engine. The dropdown only stores your preference until then."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "You selected DeepFilterNet; RNNoise is running instead."
-msgstr "You selected DeepFilterNet; RNNoise is running instead."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Microphone sensitivity"
-msgstr "Microphone sensitivity"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "How loud you need to speak before others hear you. Left is more sensitive."
-msgstr "How loud you need to speak before others hear you. Left is more sensitive."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Automatically determine input sensitivity"
-msgstr "Automatically determine input sensitivity"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Join a voice call to see the live meter."
-msgstr "Join a voice call to see the live meter."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "More sensitive"
-msgstr "More sensitive"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Less sensitive"
-msgstr "Less sensitive"
+#~ msgid "Voice Processing"
+#~ msgstr "Voice Processing"
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Volume"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Voz acelerada"
+msgstr "Voz acelerada"
+
+#: components/ui/components/features/voice/VoiceDock.tsx
+msgid "Voz conectada"
+msgstr "Voz conectada"
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Want to change username?"
@@ -3636,6 +4279,14 @@ msgstr "Webhooks"
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Welcome!"
 msgstr "Welcome!"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "What is actually running"
+#~ msgstr "What is actually running"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "What is running right now"
+msgstr "What is running right now"
 
 #: components/modal/modals/Changelog.tsx
 msgid "What's new"
@@ -3692,6 +4343,10 @@ msgstr "You are about to kick {0}"
 msgid "You are banned from this server."
 msgstr "You are banned from this server."
 
+#: components/ui/components/features/messaging/composition/MessageBox.tsx
+msgid "You are timed out and can't send messages right now."
+msgstr "You are timed out and can't send messages right now."
+
 #: src/interface/Home.tsx
 msgid "You can also click the gear icon in the bottom left."
 msgstr "You can also click the gear icon in the bottom left."
@@ -3705,9 +4360,12 @@ msgid "You can re-open it later, but it will disappear on both sides."
 msgstr "You can re-open it later, but it will disappear on both sides."
 
 #: components/app/interface/settings/user/Feedback.tsx
-#: src/interface/Home.tsx
 msgid "You can report issues and discuss improvements with us directly here."
 msgstr "You can report issues and discuss improvements with us directly here."
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "You can request again below"
+msgstr "You can request again below"
 
 #. placeholder {0}: err.max
 #: components/i18n/errors.tsx
@@ -3773,9 +4431,17 @@ msgstr "You have this user blocked."
 msgid "You may be experiencing connection issues."
 msgstr "You may be experiencing connection issues."
 
+#: components/i18n/errors.tsx
+msgid "You may not submit this item to discover."
+msgstr "You may not submit this item to discover."
+
 #: components/ui/components/features/voice/VoiceStatefulUserIcons.tsx
 msgid "You muted this user."
 msgstr "You muted this user."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "You selected DeepFilterNet; RNNoise is running instead."
+#~ msgstr "You selected DeepFilterNet; RNNoise is running instead."
 
 #: components/auth/src/flows/FlowHome.tsx
 msgid "You were logged out!"
@@ -3824,6 +4490,11 @@ msgstr "You've reached your personal bot limit."
 msgid "You've sent too many friend requests, the maximum is {0}"
 msgstr "You've sent too many friend requests, the maximum is {0}"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Your {0} is under review"
+msgstr "Your {0} is under review"
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Your account and all of your data (including your messages and friends list) will be queued for deletion. A confirmation email will be sent - you can cancel this within 7 days by contacting support."
 msgstr "Your account and all of your data (including your messages and friends list) will be queued for deletion. A confirmation email will be sent - you can cancel this within 7 days by contacting support."
@@ -3831,6 +4502,14 @@ msgstr "Your account and all of your data (including your messages and friends l
 #: components/auth/src/flows/FlowVerify.tsx
 msgid "Your account has been verified!"
 msgstr "Your account has been verified!"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Your discover request has been denied"
+msgstr "Your discover request has been denied"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Your discover request has been removed"
+msgstr "Your discover request has been removed"
 
 #: components/i18n/errors.tsx
 msgid "Your discriminator change has been ratelimited, please try again later."
@@ -3840,9 +4519,17 @@ msgstr "Your discriminator change has been ratelimited, please try again later."
 msgid "Your message is too long, please remove some characters and try again."
 msgstr "Your message is too long, please remove some characters and try again."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Your microphone"
+msgstr "Your microphone"
+
 #: components/modal/modals/MFARecovery.tsx
 msgid "Your recovery codes"
 msgstr "Your recovery codes"
+
+#: components/i18n/errors.tsx
+msgid "Your request failed. Please contact support."
+msgstr "Your request failed. Please contact support."
 
 #: components/i18n/errors.tsx
 msgid "Your role ranking is too low to take this action."
@@ -3851,255 +4538,3 @@ msgstr "Your role ranking is too low to take this action."
 #: components/i18n/errors.tsx
 msgid "Your user has already been created? Try logging in again or refreshing the app."
 msgstr "Your user has already been created? Try logging in again or refreshing the app."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Noise suppression"
-msgstr "Noise suppression"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Changes what other people hear from you, not what you hear from them. Only one suppressor runs at a time."
-msgstr "Changes what other people hear from you, not what you hear from them. Only one suppressor runs at a time."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Engine"
-msgstr "Engine"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "DeepFilterNet (recommended)"
-msgstr "DeepFilterNet (recommended)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Best against keyboard, fans and TV in the background. Uses more CPU and falls back to RNNoise on weaker devices."
-msgstr "Best against keyboard, fans and TV in the background. Uses more CPU and falls back to RNNoise on weaker devices."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Powered by RNNoise. Light on CPU."
-msgstr "Powered by RNNoise. Light on CPU."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Built-in browser noise suppression only."
-msgstr "Built-in browser noise suppression only."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Send the raw microphone signal."
-msgstr "Send the raw microphone signal."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Stops your speakers from being heard through your mic."
-msgstr "Stops your speakers from being heard through your mic."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Echo cancellation"
-msgstr "Echo cancellation"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
-msgstr "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Automatic gain control"
-msgstr "Automatic gain control"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "DeepFilterNet strength"
-msgstr "DeepFilterNet strength"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "How aggressively background noise is removed. Stronger settings remove more noise but can make your voice sound less natural."
-msgstr "How aggressively background noise is removed. Stronger settings remove more noise but can make your voice sound less natural."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Strength"
-msgstr "Strength"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Automatic (recommended)"
-msgstr "Automatic (recommended)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Measures your background noise while you are silent and adjusts the strength and the microphone threshold for you."
-msgstr "Measures your background noise while you are silent and adjusts the strength and the microphone threshold for you."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Light (quiet room)"
-msgstr "Light (quiet room)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Keeps your voice the most natural."
-msgstr "Keeps your voice the most natural."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Medium (home office)"
-msgstr "Medium (home office)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Balanced removal for everyday calls."
-msgstr "Balanced removal for everyday calls."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Strong (noisy place)"
-msgstr "Strong (noisy place)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Fans, street, other people talking."
-msgstr "Fans, street, other people talking."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Up to {0} dB of noise removed."
-msgstr "Up to {0} dB of noise removed."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Sound louder than the marker is sent to others; anything quieter is muted. Speak normally and check that the bar passes the marker."
-msgstr "Sound louder than the marker is sent to others; anything quieter is muted. Speak normally and check that the bar passes the marker."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Your microphone"
-msgstr "Your microphone"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Muted by the gate"
-msgstr "Muted by the gate"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Being sent"
-msgstr "Being sent"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "The marker follows your background noise automatically. Pick Light, Medium or Strong above to set it by hand."
-msgstr "The marker follows your background noise automatically. Pick Light, Medium or Strong above to set it by hand."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Threshold"
-msgstr "Threshold"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Picks up whispers"
-msgstr "Picks up whispers"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Only loud speech"
-msgstr "Only loud speech"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Not in a call"
-msgstr "Not in a call"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Quiet ({rounded} dBFS)"
-msgstr "Quiet ({rounded} dBFS)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Loud ({rounded} dBFS)"
-msgstr "Loud ({rounded} dBFS)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Moderate ({rounded} dBFS)"
-msgstr "Moderate ({rounded} dBFS)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Sample rate"
-msgstr "Sample rate"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Noise removed"
-msgstr "Noise removed"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "up to {0} dB"
-msgstr "up to {0} dB"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Background noise"
-msgstr "Background noise"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Frame time"
-msgstr "Frame time"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "max {maxMs} ms ({slowPct}% slow)"
-msgstr "max {maxMs} ms ({slowPct}% slow)"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "max {maxMs} ms"
-msgstr "max {maxMs} ms"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Microphone channels"
-msgstr "Microphone channels"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "DeepFilterNet could not keep up with your CPU during this call, so RNNoise took over. Rejoin the call to try DeepFilterNet again."
-msgstr "DeepFilterNet could not keep up with your CPU during this call, so RNNoise took over. Rejoin the call to try DeepFilterNet again."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Browser noise suppression"
-msgstr "Browser noise suppression"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Browser gain control"
-msgstr "Browser gain control"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "What is running right now"
-msgstr "What is running right now"
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Live view of the audio chain while you are in a call."
-msgstr "Live view of the audio chain while you are in a call."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Join a voice call to see the live engine. Your choices above are saved and applied when you connect."
-msgstr "Join a voice call to see the live engine. Your choices above are saved and applied when you connect."
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "DeepFilterNet could not start on this device, so RNNoise is running instead. You still have a single noise suppressor."
-msgstr "DeepFilterNet could not start on this device, so RNNoise is running instead. You still have a single noise suppressor."
-
-#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
-msgid "Stop watching"
-msgstr "Stop watching"
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "Text-to-speech"
-msgstr "Text-to-speech"
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
-msgstr "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "Turn off to keep seeing /tts messages without hearing them."
-msgstr "Turn off to keep seeing /tts messages without hearing them."
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "Read /tts messages aloud"
-msgstr "Read /tts messages aloud"
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "Uses your output volume."
-msgstr "Uses your output volume."
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "Test voice"
-msgstr "Test voice"
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "This is how /tts sounds on this device."
-msgstr "This is how /tts sounds on this device."
-
-#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
-msgid "This device has no speech synthesis, so /tts messages stay silent here."
-msgstr "This device has no speech synthesis, so /tts messages stay silent here."
-
-#: components/app/interface/channels/text/Message.tsx
-msgid "Read aloud in voice"
-msgstr "Read aloud in voice"
-
-#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
-msgid "message"
-msgstr "message"
-
-#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
-msgid "Read aloud to everyone in this voice channel"
-msgstr "Read aloud to everyone in this voice channel"

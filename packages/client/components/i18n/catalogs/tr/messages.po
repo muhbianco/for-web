@@ -42,6 +42,10 @@ msgstr "dddd [saat] LT"
 msgid "(changes are being saved…)"
 msgstr "(değişiklikler kaydediliyor…)"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "(recebendo)"
+msgstr ""
+
 #. placeholder {0}: props.count
 #: components/ui/components/features/messaging/elements/BlockedMessage.tsx
 msgid "{0, plural, one {# blocked message} other {# blocked messages}}"
@@ -57,7 +61,7 @@ msgstr "{0, plural, one {Bir Dosya Bırak} other {Dosya # Bırak}}"
 
 #. placeholder {0}: users() .slice(0, -1) .map((user) => user!.username) .join(", ")
 #. placeholder {1}: users().slice(-1)[0]!.username
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "{0} and {1} are typing…"
 msgstr "{0} ve {1} yazıyor…"
 
@@ -82,7 +86,7 @@ msgid "{0} files exceed the maximum size limit of {maxSizeFormatted} and were no
 msgstr "{0} dosya, {maxSizeFormatted} olan maksimum boyut sınırını aştığı için yüklenemedi."
 
 #. placeholder {0}: users()[0]!.username
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "{0} is typing…"
 msgstr "{0} yazıyor…"
 
@@ -139,6 +143,11 @@ msgstr "{0} atıldı"
 msgid "{0} was removed by {1}"
 msgstr "{0}, {1} tarafından çıkarıldı"
 
+#. placeholder {0}: props.member.user?.username
+#: components/modal/modals/TimeoutMember.tsx
+msgid "{0} will not be able to interact with the server until the timeout expires."
+msgstr ""
+
 #. placeholder {0}: page() * itemsPerPage() + 1
 #. placeholder {1}: Math.min( props.itemCount!, page() * itemsPerPage() + itemsPerPage(), )
 #. placeholder {2}: props.itemCount
@@ -151,11 +160,21 @@ msgstr "{0}-{1} / {2}"
 msgid "{0}'s roles"
 msgstr "{0} adlı kullanıcının rolleri"
 
+#. placeholder {0}: props.member.user?.username
+#: components/modal/modals/RemoveTimeout.tsx
+msgid "{0}'s timeout will be removed and they will be able to interact with the server again."
+msgstr ""
+
 #~ msgid "{h} hours"
 #~ msgstr "{h} saat"
 
 #~ msgid "{m} minutes"
 #~ msgstr "{m} dakika"
+
+#. placeholder {0}: ms.toFixed(1)
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{pct}% ({0} ms)"
+msgstr ""
 
 #~ msgid "{sec} seconds"
 #~ msgstr "{sec} saniye"
@@ -291,6 +310,15 @@ msgstr "24 saat"
 #~ msgid "7 days"
 #~ msgstr "7 gün"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "A chamada está saudável"
+msgstr ""
+
+#. placeholder {0}: v.who
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "A conexão de {0} está instável"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Able to access channels on this server"
 msgstr "Bu sunucudaki kanallara erişebilme"
@@ -304,10 +332,11 @@ msgid "Able to speak in voice call"
 msgstr "Sesli aramalarda konuşabilme"
 
 #: components/auth/src/AuthPage.tsx
-msgid "About"
-msgstr "Hakkında"
+#~ msgid "About"
+#~ msgstr "Hakkında"
 
 #: components/modal/modals/SignOutSessions.tsx
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
 msgid "Accept"
 msgstr "Kabul et"
 
@@ -390,9 +419,17 @@ msgstr "Tüm sistemler çalışır durumda"
 msgid "Allow members to change name and avatar per-message"
 msgstr "Üyelerin her mesaj için ad ve avatar değiştirmesine izin ver"
 
-#: components/app/interface/settings/user/bots/ViewBot.tsx
+#: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Allow others to add your bot to their servers from Discover"
 msgstr "Başkalarının botunu Keşfet sekmesinden kendi sunucularına eklemesine izin ver"
+
+#: components/app/interface/settings/user/bots/ViewBot.tsx
+msgid "Allow others to invite your bot"
+msgstr ""
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Allow others to join your server from Discover"
+msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "Already friends with this user."
@@ -414,6 +451,10 @@ msgstr "Bir hata oluştu."
 #: components/i18n/errors.tsx
 msgid "An internal error occurred. ({0})"
 msgstr "Dahili bir hata oluştu. ({0})"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Aplicativos"
+msgstr ""
 
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
@@ -461,14 +502,30 @@ msgstr "Rolleri Atayabilme"
 msgid "Audio disabled by browser"
 msgstr "Tarayıcı tarafından ses devre dışı bırakıldı"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Áudio enviado"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Áudio reconstruído"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 #: components/modal/modals/MFAFlow.tsx
 msgid "Authenticator App"
 msgstr "Kimlik Doğrulama Uygulaması"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Automatic Gain Control"
-msgstr "Otomatik Kazanç Kontrolü"
+msgid "Automatic (recommended)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Automatic gain control"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Automatic Gain Control"
+#~ msgstr "Otomatik Kazanç Kontrolü"
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Avatar"
@@ -483,9 +540,17 @@ msgstr "Profil Resmi"
 msgid "Back"
 msgstr "Geri"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Background noise"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Badges"
 msgstr "Rozetler"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Balanced removal for everyday calls."
+msgstr ""
 
 #: components/modal/modals/BanMember.tsx
 #: components/modal/modals/BanNonMember.tsx
@@ -528,6 +593,14 @@ msgstr "Afiş"
 msgid "Bans"
 msgstr "Yasaklananlar"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Being sent"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Best against keyboard, fans and TV in the background. Uses more CPU and falls back to RNNoise on weaker devices."
+msgstr ""
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Block user"
 msgstr "Kullanıcıyı engelle"
@@ -549,15 +622,35 @@ msgid "Browser"
 msgstr "Tarayıcı"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Browser Echo Cancellation"
-msgstr "Tarayıcı Yankı Önleme"
+#~ msgid "Browser Echo Cancellation"
+#~ msgstr "Tarayıcı Yankı Önleme"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Browser gain control"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Browser noise suppression"
+msgstr ""
 
 #~ msgid "Browser Noise Supression"
 #~ msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Buffer"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Bug Tracker"
 msgstr "Hata İzleyici"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Built-in browser noise suppression only."
+msgstr ""
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -581,9 +674,26 @@ msgstr "Yavaş modu atlamak"
 msgid "Bypasses slowmode in channels"
 msgstr "Kanallardaki yavaş modu atla"
 
+#: components/app/menus/UserContextMenu.tsx
+#: components/ui/components/features/profiles/ProfileActions.tsx
+msgid "Call"
+msgstr ""
+
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
+msgid "Calling…"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Câmera"
+msgstr ""
+
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Can't find the perfect GIF? Head to Gifbox and upload your own for everyone to use."
 msgstr "Mükemmel bir GİF bulamıyor musunuz? GifBox'a gidin ve kendinizinkini yükleyin ki herkes kullanabilsin."
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Can't get discover request status right now"
+msgstr ""
 
 #: components/auth/src/flows/FlowLogin.tsx
 #: components/modal/modals/AddBot.tsx
@@ -604,6 +714,7 @@ msgstr "Mükemmel bir GİF bulamıyor musunuz? GifBox'a gidin ve kendinizinkini 
 #: components/modal/modals/Onboarding.tsx
 #: components/modal/modals/PinMessage.tsx
 #: components/modal/modals/RemoveMember.tsx
+#: components/modal/modals/RemoveTimeout.tsx
 #: components/modal/modals/RenameSession.tsx
 #: components/modal/modals/ReportContent.tsx
 #: components/modal/modals/ResetBotToken.tsx
@@ -611,8 +722,14 @@ msgstr "Mükemmel bir GİF bulamıyor musunuz? GifBox'a gidin ve kendinizinkini 
 #: components/modal/modals/ScreenShareSettings.tsx
 #: components/modal/modals/ServerIdentity.tsx
 #: components/modal/modals/SignOutSessions.tsx
+#: components/modal/modals/TimeoutMember.tsx
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
 msgid "Cancel"
 msgstr "İptal et"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Cancel discover request"
+msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Cancel friend request"
@@ -621,6 +738,10 @@ msgstr "Arkadaş isteğini iptal et"
 #: components/app/menus/DraftMessageContextMenu.tsx
 msgid "Cancel message"
 msgstr "Mesajı iptal et"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Cancel your discover request and remove it from the review queue"
+msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Cannot delete account until servers are deleted or transferred"
@@ -697,6 +818,10 @@ msgstr "Sunucu içi profilini değiştir"
 #~ msgid "Changelog"
 #~ msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Changes what other people hear from you, not what you hear from them. Only one suppressor runs at a time."
+msgstr ""
+
 #: components/app/interface/settings/channel/Overview.tsx
 msgid "Channel Description"
 msgstr "Kanal Açıklaması"
@@ -726,6 +851,11 @@ msgstr "Kanallar"
 msgid "Chat Input"
 msgstr "Sohbet Girdisi"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Check back often to see if your {0} has been approved!"
+msgstr ""
+
 #: components/auth/src/flows/FlowCheck.tsx
 msgid "Check your mail!"
 msgstr "Posta kutunu kontrol et!"
@@ -737,6 +867,10 @@ msgstr "Bir kullanıcı adı seç"
 #: components/modal/modals/Onboarding.tsx
 msgid "Choose username"
 msgstr "Kullanıcı adı seç"
+
+#: components/app/interface/settings/user/Native.tsx
+msgid "Chromium:"
+msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Clear status"
@@ -803,9 +937,21 @@ msgstr "{0} ile olan konuşmayı kapat?"
 msgid "Code"
 msgstr "Kod"
 
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Collapse call window"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Coming soon! 👀"
 msgstr "Çok yakında geliyor! 👀"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Como a rede está se comportando agora, por pessoa. Abra isto durante uma chamada com problema e copie o resultado."
+msgstr ""
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Compartilhar tela"
+msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Configure a way to get back into your account in case your 2FA is lost"
@@ -840,6 +986,11 @@ msgstr "Bağlanıldı"
 msgid "Connecting"
 msgstr "Bağlanıyor"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Contact support to remove this {0} from discover"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Content breaks one or more laws"
 msgstr "İçerik bir veya daha fazla yasayı çiğniyor"
@@ -865,6 +1016,14 @@ msgstr "Bir dile katkıda bulun"
 msgid "Conversations"
 msgstr "Sohbetler"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Copiado"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Copiar diagnóstico"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBanner.tsx
 msgid "Copied!"
 msgstr "Kopyalandı!"
@@ -884,6 +1043,10 @@ msgstr "Dosya linkini kopyala"
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "Copy ID"
 msgstr "ID'yi Kopyala"
+
+#: components/app/interface/settings/server/invites/ListServerInvites.tsx
+msgid "Copy invite link"
+msgstr ""
 
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "Copy Invite URL"
@@ -940,6 +1103,10 @@ msgstr "İstediğiniz şey bulunamadı."
 msgid "Couldn't fetch Stoat configuration from {hStr}."
 msgstr "{hStr} Adresinden Stoat yapılandırması alınamadı."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "CPU"
+msgstr ""
+
 #: components/app/interface/settings/server/emojis/EmojiList.tsx
 #: components/modal/modals/CreateBot.tsx
 #: components/modal/modals/CreateCategory.tsx
@@ -962,6 +1129,10 @@ msgstr "Başkalarını davet etmeden önce bir kanal oluştur!"
 msgid "Create a group or server"
 msgstr "Bir grup veya sunucu oluştur"
 
+#: components/auth/src/flows/FlowCreate.tsx
+msgid "Create a Muchat account"
+msgstr ""
+
 #: components/modal/modals/CreateBot.tsx
 msgid "Create a new bot"
 msgstr "Yeni bir bot oluştur"
@@ -983,8 +1154,8 @@ msgid "Create a webhook"
 msgstr "Yeni bir webhook oluştur"
 
 #: components/auth/src/flows/FlowCreate.tsx
-msgid "Create an account"
-msgstr "Bir hesap oluştur"
+#~ msgid "Create an account"
+#~ msgstr "Bir hesap oluştur"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Create and edit server roles"
@@ -1087,6 +1258,7 @@ msgstr "Tarih formatı"
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Deafen"
 msgstr "Sağırlaştır"
 
@@ -1097,6 +1269,30 @@ msgstr "Alt yetkide bulunan üyeleri aramalarda sağırlaştırabilme"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Deafen Members"
 msgstr "Üyeleri Sağırlaştırabilme"
+
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
+msgid "Decline"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Decodificador"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet (recommended)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet could not keep up with your CPU during this call, so RNNoise took over. Rejoin the call to try DeepFilterNet again."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet could not start on this device, so RNNoise is running instead. You still have a single noise suppressor."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "DeepFilterNet strength"
+msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
@@ -1124,7 +1320,7 @@ msgstr "Performans Düşüşü"
 msgid "Delete"
 msgstr "Sil"
 
-#. placeholder {0}: props.bot.user!.displayName
+#. placeholder {0}: props.bot.user?.displayName ?? props.bot.id
 #. placeholder {0}: props.channel.name
 #. placeholder {0}: props.role.name
 #: components/modal/modals/DeleteBot.tsx
@@ -1194,6 +1390,10 @@ msgstr "Masaüstü"
 msgid "Developer Documentation"
 msgstr "Geliştirici Dokümantasyonu"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Diagnóstico da chamada"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Disable Account"
 msgstr "Hesabı Devre Dışı Bırak"
@@ -1212,12 +1412,17 @@ msgid "Disconnected"
 msgstr "Bağlantı kesildi"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Discord RPC"
-msgstr "Discord RPC"
+#~ msgid "Discord RPC"
+#~ msgstr "Discord RPC"
+
+#: components/app/interface/settings/ServerSettings.tsx
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Discover"
+msgstr ""
 
 #: src/interface/Home.tsx
-msgid "Discover Stoat"
-msgstr "Stoat'ı Keşfet"
+#~ msgid "Discover Stoat"
+#~ msgstr "Stoat'ı Keşfet"
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Display & Text"
@@ -1263,8 +1468,12 @@ msgid "Donate"
 msgstr "Bağış yap"
 
 #: src/interface/Home.tsx
-msgid "Donate to Stoat"
-msgstr "Stoat'a bağış yap"
+msgid "Donate to Muchat"
+msgstr ""
+
+#: src/interface/Home.tsx
+#~ msgid "Donate to Stoat"
+#~ msgstr "Stoat'a bağış yap"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Donated to Stoat"
@@ -1277,6 +1486,14 @@ msgstr "Bitti"
 #: components/modal/modals/ReportContent.tsx
 msgid "Drugs or illegal goods"
 msgstr "Uyuşturucu veya yasadışı ürün"
+
+#: components/modal/modals/TimeoutMember.tsx
+msgid "Duration"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Echo cancellation"
+msgstr ""
 
 #. placeholder {0}: props.member.displayName
 #: components/modal/modals/UserProfileRoles.tsx
@@ -1376,8 +1593,13 @@ msgid "Enable transparency glass/blur effects (slow on older machines)"
 msgstr "Saydamlık/bulanıklaştırma efektlerini etkinleştir (eski cihazlarda yavaş çalışabilir)"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "End call"
 msgstr "Aramayı bitir"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Engine"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Enhanced"
@@ -1422,6 +1644,10 @@ msgstr "Davet kodunuzu girin"
 msgid "Enter your preferred username."
 msgstr "Kullanmayı istediğiniz kullanıcı adınızı girin."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Entre em uma chamada para ver os números."
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
@@ -1461,6 +1687,10 @@ msgstr "Gönderilemedi"
 msgid "Failed to verify!"
 msgstr "Doğrulanamadı!"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Fans, street, other people talking."
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Feedback"
@@ -1472,12 +1702,12 @@ msgid "File must be smaller than {0}"
 msgstr "Dosya {0} küçük olmalıdır"
 
 #: src/interface/Home.tsx
-msgid "Find a community based on your hobbies or interests."
-msgstr "Hobi ya da ilgi alanlarınıza göre bir topluluk bulun."
+#~ msgid "Find a community based on your hobbies or interests."
+#~ msgstr "Hobi ya da ilgi alanlarınıza göre bir topluluk bulun."
 
 #: components/auth/src/flows/FlowHome.tsx
-msgid "Find your com<0/>munity,<1/>connect with the world."
-msgstr "Bir toplu<0/>luk bulun, <1/> ve dünyaya bağlanın."
+#~ msgid "Find your com<0/>munity,<1/>connect with the world."
+#~ msgstr "Bir toplu<0/>luk bulun, <1/> ve dünyaya bağlanın."
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -1510,6 +1740,14 @@ msgstr "3 saat boyunca"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "For 8 hours"
 msgstr "8 saat boyunca"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "FPS"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Frame time"
+msgstr ""
 
 #: src/interface/Friends.tsx
 #: src/interface/navigation/channels/HomeSidebar.tsx
@@ -1557,14 +1795,13 @@ msgid "GIFs are now powered by Gifbox"
 msgstr "Gif'ler artık Giftbox tarafından sağlanıyor"
 
 #: src/interface/Home.tsx
-msgid "Give feedback on Stoat"
-msgstr "Stoat hakkında geri bildirim verin"
+#~ msgid "Give feedback on Stoat"
+#~ msgstr "Stoat hakkında geri bildirim verin"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Give us some detail"
 msgstr "Bize biraz detay verin"
 
-#: components/modal/modals/ScreenSharePicker.tsx
 #: components/modal/modals/ScreenShareSettings.tsx
 msgid "Go"
 msgstr "Git"
@@ -1576,12 +1813,15 @@ msgstr "Git"
 msgid "Go back to login"
 msgstr "Giriş sayfasına geri dönün"
 
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Go Live"
+msgstr ""
+
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Go to account settings to edit your username"
 msgstr "Kullanıcı adını düzenlemek için hesap ayarlarına git"
 
 #: components/app/interface/settings/user/Feedback.tsx
-#: src/interface/Home.tsx
 msgid "Go to the Stoat Lounge"
 msgstr "Stoat Resmi Sunucusuna Gidin"
 
@@ -1660,6 +1900,10 @@ msgstr "Rolü ayrı göster"
 msgid "Home"
 msgstr "Ana Sayfa"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "How aggressively background noise is removed. Stronger settings remove more noise but can make your voice sound less natural."
+msgstr ""
+
 #: src/interface/channels/AgeGate.tsx
 msgid "I confirm that I am at least 18 years old."
 msgstr "En az 18 yaşında olduğumu onaylıyorum."
@@ -1671,6 +1915,10 @@ msgstr "Sonuçların farkındayım ve onaylıyorum"
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "ID copied to clipboard"
 msgstr "Kimlik panoya kopyalandı"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Ida e volta"
+msgstr ""
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -1694,13 +1942,21 @@ msgstr "Kimlik sahtekarlığı"
 msgid "In the meantime, install Stoat from Google Play for a faster, smoother experience designed for Android."
 msgstr "Bu arada, Android için tasarlanmış daha hızlı ve sorunsuz bir deneyim için Google Play'den Stoat uygulamasını yükleyin."
 
+#: components/ui/components/features/voice/IncomingCallOverlay.tsx
+msgid "Incoming call"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Input Volume"
 msgstr "Giriş Sesi"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Instead of closing, Stoat will hide in your tray."
-msgstr "Stoat, kapanmak yerine simge durumuna küçülecektir."
+msgid "Instead of closing, Muchat will hide in your tray."
+msgstr ""
+
+#: components/app/interface/settings/user/Native.tsx
+#~ msgid "Instead of closing, Stoat will hide in your tray."
+#~ msgstr "Stoat, kapanmak yerine simge durumuna küçülecektir."
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Interface Font"
@@ -1731,6 +1987,10 @@ msgstr "Başkalarını Davet Et"
 msgid "Invite URL copied to clipboard"
 msgstr "Davet bağlantısı panoya kopyalandı."
 
+#: components/auth/src/flows/FlowHome.tsx
+msgid "Invite-only. You talk with the people you actually invited."
+msgstr ""
+
 #: components/app/interface/settings/server/invites/ListServerInvites.tsx
 msgid "Inviter"
 msgstr "Davet Eden"
@@ -1751,6 +2011,14 @@ msgstr "alakasız mizah rozeti 2"
 msgid "ISO Standard (YYYY-MM-DD)"
 msgstr "ISO Standartı (YYYY-AA-GG)"
 
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Janela"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Jitter"
+msgstr ""
+
 #: components/modal/modals/Invite.tsx
 #: components/modal/modals/JoinServer.tsx
 msgid "Join"
@@ -1760,11 +2028,18 @@ msgstr "Katıl"
 msgid "Join a server"
 msgstr "Bir sunucuya katıl"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live engine. Your choices above are saved and applied when you connect."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Join a voice call to see the live meter."
+msgstr ""
+
 #~ msgid "Join call"
 #~ msgstr ""
 
 #: components/app/interface/settings/user/Feedback.tsx
-#: src/interface/Home.tsx
 msgid "Join the Stoat Lounge"
 msgstr "Stoat Resmi Sunucusuna Katılın"
 
@@ -1789,6 +2064,10 @@ msgstr "Başlangıca geri dön"
 #: components/modal/modals/ChannelToggleMature.tsx
 msgid "Keep as is"
 msgstr "Olduğu gibi tut"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Keeps your voice the most natural."
+msgstr ""
 
 #: components/modal/modals/KickMember.tsx
 msgid "Kick"
@@ -1824,8 +2103,12 @@ msgid "Latest"
 msgstr "En Son"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Launch Stoat when you log into your computer."
-msgstr "Bilgisayarınıza giriş yaptığınızda Stoat'ı başlatın."
+msgid "Launch Muchat when you log into your computer."
+msgstr ""
+
+#: components/app/interface/settings/user/Native.tsx
+#~ msgid "Launch Stoat when you log into your computer."
+#~ msgstr "Bilgisayarınıza giriş yaptığınızda Stoat'ı başlatın."
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Learn more"
@@ -1856,21 +2139,37 @@ msgid "Leave server"
 msgstr "Sunucudan ayrıl"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Let Stoat use its own custom titlebar."
-msgstr "Stoat'ın kendine ait başlık çubuğunu kullanmasına izin ver."
+msgid "Let Muchat use its own custom titlebar."
+msgstr ""
+
+#: components/app/interface/settings/user/Native.tsx
+#~ msgid "Let Stoat use its own custom titlebar."
+#~ msgstr "Stoat'ın kendine ait başlık çubuğunu kullanmasına izin ver."
 
 #: src/interface/Home.tsx
-msgid "Let us know how we can improve our app by giving us feedback."
-msgstr "Bize uygulamamızı nasıl geliştirebileceğimiz hakkında geri bildirimde bulunun."
+#~ msgid "Let us know how we can improve our app by giving us feedback."
+#~ msgstr "Bize uygulamamızı nasıl geliştirebileceğimiz hakkında geri bildirimde bulunun."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Light"
 msgstr "Aydınlık"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Light (quiet room)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "limitada por"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Listen"
 msgstr "Diğer kullanıcıları duyabilme"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Live view of the audio chain while you are in a call."
+msgstr ""
 
 #. placeholder {0}: humanFileSize(props.file.size ?? 0)
 #: components/ui/components/features/messaging/elements/TextFile.tsx
@@ -1901,6 +2200,18 @@ msgstr "Giriş Yap"
 #: components/app/interface/settings/user/Sessions.tsx
 msgid "Logs you out of all sessions except this device."
 msgstr "Bu cihaz hariç tüm oturumlarınızı kapatır."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loud ({rounded} dBFS)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loudness only"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Loudness only (voice detection off)"
+msgstr ""
 
 #: components/app/interface/settings/server/emojis/EmojiList.tsx
 msgid "Lowercase letters, numbers and underscores only."
@@ -1972,13 +2283,37 @@ msgstr "Bu kanalı yetişkin olarak işaretlemek istediğinize emin misiniz?"
 msgid "Masquerade"
 msgstr "Kılık değiştirme"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "max {maxMs} ms ({slowPct}% slow)"
+msgstr ""
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Maximize call window"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Measures your background noise while you are silent and adjusts the strength and the microphone threshold for you."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Medindo…"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Medium (home office)"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Members"
 msgstr "Üyeler"
 
 #. placeholder {0}: slowmodeWaitTime()
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Members can send one message every {0}."
 msgstr "Üyeler her {0}'da bir mesaj gönderebilir."
 
@@ -2011,7 +2346,12 @@ msgstr "Başkalarından bahsedebilme"
 msgid "Mentions Only"
 msgstr "Sadece Bahsetmeler"
 
+#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
+msgid "message"
+msgstr ""
+
 #: components/app/menus/UserContextMenu.tsx
+#: components/ui/components/features/profiles/ProfileActions.tsx
 msgid "Message"
 msgstr "Mesaj"
 
@@ -2053,6 +2393,18 @@ msgstr "Mesajlaşma"
 msgid "MFA setup canceled."
 msgstr "Çok faktörlü kimlik doğrulama (MFA) kurulumu iptal edildi."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone channels"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone gate"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sensitivity"
+msgstr ""
+
 #: components/app/interface/settings/user/Native.tsx
 msgid "Minimise to Tray"
 msgstr "Simge Durumuna Küçült"
@@ -2060,6 +2412,10 @@ msgstr "Simge Durumuna Küçült"
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "Kayıp İzinler"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Moderate ({rounded} dBFS)"
+msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Monochrome"
@@ -2081,6 +2437,14 @@ msgstr "Üyeleri Taşıyabilme"
 msgid "Move members between voice channels"
 msgstr "Üyeleri sesli sohbetler arasında taşıyabilme"
 
+#: components/app/interface/settings/user/Native.tsx
+msgid "Muchat for Desktop"
+msgstr ""
+
+#: components/app/interface/settings/user/Native.tsx
+msgid "Muchat will start in the system tray."
+msgstr ""
+
 #: components/i18n/errors.tsx
 msgid "Multi-factor authentication is already enabled for this account."
 msgstr "Çok aşamalı kimlik doğrulama bu hesapta çoktan aktifleştirildi."
@@ -2088,6 +2452,7 @@ msgstr "Çok aşamalı kimlik doğrulama bu hesapta çoktan aktifleştirildi."
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/app/menus/UserContextMenu.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Mute"
 msgstr "Sustur"
 
@@ -2115,6 +2480,10 @@ msgstr "Sunucuyu Sessize Al"
 msgid "Muted"
 msgstr "Susturuldu"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Muted by the gate"
+msgstr ""
+
 #: components/app/menus/ServerContextMenu.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
 #: src/interface/navigation/servers/ServerList.tsx
@@ -2136,6 +2505,10 @@ msgstr "Hesabım"
 #: components/app/interface/settings/UserSettings.tsx
 msgid "My Bots"
 msgstr "Botlarım"
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Nada para mostrar nesta aba."
+msgstr ""
 
 #: components/modal/modals/CreateCategory.tsx
 #: components/modal/modals/RenameSession.tsx
@@ -2192,6 +2565,14 @@ msgstr "Hiçbir rol istisnası yapılandırılmadı."
 msgid "Nobody here right now!"
 msgstr "Burada kimse yok!"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Noise removed"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Noise suppression"
+msgstr ""
+
 #: components/app/menus/ServerContextMenu.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "None"
@@ -2200,6 +2581,10 @@ msgstr "Hiçbiri"
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Normal"
 msgstr "Normal"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Not in a call"
+msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Not of minimum age to use the platform"
@@ -2211,6 +2596,7 @@ msgstr "Bu platformu kullanmak için gereken yaşta değil"
 msgid "Notifications"
 msgstr "Bildirimler"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #: components/ui/components/features/messaging/composition/MessageReplyPreview.tsx
 msgid "Off"
 msgstr "Kapalı"
@@ -2240,6 +2626,7 @@ msgstr "Tamam"
 msgid "Oldest"
 msgstr "En Eski"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #: components/ui/components/features/messaging/composition/MessageReplyPreview.tsx
 msgid "On"
 msgstr "Açık"
@@ -2268,6 +2655,10 @@ msgstr "Devam Eden Bakım"
 msgid "Online"
 msgstr "Çevrim içi"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Only loud speech"
+msgstr ""
+
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Only mentions will notify you"
 msgstr "Sadece bahsetmelerden haberdar edileceksin"
@@ -2292,6 +2683,10 @@ msgstr "Kanal ayarlarını aç"
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Open file"
 msgstr "Dosyayı aç"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Open microphone on voice only"
+msgstr ""
 
 #: components/app/menus/ServerContextMenu.tsx
 msgid "Open server settings"
@@ -2340,6 +2735,14 @@ msgstr "Şifre başarıyla değiştirildi"
 msgid "Pending"
 msgstr "Beklemede"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Perda"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Perda do seu áudio"
+msgstr ""
+
 #: components/app/interface/settings/ChannelSettings.tsx
 msgid "Permissions"
 msgstr "İzinler"
@@ -2353,12 +2756,16 @@ msgid "Permissions available without any role"
 msgstr "Herhangi bir rol olmadan geçerli olan izinler"
 
 #: components/modal/modals/ScreenSharePicker.tsx
-msgid "Pick a Screen to Share"
-msgstr "Paylaşmak için ekran seç"
+#~ msgid "Pick a Screen to Share"
+#~ msgstr "Paylaşmak için ekran seç"
 
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Pick a username that you want people to be able to find you by. This can be changed later in your user settings."
 msgstr "İnsanların seni rahatlıkla bulmasını istediğin bir kullanıcı adı seç. Bu daha sonra ayarlarından değiştirilebilir."
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Picks up whispers"
+msgstr ""
 
 #: components/modal/modals/PinMessage.tsx
 msgid "Pin"
@@ -2406,8 +2813,12 @@ msgid "Please select a reason"
 msgstr "Lütfen bir sebep seçin"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Powered by RNNoise"
-msgstr "RNNoise Tarafından desteklenmektedir"
+#~ msgid "Powered by RNNoise"
+#~ msgstr "RNNoise Tarafından desteklenmektedir"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Powered by RNNoise. Light on CPU."
+msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Preview"
@@ -2418,12 +2829,16 @@ msgid "Privacy"
 msgstr "Gizlilik"
 
 #: components/auth/src/AuthPage.tsx
-msgid "Privacy Policy"
-msgstr "Gizlilik Politikası"
+#~ msgid "Privacy Policy"
+#~ msgstr "Gizlilik Politikası"
 
 #: components/markdown/plugins/anchors.tsx
 msgid "Private Channel"
 msgstr "Gizli Kanal"
+
+#: components/auth/src/flows/FlowHome.tsx
+msgid "Private chat."
+msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
 #: components/app/menus/UserContextMenu.tsx
@@ -2447,6 +2862,18 @@ msgstr "Zamirlerin"
 msgid "Provided email or password is wrong."
 msgstr "Girilen e-mail veya şifre yanlış."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Qualidade"
+msgstr ""
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Quality"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Quiet ({rounded} dBFS)"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Raid or spam attack"
 msgstr "Baskın veya spam saldırısı"
@@ -2459,6 +2886,18 @@ msgstr "Tepki verebilme"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "React to messages with emoji"
 msgstr "Mesajlara tepki verebilme"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Read /tts messages aloud"
+msgstr ""
+
+#: components/app/interface/channels/text/Message.tsx
+msgid "Read aloud in voice"
+msgstr ""
+
+#: components/ui/components/features/texteditor/codeMirrorAutoCompleteSource.ts
+msgid "Read aloud to everyone in this voice channel"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Read Message History"
@@ -2484,6 +2923,16 @@ msgstr "Sebep"
 #: components/modal/modals/ReportContent.tsx
 msgid "Reason for report"
 msgstr "Şikayet etme nedeni"
+
+#. placeholder {0}: (dr.status as { Denied: string | null }) .Denied
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Reason: {0}"
+msgstr ""
+
+#. placeholder {0}: (dr.status as { Removed: string | null }) .Removed
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Reason: {0} Contact support for more information."
+msgstr ""
 
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive notifications while the app is open and in the background."
@@ -2558,6 +3007,10 @@ msgid "Remove friend"
 msgstr "Arkadaşlıktan çıkar"
 
 #: components/app/menus/UserContextMenu.tsx
+msgid "Remove from call"
+msgstr ""
+
+#: components/app/menus/UserContextMenu.tsx
 #: components/modal/modals/RemoveMember.tsx
 msgid "Remove Member"
 msgstr "Üyeyi kaldır"
@@ -2569,6 +3022,11 @@ msgstr "Diğer kullanıcıların profil resmini kaldırabilme"
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Remove reaction"
 msgstr "Tepkiyi kaldır"
+
+#: components/app/menus/UserContextMenu.tsx
+#: components/modal/modals/RemoveTimeout.tsx
+msgid "Remove Timeout"
+msgstr ""
 
 #: components/app/interface/settings/user/Sessions.tsx
 #: components/modal/modals/EditCategory.tsx
@@ -2586,8 +3044,8 @@ msgid "Rename Session"
 msgstr "Oturumu Yeniden Adlandır"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Rep Stoat using Discord rich presence."
-msgstr "Stoat'ı Discord RPC kullanarak temsil et."
+#~ msgid "Rep Stoat using Discord rich presence."
+#~ msgstr "Stoat'ı Discord RPC kullanarak temsil et."
 
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Reply"
@@ -2618,6 +3076,7 @@ msgstr "Kullanıcıyı bildir"
 msgid "Resend"
 msgstr "Tekrar gönder"
 
+#: components/auth/src/flows/FlowCheck.tsx
 #: components/auth/src/flows/FlowLogin.tsx
 #: components/auth/src/flows/FlowResend.tsx
 msgid "Resend verification"
@@ -2653,6 +3112,11 @@ msgstr "Token'i Sıfırla"
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Responsibly disclosed security issues"
 msgstr "Güvenlik sorunlarını düzgün bir biçimde açığa çıkardı"
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Restore call window"
+msgstr ""
 
 #: components/app/menus/DraftMessageContextMenu.tsx
 msgid "Retry sending"
@@ -2697,6 +3161,10 @@ msgstr "Roller"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "Roles with No Overrides"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Sample rate"
 msgstr ""
 
 #: components/app/interface/settings/channel/Overview.tsx
@@ -2772,8 +3240,8 @@ msgid "Select members to add"
 msgstr "Eklenecek üyeleri seçin"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Select noise suppression"
-msgstr "Gürültü engellemeyi seçin"
+#~ msgid "Select noise suppression"
+#~ msgstr "Gürültü engellemeyi seçin"
 
 #: components/app/interface/settings/user/voice/ScreenShareOptions.tsx
 msgid "Select screen share quality"
@@ -2786,6 +3254,15 @@ msgstr "Kamera Girişini seçin"
 #: components/app/interface/settings/user/Language.tsx
 msgid "Select your language"
 msgstr "Dilinizi seçin"
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Send a short sound alert to a member in a voice channel"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+#: components/app/menus/UserContextMenu.tsx
+msgid "Send Alert"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Send attachments to chat"
@@ -2818,6 +3295,10 @@ msgstr "Kanallara mesaj gönderebilme"
 #: components/modal/modals/AddFriend.tsx
 msgid "Send Request"
 msgstr "İstek Gönder"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Send the raw microphone signal."
+msgstr ""
 
 #: components/app/interface/channels/text/DraftMessage.tsx
 msgid "Sending..."
@@ -2897,7 +3378,11 @@ msgstr "Tek kullanımlık şifre doğrulaması ayarla"
 msgid "Setup recovery codes"
 msgstr "Kurtarma kodu ayarla"
 
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Seu computador não está dando conta"
+msgstr ""
+
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Several people are typing…"
 msgstr "Birkaç kişi yazıyor…"
 
@@ -2912,6 +3397,7 @@ msgid "Share camera or screen in voice call"
 msgstr "Sesli aramalarda ekran veya kamera paylaşabilme"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Share screen"
 msgstr "Ekran paylaş"
 
@@ -2928,8 +3414,12 @@ msgid "Show send message button"
 msgstr "Mesaj gönder butonunu göster"
 
 #: components/auth/src/flows/FlowLogin.tsx
-msgid "Sign into Stoat"
-msgstr "Stoat'a giriş yap"
+msgid "Sign into Muchat"
+msgstr ""
+
+#: components/auth/src/flows/FlowLogin.tsx
+#~ msgid "Sign into Stoat"
+#~ msgstr "Stoat'a giriş yap"
 
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Sign Up"
@@ -2939,17 +3429,21 @@ msgstr "Kaydol"
 msgid "Silent"
 msgstr "Sessiz"
 
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode Immune"
 msgstr "Yavaş mod bağışıklığı"
 
-#: src/interface/channels/text/CompositionInfo.tsx
+#: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode is enabled."
 msgstr "Yavaş mod aktif."
 
 #: components/app/interface/settings/channel/Overview.tsx
 msgid "Slowmode off"
 msgstr "Yavaş mod kapalı"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "software"
+msgstr ""
 
 #: components/modal/modals/EditEmail.tsx
 msgid "someone@example.com"
@@ -2971,13 +3465,17 @@ msgstr "Bir şeyler ters gitti! {error}"
 #~ msgid "Something went wrong! Try again later."
 #~ msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Sound louder than the marker is sent to others; anything quieter is muted. Speak normally and check that the bar passes the marker."
+msgstr ""
+
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Sounds"
 msgstr "Sesler"
 
 #: components/app/interface/settings/UserSettings.tsx
-msgid "Source Code"
-msgstr "Kaynak Kodu"
+#~ msgid "Source Code"
+#~ msgstr "Kaynak Kodu"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Spam or similar platform abuse"
@@ -2986,6 +3484,10 @@ msgstr "Spam veya benzeri platform kötüye kullanımı"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Speak"
 msgstr "Konuşabilme"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Speech probability"
+msgstr ""
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Spellchecker"
@@ -3019,24 +3521,24 @@ msgid "Stoat Developer"
 msgstr "Stoat Geliştiricisi"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Stoat for Desktop"
-msgstr "Masaüstü için Stoat"
+#~ msgid "Stoat for Desktop"
+#~ msgstr "Masaüstü için Stoat"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Stoat Founder"
 msgstr "Stoat Kurucusu"
 
 #: components/auth/src/flows/FlowHome.tsx
-msgid "Stoat is one of the best ways to stay connected with your friends and community, anywhere, anytime."
-msgstr "Stoat arkadaşlarınıza istediğiniz zaman, istediğiniz yerde bağlanmanın en iyi yollarından biridir."
+#~ msgid "Stoat is one of the best ways to stay connected with your friends and community, anywhere, anytime."
+#~ msgstr "Stoat arkadaşlarınıza istediğiniz zaman, istediğiniz yerde bağlanmanın en iyi yollarından biridir."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Stoat rocks!"
 msgstr "Stoat harika!"
 
 #: components/app/interface/settings/user/Native.tsx
-msgid "Stoat will start in the system tray."
-msgstr "Stoat arka planda çalışmaya başlayacak."
+#~ msgid "Stoat will start in the system tray."
+#~ msgstr "Stoat arka planda çalışmaya başlayacak."
 
 #: src/AndroidNag.tsx
 msgid "Stoat works best as an app"
@@ -3047,8 +3549,17 @@ msgid "Stop camera"
 msgstr "Kamerayı kapat"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Stop sharing"
 msgstr "Ekran paylışımını durdur"
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
+msgid "Stop watching"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Stops your speakers from being heard through your mic."
+msgstr ""
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Stream End"
@@ -3058,6 +3569,22 @@ msgstr "Yayın bitti"
 msgid "Stream Start"
 msgstr "Yayın başladı"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Strength"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Strong (noisy place)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Sua conexão de descida está com problema"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Sua conexão de subida está com problema"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Submit feature suggestion"
 msgstr "Özellik tavsiyesi gönder"
@@ -3066,7 +3593,7 @@ msgstr "Özellik tavsiyesi gönder"
 msgid "Submit feedback"
 msgstr "Geri bildirim gönder"
 
-#: components/app/interface/settings/user/bots/ViewBot.tsx
+#: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Submit to Discover"
 msgstr "Keşfete Sun"
 
@@ -3106,6 +3633,15 @@ msgstr "Sistem"
 msgid "System message channels"
 msgstr "Sistem mesajı kanalları"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Tela"
+msgstr ""
+
+#: components/modal/modals/ScreenSharePicker.tsx
+msgid "Telas"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Tell us what's wrong with this message"
 msgstr "Bu mesaj hakkındaki sorunlarınızı bize bildirin"
@@ -3127,16 +3663,40 @@ msgid "Terms"
 msgstr "Koşullar"
 
 #: components/auth/src/AuthPage.tsx
-msgid "Terms of Service"
-msgstr "Kullanım Koşulları"
+#~ msgid "Terms of Service"
+#~ msgstr "Kullanım Koşulları"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Test voice"
+msgstr ""
 
 #: components/modal/modals/CreateChannel.tsx
 msgid "Text Channel"
 msgstr "Metin Kanalı"
 
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Text-to-speech"
+msgstr ""
+
 #: components/i18n/errors.tsx
 msgid "That action had no effect."
 msgstr "Bu eylem hiçbir şey yapmadı."
+
+#: components/i18n/errors.tsx
+msgid "The bot has been removed from discover by moderators, the user must contact support."
+msgstr ""
+
+#: components/i18n/errors.tsx
+msgid "The bot is already on discover, the user must contact support to have it removed"
+msgstr ""
+
+#: components/i18n/errors.tsx
+msgid "The Discover request is approved or the item has been removed from discover. In either case, the user must contact support."
+msgstr ""
+
+#: components/i18n/errors.tsx
+msgid "The Discover request was declined. Declined requests cannot be removed, but the user may submit again."
+msgstr ""
 
 #. placeholder {0}: file.name
 #: src/interface/channels/text/Composition.tsx
@@ -3144,16 +3704,45 @@ msgid "The file \"{0}\" ({fileSize}) exceeds the maximum size limit of {maxSizeF
 msgstr "\"{0}\" adlı dosya ({fileSize}) maksimum dosya limiti olan {maxSizeFormatted} boyutunu aşıyor."
 
 #: components/i18n/errors.tsx
+msgid "The item was removed by moderators, and as such future applications are prohibited. Contact support for more information."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "The marker follows your background noise automatically. Pick Light, Medium or Strong above to set it by hand."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "The microphone opens only when it hears speech, not just when something is loud. Dog barks, keyboards and door slams while you are quiet stay muted. Adds about 30 ms of delay."
+msgstr ""
+
+#: components/i18n/errors.tsx
 msgid "The password is too short."
 msgstr "Şifre çok kısa."
+
+#: components/i18n/errors.tsx
+msgid "The server has been removed from discover by moderators, the user must contact support."
+msgstr ""
+
+#: components/i18n/errors.tsx
+msgid "The server is already on discover, the user must contact support to have it removed."
+msgstr ""
 
 #: components/app/interface/settings/user/Sync.tsx
 msgid "Theme"
 msgstr "Tema"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "This {0} is discoverable"
+msgstr ""
+
 #: components/i18n/errors.tsx
-msgid "This account is not activated! Please check your account's inbox and try again."
-msgstr "Bu hesap aktive edilmemiş! Lütfen hesabının gelenler kutusunu kontrol et ve tekrar dene."
+msgid "This account is not activated yet. Open the verification email we sent and click the link."
+msgstr ""
+
+#: components/i18n/errors.tsx
+#~ msgid "This account is not activated! Please check your account's inbox and try again."
+#~ msgstr "Bu hesap aktive edilmemiş! Lütfen hesabının gelenler kutusunu kontrol et ve tekrar dene."
 
 #: components/i18n/errors.tsx
 msgid "This bot is private and can only be added by the creator."
@@ -3175,6 +3764,14 @@ msgstr "Aldığımız yasal şikayetleri incelediğimiz süreçte, bu kanal böl
 msgid "This content is not available in your region."
 msgstr "Bu içerik bölgenizde mevcut değil."
 
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "This device has no speech synthesis, so /tts messages stay silent here."
+msgstr ""
+
+#: components/i18n/errors.tsx
+msgid "This email already has a Muchat account. Sign in, or use a different email. A Gmail address with + is the same account."
+msgstr ""
+
 #: components/i18n/errors.tsx
 msgid "This feature is currently disabled."
 msgstr "Bu özellik şu anda devre dışı."
@@ -3191,6 +3788,10 @@ msgstr "Bu grup fazla büyük, en fazla {0} tane kullanıcı ekleyebilirsiniz."
 #: components/i18n/errors.tsx
 msgid "This has already been sent."
 msgstr "Bu çoktan gönderildi."
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "This is how /tts sounds on this device."
+msgstr ""
 
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "This is taking longer than usual."
@@ -3244,9 +3845,32 @@ msgstr "Bu kullanıcı adına izin verilmiyor."
 msgid "This will invalidate the current token and stop any existing instances of the bot from running."
 msgstr "Bu, mevcut tokeni geçersiz kılacak ve botun çalışan tüm örneklerini durduracaktır."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Threshold"
+msgstr ""
+
 #: components/app/interface/settings/user/Language.tsx
 msgid "Time format"
 msgstr "Vakit formatı"
+
+#. placeholder {0}: props.member!.timeout!.toLocaleString()
+#: src/interface/channels/text/MemberSidebar.tsx
+msgid "Timed out until {0}"
+msgstr ""
+
+#. placeholder {0}: props.message.member!.timeout!.toLocaleString()
+#: components/app/interface/channels/text/Message.tsx
+msgid "Timed Out until {0}"
+msgstr ""
+
+#: components/modal/modals/TimeoutMember.tsx
+msgid "Timeout"
+msgstr ""
+
+#: components/app/menus/UserContextMenu.tsx
+#: components/modal/modals/TimeoutMember.tsx
+msgid "Timeout Member"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Timeout Members"
@@ -3268,6 +3892,10 @@ msgstr "Vurgulu Tonlar"
 msgid "Traditional (DD/MM/YYYY)"
 msgstr "Geleneksel (GG/AA/YYYY)"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Travamentos"
+msgstr ""
+
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Trending GIFs"
 msgstr "Popüler GIF'ler"
@@ -3275,6 +3903,14 @@ msgstr "Popüler GIF'ler"
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Troubleshooting"
 msgstr "Sorun giderme"
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Turn off to keep seeing /tts messages without hearing them."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
+msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Unblock user"
@@ -3287,6 +3923,7 @@ msgstr "Stoat'ta gözden kaçan hata: {0}"
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Undeafen"
 msgstr "Sağırlaştırmayı Kaldır"
 
@@ -3313,6 +3950,7 @@ msgstr "Bu kanalın yetişkin ibaresini kaldır?"
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+#: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Unmute"
 msgstr "Susturmayı Aç"
 
@@ -3345,6 +3983,16 @@ msgstr "İstenmeyen reklam veya spam"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Until I turn it back on"
 msgstr "Ben tekrar açana kadar"
+
+#. placeholder {0}: current.deepFilterAttenDb
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "up to {0} dB"
+msgstr ""
+
+#. placeholder {0}: DEEPFILTER_ATTEN_DB[level]
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Up to {0} dB of noise removed."
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Upload Files"
@@ -3433,6 +4081,10 @@ msgstr "Kullanıcılar bu kanalı açmadan önce yaşlarını doğrulamaları is
 msgid "Users will no longer be asked to confirm their age before joining this channel.<0/> Please ensure the content is appropriate for all ages."
 msgstr "Kullanıcılar artık bu kanala katıldıklarında yaşlarını doğrulamaları istenmeyecek.<0/> Lütfen içeriğin tüm yaş gruplarına uygun olduğundan emin olun."
 
+#: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
+msgid "Uses your output volume."
+msgstr ""
+
 #~ msgid "Using default microphone"
 #~ msgstr ""
 
@@ -3455,6 +4107,10 @@ msgstr "Sürüm:"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Video"
 msgstr "Video"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Vídeo"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "View Channel"
@@ -3487,6 +4143,10 @@ msgstr "Durum sayfasını görüntüle"
 msgid "Viewing older messages"
 msgstr "Eski mesajları görüntülüyorsun"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Você (enviando)"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Voice"
@@ -3500,13 +4160,33 @@ msgstr "Ses & Video"
 msgid "Voice Channel"
 msgstr "Ses Kanalı"
 
+#: components/ui/components/features/voice/VoiceDock.tsx
+msgid "Voice controls"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Voice Processing"
-msgstr "Ses İşleme Biçimi"
+msgid "Voice detection (Silero)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Voice detection could not start, so the microphone gate is using loudness only for this call."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+#~ msgid "Voice Processing"
+#~ msgstr "Ses İşleme Biçimi"
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Ses düzeyi"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Voz acelerada"
+msgstr ""
+
+#: components/ui/components/features/voice/VoiceDock.tsx
+msgid "Voz conectada"
+msgstr ""
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Want to change username?"
@@ -3517,8 +4197,12 @@ msgid "We are working hard on optimising our web app for mobile."
 msgstr "Web uygulamamızı mobil cihazlar için optimize etmek üzere yoğun bir şekilde çalışıyoruz."
 
 #: components/auth/src/flows/FlowCheck.tsx
-msgid "We've sent you a verification email. Please allow up to 10 minutes for it to arrive."
-msgstr "Size bir doğrulama e-postası gönderdik. Lütfen gelmesi için 10 dakikaya kadar bekleyin."
+msgid "We've sent you a verification email. Open it and click the link to activate your account. Please allow up to 10 minutes for it to arrive."
+msgstr ""
+
+#: components/auth/src/flows/FlowCheck.tsx
+#~ msgid "We've sent you a verification email. Please allow up to 10 minutes for it to arrive."
+#~ msgstr "Size bir doğrulama e-postası gönderdik. Lütfen gelmesi için 10 dakikaya kadar bekleyin."
 
 #: components/app/interface/channels/text/Message.tsx
 msgid "Webhook"
@@ -3543,6 +4227,10 @@ msgstr "Web kancaları"
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Welcome!"
 msgstr "Hoş geldin!"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "What is running right now"
+msgstr ""
 
 #: components/modal/modals/Changelog.tsx
 msgid "What's new"
@@ -3599,6 +4287,10 @@ msgstr "{0}'yı atmak üzeresin"
 msgid "You are banned from this server."
 msgstr "Bu sunucudan yasaklandın."
 
+#: components/ui/components/features/messaging/composition/MessageBox.tsx
+msgid "You are timed out and can't send messages right now."
+msgstr ""
+
 #: src/interface/Home.tsx
 msgid "You can also click the gear icon in the bottom left."
 msgstr "Sol alttaki çark simgesine de tıklayabilirsin."
@@ -3611,9 +4303,12 @@ msgid "You can re-open it later, but it will disappear on both sides."
 msgstr "Daha sonra tekrar açabilirsin, ancak her iki taraftan da kaybolacaktır."
 
 #: components/app/interface/settings/user/Feedback.tsx
-#: src/interface/Home.tsx
 msgid "You can report issues and discuss improvements with us directly here."
 msgstr "Sorunları bildirebilir ve gelişmeleri bizimle doğrudan buradan paylaşabilirsin."
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "You can request again below"
+msgstr ""
 
 #. placeholder {0}: err.max
 #: components/i18n/errors.tsx
@@ -3679,6 +4374,10 @@ msgstr "Bu kullanıcı engellemişsiniz."
 msgid "You may be experiencing connection issues."
 msgstr "Bağlantı sorunları yaşıyor olabilirsiniz."
 
+#: components/i18n/errors.tsx
+msgid "You may not submit this item to discover."
+msgstr ""
+
 #: components/ui/components/features/voice/VoiceStatefulUserIcons.tsx
 msgid "You muted this user."
 msgstr "Bu kullanıcıyı susturdunuz."
@@ -3730,6 +4429,11 @@ msgstr "Kişisel bot oluşturma sayına ulaştın."
 msgid "You've sent too many friend requests, the maximum is {0}"
 msgstr "Çok fazla arkadaş isteği gönderdin, en fazla {0} tane gönderebilirsin"
 
+#. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Your {0} is under review"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Your account and all of your data (including your messages and friends list) will be queued for deletion. A confirmation email will be sent - you can cancel this within 7 days by contacting support."
 msgstr "Bütün verileriniz (mesaj ve arkadaş listesi dahil) ve hesabınız silinmeye ayarlandı. Onay için e-posta gönderilecek - bunu 7 gün içerisinde destek ekibimizle iletişime geçerek iptal edebilirsiniz."
@@ -3737,6 +4441,14 @@ msgstr "Bütün verileriniz (mesaj ve arkadaş listesi dahil) ve hesabınız sil
 #: components/auth/src/flows/FlowVerify.tsx
 msgid "Your account has been verified!"
 msgstr "Hesabınız doğrulandı!"
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Your discover request has been denied"
+msgstr ""
+
+#: components/app/interface/settings/shared/Discoverable.tsx
+msgid "Your discover request has been removed"
+msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "Your discriminator change has been ratelimited, please try again later."
@@ -3746,9 +4458,17 @@ msgstr "İsim değiştirme hızınız kısıtlandı, lütfen daha sonra tekrar d
 msgid "Your message is too long, please remove some characters and try again."
 msgstr "Mesajın çok uzun, lütfen bazı karakterleri silip tekrar dene."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Your microphone"
+msgstr ""
+
 #: components/modal/modals/MFARecovery.tsx
 msgid "Your recovery codes"
 msgstr "Kurtarma kodların"
+
+#: components/i18n/errors.tsx
+msgid "Your request failed. Please contact support."
+msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "Your role ranking is too low to take this action."
