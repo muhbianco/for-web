@@ -336,6 +336,7 @@ class Voice {
       engine: inCall ? (snapshot?.engine ?? "idle") : "idle",
       selectedMode: this.#settings.noiseSupression,
       sampleRate: snapshot?.sampleRate,
+      inputSampleRate: hardware?.sampleRate,
       processorAttached: !!publication?.audioTrack?.getProcessor(),
       inCall,
       echoCancellation: hardware?.echoCancellation,

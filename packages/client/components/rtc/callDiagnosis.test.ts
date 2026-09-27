@@ -6,6 +6,7 @@ import {
   DSP_SLOW_RATIO_BAD,
   JITTER_MS_BAD,
   LOSS_PCT_BAD,
+  MIN_PACKETS_FOR_VERDICT,
   diagnoseCall,
 } from "./callDiagnosis.ts";
 import type { CallStatsSnapshot, ParticipantCallStats } from "./callStats.ts";
@@ -32,11 +33,18 @@ function snapshot(
   };
 }
 
-const HEALTHY = { jitterMs: 4, lossPct: 0, acceleratedMsPerSec: 0 };
+const TALKING = MIN_PACKETS_FOR_VERDICT * 4;
+const HEALTHY = {
+  jitterMs: 4,
+  lossPct: 0,
+  acceleratedMsPerSec: 0,
+  packetsInWindow: TALKING,
+};
 const ACCELERATED = {
   jitterMs: 60,
   lossPct: 6,
   acceleratedMsPerSec: ACCELERATED_MS_PER_SEC_BAD + 30,
+  packetsInWindow: TALKING,
 };
 
 test("no sample yet is not a verdict", () => {
@@ -103,7 +111,11 @@ test("our own upload loss is ours, not the peer's", () => {
 });
 
 test("with two peers suffering and one fine, the worst is the one named", () => {
-  const mild = { jitterMs: JITTER_MS_BAD + 1, lossPct: 0 };
+  const mild = {
+    jitterMs: JITTER_MS_BAD + 1,
+    lossPct: 0,
+    packetsInWindow: TALKING,
+  };
   const verdict = diagnoseCall(
     snapshot([
       peer("ana", mild),
@@ -119,4 +131,35 @@ test("the duplicated DSP threshold stays in sync with deepFilterHealth", () => {
   // callDiagnosis cannot import it at runtime and stay testable, so this is
   // the guard against the two drifting apart.
   assert.equal(DSP_SLOW_RATIO_BAD, DF_SLOW_RATIO);
+});
+
+test("uma janela em silêncio não vira veredito de saúde", () => {
+  // O caso real que enganou: DTX manda uns poucos pacotes de ruído de conforto
+  // enquanto ninguém fala, toda taxa lê zero, e o painel dizia "saudável".
+  const quiet = diagnoseCall(
+    snapshot([
+      peer("gabriel", {
+        jitterMs: 0,
+        acceleratedMsPerSec: 0,
+        concealedMsPerSec: 0,
+        packetsInWindow: 4,
+      }),
+    ]),
+  );
+  assert.equal(quiet.kind, "no-data");
+});
+
+test("stats de áudio sem contagem de pacotes não sustentam veredito", () => {
+  const verdict = diagnoseCall(snapshot([peer("gabriel", { jitterMs: 0 })]));
+  assert.equal(verdict.kind, "no-data");
+});
+
+test("CPU ainda é diagnosticada mesmo sem ninguém falando", () => {
+  // O encoder estar preso em CPU é verdade independente de haver fala.
+  const verdict = diagnoseCall(
+    snapshot([peer("gabriel", { packetsInWindow: 2 })], {
+      video: [{ source: "screenshare", limitedBy: "cpu" }],
+    }),
+  );
+  assert.equal(verdict.kind, "local-cpu");
 });

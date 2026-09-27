@@ -57,6 +57,13 @@ export interface InboundAudioStats {
   jitterBufferMs?: number;
   /** Playout delay we asked for on this track, if any (ms). */
   playoutDelayMs?: number;
+  /**
+   * Packets that arrived during the window. Without this, a window where the
+   * person simply was not talking (DTX sends a couple of comfort-noise packets
+   * a second) is indistinguishable from a healthy one: every rate is zero
+   * either way. Anything reading these stats has to check this first.
+   */
+  packetsInWindow?: number;
 }
 
 export interface InboundVideoStats {
@@ -386,6 +393,10 @@ export class CallStatsCollector {
     const elapsedSec = (now.timestamp - previous.timestamp) / 1000;
     if (elapsedSec <= 0) return result;
 
+    result.packetsInWindow = Math.max(
+      0,
+      now.packetsReceived - previous.packetsReceived,
+    );
     result.lossPct = lossPercent(
       now.packetsLost - previous.packetsLost,
       now.packetsReceived - previous.packetsReceived,

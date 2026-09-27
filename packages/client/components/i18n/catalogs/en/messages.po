@@ -166,6 +166,10 @@ msgstr "{0}'s roles"
 msgid "{0}'s timeout will be removed and they will be able to interact with the server again."
 msgstr "{0}'s timeout will be removed and they will be able to interact with the server again."
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{device} Hz (não bate com {context} Hz)"
+msgstr "{device} Hz (não bate com {context} Hz)"
+
 #: src/interface/channels/text/Composition.tsx
 #~ msgid "{h} hours"
 #~ msgstr "{h} hours"
@@ -1723,6 +1727,10 @@ msgstr "Failed to send"
 msgid "Failed to verify!"
 msgstr "Failed to verify!"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Fale um pouco para medir"
+msgstr "Fale um pouco para medir"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Fans, street, other people talking."
 msgstr "Fans, street, other people talking."
@@ -2447,6 +2455,10 @@ msgstr "Microphone channels"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Microphone gate"
 msgstr "Microphone gate"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sample rate"
+msgstr "Microphone sample rate"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Microphone sensitivity"

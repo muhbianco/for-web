@@ -162,6 +162,10 @@ msgstr "Cargos de {0}"
 msgid "{0}'s timeout will be removed and they will be able to interact with the server again."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{device} Hz (não bate com {context} Hz)"
+msgstr ""
+
 #~ msgid "{h} hours"
 #~ msgstr "{h} horas"
 
@@ -1676,6 +1680,10 @@ msgstr "Falha ao enviar"
 msgid "Failed to verify!"
 msgstr "Falha ao verificar!"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Fale um pouco para medir"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Fans, street, other people talking."
 msgstr "Ventilador, rua, outras pessoas falando."
@@ -2394,6 +2402,10 @@ msgstr "Canais do microfone"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Microphone gate"
 msgstr "Gate do microfone"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sample rate"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Microphone sensitivity"

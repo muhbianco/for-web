@@ -38,8 +38,18 @@ export const JITTER_MS_BAD = 30;
  */
 export const DSP_SLOW_RATIO_BAD = 0.25;
 
+/**
+ * Packets a 2 s window needs before a verdict means anything. Continuous
+ * speech is ~50 packets/s; DTX during silence drops to a couple of
+ * comfort-noise packets a second. Below this the window is silence, every
+ * rate reads zero, and "healthy" would be a lie — which is exactly what the
+ * panel said the first time it was pointed at a real problem.
+ */
+export const MIN_PACKETS_FOR_VERDICT = 25;
+
 export type CallVerdictKind =
   | "waiting"
+  | "no-data"
   | "ok"
   | "local-cpu"
   | "local-uplink"
@@ -149,7 +159,17 @@ export function diagnoseCall(
     };
   }
 
-  const withAudio = stats.participants.filter((p) => p.audio);
+  // Only windows with real speech in them can support a verdict about audio.
+  const withAudio = stats.participants.filter(
+    (p) => (p.audio?.packetsInWindow ?? 0) >= MIN_PACKETS_FOR_VERDICT,
+  );
+  if (!withAudio.length) {
+    return {
+      kind: "no-data",
+      detail: "ninguém falou nesta janela de medição",
+    };
+  }
+
   const suffering = withAudio.filter(audioIsSuffering);
   if (!suffering.length) return { kind: "ok" };
 

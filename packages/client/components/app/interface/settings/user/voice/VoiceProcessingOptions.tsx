@@ -370,6 +370,18 @@ function DiagnosticsSection() {
       : t`max ${maxMs} ms`;
   };
 
+  /** Device rate, flagged when it disagrees with the processing context. */
+  const deviceRateLabel = () => {
+    const current = status();
+    const device = current.inputSampleRate;
+    if (device === undefined) return "—";
+    const context = current.sampleRate;
+    if (context !== undefined && device !== context) {
+      return t`${device} Hz (não bate com ${context} Hz)`;
+    }
+    return `${device} Hz`;
+  };
+
   const gateLabel = () => {
     const current = status();
     switch (current.vadEngine) {
@@ -400,6 +412,11 @@ function DiagnosticsSection() {
         label: t`Sample rate`,
         value: current.sampleRate ? `${current.sampleRate} Hz` : "—",
       },
+      // The processing context is pinned to 48 kHz, so its rate alone says
+      // nothing. The device's rate is the one that can disagree, and when it
+      // does the browser resamples between two clocks and the published
+      // timeline drifts away from real time.
+      { label: t`Microphone sample rate`, value: deviceRateLabel() },
     ];
     if (current.engine === "deepfilter") {
       list.push({

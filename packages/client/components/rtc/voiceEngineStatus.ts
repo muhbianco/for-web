@@ -12,7 +12,20 @@ export type VoiceEngineId =
 export interface VoiceEngineStatus {
   engine: VoiceEngineId;
   selectedMode?: NoiseSuppresionState;
+  /**
+   * Rate of the processing AudioContext. Always 48000 by construction —
+   * ensureDfContext refuses anything else — so on its own it proves nothing.
+   * Compare it against `inputSampleRate`.
+   */
   sampleRate?: number;
+  /**
+   * Rate the capture device is actually running at. When this differs from
+   * `sampleRate` the browser is resampling between two clock domains, and the
+   * difference accumulates: the published timeline drifts away from real time
+   * and the other side's NetEQ has to stretch or compress to keep up, which
+   * is heard as robotic or sped-up speech.
+   */
+  inputSampleRate?: number;
   processorAttached: boolean;
   inCall: boolean;
   echoCancellation?: boolean;

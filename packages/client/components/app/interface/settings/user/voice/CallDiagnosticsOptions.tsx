@@ -9,6 +9,7 @@ import type {
   CallStatsSnapshot,
   ParticipantCallStats,
 } from "@revolt/rtc/callStats";
+import type { VoiceEngineStatus } from "@revolt/rtc/voiceEngineStatus";
 import { Button, Column, Text } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
@@ -47,6 +48,8 @@ export function CallDiagnosticsOptions() {
         return t`A conexão de ${v.who} está instável`;
       case "ok":
         return t`A chamada está saudável`;
+      case "no-data":
+        return t`Fale um pouco para medir`;
       default:
         return t`Medindo…`;
     }
@@ -54,14 +57,23 @@ export function CallDiagnosticsOptions() {
 
   const verdictIcon = (v: CallVerdict) => {
     if (v.kind === "ok") return "check_circle";
-    if (v.kind === "waiting") return "hourglass_empty";
+    if (v.kind === "waiting" || v.kind === "no-data") return "hourglass_empty";
     return "warning";
   };
+
+  /** A silent window is not a problem, so it must not be painted as one. */
+  const verdictIsBad = (v: CallVerdict) =>
+    v.kind !== "ok" && v.kind !== "waiting" && v.kind !== "no-data";
 
   async function copyReport() {
     try {
       await navigator.clipboard.writeText(
-        buildReport(stats(), verdict(), verdictText(verdict())),
+        buildReport(
+          stats(),
+          verdict(),
+          verdictText(verdict()),
+          rtc.engineStatus(),
+        ),
       );
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
@@ -183,9 +195,7 @@ export function CallDiagnosticsOptions() {
             </Text>
           }
         >
-          <Verdict
-            data-bad={verdict().kind !== "ok" && verdict().kind !== "waiting"}
-          >
+          <Verdict data-bad={verdictIsBad(verdict())}>
             <Symbol size={18}>{verdictIcon(verdict())}</Symbol>
             <Column gap="none">
               <Text class="label">{verdictText(verdict())}</Text>
@@ -249,11 +259,18 @@ type Row = { label: string; value: string };
 /**
  * A compact, pasteable summary. Only display names travel with it — no track
  * ids, no user ids, nothing that is not already visible in the call.
+ *
+ * The local audio engine goes in too. The first time this report was used on
+ * a real problem it carried only the network side, and the numbers that would
+ * have settled it — how late the DeepFilter frames are, and whether the
+ * capture device runs at the rate the processing context assumes — were the
+ * ones missing.
  */
 function buildReport(
   stats: CallStatsSnapshot,
   verdict: CallVerdict,
   verdictText: string,
+  engine: VoiceEngineStatus,
 ): string {
   return JSON.stringify(
     {
@@ -261,6 +278,25 @@ function buildReport(
         kind: verdict.kind,
         text: verdictText,
         detail: verdict.detail,
+      },
+      engine: {
+        engine: engine.engine,
+        selectedMode: engine.selectedMode,
+        processorAttached: engine.processorAttached,
+        contextSampleRate: engine.sampleRate,
+        deviceSampleRate: engine.inputSampleRate,
+        inputChannelCount: engine.inputChannelCount,
+        deepFilterMaxFrameMs: engine.deepFilterMaxFrameMs,
+        deepFilterSlowRatio: engine.deepFilterSlowRatio,
+        deepFilterOverloaded: engine.deepFilterOverloaded,
+        deepFilterAttenDb: engine.deepFilterAttenDb,
+        vadEngine: engine.vadEngine,
+        vadInferMs: engine.vadInferMs,
+        echoCancellation: engine.echoCancellation,
+        autoGainControl: engine.autoGainControl,
+        noiseSuppression: engine.noiseSuppression,
+        lastError: engine.lastError,
+        vadError: engine.vadError,
       },
       self: stats.self,
       participants: stats.participants.map((p) => ({

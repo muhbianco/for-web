@@ -162,6 +162,10 @@ msgstr "{0} ролей"
 msgid "{0}'s timeout will be removed and they will be able to interact with the server again."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "{device} Hz (não bate com {context} Hz)"
+msgstr ""
+
 #~ msgid "{h} hours"
 #~ msgstr "Часы"
 
@@ -1675,6 +1679,10 @@ msgstr "Не удалось отправить"
 msgid "Failed to verify!"
 msgstr "Не удалось проверить!"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Fale um pouco para medir"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Fans, street, other people talking."
 msgstr ""
@@ -2384,6 +2392,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Microphone gate"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Microphone sample rate"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
