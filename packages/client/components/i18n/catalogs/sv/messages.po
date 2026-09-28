@@ -471,6 +471,10 @@ msgstr "Ett internt fel uppstod. ({0})"
 msgid "Aplicativos"
 msgstr ""
 
+#: components/ui/components/features/profiles/ProfileBadges.tsx
+msgid "Apoia o Muchat"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
@@ -1490,8 +1494,8 @@ msgstr ""
 #~ msgstr "Donera till Stoat"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
-msgid "Donated to Stoat"
-msgstr "Donerat till Stoat"
+#~ msgid "Donated to Stoat"
+#~ msgstr "Donerat till Stoat"
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"

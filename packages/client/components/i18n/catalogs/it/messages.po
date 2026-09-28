@@ -468,6 +468,10 @@ msgstr "Si è verificato un errore interno. ({0})"
 msgid "Aplicativos"
 msgstr ""
 
+#: components/ui/components/features/profiles/ProfileBadges.tsx
+msgid "Apoia o Muchat"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
@@ -1481,8 +1485,8 @@ msgstr ""
 #~ msgstr "Fai una donazione a Stoat"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
-msgid "Donated to Stoat"
-msgstr "Sostenitore di Stoat"
+#~ msgid "Donated to Stoat"
+#~ msgstr "Sostenitore di Stoat"
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"

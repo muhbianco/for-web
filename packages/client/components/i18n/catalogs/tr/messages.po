@@ -472,6 +472,10 @@ msgstr "Dahili bir hata oluştu. ({0})"
 msgid "Aplicativos"
 msgstr ""
 
+#: components/ui/components/features/profiles/ProfileBadges.tsx
+msgid "Apoia o Muchat"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
@@ -1492,8 +1496,8 @@ msgstr ""
 #~ msgstr "Stoat'a bağış yap"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
-msgid "Donated to Stoat"
-msgstr "Stoat'a bağış yaptı"
+#~ msgid "Donated to Stoat"
+#~ msgstr "Stoat'a bağış yaptı"
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"

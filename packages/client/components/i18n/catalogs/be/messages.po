@@ -471,6 +471,10 @@ msgstr ""
 msgid "Aplicativos"
 msgstr ""
 
+#: components/ui/components/features/profiles/ProfileBadges.tsx
+msgid "Apoia o Muchat"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
@@ -1490,8 +1494,8 @@ msgstr ""
 #~ msgstr ""
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
-msgid "Donated to Stoat"
-msgstr ""
+#~ msgid "Donated to Stoat"
+#~ msgstr ""
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"

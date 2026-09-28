@@ -417,6 +417,10 @@ msgstr "サーバー内部でエラーが発生しました ({0})"
 msgid "Aplicativos"
 msgstr ""
 
+#: components/ui/components/features/profiles/ProfileBadges.tsx
+msgid "Apoia o Muchat"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
@@ -1421,8 +1425,8 @@ msgstr ""
 #~ msgstr "Stoatに寄付"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
-msgid "Donated to Stoat"
-msgstr "Stoatに寄付した"
+#~ msgid "Donated to Stoat"
+#~ msgstr "Stoatに寄付した"
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"

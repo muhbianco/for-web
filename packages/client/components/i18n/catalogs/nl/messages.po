@@ -494,6 +494,10 @@ msgstr "Er is een interne fout opgetreden. ({0})"
 msgid "Aplicativos"
 msgstr ""
 
+#: components/ui/components/features/profiles/ProfileBadges.tsx
+msgid "Apoia o Muchat"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
@@ -1521,8 +1525,8 @@ msgstr ""
 #~ msgstr "Doneer aan Stoat"
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
-msgid "Donated to Stoat"
-msgstr "Gedoneerd aan Stoat"
+#~ msgid "Donated to Stoat"
+#~ msgstr "Gedoneerd aan Stoat"
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"
