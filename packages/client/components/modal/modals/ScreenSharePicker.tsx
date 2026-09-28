@@ -3,6 +3,12 @@ import { createFormControl, createFormGroup } from "solid-forms";
 import { For, Show, createEffect, createMemo, createSignal } from "solid-js";
 import { styled } from "styled-system/jsx";
 
+import { isVip } from "@revolt/rtc/entitlements";
+import {
+  type QualityTier,
+  tierAllowsFrameRate,
+  tierAllowsQuality,
+} from "@revolt/rtc/screenSharePresets";
 import { useState } from "@revolt/state";
 import { ScreenShareQualityName } from "@revolt/state/stores/Voice";
 import { Dialog, DialogProps, Form2 } from "@revolt/ui";
@@ -28,12 +34,18 @@ export function ScreenSharePickerModal(
   const screens = createMemo(() =>
     props.sources.filter((source) => source.isFullScreen),
   );
+  const tier = createMemo<QualityTier>(() => (isVip() ? "vip" : "free"));
+  // Desabilitado, não escondido: um seletor que some não vende nada, e a
+  // pessoa não descobre que existe algo melhor.
   const hasHigh = createMemo(() =>
     props.qualities.some((quality) => quality.name === "high"),
   );
   const hasText = createMemo(() =>
     props.qualities.some((quality) => quality.name === "text"),
   );
+  const lockedQuality = (name: ScreenShareQualityName) =>
+    !tierAllowsQuality(tier(), name);
+  const lockedFps = (value: number) => !tierAllowsFrameRate(tier(), value);
 
   const [tab, setTab] = createSignal<"apps" | "screens">(
     windows().length || !screens().length ? "apps" : "screens",
@@ -173,12 +185,12 @@ export function ScreenSharePickerModal(
                 }}
               >
                 <option value="low">720p</option>
-                <Show when={hasHigh()}>
-                  <option value="high">1080p</option>
-                </Show>
-                <Show when={hasText()}>
-                  <option value="text">Source</option>
-                </Show>
+                <option value="high" disabled={!hasHigh()}>
+                  1080p{lockedQuality("high") ? " — apoiadores" : ""}
+                </option>
+                <option value="text" disabled={!hasText()}>
+                  Source{lockedQuality("text") ? " — apoiadores" : ""}
+                </option>
               </select>
             </label>
             <label>
@@ -192,7 +204,9 @@ export function ScreenSharePickerModal(
               >
                 <option value="15">15</option>
                 <option value="30">30</option>
-                <option value="60">60</option>
+                <option value="60" disabled={lockedFps(60)}>
+                  60{lockedFps(60) ? " — apoiadores" : ""}
+                </option>
               </select>
             </label>
             <Form2.Checkbox control={group.controls.audio}>

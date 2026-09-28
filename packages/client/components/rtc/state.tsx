@@ -59,8 +59,12 @@ import { InRoom } from "./components/InRoom";
 import { RoomAudioManager } from "./components/RoomAudioManager";
 import { deafenAttributeValue, VOICE_DEAFENED_ATTR } from "./deafenAttribute";
 import { canUseDeepFilter } from "./deepFilterSupport";
+import { clearEntitlements, isVip, refreshEntitlements } from "./entitlements";
 import {
+  type QualityTier,
   normaliseFrameRate,
+  qualitiesForTier,
+  screenShareDegradation,
   screenShareEncoding,
   screenShareLabel,
 } from "./screenSharePresets";
@@ -374,6 +378,10 @@ class Voice {
 
     this.device.setWakeLocked();
 
+    // Lido uma vez por chamada: o tier decide o que esta Room pode publicar, e
+    // mudá-lo no meio exigiria republicar as tracks.
+    const vip = isVip();
+
     const room = new Room({
       audioCaptureDefaults: {
         deviceId: this.#settings.preferredAudioInputDevice,
@@ -383,12 +391,17 @@ class Voice {
         deviceId: this.#settings.preferredAudioOutputDevice,
       },
       videoCaptureDefaults: {
-        // TODO: Support higher resolutions based on limits
-        resolution: VideoPresets.h720.resolution,
+        // Era um TODO fixado em 720p. O teto agora é o tier: o servidor libera
+        // 1920x1080 para todo mundo, e quem separa as contas é o VIP.
+        resolution: vip
+          ? VideoPresets.h1080.resolution
+          : VideoPresets.h720.resolution,
         deviceId: this.#settings.preferredVideoDevice,
       },
       publishDefaults: {
-        videoEncoding: VideoPresets.h720.encoding,
+        videoEncoding: vip
+          ? VideoPresets.h1080.encoding
+          : VideoPresets.h720.encoding,
         screenShareEncoding: ScreenSharePresets.h720fps30.encoding,
         // Audio used to ride on livekit's defaults, which only hold while the
         // published track is mono. VoiceProcessor forces mono today, but the
@@ -398,7 +411,9 @@ class Voice {
         // single lost packet is still heard; it is worth the extra bandwidth.
         // (`voice_quality` in Revolt.toml is dead config: nothing in the
         // client reads it. This is the value that actually ships.)
-        audioPreset: AudioPresets.music,
+        // 48 kbps para todo mundo, 96 para quem apoia. Mono nos dois casos,
+        // senão `red` e `dtx` se desligam sozinhos (ver acima).
+        audioPreset: vip ? AudioPresets.musicHighQuality : AudioPresets.music,
         dtx: true,
         red: true,
         forceStereo: false,
@@ -666,35 +681,45 @@ class Voice {
    * @param name The name of the screen share quality to get
    * @returns A partial record of ScreenShareQualityName to ScreenShareQuality. Will always contain "low" quality.
    */
+  /** Supporter or not. Free whenever we have no proof otherwise. */
+  tier(): QualityTier {
+    return isVip() ? "vip" : "free";
+  }
+
   getEnabledScreenShareQualities(): Partial<
     Record<ScreenShareQualityName, ScreenShareQuality>
   > {
-    // Always enable low
+    const tier = this.tier();
+    const allowed = qualitiesForTier(tier);
+
+    // "low" é sempre liberado: é o piso de todo mundo.
     const qualities: Partial<
       Record<ScreenShareQualityName, ScreenShareQuality>
     > = {
       low: {
         name: "low",
         resolution: ScreenSharePresets.h720fps30.resolution,
-        fullName: screenShareLabel("low"),
+        fullName: screenShareLabel("low", undefined, tier),
         contentHint: "motion",
-        encoding: screenShareEncoding("low"),
+        encoding: screenShareEncoding("low", undefined, tier),
       },
     };
 
     const limit = this.limits().video_resolution;
 
-    // TODO: Add more resolutions to stream from if they're enabled. May tie into premium users in the future?
+    // O teto é a interseção: o servidor diz o máximo da instância, o tier diz
+    // o máximo desta conta. Nenhum dos dois sozinho decide.
     if (
+      allowed.includes("high") &&
       (limit[0] === 0 || limit[0] >= 1920) &&
       (limit[1] === 0 || limit[1] >= 1080)
     ) {
       qualities.high = {
         name: "high",
         resolution: ScreenSharePresets.h1080fps30.resolution,
-        fullName: screenShareLabel("high"),
+        fullName: screenShareLabel("high", undefined, tier),
         contentHint: "motion",
-        encoding: screenShareEncoding("high"),
+        encoding: screenShareEncoding("high", undefined, tier),
       };
       const originalResolution = ScreenSharePresets.original.resolution;
       originalResolution.frameRate = 5;
@@ -712,9 +737,9 @@ class Voice {
       qualities.text = {
         name: "text",
         resolution: originalResolution,
-        fullName: screenShareLabel("text"),
+        fullName: screenShareLabel("text", undefined, tier),
         contentHint: "text",
-        encoding: screenShareEncoding("text"),
+        encoding: screenShareEncoding("text", undefined, tier),
       };
     }
 
@@ -833,9 +858,13 @@ class Voice {
     // sender's CPU for nothing. See screenSharePresets.ts.
     // `quality` may have fallen back to "low" when the picked one is not
     // enabled, so derive from the resolved quality, not the requested name.
-    const frameRate = normaliseFrameRate(quality.name, selection?.frameRate);
+    const frameRate = normaliseFrameRate(
+      quality.name,
+      selection?.frameRate,
+      this.tier(),
+    );
     const resolution = { ...quality.resolution, frameRate };
-    const encoding = screenShareEncoding(quality.name, frameRate);
+    const encoding = screenShareEncoding(quality.name, frameRate, this.tier());
 
     room.localParticipant
       .setScreenShareEnabled(
@@ -853,7 +882,14 @@ class Voice {
               }
             : false,
         },
-        { screenShareEncoding: encoding },
+        {
+          screenShareEncoding: encoding,
+          degradationPreference: screenShareDegradation(
+            quality.name,
+            frameRate,
+            this.tier(),
+          ),
+        },
       )
       .then((localTrack) => this.onScreenshareStarted(localTrack, selection))
       .catch((e) => this.onErr(e));
@@ -934,7 +970,7 @@ class Voice {
     const quality = qualities[qualityName] ?? qualities.low!;
     // The browser path has no FPS control, so this resolves to the default
     // (or 5 for source mode), exactly as before.
-    const frameRate = normaliseFrameRate(quality.name);
+    const frameRate = normaliseFrameRate(quality.name, undefined, this.tier());
 
     try {
       // Our own livekit-client patch: re-applies the capture constraints AND
@@ -947,7 +983,7 @@ class Voice {
           resolution: { ...quality.resolution, frameRate },
           contentHint: quality.contentHint,
         },
-        screenShareEncoding(quality.name, frameRate),
+        screenShareEncoding(quality.name, frameRate, this.tier()),
       );
 
       if (!audio) {
@@ -1253,7 +1289,13 @@ export function VoiceContext(props: { children: JSX.Element }) {
   createEffect(() => {
     if (!isLoggedIn()) {
       voice.disconnect({ silent: true });
+      // Um tier nunca sobrevive à sessão que o provou.
+      clearEntitlements();
+      return;
     }
+    // Relido a cada login: o VIP vence sozinho, e quem acabou de pagar tem que
+    // ver o que comprou sem reabrir o app.
+    void refreshEntitlements(client());
   });
 
   createEffect(() => {
