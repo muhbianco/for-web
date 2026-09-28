@@ -41,6 +41,7 @@ import Notifications from "./user/notifications/Notifications";
 import { EditProfile } from "./user/profile";
 import { Sessions } from "./user/Sessions";
 import { EditSubscription } from "./user/subscriptions";
+import { Support } from "./user/Support";
 import { VoiceSettings } from "./user/voice/VoiceSettings";
 
 const Config: SettingsConfiguration<{ server: Server }> = {
@@ -97,6 +98,8 @@ const Config: SettingsConfiguration<{ server: Server }> = {
         return <Native />;
       case "voice":
         return <VoiceSettings />;
+      case "support":
+        return <Support />;
       case "notifications":
         return <Notifications isDesktop={!!window.native} />;
       default:
@@ -335,9 +338,12 @@ const Config: SettingsConfiguration<{ server: Server }> = {
               title: <Trans>Advanced</Trans>,
             },
             {
-              href: "/doar",
+              // Era um link para a página estática /doar, que não tem sessão:
+              // doação feita por lá não podia ser vinculada a ninguém e por
+              // isso não concedia VIP. Aqui a sessão já está em mãos.
+              id: "support",
               icon: <MdCoffee {...iconSize(20)} />,
-              title: <Trans>Donate</Trans>,
+              title: <Trans>Apoiar</Trans>,
             },
             {
               id: "logout",

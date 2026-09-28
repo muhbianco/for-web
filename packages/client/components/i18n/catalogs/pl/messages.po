@@ -352,6 +352,10 @@ msgstr ""
 msgid "A conexão de {0} está instável"
 msgstr ""
 
+#: components/app/interface/settings/user/Support.tsx
+msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Able to access channels on this server"
 msgstr "Pozwala na dostęp do kanałów na tym serwerze"
@@ -367,6 +371,10 @@ msgstr "Pozwala mówić na kanałach głosowych"
 #: components/auth/src/AuthPage.tsx
 #~ msgid "About"
 #~ msgstr "O nas"
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Abrindo…"
+msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
 #: components/ui/components/features/voice/IncomingCallOverlay.tsx
@@ -496,6 +504,14 @@ msgstr ""
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Apoia o Muchat"
+msgstr ""
+
+#: components/app/interface/settings/UserSettings.tsx
+msgid "Apoiar"
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Apoiar o Muchat"
 msgstr ""
 
 #: components/app/interface/settings/user/Sync.tsx
@@ -1037,6 +1053,10 @@ msgstr ""
 msgid "Content breaks one or more laws"
 msgstr "Treść łamie jeden lub więcej przepisów"
 
+#: components/app/interface/settings/user/Support.tsx
+msgid "Continuar no Mercado Pago"
+msgstr ""
+
 #: components/modal/modals/LinkWarning.tsx
 #: components/modal/modals/MFAEnableTOTP.tsx
 msgid "Continue"
@@ -1510,8 +1530,8 @@ msgid "Don't show this again"
 msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
-msgid "Donate"
-msgstr "Wesprzyj"
+#~ msgid "Donate"
+#~ msgstr "Wesprzyj"
 
 #: src/interface/Home.tsx
 msgid "Donate to Muchat"
@@ -1535,6 +1555,10 @@ msgstr "Narkotyki lub nielegalne towary"
 
 #: components/modal/modals/TimeoutMember.tsx
 msgid "Duration"
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "E-mail (o Mercado Pago exige no mensal)"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -1796,6 +1820,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Frame time"
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Frequência"
 msgstr ""
 
 #: src/interface/Friends.tsx
@@ -2199,6 +2227,10 @@ msgstr ""
 #~ msgid "Let us know how we can improve our app by giving us feedback."
 #~ msgstr "Daj znać, jak możemy ulepszyć naszą aplikację, wysyłając nam swoją opinię."
 
+#: components/app/interface/settings/user/Support.tsx
+msgid "Libera 30 dias de VIP."
+msgstr ""
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Light"
@@ -2576,6 +2608,14 @@ msgstr ""
 msgid "Name"
 msgstr "Nazwa"
 
+#: components/app/interface/settings/user/Support.tsx
+msgid "Não consegui abrir o checkout. Tente de novo em instantes."
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Não consegui falar com o servidor."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
 msgstr ""
@@ -2660,6 +2700,18 @@ msgstr "Nieosiągnięcie minimalnego wieku do korzystania z platformy"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Notifications"
 msgstr "Powiadomienia"
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R$ 20 libera 30 dias de tela em 1080p e 60 fps, câmera em 1080p e áudio melhor. Apoios seguidos somam os prazos."
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "O Mercado Pago pede e-mail no apoio mensal."
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #: components/ui/components/features/messaging/composition/MessageReplyPreview.tsx
@@ -3944,6 +3996,10 @@ msgstr ""
 msgid "Timeout Members"
 msgstr "Limit czasu użytkowników"
 
+#: components/app/interface/settings/user/Support.tsx
+msgid "Todo mês"
+msgstr ""
+
 #: src/interface/common/CommonHeader.tsx
 msgid "Toggle main sidebar"
 msgstr "Przełącz główny pasek boczny"
@@ -3978,6 +4034,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Uma vez"
 msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
@@ -4159,6 +4219,10 @@ msgstr ""
 #~ msgid "Using default speaker"
 #~ msgstr ""
 
+#: components/app/interface/settings/user/Support.tsx
+msgid "Valor"
+msgstr ""
+
 #: src/interface/navigation/channels/ServerSidebar.tsx
 msgid "Verified"
 msgstr "Zweryfikowany"
@@ -4213,6 +4277,19 @@ msgstr "Przeglądasz stare wiadomości"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Você (enviando)"
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Você ainda não é apoiador."
+msgstr ""
+
+#. placeholder {0}: vipUntilLabel()
+#: components/app/interface/settings/user/Support.tsx
+msgid "Você é apoiador até {0}."
+msgstr ""
+
+#: components/app/interface/settings/user/Support.tsx
+msgid "Você é apoiador."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
