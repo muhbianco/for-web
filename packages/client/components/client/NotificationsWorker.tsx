@@ -12,6 +12,10 @@ import {
   UserSystemMessage,
 } from "stoat.js";
 
+import {
+  STUDY_NOTIFICATION_BODY,
+  looksLikeStudyContent,
+} from "@revolt/common/lib/studyProtocol";
 import { useNavigate, useSmartParams } from "@revolt/routing";
 import { useState } from "@revolt/state";
 
@@ -91,7 +95,11 @@ export function NotificationsWorker() {
 
     // Find body/icon
     let body, icon;
-    if (message.content) {
+    if (message.content && looksLikeStudyContent(message.content)) {
+      // The OS notification lives outside the protected window: no study text.
+      body = STUDY_NOTIFICATION_BODY;
+      icon = message.avatarURL;
+    } else if (message.content) {
       body = message.contentPlain;
       icon = message.avatarURL;
     } else if (message.systemMessage) {

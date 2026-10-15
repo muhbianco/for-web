@@ -192,7 +192,12 @@ export function MessageContextMenu(props: {
         <ContextMenuDivider />
       </Show>
       <Show when={props.message}>
-        <Show when={props.message!.channel?.havePermission("SendMessage")}>
+        <Show
+          when={
+            props.message!.channel?.havePermission("SendMessage") &&
+            !parseStudyMessage(props.message!.content)
+          }
+        >
           <ContextMenuButton icon={MdReply} onClick={reply}>
             <Trans>Reply</Trans>
           </ContextMenuButton>

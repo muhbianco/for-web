@@ -177,6 +177,52 @@ export function isStaleStudyAndroidShell(win?: StudyWin): boolean {
   return Boolean(studyWin(win)?.MuchatNative) && !isStudyAndroidClient(win);
 }
 
+/** First desktop build with the tray opt-out "Permitir captura desta janela". */
+const CAPTURE_OPT_OUT_SINCE = [1, 0, 27] as const;
+
+function desktopShellVersion(win?: StudyWin): number[] | null {
+  const versions = studyWin(win)?.native?.versions as
+    | { desktop?: unknown }
+    | undefined;
+  if (typeof versions?.desktop !== "function") return null;
+  const raw = String((versions.desktop as () => unknown)() ?? "");
+  const parts = raw.split(".").map((part) => Number.parseInt(part, 10));
+  return parts.length >= 3 && parts.every(Number.isFinite) ? parts : null;
+}
+
+/**
+ * Current desktop shell with the capture opt-out ticked: it hides
+ * `setContentProtection` on purpose, so telling it to update would be wrong.
+ */
+export function isStudyCaptureAllowedShell(win?: StudyWin): boolean {
+  if (!isStaleStudyDesktopShell(win)) return false;
+  const version = desktopShellVersion(win);
+  if (!version) return false;
+  for (let i = 0; i < CAPTURE_OPT_OUT_SINCE.length; i++) {
+    if (version[i] !== CAPTURE_OPT_OUT_SINCE[i]) {
+      return version[i] > CAPTURE_OPT_OUT_SINCE[i];
+    }
+  }
+  return true;
+}
+
+/**
+ * Loose check for anything carrying the study marker, even cut short or with
+ * the invisible separators stripped (push payloads). Used where the text would
+ * leave the protected view: notifications, reply previews, new replies.
+ */
+const RE_STUDY_LOOSE = /^[\s⁣]*study:[A-Za-z0-9_-]{6,48}:/;
+
+export function looksLikeStudyContent(content: string | null | undefined): boolean {
+  return Boolean(content) && RE_STUDY_LOOSE.test(content!);
+}
+
+/** OS notification body for a study message: the text stays in the app. */
+export const STUDY_NOTIFICATION_BODY = "Nova mensagem do desafio de leitura";
+
+/** What a reply to a study message shows instead of the quoted text. */
+export const STUDY_REPLY_PREVIEW = "Mensagem do desafio de leitura";
+
 export function studyClientTag(win?: StudyWin): StudyClient {
   if (isStudyAndroidClient(win)) return "android";
   if (isStudyDesktopClient(win)) return "desktop";

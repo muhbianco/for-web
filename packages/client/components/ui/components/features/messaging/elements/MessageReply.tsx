@@ -7,6 +7,10 @@ import { cva } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
 import { floatingUserMenusFromMessage } from "@revolt/app/menus/UserContextMenu";
+import {
+  STUDY_REPLY_PREVIEW,
+  looksLikeStudyContent,
+} from "@revolt/common/lib/studyProtocol";
 import { renderSimpleMarkdown } from "@revolt/markdown";
 import { Avatar, typography } from "@revolt/ui/components/design";
 import { NonBreakingText } from "@revolt/ui/components/utils";
@@ -107,6 +111,9 @@ const Link = styled("a", {
  */
 export function MessageReply(props: Props) {
   const renderReplyContent = (content: string) => {
+    // Replies made before the reply button was hidden on study messages, or
+    // from another client: never quote the study text outside its protected view.
+    if (looksLikeStudyContent(content)) return STUDY_REPLY_PREVIEW;
     if (content.length > 128) {
       content = content.slice(0, 128) + "...";
     }

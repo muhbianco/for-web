@@ -1,4 +1,14 @@
-import { For, Show, createEffect, createMemo, createSignal, onCleanup, onMount } from "solid-js";
+import {
+  For,
+  Match,
+  Show,
+  Switch,
+  createEffect,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 
 import { Message as MessageInterface } from "stoat.js";
 import { styled } from "styled-system/jsx";
@@ -10,6 +20,7 @@ import {
   STUDY_MAX_TYPED,
   STUDY_TYPED_HINTS,
   StudyMessage,
+  isStudyCaptureAllowedShell,
   isStudyProtectedClient,
   isStaleStudyAndroidShell,
   isStaleStudyDesktopShell,
@@ -425,6 +436,7 @@ function ProfileDobForm(props: {
 }
 
 function StudyNotice(props: { study: StudyMessage }) {
+  const captureAllowed = isStudyCaptureAllowedShell();
   const staleDesktop = isStaleStudyDesktopShell();
   const staleAndroid = isStaleStudyAndroidShell();
   const what = () => {
@@ -445,45 +457,50 @@ function StudyNotice(props: { study: StudyMessage }) {
   };
   return (
     <Notice>
-      <Show
-        when={staleAndroid}
+      <Switch
         fallback={
-          <Show
-            when={staleDesktop}
-            fallback={
-              <>
-                <strong>{what()} — só no app Muchat para PC ou Android.</strong>
-                <span>
-                  Aqui no navegador o conteúdo fica escondido e as respostas não
-                  valem. Abra o app no computador ou o APK Muchat.
-                </span>
-                <a
-                  href={STUDY_DOWNLOAD_URL}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  Baixar o app
-                </a>
-              </>
-            }
-          >
-            <strong>{what()} — atualize o app Muchat.</strong>
+          <>
+            <strong>{what()} — só no app Muchat para PC ou Android.</strong>
             <span>
-              Esta versão não esconde print da tela. Em Configurações → Desktop,
-              instale a atualização e abra o app de novo.
+              Aqui no navegador o conteúdo fica escondido e as respostas não
+              valem. Abra o app no computador ou o APK Muchat.
             </span>
-          </Show>
+            <a
+              href={STUDY_DOWNLOAD_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Baixar o app
+            </a>
+          </>
         }
       >
-        <strong>{what()} — atualize o app Muchat no Android.</strong>
-        <span>
-          Esta versão não esconde print da tela. Baixe o APK novo e instale por
-          cima do atual.
-        </span>
-        <a href={STUDY_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
-          Baixar o APK
-        </a>
-      </Show>
+        <Match when={staleAndroid}>
+          <strong>{what()} — atualize o app Muchat no Android.</strong>
+          <span>
+            Esta versão não esconde print da tela. Baixe o APK novo e instale por
+            cima do atual.
+          </span>
+          <a href={STUDY_DOWNLOAD_URL} target="_blank" rel="noopener noreferrer">
+            Baixar o APK
+          </a>
+        </Match>
+        <Match when={captureAllowed}>
+          <strong>{what()} — a captura de tela está liberada neste app.</strong>
+          <span>
+            O desafio só abre com o print bloqueado. Clique com o botão direito
+            no ícone do Muchat perto do relógio, desmarque “Permitir captura
+            desta janela” e abra o app de novo.
+          </span>
+        </Match>
+        <Match when={staleDesktop}>
+          <strong>{what()} — atualize o app Muchat.</strong>
+          <span>
+            Esta versão não esconde print da tela. Em Configurações → Desktop,
+            instale a atualização e abra o app de novo.
+          </span>
+        </Match>
+      </Switch>
     </Notice>
   );
 }

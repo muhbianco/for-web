@@ -5,6 +5,7 @@ import { styled } from "styled-system/jsx";
 
 import { MessageContextMenu, useMessage } from "@revolt/app";
 import { useUser } from "@revolt/client";
+import { looksLikeStudyContent } from "@revolt/common/lib/studyProtocol";
 import { useModals } from "@revolt/modal";
 import { useState } from "@revolt/state";
 import { Ripple } from "@revolt/ui/components/design";
@@ -42,7 +43,12 @@ export function MessageToolbar() {
 
   return (
     <Base class="Toolbar">
-      <Show when={message?.channel?.havePermission("SendMessage")}>
+      <Show
+        when={
+          message?.channel?.havePermission("SendMessage") &&
+          !looksLikeStudyContent(message?.content)
+        }
+      >
         <div
           class={tool()}
           onClick={() => state.draft.addReply(message!, user()!.id)}

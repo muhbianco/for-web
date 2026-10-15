@@ -46,6 +46,13 @@ self.addEventListener("push", (event) => {
     }
   }
 
+  // Study bot messages (marker `⁣study:<id>:`, see studyProtocol.ts) keep
+  // their text inside the protected app view, never in an OS notification.
+  // Inlined: the service worker bundle does not import app modules.
+  if (/^[\s⁣]*study:[A-Za-z0-9_-]{6,48}:/.test(notification.body ?? "")) {
+    notification.body = "Nova mensagem do desafio de leitura";
+  }
+
   notification.url ||= self.registration.scope;
 
   event.waitUntil(

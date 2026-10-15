@@ -25,6 +25,8 @@ import {
   studyTypedContent,
   isStudyProfile,
   studyProfileContent,
+  isStudyCaptureAllowedShell,
+  looksLikeStudyContent,
 } from "./studyProtocol.ts";
 
 const ID = "2026-09-14-daily";
@@ -165,4 +167,40 @@ test("trusted shells are Electron with setContentProtection or the APK", () => {
   assert.equal(isStaleStudyAndroidShell(apk), false);
   assert.equal(studyClientTag(apk), "android");
   assert.equal(studyClientTag(staleApk), "web");
+});
+
+test("study text is recognised wherever it could leak, even cut or stripped", () => {
+  assert.equal(
+    looksLikeStudyContent(`${STUDY_MARK}study:${ID}:3${STUDY_MARK}
+**Pergunta 3**`),
+    true,
+  );
+  // push payloads may lose the invisible separator or arrive truncated
+  assert.equal(looksLikeStudyContent(`study:${ID}:m`), true);
+  assert.equal(looksLikeStudyContent(`  ${STUDY_MARK}study:${ID}:`), true);
+  // the button command is the child's own message, not study text
+  assert.equal(looksLikeStudyContent("study:start:desktop"), false);
+  assert.equal(looksLikeStudyContent("vamos estudar: study:abc"), false);
+  assert.equal(looksLikeStudyContent("1"), false);
+  assert.equal(looksLikeStudyContent(""), false);
+  assert.equal(looksLikeStudyContent(null), false);
+});
+
+test("capture opt-out is told apart from an outdated desktop shell", () => {
+  const shell = (version: string | null, protectedShell = false) => ({
+    native: {
+      ...(version === null ? {} : { versions: { desktop: () => version } }),
+      ...(protectedShell ? { setContentProtection() {} } : {}),
+    } as Window["native"],
+  });
+  assert.equal(isStudyCaptureAllowedShell(shell("1.0.27")), true);
+  assert.equal(isStudyCaptureAllowedShell(shell("1.0.28")), true);
+  assert.equal(isStudyCaptureAllowedShell(shell("1.1.0")), true);
+  assert.equal(isStudyCaptureAllowedShell(shell("1.0.26")), false);
+  assert.equal(isStudyCaptureAllowedShell(shell("1.0.9")), false);
+  assert.equal(isStudyCaptureAllowedShell(shell(null)), false);
+  assert.equal(isStudyCaptureAllowedShell(shell("")), false);
+  // protected shell is never the opt-out
+  assert.equal(isStudyCaptureAllowedShell(shell("1.0.28", true)), false);
+  assert.equal(isStudyCaptureAllowedShell({}), false);
 });

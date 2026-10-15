@@ -4,6 +4,7 @@ import { API, Channel, Client, Message } from "stoat.js";
 import { ulid } from "ulid";
 
 import { insecureUniqueId } from "@revolt/common";
+import { looksLikeStudyContent } from "@revolt/common/lib/studyProtocol";
 import { useInstance } from "@revolt/instance";
 
 import { AbstractStore } from ".";
@@ -516,6 +517,9 @@ export class Draft extends AbstractStore<"draft", TypeDraft> {
    * @param selfId Own user ID
    */
   addReply(message: Message, selfId: string) {
+    // A reply quotes the text outside the protected study view (and in browsers).
+    if (looksLikeStudyContent(message.content)) return;
+
     this._setNodeReplacement?.(["_focus"]);
 
     // Ignore if reply already exists
