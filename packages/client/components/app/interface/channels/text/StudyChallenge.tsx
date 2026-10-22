@@ -15,10 +15,11 @@ import { styled } from "styled-system/jsx";
 
 import { useClient } from "@revolt/client";
 import {
+  splitStudyChoices,
+  studyQuestionSeconds,
+} from "@revolt/common/lib/studyAnswer";
+import {
   STUDY_DOWNLOAD_URL,
-  STUDY_LETTERS,
-  STUDY_MAX_TYPED,
-  STUDY_TYPED_HINTS,
   StudyMessage,
   isStudyCaptureAllowedShell,
   isStudyProtectedClient,
@@ -28,7 +29,6 @@ import {
   isStudyProfile,
   isStudyReadingStart,
   isStudyQuestion,
-  isStudyTyped,
   parseStudyMessage,
   setStudyContentProtection,
   stripStudyGo,
@@ -41,6 +41,8 @@ import {
 } from "@revolt/common/lib/studyProtocol";
 import { Markdown } from "@revolt/markdown";
 import { Button } from "@revolt/ui";
+
+import { StudyAnswer } from "./StudyAnswer";
 
 /**
  * Desktop content protection is reference counted: the first protected
@@ -63,6 +65,12 @@ function releaseContentProtection() {
 }
 
 /**
+ * What each study message already sent, by message id. Rows unmount when they
+ * scroll away; without this an answered question came back with live buttons.
+ */
+const sentByMessage = new Map<string, string>();
+
+/**
  * Menu / reading material / question / result from the study bot.
  *
  * Trusted native shell: body without selection, copy or context menu,
@@ -74,17 +82,44 @@ export function StudyProtectedMessage(props: {
   message: MessageInterface;
   study: StudyMessage;
 }) {
-  const [sent, setSent] = createSignal<string | null>(null);
+  const [sent, setSent] = createSignal<string | null>(
+    sentByMessage.get(props.message.id) ?? null,
+  );
   const [busy, setBusy] = createSignal(false);
-  const [typed, setTyped] = createSignal("");
   const [rereadOpen, setRereadOpen] = createSignal(false);
   const [rereadIndex, setRereadIndex] = createSignal(0);
   const protectedClient = isStudyProtectedClient();
   const client = useClient();
-  const typedHint = () =>
-    props.study.kind === "mc" ? "" : STUDY_TYPED_HINTS[props.study.kind];
-  const multiline = () => props.study.kind === "text";
-  const visibleBody = () => stripStudyGo(props.study.body);
+
+  /** `mc`, `tf` and `order` choices move from the text into the controls. */
+  const split = createMemo(() => {
+    const body = stripStudyGo(props.study.body);
+    const withChoices =
+      isStudyQuestion(props.study) &&
+      (props.study.kind === "mc" ||
+        props.study.kind === "tf" ||
+        props.study.kind === "order");
+    return withChoices ? splitStudyChoices(body) : { choices: [], rest: body };
+  });
+  const visibleBody = () => split().rest;
+
+  /**
+   * A later question, a resend of this one (the bot refused an incomplete
+   * answer) or the result closes this question, on any device.
+   */
+  const superseded = createMemo(() => {
+    if (!isStudyQuestion(props.study)) return false;
+    const mine = Number(props.study.q);
+    for (const msg of client().messages.toList()) {
+      if (msg.channelId !== props.message.channelId) continue;
+      if (msg.id.localeCompare(props.message.id) <= 0) continue;
+      const parsed = parseStudyMessage(msg.content);
+      if (!parsed || parsed.challengeId !== props.study.challengeId) continue;
+      if (parsed.q === "r") return true;
+      if (isStudyQuestion(parsed) && Number(parsed.q) >= mine) return true;
+    }
+    return false;
+  });
 
   const storyParts = createMemo(() => {
     const challengeId = props.study.challengeId;
@@ -101,10 +136,12 @@ export function StudyProtectedMessage(props: {
     return found.map((item) => item.body).filter(Boolean);
   });
 
-  function submitTyped() {
-    const value = typed().trim();
-    if (!value) return;
-    void send(studyTypedContent(props.study, value, studyClientTag()), value);
+  function sendAnswer(answer: string) {
+    const content =
+      props.study.kind === "mc"
+        ? studyAnswerContent(props.study, answer, studyClientTag())
+        : studyTypedContent(props.study, answer, studyClientTag());
+    void send(content, answer);
   }
 
   onMount(() => {
@@ -124,6 +161,7 @@ export function StudyProtectedMessage(props: {
     setBusy(true);
     try {
       await props.message.channel?.sendMessage({ content });
+      sentByMessage.set(props.message.id, marker);
       setSent(marker);
     } catch {
       // the bot will re-ask; leave the buttons enabled
@@ -243,79 +281,20 @@ export function StudyProtectedMessage(props: {
             </Answers>
           </RereadBox>
         </Show>
-        <Show when={isStudyTyped(props.study)}>
-          <TypedForm
-            onSubmit={(event) => {
-              event.preventDefault();
-              submitTyped();
-            }}
-          >
-            <Show
-              when={multiline()}
-              fallback={
-                <TypedInput
-                  type="text"
-                  maxLength={STUDY_MAX_TYPED}
-                  placeholder={typedHint()}
-                  value={typed()}
-                  disabled={busy() || !!sent()}
-                  autocomplete="off"
-                  spellcheck={false}
-                  onInput={(event) => setTyped(event.currentTarget.value)}
-                  onPaste={block}
-                />
-              }
-            >
-              <TypedArea
-                rows={3}
-                maxLength={STUDY_MAX_TYPED}
-                placeholder={typedHint()}
-                value={typed()}
-                disabled={busy() || !!sent()}
-                spellcheck={false}
-                onInput={(event) => setTyped(event.currentTarget.value)}
-                onPaste={block}
-                onKeyDown={(event) => {
-                  if (
-                    event.key === "Enter" &&
-                    (event.ctrlKey || event.metaKey)
-                  ) {
-                    event.preventDefault();
-                    submitTyped();
-                  }
-                }}
-              />
-            </Show>
-            <Button
-              size="sm"
-              variant="filled"
-              isDisabled={busy() || !!sent() || !typed().trim()}
-              onPress={submitTyped}
-            >
-              {sent() ? "Enviado" : "Enviar resposta"}
-            </Button>
-          </TypedForm>
-        </Show>
-        <Show when={isStudyQuestion(props.study) && props.study.kind === "mc"}>
-          <Answers>
-            <For each={STUDY_LETTERS}>
-              {(letter) => (
-                <Button
-                  size="sm"
-                  variant={sent() === letter ? "filled" : "tonal"}
-                  isDisabled={busy() || !!sent()}
-                  onPress={() =>
-                    send(
-                      studyAnswerContent(props.study, letter, studyClientTag()),
-                      letter,
-                    )
-                  }
-                >
-                  {letter}
-                </Button>
-              )}
-            </For>
-          </Answers>
+        <Show when={isStudyQuestion(props.study)}>
+          <StudyAnswer
+            messageId={props.message.id}
+            kind={props.study.kind}
+            choices={split().choices}
+            totalSeconds={studyQuestionSeconds(props.study.body)}
+            sentAtMs={props.message.createdAt.getTime()}
+            locked={!!sent() || superseded()}
+            lockedLabel={
+              sent() ? "Resposta enviada." : "Essa pergunta já foi encerrada."
+            }
+            busy={busy()}
+            onSend={(answer) => sendAnswer(answer)}
+          />
         </Show>
       </Protected>
     </Show>
@@ -591,12 +570,6 @@ const StudySelect = styled("select", {
     minWidth: "7em",
     flex: "1 1 7em",
   },
-});
-
-const TypedInput = styled("input", { base: fieldBase });
-
-const TypedArea = styled("textarea", {
-  base: { ...fieldBase, resize: "vertical", minHeight: "4.5em" },
 });
 
 const Notice = styled("div", {
