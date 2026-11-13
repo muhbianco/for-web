@@ -256,6 +256,9 @@ export default function SpacePage() {
 
 const Page = styled("div", {
   base: {
+    // The app's content container is a flex row: grow like ServerHome and the
+    // channel pages, or the page shrinks to its toolbar and the map vanishes.
+    flexGrow: 1,
     display: "flex",
     flexDirection: "column",
     height: "100%",
