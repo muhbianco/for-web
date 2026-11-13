@@ -74,6 +74,7 @@ import {
   IDLE_VOICE_ENGINE_STATUS,
 } from "./voiceEngineStatus";
 import { VoiceProcessor } from "./VoiceProcessor";
+import { participantUserId } from "./identity";
 
 type State =
   | "READY"
@@ -1077,7 +1078,17 @@ class Voice {
   }
 
   getConnectedUser(userId: string) {
-    return this.room()?.getParticipantByIdentity(userId);
+    const room = this.room();
+    if (!room) return undefined;
+    const direct = room.getParticipantByIdentity(userId);
+    if (direct) return direct;
+    // Rooms of the space use `sp_<user>_<seq>` identities (see ./identity).
+    for (const p of room.remoteParticipants.values()) {
+      if (participantUserId(p.identity) === userId) return p;
+    }
+    return participantUserId(room.localParticipant.identity) === userId
+      ? room.localParticipant
+      : undefined;
   }
 
   showCard(channel: Channel) {

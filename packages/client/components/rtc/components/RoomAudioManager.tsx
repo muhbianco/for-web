@@ -8,6 +8,7 @@ import { RemoteTrackPublication, Track } from "livekit-client";
 import { useState } from "@revolt/state";
 
 import { useVoice } from "../state";
+import { participantUserId } from "../identity";
 
 export function RoomAudioManager() {
   const voice = useVoice();
@@ -51,13 +52,13 @@ export function RoomAudioManager() {
             volume={
               state.voice.outputVolume *
               (track().source === Track.Source.ScreenShareAudio
-                ? state.voice.getScreenShareVolume(track().participant.identity)
-                : state.voice.getUserVolume(track().participant.identity))
+                ? state.voice.getScreenShareVolume(participantUserId(track().participant.identity))
+                : state.voice.getUserVolume(participantUserId(track().participant.identity)))
             }
             muted={
               (track().source === Track.Source.ScreenShareAudio
-                ? state.voice.getScreenShareMuted(track().participant.identity)
-                : state.voice.getUserMuted(track().participant.identity)) ||
+                ? state.voice.getScreenShareMuted(participantUserId(track().participant.identity))
+                : state.voice.getUserMuted(participantUserId(track().participant.identity))) ||
               voice.deafen()
             }
             enableBoosting

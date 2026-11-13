@@ -543,12 +543,24 @@ msgstr "Asignar roles"
 msgid "Atravesse a porta para entrar numa sala; saia por ela quando quiser."
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Áudio da sala conectado"
+msgstr ""
+
 #: components/modal/modals/ScreenShareSettings.tsx
 msgid "Audio disabled by browser"
 msgstr "Audio desactivado por el navegador"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Áudio enviado"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Áudio indisponível — tentando de novo"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Áudio indisponível; você continua na sala"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -1016,6 +1028,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Conectando ao espaço…"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Conectando áudio…"
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -1736,6 +1752,10 @@ msgstr ""
 msgid "Entre na sua conta para usar o espaço."
 msgstr ""
 
+#: components/space/AudioCheck.tsx
+msgid "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Escolha seu personagem"
 msgstr ""
@@ -1791,6 +1811,10 @@ msgstr "No se pudo enviar"
 #: components/auth/src/flows/FlowVerify.tsx
 msgid "Failed to verify!"
 msgstr "¡Error al verificar!"
+
+#: components/space/AudioCheck.tsx
+msgid "Fale algo: a barra deve se mexer."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Fale um pouco para medir"
@@ -2661,12 +2685,20 @@ msgstr ""
 msgid "Não consegui falar com o servidor."
 msgstr ""
 
+#: components/space/AudioCheck.tsx
+msgid "Não deu para testar o microfone agora."
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
+msgstr ""
+
+#: components/space/AudioCheck.tsx
+msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
 msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
@@ -2756,6 +2788,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O Mercado Pago pede e-mail no apoio mensal."
+msgstr ""
+
+#: components/space/AudioCheck.tsx
+msgid "O microfone foi bloqueado. Libere o acesso nas permissões do navegador (ícone ao lado do endereço), do aplicativo do PC ou do Android e teste de novo. Você também pode entrar só ouvindo."
 msgstr ""
 
 #: components/space/Onboarding.tsx
@@ -3036,6 +3072,10 @@ msgstr "Promueve el daño"
 #: components/modal/modals/ServerIdentity.tsx
 msgid "Pronouns"
 msgstr "Pronombres"
+
+#: components/space/Onboarding.tsx
+msgid "Pronto"
+msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "Provided email or password is wrong."
@@ -3567,6 +3607,14 @@ msgstr "Configurar la autenticación de contraseña de un solo uso"
 msgid "Setup recovery codes"
 msgstr "Configurar los códigos de recuperación"
 
+#: components/space/AudioCheck.tsx
+msgid "Seu áudio"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Seu áudio está em outra aba ou outro servidor"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Seu computador não está dando conta"
 msgstr ""
@@ -3847,6 +3895,10 @@ msgstr "Dinos que está mal con este usuario"
 msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr "Prevenir temporalmente que miembros con menor rango interactuen"
 
+#: components/space/SpacePage.tsx
+msgid "Tentar de novo"
+msgstr ""
+
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Terms"
 msgstr "Términos"
@@ -3857,6 +3909,14 @@ msgstr "Términos"
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Test voice"
+msgstr ""
+
+#: components/space/AudioCheck.tsx
+msgid "Testar de novo"
+msgstr ""
+
+#: components/space/AudioCheck.tsx
+msgid "Testar microfone"
 msgstr ""
 
 #: components/modal/modals/CreateChannel.tsx
@@ -4366,6 +4426,10 @@ msgid "Você é apoiador."
 msgstr ""
 
 #: components/space/SpacePage.tsx
+msgid "Você está fora do áudio da sala"
+msgstr ""
+
+#: components/space/SpacePage.tsx
 msgid "Você não é membro deste servidor"
 msgstr ""
 
@@ -4398,13 +4462,22 @@ msgstr ""
 #~ msgid "Voice Processing"
 #~ msgstr "Procesando Voz"
 
+#: components/space/AudioCheck.tsx
 #: components/space/Onboarding.tsx
 msgid "Voltar"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Voltar ao áudio"
 msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Volumen"
+
+#: components/space/AudioCheck.tsx
+msgid "Volume do microfone"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Voz acelerada"

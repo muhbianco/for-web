@@ -84,8 +84,59 @@ export const PingCmd = z.object({
   id: commandId,
 });
 
-export const ClientCommand = z.discriminatedUnion("t", [HelloCmd, MoveCmd, IdleCmd, PingCmd]);
+/** Ask for a fresh media token for the room we are in (LiveKit connect failed, reconnect). */
+export const MediaRequestCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("media.session.request"),
+  id: commandId,
+});
+
+export const ClientCommand = z.discriminatedUnion("t", [HelloCmd, MoveCmd, IdleCmd, PingCmd, MediaRequestCmd]);
 export type ClientCommand = z.infer<typeof ClientCommand>;
+
+/** LiveKit track sources a grant may publish (mirrors Stoat's Speak/Video). */
+export type MediaSourceName = "microphone" | "camera" | "screen_share" | "screen_share_audio";
+
+/** Server → client: connect to this room's media now (docs/espaco ADR 0001/0003). */
+export interface MediaGrantEvent {
+  v: 1;
+  t: "media.grant";
+  d: {
+    room_id: string;
+    url: string;
+    /** Short-lived LiveKit token; never logged, never in a URL we build. */
+    token: string;
+    identity: string;
+    sources: MediaSourceName[];
+    can_subscribe: boolean;
+    /** Unix ms when the lease lapses unless renewed by the server. */
+    expires_at: number;
+  };
+}
+
+/**
+ * Server → client: stop media of this room now.
+ * - `left`: you left the room (or its space closed);
+ * - `access`: you may no longer be in it;
+ * - `regrant`: a new grant for the same room follows (permissions changed);
+ * - `elsewhere`: your media moved to a room in another space (another tab).
+ */
+export interface MediaRevokedEvent {
+  v: 1;
+  t: "media.revoked";
+  d: { room_id: string; reason: "left" | "access" | "regrant" | "elsewhere" };
+}
+
+/**
+ * Server → client: you are in the room but have no media in it; presence stays.
+ * `elsewhere` means another space holds your media: `media.session.request`
+ * moves it here ("Usar aqui").
+ */
+export interface MediaUnavailableEvent {
+  v: 1;
+  t: "media.unavailable";
+  d: { room_id: string; reason: "livekit" | "elsewhere" };
+}
 
 /** Parses a raw frame; never throws. */
 export function parseCommand(raw: string): { ok: true; cmd: ClientCommand } | { ok: false; error: string } {
@@ -128,6 +179,8 @@ export interface RoomView {
   private: boolean;
   can_enter: boolean;
   occupants: string[] | null;
+  /** Stoat voice.max_users; null when unlimited or the viewer cannot view the room. */
+  capacity: number | null;
 }
 
 /** A wing's title is hidden unless the viewer can view at least one of its rooms. */

@@ -86,6 +86,12 @@ export class FakeLeases implements LeaseStore {
     this.check();
     return this.leases.get(identity) ?? null;
   }
+
+  async current(userId: string): Promise<LeaseV1 | null> {
+    this.check();
+    const id = this.pointers.get(userId);
+    return id ? (this.leases.get(id) ?? null) : null;
+  }
 }
 
 export class FakeMinter implements TokenMinter {

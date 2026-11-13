@@ -1,4 +1,4 @@
-import { type ConnStatus, SpaceView, wingHeading } from "../src/index.ts";
+import { type ConnStatus, type MediaStatus, SpaceView, type VoicePort, wingHeading } from "../src/index.ts";
 
 // Must match packages/space-server/src/dev.ts.
 const DEV_SERVER_ID = "01JDEV0SRV0000000000000000";
@@ -17,6 +17,46 @@ const $ = (id: string) => document.getElementById(id)!;
 const as = new URLSearchParams(location.search).get("as") ?? "ana";
 $("who").textContent = as;
 
+// A pretend app voice: "connects" after 300 ms (or fails with ?voicefail=1),
+// so the media flow can be followed without a LiveKit.
+const voiceFail = new URLSearchParams(location.search).get("voicefail") === "1";
+const fakeCall: { identity: string | null; room: string | null; connects: number; disconnects: number } = {
+  identity: null,
+  room: null,
+  connects: 0,
+  disconnects: 0,
+};
+const voice: VoicePort = {
+  connect: (g) =>
+    new Promise((resolve, reject) =>
+      setTimeout(() => {
+        fakeCall.connects++;
+        if (voiceFail) return reject(new Error("403"));
+        fakeCall.identity = g.identity;
+        fakeCall.room = g.room_id;
+        resolve();
+      }, 300),
+    ),
+  disconnect: () => {
+    fakeCall.disconnects++;
+    fakeCall.identity = fakeCall.room = null;
+  },
+  identity: () => fakeCall.identity,
+  busyElsewhere: (roomId) => fakeCall.room !== null && fakeCall.room !== roomId,
+};
+const MEDIA: Record<MediaStatus["kind"], string> = {
+  idle: "",
+  connecting: "Conectando áudio…",
+  connected: "Áudio da sala conectado",
+  unavailable: "Áudio indisponível",
+  elsewhere: "Áudio em outra aba",
+  paused: "Fora do áudio da sala",
+};
+const mediaEl = document.createElement("span");
+mediaEl.id = "media";
+mediaEl.className = "status";
+$("status").after(mediaEl);
+
 const view = await SpaceView.mount({
   el: $("space"),
   baseUrl: location.origin,
@@ -24,6 +64,7 @@ const view = await SpaceView.mount({
   serverId: DEV_SERVER_ID,
   client: "web",
   reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+  voice,
 });
 ($("space") as HTMLElement).focus();
 // Dev automation and debugging only (this page never ships).
@@ -31,7 +72,7 @@ let corrections = 0;
 view.world.on((e) => {
   if (e.kind === "corrected") corrections++;
 });
-(window as unknown as Record<string, unknown>).__space = { view, corrections: () => corrections };
+(window as unknown as Record<string, unknown>).__space = { view, corrections: () => corrections, fakeCall };
 let zoom = 2;
 $("zoom-in").onclick = () => view.setZoom(zoom + 1);
 $("zoom-out").onclick = () => view.setZoom(zoom - 1);
@@ -40,6 +81,8 @@ let lastAnnouncement = "";
 view.subscribe((s) => {
   zoom = s.zoom;
   $("status").textContent = STATUS[s.status];
+  mediaEl.textContent = MEDIA[s.media.kind];
+  mediaEl.dataset.kind = s.media.kind;
   $("where").textContent = s.location || "Carregando mapa…";
   if (s.announcement && s.announcement !== lastAnnouncement) {
     lastAnnouncement = s.announcement;

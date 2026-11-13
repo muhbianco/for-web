@@ -21,6 +21,7 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { VoiceCallCardActions } from "./VoiceCallCardActions";
 import { VoiceCallCardStatus } from "./VoiceCallCardStatus";
+import { participantUserId } from "@revolt/rtc/identity";
 
 export function VoiceCallCardPiP() {
   const voice = useVoice();
@@ -64,7 +65,7 @@ function ConnectedUser() {
   });
 
   const isSpeaking = useIsSpeaking(participant);
-  const user = useUser(participant.identity);
+  const user = useUser(participantUserId(participant.identity));
 
   return (
     <UserIcon speaking={isSpeaking()}>

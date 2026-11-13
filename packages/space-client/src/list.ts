@@ -61,6 +61,7 @@ export function buildList(world: World): ListWing[] {
     if (here) parts.push("você está aqui");
     if (occupants !== null) parts.push(people(occupants));
     if (view && !view.can_enter) parts.push("sem acesso");
+    else if (!here && world.isFull(r.roomId)) parts.push("cheia");
     const item: ListRoom = {
       roomId: r.roomId,
       title: view?.label ?? PRIVATE_TITLE,

@@ -2,6 +2,7 @@ import { type CompiledMapWire, type ProfilePatch, type ProfileView, TILE } from 
 
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { announceRoomChange, buildList, type ListWing, locationText } from "./list.ts";
+import { MediaLink, type MediaStatus, type VoicePort } from "./media.ts";
 import { Mover } from "./mover.ts";
 import { Renderer } from "./render/renderer.ts";
 import { decodeMap, World } from "./world.ts";
@@ -15,6 +16,8 @@ export interface SpaceViewOptions {
   serverId: string;
   client: "web" | "desktop" | "android";
   reducedMotion?: boolean;
+  /** The app's voice; without it the space is presence only (dev page). */
+  voice?: VoicePort;
 }
 
 export interface SpaceUiState {
@@ -24,6 +27,7 @@ export interface SpaceUiState {
   /** Last message for the aria-live region. */
   announcement: string;
   zoom: number;
+  media: MediaStatus;
 }
 
 const KEYS: Record<string, "up" | "down" | "left" | "right"> = {
@@ -48,10 +52,19 @@ export class SpaceView {
   private readonly mover: Mover;
   private readonly opts: SpaceViewOptions;
   private readonly listeners = new Set<(s: SpaceUiState) => void>();
-  private state: SpaceUiState = { status: "connecting", location: "", list: [], announcement: "", zoom: 2 };
+  private state: SpaceUiState = {
+    status: "connecting",
+    location: "",
+    list: [],
+    announcement: "",
+    zoom: 2,
+    media: { kind: "idle" },
+  };
   private dirtyUi = true;
   private uiTimer: ReturnType<typeof setInterval> | undefined;
-  private readonly cleanup: Array<() => void> = [];
+  private inputCleanup: Array<() => void> = [];
+  private readonly media: MediaLink | null;
+  private attached = true;
 
   private constructor(opts: SpaceViewOptions) {
     this.opts = opts;
@@ -64,15 +77,25 @@ export class SpaceView {
       onStatus: (status) => this.patch({ status }),
       onEvent: (e) => void this.onEvent(e),
     });
+    this.media = opts.voice
+      ? new MediaLink({
+          voice: opts.voice,
+          request: () => this.conn.send({ v: 1, t: "media.session.request", id: this.conn.nextId() }),
+          onStatus: (media) => this.patch({ media }),
+        })
+      : null;
   }
 
   static async mount(opts: SpaceViewOptions): Promise<SpaceView> {
     const v = new SpaceView(opts);
     v.renderer.reducedMotion = opts.reducedMotion ?? false;
     await v.renderer.init(opts.el);
-    v.bindInput();
+    v.bindInput(opts.el);
     v.world.on((e) => {
-      if (e.kind === "room_changed") v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
+      if (e.kind === "room_changed") {
+        if (e.local) v.media?.roomChanged(e.to);
+        v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
+      }
       if (e.kind === "corrected") v.mover.resync();
       if (e.kind === "layout_changed") void v.loadMap(e.url);
       if (e.kind === "rooms_changed") v.renderer.rebuildStatic(v.world);
@@ -90,6 +113,11 @@ export class SpaceView {
     }, 250);
     v.conn.start();
     return v;
+  }
+
+  /** Current UI state (the same object subscribers receive). */
+  get ui(): SpaceUiState {
+    return this.state;
   }
 
   subscribe(fn: (s: SpaceUiState) => void): () => void {
@@ -144,11 +172,16 @@ export class SpaceView {
       case "space.layout.changed":
         this.world.layoutChanged(d.fingerprint, d.url);
         return;
+      case "media.grant":
+        return this.media?.onGrant(d);
+      case "media.revoked":
+        return this.media?.onRevoked(d);
+      case "media.unavailable":
+        return this.media?.onUnavailable(d);
     }
   }
 
-  private bindInput() {
-    const el = this.opts.el;
+  private bindInput(el: HTMLElement) {
     if (!el.hasAttribute("tabindex")) el.tabIndex = 0;
     const down = (ev: KeyboardEvent) => {
       const k = KEYS[ev.code];
@@ -180,7 +213,7 @@ export class SpaceView {
     el.addEventListener("blur", blur);
     this.renderer.app.canvas.addEventListener("pointerdown", pointer);
     document.addEventListener("visibilitychange", visibility);
-    this.cleanup.push(
+    this.inputCleanup.push(
       () => el.removeEventListener("keydown", down),
       () => el.removeEventListener("keyup", up),
       () => el.removeEventListener("blur", blur),
@@ -232,9 +265,56 @@ export class SpaceView {
     this.conn.takeOver();
   }
 
+  /** "Tentar de novo" / "Usar aqui" / "Voltar ao áudio" for the room's audio. */
+  retryMedia() {
+    this.media?.retry();
+  }
+
+  /** The app's voice changed under us (see MediaLink.voiceChanged). */
+  voiceChanged(change: "dropped" | "gone") {
+    this.media?.voiceChanged(change);
+  }
+
+  /** True while this space holds (or is setting up) the person's room audio. */
+  get holdsAudio(): boolean {
+    const k = this.state.media.kind;
+    return k === "connected" || k === "connecting" || k === "unavailable";
+  }
+
+  get isAttached(): boolean {
+    return this.attached;
+  }
+
+  /**
+   * Leaving the page while in a room keeps the space connected (presence and
+   * audio go on, like a call), without drawing. `attach` brings it back.
+   */
+  detach() {
+    if (!this.attached) return;
+    this.attached = false;
+    for (const fn of this.inputCleanup) fn();
+    this.inputCleanup = [];
+    this.mover.clearKeys();
+    this.mover.cancelPath();
+    this.renderer.detach();
+  }
+
+  attach(el: HTMLElement) {
+    if (this.attached) return;
+    this.attached = true;
+    this.opts.el = el;
+    this.renderer.attach(el);
+    this.bindInput(el);
+    this.renderer.rebuildStatic(this.world);
+    this.dirtyUi = true;
+    this.flushUi();
+  }
+
   destroy() {
     if (this.uiTimer) clearInterval(this.uiTimer);
-    for (const fn of this.cleanup) fn();
+    for (const fn of this.inputCleanup) fn();
+    this.inputCleanup = [];
+    this.media?.destroy();
     this.conn.stop();
     this.renderer.destroy();
   }

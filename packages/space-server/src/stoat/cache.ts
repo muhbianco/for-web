@@ -43,6 +43,40 @@ export class StoatCache {
     if (isTextChannel(c)) this.channels.set(c._id, c);
   }
 
+  /** Server + its channels as one comparable value (field order is stable per source). */
+  private fingerprint(server: StoatServer, channels: Map<string, StoatTextChannel>): string {
+    const own = [...channels.values()].filter((c) => c.server === server._id).sort((a, b) => (a._id < b._id ? -1 : 1));
+    return JSON.stringify([server, own]);
+  }
+
+  /**
+   * Replaces servers and channels with a full copy (from the database, see
+   * structure.ts) and tells listeners only about servers that changed.
+   */
+  replaceStructure(servers: StoatServer[], channels: StoatChannel[]): void {
+    const nextServers = new Map(servers.map((s) => [s._id, s]));
+    const nextChannels = new Map<string, StoatTextChannel>();
+    for (const c of channels) if (isTextChannel(c)) nextChannels.set(c._id, c);
+    const changed: string[] = [];
+    const gone: string[] = [];
+    for (const [id, s] of nextServers) {
+      const prev = this.servers.get(id);
+      if (!prev || this.fingerprint(prev, this.channels) !== this.fingerprint(s, nextChannels)) changed.push(id);
+    }
+    for (const id of this.servers.keys()) if (!nextServers.has(id)) gone.push(id);
+    this.servers.clear();
+    this.channels.clear();
+    for (const [id, s] of nextServers) this.servers.set(id, s);
+    for (const [id, c] of nextChannels) this.channels.set(id, c);
+    if (!this.ready) {
+      this.ready = true;
+      this.emit({ kind: "ready" });
+      return;
+    }
+    for (const id of gone) this.emit({ kind: "server_gone", serverId: id });
+    for (const id of changed) this.emit({ kind: "structure", serverId: id });
+  }
+
   /** Applies one bonfire event (unknown types are ignored). */
   apply(event: unknown): void {
     if (typeof event !== "object" || event === null) return;

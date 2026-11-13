@@ -163,7 +163,7 @@ test("hello → hello.ok + snapshot; private room name hidden from who cannot vi
   const { c: ana, snap } = await join("token-ana-0000000000");
   const priv = snap.d.rooms.find((r: any) => r.room_id === PRIV);
   const pub = snap.d.rooms.find((r: any) => r.room_id === PUB);
-  assert.deepEqual(priv, { room_id: PRIV, label: null, private: true, can_enter: false, occupants: null });
+  assert.deepEqual(priv, { room_id: PRIV, label: null, private: true, can_enter: false, occupants: null, capacity: null });
   assert.equal(pub.label, "Sala Aberta");
   assert.equal(pub.can_enter, true);
   // The "Diretoria" wing holds only the private room: its title is hidden too.

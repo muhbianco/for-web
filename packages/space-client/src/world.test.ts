@@ -28,8 +28,8 @@ function world() {
       layout: { fingerprint: map.fingerprint },
       you: { user_id: "ME", name: "Eu", look: { palette: 2 }, x: spawn.x, y: spawn.y, room: null, seq: 0 },
       rooms: [
-        { room_id: ROOM_A, label: "Sala Aberta", private: false, can_enter: true, occupants: [] },
-        { room_id: ROOM_P, label: null, private: true, can_enter: false, occupants: null },
+        { room_id: ROOM_A, label: "Sala Aberta", private: false, can_enter: true, occupants: [], capacity: null },
+        { room_id: ROOM_P, label: null, private: true, can_enter: false, occupants: null, capacity: null },
       ],
       wings: [
         { index: 0, title: "Geral" },
@@ -129,4 +129,23 @@ test("list: private room and its wing title stay hidden; status in plain text", 
     ],
   );
   assert.equal(locationText(w), "Entrada");
+});
+
+test("a full room keeps its door shut in the prediction too, never for who is inside", () => {
+  const w = world();
+  w.setRooms(
+    [
+      { room_id: ROOM_A, label: "Sala Aberta", private: false, can_enter: true, occupants: [], capacity: 1 },
+      { room_id: ROOM_P, label: null, private: true, can_enter: false, occupants: null, capacity: null },
+    ],
+    [{ index: 0, title: "Geral" }],
+  );
+  assert.equal(w.doorRule(ROOM_A), true, "empty: open");
+  const b = { user_id: "B", name: "b", look: { palette: 1 }, x: 0, y: 0, dir: "down" as const, moving: false, room: ROOM_A, state: "online" as const };
+  w.applyPositions({ avatars: [b], gone: [] }, 0);
+  assert.equal(w.isFull(ROOM_A), true);
+  assert.equal(w.doorRule(ROOM_A), false, "full: shut for newcomers");
+  assert.match(buildList(w).flatMap((x) => x.rooms).find((r) => r.roomId === ROOM_A)!.status, /cheia/);
+  w.setMyRoom(ROOM_A);
+  assert.equal(w.doorRule(ROOM_A), true, "whoever is inside can always leave");
 });

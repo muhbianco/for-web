@@ -42,6 +42,8 @@ export interface LeaseStore {
   /** Extends TTL only if `identity` is still the user's current lease. */
   renew(userId: string, identity: string, ttlSeconds: number): Promise<boolean>;
   get(identity: string): Promise<LeaseV1 | null>;
+  /** The user's current lease (pointer → lease), if both still exist. */
+  current(userId: string): Promise<LeaseV1 | null>;
 }
 
 export interface TokenMinter {

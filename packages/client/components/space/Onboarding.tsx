@@ -12,10 +12,13 @@ import { styled } from "styled-system/jsx";
 
 import { Button } from "@revolt/ui";
 
+import { AudioCheck } from "./AudioCheck";
+
 /**
  * First access to the space (plan §F.11): what changed, pick a character,
- * how to move. Audio setup arrives with voice (Phase 3). Skipping keeps the
- * default character and still counts as done; it can be changed later.
+ * set up and test the audio, how to move. Skipping keeps the default
+ * character and still counts as done; it can be changed later. The audio step
+ * also shows alone on a device that never did it (AudioCheckDialog).
  */
 export function Onboarding(props: {
   initialPalette: number;
@@ -93,6 +96,13 @@ export function Onboarding(props: {
           </Actions>
         </Show>
         <Show when={step() === 2}>
+          <AudioCheck
+            onBack={() => setStep(1)}
+            onNext={() => setStep(3)}
+            nextLabel={t`Continuar`}
+          />
+        </Show>
+        <Show when={step() === 3}>
           <h2 id="space-onboarding-title">{t`Como andar`}</h2>
           <ul>
             <li>{t`Setas ou W A S D para andar; clique ou toque para ir até um ponto.`}</li>
@@ -100,7 +110,7 @@ export function Onboarding(props: {
             <li>{t`+ e − mudam o zoom. Esc cancela o caminho.`}</li>
           </ul>
           <Actions>
-            <Button variant="text" onPress={() => setStep(1)}>
+            <Button variant="text" onPress={() => setStep(2)}>
               {t`Voltar`}
             </Button>
             <Button
@@ -112,6 +122,18 @@ export function Onboarding(props: {
             </Button>
           </Actions>
         </Show>
+      </Card>
+    </Backdrop>
+  );
+}
+
+/** The audio step alone, for a device where the first access was done elsewhere. */
+export function AudioCheckDialog(props: { onDone: () => void }) {
+  const { t } = useLingui();
+  return (
+    <Backdrop onKeyDown={(e) => e.stopPropagation()}>
+      <Card role="dialog" aria-modal="true" aria-labelledby="space-onboarding-title">
+        <AudioCheck onNext={props.onDone} nextLabel={t`Pronto`} />
       </Card>
     </Backdrop>
   );

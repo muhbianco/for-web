@@ -25,12 +25,18 @@ export class BonfireClient {
   private readonly token: string;
   private readonly cache: StoatCache;
   private readonly log: BonfireLog;
+  private readonly onEvent: (event: unknown) => void;
 
-  constructor(url: string, token: string, cache: StoatCache, log: BonfireLog) {
+  /**
+   * `onEvent` replaces the default (every event to the cache): production
+   * routes structure events to a database refresh (structure.ts).
+   */
+  constructor(url: string, token: string, cache: StoatCache, log: BonfireLog, onEvent?: (event: unknown) => void) {
     this.url = url;
     this.token = token;
     this.cache = cache;
     this.log = log;
+    this.onEvent = onEvent ?? ((event) => this.cache.apply(event));
   }
 
   start() {
@@ -69,7 +75,7 @@ export class BonfireClient {
         return;
       }
       try {
-        this.cache.apply(event);
+        this.onEvent(event);
       } catch (err) {
         this.log.warn("bonfire event failed", { err: String(err) });
       }

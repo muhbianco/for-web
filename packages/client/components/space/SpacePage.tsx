@@ -11,8 +11,9 @@ import {
 import { useLingui } from "@lingui/solid/macro";
 import {
   type ConnStatus,
+  type MediaStatus,
   type SpaceUiState,
-  SpaceView,
+  type SpaceView,
   wingHeading,
 } from "@muchat/space-client";
 import { type ProfileView, ONBOARDING_VERSION } from "@muchat/space-core";
@@ -20,11 +21,14 @@ import { styled } from "styled-system/jsx";
 
 import { useClient } from "@revolt/client";
 import { useParams } from "@revolt/routing";
+import { useVoice } from "@revolt/rtc";
 import { Button, IconButton } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { clientKind, sessionToken } from "./config";
-import { Onboarding } from "./Onboarding";
+import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
+import { AudioCheckDialog, Onboarding } from "./Onboarding";
+import { leaveSpacePage, openSpace } from "./session";
 
 /**
  * Full-screen space of a server (route `/server/:server/space`, lazy-loaded so
@@ -34,14 +38,17 @@ import { Onboarding } from "./Onboarding";
 export default function SpacePage() {
   const params = useParams<{ server: string }>();
   const client = useClient();
+  const voice = useVoice();
   const { t } = useLingui();
   const [ui, setUi] = createSignal<SpaceUiState | null>(null);
   const [view, setView] = createSignal<SpaceView | null>(null);
   const [profile, setProfile] = createSignal<ProfileView | null>(null);
   const [failed, setFailed] = createSignal<string | null>(null);
   const [showList, setShowList] = createSignal(true);
+  const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   let host: HTMLDivElement | undefined;
   let disposed = false;
+  let unsubscribe: (() => void) | undefined;
 
   const statusText = (s: ConnStatus): string =>
     ({
@@ -54,22 +61,54 @@ export default function SpacePage() {
       closed: t`Desconectado`,
     })[s];
 
+  /** What the room's audio is doing, in words; null when there is nothing to say. */
+  const mediaText = (m: MediaStatus): string | null => {
+    switch (m.kind) {
+      case "idle":
+        return null;
+      case "connecting":
+        return t`Conectando áudio…`;
+      case "connected":
+        return t`Áudio da sala conectado`;
+      case "unavailable":
+        return m.retrying
+          ? t`Áudio indisponível — tentando de novo`
+          : t`Áudio indisponível; você continua na sala`;
+      case "elsewhere":
+        return t`Seu áudio está em outra aba ou outro servidor`;
+      case "paused":
+        return t`Você está fora do áudio da sala`;
+    }
+  };
+  const mediaAction = (m: MediaStatus): string | null => {
+    if (m.kind === "unavailable" && !m.retrying) return t`Tentar de novo`;
+    if (m.kind === "elsewhere") return t`Usar aqui`;
+    if (m.kind === "paused") return t`Voltar ao áudio`;
+    return null;
+  };
+
+  const serverId = params.server;
+
   onMount(async () => {
     const token = sessionToken(client());
     if (!token || !host)
       return setFailed(t`Entre na sua conta para usar o espaço.`);
     try {
-      const v = await SpaceView.mount({
+      // Reattaches to a space that stayed connected (in a room, with audio)
+      // since its page was last closed.
+      const v = await openSpace({
         el: host,
         baseUrl: location.origin,
         sessionToken: token,
-        serverId: params.server,
+        serverId,
         client: clientKind(),
         reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
+        voice,
+        stoat: () => client(),
       });
-      if (disposed) return v.destroy();
+      if (disposed) return leaveSpacePage(serverId);
       setView(v);
-      v.subscribe(setUi);
+      unsubscribe = v.subscribe(setUi);
       host.focus();
       setProfile(await v.profile().catch(() => null));
     } catch {
@@ -81,7 +120,9 @@ export default function SpacePage() {
 
   onCleanup(() => {
     disposed = true;
-    view()?.destroy();
+    unsubscribe?.();
+    // In a room with audio, the space stays connected off-page (like a call).
+    leaveSpacePage(serverId);
   });
 
   async function finishOnboarding(palette: number) {
@@ -106,6 +147,23 @@ export default function SpacePage() {
           <Button variant="tonal" onPress={() => view()?.takeOver()}>
             {t`Usar aqui`}
           </Button>
+        </Show>
+        <Show when={ui() && mediaText(ui()!.media)}>
+          {(text) => (
+            <MediaChip role="status" data-kind={ui()!.media.kind}>
+              <Symbol size={16}>
+                {ui()!.media.kind === "connected" ? "volume_up" : "volume_off"}
+              </Symbol>
+              {text()}
+            </MediaChip>
+          )}
+        </Show>
+        <Show when={ui() && mediaAction(ui()!.media)}>
+          {(label) => (
+            <Button variant="tonal" onPress={() => view()?.retryMedia()}>
+              {label()}
+            </Button>
+          )}
         </Show>
         <span style={{ flex: 1 }} />
         <IconButton
@@ -146,7 +204,20 @@ export default function SpacePage() {
             >
               <Onboarding
                 initialPalette={profile()!.look.palette}
-                onDone={finishOnboarding}
+                onDone={async (palette) => {
+                  // Skipping the whole flow counts for the audio step too.
+                  markAudioCheckedHere();
+                  setAudioChecked(true);
+                  await finishOnboarding(palette);
+                }}
+              />
+            </Match>
+            <Match when={profile() && !audioChecked()}>
+              <AudioCheckDialog
+                onDone={() => {
+                  setAudioChecked(true);
+                  host?.focus();
+                }}
               />
             </Match>
           </Switch>
@@ -256,6 +327,27 @@ const List = styled("aside", {
     },
     "& li[data-here]": {
       background: "var(--md-sys-color-secondary-container)",
+    },
+  },
+});
+
+const MediaChip = styled("span", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "2px 10px",
+    borderRadius: "999px",
+    fontSize: "0.85em",
+    background: "var(--md-sys-color-surface-container-high)",
+    color: "var(--md-sys-color-on-surface-variant)",
+    "&[data-kind=connected]": {
+      background: "var(--md-sys-color-secondary-container)",
+      color: "var(--md-sys-color-on-secondary-container)",
+    },
+    "&[data-kind=unavailable]": {
+      background: "var(--md-sys-color-error-container)",
+      color: "var(--md-sys-color-on-error-container)",
     },
   },
 });

@@ -574,6 +574,10 @@ msgstr "Assign Roles"
 msgid "Atravesse a porta para entrar numa sala; saia por ela quando quiser."
 msgstr "Atravesse a porta para entrar numa sala; saia por ela quando quiser."
 
+#: components/space/SpacePage.tsx
+msgid "Áudio da sala conectado"
+msgstr "Áudio da sala conectado"
+
 #: components/modal/modals/ScreenShareSettings.tsx
 msgid "Audio disabled by browser"
 msgstr "Audio disabled by browser"
@@ -581,6 +585,14 @@ msgstr "Audio disabled by browser"
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Áudio enviado"
 msgstr "Áudio enviado"
+
+#: components/space/SpacePage.tsx
+msgid "Áudio indisponível — tentando de novo"
+msgstr "Áudio indisponível — tentando de novo"
+
+#: components/space/SpacePage.tsx
+msgid "Áudio indisponível; você continua na sala"
+msgstr "Áudio indisponível; você continua na sala"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Áudio reconstruído"
@@ -1054,6 +1066,10 @@ msgstr "Conectado"
 #: components/space/SpacePage.tsx
 msgid "Conectando ao espaço…"
 msgstr "Conectando ao espaço…"
+
+#: components/space/SpacePage.tsx
+msgid "Conectando áudio…"
+msgstr "Conectando áudio…"
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Configure a way to get back into your account in case your 2FA is lost"
@@ -1784,6 +1800,10 @@ msgstr "Entre em uma chamada para ver os números."
 msgid "Entre na sua conta para usar o espaço."
 msgstr "Entre na sua conta para usar o espaço."
 
+#: components/space/AudioCheck.tsx
+msgid "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
+msgstr "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
+
 #: components/space/Onboarding.tsx
 msgid "Escolha seu personagem"
 msgstr "Escolha seu personagem"
@@ -1839,6 +1859,10 @@ msgstr "Failed to send"
 #: components/auth/src/flows/FlowVerify.tsx
 msgid "Failed to verify!"
 msgstr "Failed to verify!"
+
+#: components/space/AudioCheck.tsx
+msgid "Fale algo: a barra deve se mexer."
+msgstr "Fale algo: a barra deve se mexer."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Fale um pouco para medir"
@@ -2727,6 +2751,10 @@ msgstr "Não consegui abrir o checkout. Tente de novo em instantes."
 msgid "Não consegui falar com o servidor."
 msgstr "Não consegui falar com o servidor."
 
+#: components/space/AudioCheck.tsx
+msgid "Não deu para testar o microfone agora."
+msgstr "Não deu para testar o microfone agora."
+
 #: components/space/SpacePage.tsx
 msgid "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
 msgstr "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
@@ -2734,6 +2762,10 @@ msgstr "Não foi possível abrir o mapa neste aparelho. A lista de salas continu
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
 msgstr "nenhum"
+
+#: components/space/AudioCheck.tsx
+msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
+msgstr "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Neutral"
@@ -2823,6 +2855,10 @@ msgstr "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R
 #: components/app/interface/settings/user/Support.tsx
 msgid "O Mercado Pago pede e-mail no apoio mensal."
 msgstr "O Mercado Pago pede e-mail no apoio mensal."
+
+#: components/space/AudioCheck.tsx
+msgid "O microfone foi bloqueado. Libere o acesso nas permissões do navegador (ícone ao lado do endereço), do aplicativo do PC ou do Android e teste de novo. Você também pode entrar só ouvindo."
+msgstr "O microfone foi bloqueado. Libere o acesso nas permissões do navegador (ícone ao lado do endereço), do aplicativo do PC ou do Android e teste de novo. Você também pode entrar só ouvindo."
 
 #: components/space/Onboarding.tsx
 msgid "O Muchat virou um espaço"
@@ -3102,6 +3138,10 @@ msgstr "Promotes harm"
 #: components/modal/modals/ServerIdentity.tsx
 msgid "Pronouns"
 msgstr "Pronouns"
+
+#: components/space/Onboarding.tsx
+msgid "Pronto"
+msgstr "Pronto"
 
 #: components/i18n/errors.tsx
 msgid "Provided email or password is wrong."
@@ -3642,6 +3682,14 @@ msgstr "Setup one-time password authenticator"
 msgid "Setup recovery codes"
 msgstr "Setup recovery codes"
 
+#: components/space/AudioCheck.tsx
+msgid "Seu áudio"
+msgstr "Seu áudio"
+
+#: components/space/SpacePage.tsx
+msgid "Seu áudio está em outra aba ou outro servidor"
+msgstr "Seu áudio está em outra aba ou outro servidor"
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Seu computador não está dando conta"
 msgstr "Seu computador não está dando conta"
@@ -3923,6 +3971,10 @@ msgstr "Tell us what's wrong with this user"
 msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr "Temporarily prevent lower-ranking members from interacting"
 
+#: components/space/SpacePage.tsx
+msgid "Tentar de novo"
+msgstr "Tentar de novo"
+
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Terms"
 msgstr "Terms"
@@ -3934,6 +3986,14 @@ msgstr "Terms"
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Test voice"
 msgstr "Test voice"
+
+#: components/space/AudioCheck.tsx
+msgid "Testar de novo"
+msgstr "Testar de novo"
+
+#: components/space/AudioCheck.tsx
+msgid "Testar microfone"
+msgstr "Testar microfone"
 
 #: components/modal/modals/CreateChannel.tsx
 msgid "Text Channel"
@@ -4445,6 +4505,10 @@ msgid "Você é apoiador."
 msgstr "Você é apoiador."
 
 #: components/space/SpacePage.tsx
+msgid "Você está fora do áudio da sala"
+msgstr "Você está fora do áudio da sala"
+
+#: components/space/SpacePage.tsx
 msgid "Você não é membro deste servidor"
 msgstr "Você não é membro deste servidor"
 
@@ -4477,13 +4541,22 @@ msgstr "Voice detection could not start, so the microphone gate is using loudnes
 #~ msgid "Voice Processing"
 #~ msgstr "Voice Processing"
 
+#: components/space/AudioCheck.tsx
 #: components/space/Onboarding.tsx
 msgid "Voltar"
 msgstr "Voltar"
 
+#: components/space/SpacePage.tsx
+msgid "Voltar ao áudio"
+msgstr "Voltar ao áudio"
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
 msgstr "Volume"
+
+#: components/space/AudioCheck.tsx
+msgid "Volume do microfone"
+msgstr "Volume do microfone"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Voz acelerada"

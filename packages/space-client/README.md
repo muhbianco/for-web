@@ -12,6 +12,7 @@ O mapa do Muchat Espaço no navegador, sem depender de framework: o app (Solid) 
 | `connection.ts` | WebSocket `/_muchat/space/v1/ws`. A sessão vai no `hello`, nunca na URL. Reconexão com espera crescente e variação aleatória; para de vez em 4401, 4403 e 4001 (outra aba assumiu) |
 | `world.ts` | Cópia do mundo. Os outros aparecem interpolados 100 ms atrás, sem extrapolar. A correção do servidor sempre vence |
 | `mover.ts` | Movimento previsto com a mesma colisão e regra de porta do servidor (`slide`, `findPath`). Envia no máximo 15 Hz, e a parada sai na hora. Velocidade a 95% do limite |
+| `media.ts` | `MediaLink`: segue os eventos de mídia do servidor e a voz do app. `media.grant` → conecta; `media.revoked` → sai da chamada (só se for a do espaço); falha → pede token novo após 3, 6 e 12 s, depois botão. Nunca tira a voz de outra chamada (DM, grupo) sozinho: só ao entrar andando na sala ou num botão |
 | `list.ts` | Modelo em texto para a lista acessível e para o `aria-live`: alas, salas, ocupação ao vivo, "Entrada" / "Corredor · Ala X" / nome da sala. Sala e ala privadas aparecem como "Sala privada" e "Ala restrita" |
 | `render/` | PixiJS 8.22, carregado só nesta view. O chão vai em blocos de 32×32 tiles, e só os blocos perto da câmera existem na GPU. Portas e nomes ficam numa camada à parte. Personagens pixel-art 16×16 desenhados em código (provisórios, até a arte definitiva), 4 direções e passo de caminhada. Zoom inteiro de 1× a 3×. Câmera sem suavização com `prefers-reduced-motion` |
 | `view.ts` | Liga tudo: teclado (setas/WASD, Esc, + e −), clique ou toque para andar, `presence.idle` quando a aba some, `walkToRoom`, estado para a interface a 4 Hz |
@@ -75,12 +76,53 @@ rota em `src/index.tsx` e uma linha na `ServerSidebar`.
   - O passo do áudio entra com a voz (fase 3).
 - **Textos** no Lingui, com o português como id, como no resto do fork; `lingui extract` já rodou.
 
+## Voz nas salas (3b)
+
+A sala **é** o canal de voz do Stoat. Então o `Voice` do app conecta nela com o token do espaço
+em vez do `join_call`, e tudo o que já existe continua igual: dock, cartão flutuante, microfone,
+câmera, tela, supressão de ruído, dispositivos e serviço de voz do Android.
+
+- **`session.ts`:**
+  - Adapta o `Voice` ao `VoicePort` do `MediaLink`.
+  - Mantém o espaço conectado **fora da página** enquanto a pessoa está numa sala com áudio. Dá
+    para ler o chat da sala, ou qualquer canal, sem cair da voz.
+  - Na volta à página, o mesmo mapa é religado.
+  - Sem áudio a manter (saiu da sala, desligou no dock), o espaço fecha sozinho.
+- **Barra do mapa:** estado do áudio, com os botões que cabem em cada caso:
+  - "Conectando áudio…";
+  - "Áudio da sala conectado";
+  - "Áudio indisponível", com "Tentar de novo";
+  - "Seu áudio está em outra aba ou outro servidor", com "Usar aqui";
+  - "Você está fora do áudio da sala", com "Voltar ao áudio".
+- **Identity `sp_<usuário>_<n>`** (uma por entrada): `components/rtc/identity.ts` devolve o
+  usuário para o cartão da chamada, o volume e o mudo por pessoa, e os ícones.
+- **Sala cheia:** a porta não abre na previsão do cliente, como no servidor (`voice.max_users`),
+  e a lista mostra "cheia".
+- **Primeiro acesso:** ganhou o passo do áudio (`AudioCheck.tsx`).
+  - Escolha de dispositivos (os mesmos ajustes de Configurações → Voz).
+  - "Testar microfone" com medidor.
+  - Mensagens para permissão negada e para quem não tem microfone.
+  - O passo vale **por aparelho**: num aparelho novo aparece sozinho, uma vez.
+
+Verificado em 13/11/2026 na página de dev, com o servidor real, LiveKit simulado e uma voz
+simulada no navegador:
+
+- Entrar no Café foi de `connecting` a `connected`, com a identity `sp_<ana>_…`. Sair voltou a
+  `idle` e desligou a chamada. Nenhuma correção do servidor.
+- Com a conexão falhando (`?voicefail=1`), a pessoa ficou na sala e as tentativas automáticas
+  saíram após 3 e 6 s.
+- Com "Duo" (2 lugares) ocupada, a porta não abriu na previsão e a lista mostrou "2 pessoas ·
+  cheia".
+
 O personagem escolhido vai para o servidor (`PUT /v1/me/profile`) e chega aos outros na próxima
 difusão; verificado entre duas abas.
 
 ## Ainda não
 
-- Voz nas salas (fase 3) e portas com tranca e batida (fase 4).
+- **Voz com LiveKit de verdade:** ainda não testada. O caminho completo (gate, enforcer, voice-ingress)
+  é a 3c e a 3d, no laboratório.
+- Portas com tranca e batida (fase 4).
+- **Teste de saída de áudio** no primeiro acesso (tocar um som no alto-falante escolhido).
 - **Lista acessível:** ainda só leitura. "Ir para" e "Bater" chegam com as portas.
 - **Sem WebGL:** a tela mostra um aviso; o modo só lista (sem mapa) ainda não existe.
 - Arte definitiva no lugar dos personagens provisórios.

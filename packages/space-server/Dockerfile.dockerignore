@@ -1,0 +1,16 @@
+# Contexto mínimo da imagem muchat-space (lido pelo BuildKit no lugar do .dockerignore da raiz).
+*
+!package.json
+!pnpm-workspace.yaml
+!pnpm-lock.yaml
+!patches
+!packages/client/package.json
+!packages/stoat.js/package.json
+!packages/solid-livekit-components/package.json
+!packages/space-client/package.json
+!packages/space-core
+!packages/space-server
+**/node_modules
+**/dist
+**/*.test.ts
+packages/space-server/lab

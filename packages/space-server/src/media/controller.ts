@@ -187,6 +187,55 @@ export class MediaController {
     return this.current.get(userId);
   }
 
+  /** The lease the store holds for a user (read-only; used after a restart). */
+  peekLease(userId: string): Promise<LeaseV1 | null> {
+    return this.leases.current(userId);
+  }
+
+  /**
+   * Takes over a lease written by a previous process (restart or redeploy), so
+   * renew and revoke apply to it again and the person keeps talking.
+   */
+  adopt(lease: LeaseV1): void {
+    if (!this.current.has(lease.user_id)) {
+      this.current.set(lease.user_id, { room: lease.room_name, identity: lease.identity });
+    }
+  }
+
+  /**
+   * A fresh token for the grant the person already holds (new tab, LiveKit
+   * reconnect after the 30 s token expired). Same identity and room, so no new
+   * admission is created: the lease is the authority, the token only carries
+   * it. Null when there is no live lease for that grant — then a new grant is
+   * needed.
+   */
+  async reissue(
+    userId: string,
+    input: { displayName: string; sources: MediaSource[]; canSubscribe: boolean },
+  ): Promise<MediaGrant | null> {
+    const cur = this.current.get(userId);
+    if (!cur) return null;
+    const lease = await this.leases.get(cur.identity);
+    if (!lease || lease.user_id !== userId || lease.room_name !== cur.room) return null;
+    const token = await this.minter.mint({
+      identity: cur.identity,
+      name: input.displayName,
+      room: cur.room,
+      userId,
+      sources: input.sources,
+      canSubscribe: input.canSubscribe,
+      ttlSeconds: TOKEN_TTL_SECONDS,
+    });
+    return {
+      url: this.publicUrl,
+      token,
+      identity: cur.identity,
+      roomName: cur.room,
+      grantSeq: lease.grant_seq,
+      expiresAt: lease.exp * 1000,
+    };
+  }
+
   private async removeEverywhereInRoom(room: string, userId: string, identity: string) {
     await this.removeWithRetry(room, identity);
     let others: string[] = [];

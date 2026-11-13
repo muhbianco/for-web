@@ -9,6 +9,9 @@
 import { findPath, MAX_SPEED, MOVE_SEND_HZ, Perm, TILE, tileCenter, indexMap } from "@muchat/space-core";
 
 import { jsonLog } from "./log.ts";
+import { MediaController } from "./media/controller.ts";
+import { FakeLeases, FakeLiveKit, FakeMinter } from "./media/fakes.ts";
+import { MediaHub } from "./space/roomMedia.ts";
 import { Registry } from "./space/registry.ts";
 import type { SessionPort, SpaceRuntime } from "./space/runtime.ts";
 import { MemoryProfileStore } from "./space/profiles.ts";
@@ -91,7 +94,12 @@ const members = {
   },
 };
 
-const registry = new Registry({ cache, store: new MemoryAssignmentStore(), members, log: jsonLog });
+// Room media with an in-memory LiveKit and lease store: grants, revocations
+// and epochs are the real ones; the tokens are fake (`token-for-<identity>`).
+const devLk = new FakeLiveKit();
+const devMedia = new MediaController({ lk: devLk, leases: new FakeLeases(), minter: new FakeMinter(), publicUrl: "wss://dev.invalid/livekit" });
+const hub = new MediaHub({ media: devMedia, log: jsonLog });
+const registry = new Registry({ cache, store: new MemoryAssignmentStore(), members, log: jsonLog, media: { hub, lk: devLk } });
 const gateway = new Gateway({
   auth,
   members,

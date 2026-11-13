@@ -21,6 +21,7 @@ import { Row } from "../../layout";
 
 import { useVoiceMemberDrag } from "./VoiceMemberDrag";
 import { VoiceStatefulUserIcons } from "./VoiceStatefulUserIcons";
+import { participantUserId } from "@revolt/rtc/identity";
 
 /**
  * Render a preview of users (or the active participants) for a given channel
@@ -93,7 +94,7 @@ function ParticipantLive(props: { channel: Channel }) {
   return (
     <CommonUser
       channel={props.channel}
-      userId={participant.identity}
+      userId={participantUserId(participant.identity)}
       speaking={isSpeaking()}
       muted={isMuted() || isDeafened()}
       deafened={isDeafened()}

@@ -54,6 +54,19 @@ export class Renderer {
     this.app.stage.addChild(this.stage);
   }
 
+  /** Moves the canvas to another host (the page was reopened); drawing resumes. */
+  attach(el: HTMLElement) {
+    this.app.resizeTo = el;
+    el.appendChild(this.app.canvas);
+    this.app.ticker.start();
+  }
+
+  /** Takes the canvas off the page and stops drawing; the world keeps updating. */
+  detach() {
+    this.app.ticker.stop();
+    this.app.canvas.remove();
+  }
+
   setZoom(z: number) {
     this.zoom = Math.max(1, Math.min(3, Math.round(z)));
   }

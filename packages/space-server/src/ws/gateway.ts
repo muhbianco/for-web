@@ -47,6 +47,8 @@ class Session implements SessionPort {
   runtime: SpaceRuntime | null = null;
   token = "";
   lastAuthOk = Date.now();
+  /** Close code we sent, if we closed it. */
+  closedWith: number | null = null;
   private sv = 0;
   readonly bucket: TokenBucket;
   readonly ws: WebSocket;
@@ -67,6 +69,7 @@ class Session implements SessionPort {
   }
 
   close(code: number, reason: string): void {
+    this.closedWith ??= code;
     if (this.ws.readyState === this.ws.OPEN || this.ws.readyState === this.ws.CONNECTING) this.ws.close(code, reason);
   }
 }
@@ -161,12 +164,21 @@ export class Gateway {
           return s.runtime.setIdle(s, cmd.d.idle);
         case "ping":
           return s.send({ v: 1, t: "pong", re: cmd.id, d: {} });
+        case "media.session.request":
+          if (!s.runtime.requestMedia(s)) s.send({ v: 1, t: "error", re: cmd.id, d: { code: "rate_limited" } });
+          return;
       }
     });
     ws.on("close", () => {
       clearTimeout(helloTimer);
       this.sessions.delete(s);
-      s.runtime?.leave(s);
+      if (!s.runtime) return;
+      // Session ended or membership gone: no reconnect grace, media ends now.
+      if (s.closedWith === Close.Unauthenticated || s.closedWith === Close.NotMember) {
+        if (s.runtime.sessionOf(s.viewer.user._id) === s) s.runtime.evict(s.viewer.user._id);
+        return;
+      }
+      s.runtime.leave(s);
     });
     ws.on("error", () => ws.terminate());
   }
@@ -192,10 +204,17 @@ export class Gateway {
     s.lastAuthOk = Date.now();
     s.runtime = runtime;
     // A profile store hiccup must not keep anyone out: default look then.
-    const profile = await Promise.race([
-      this.deps.profiles.get(auth.user._id),
-      new Promise<null>((r) => setTimeout(() => r(null), 1_500)),
-    ]).catch(() => null);
+    // In parallel: after a restart, a surviving media lease puts the person
+    // back in their room (prepareJoin bounds its own wait).
+    const [profile] = await Promise.all([
+      Promise.race([
+        this.deps.profiles.get(auth.user._id),
+        new Promise<null>((r) => setTimeout(() => r(null), 1_500)),
+      ]).catch(() => null),
+      runtime.prepareJoin(s.viewer).catch((err) => {
+        this.deps.log.warn("media recovery skipped", { server: serverId, user: auth.user._id, err: String(err) });
+      }),
+    ]);
     if (s.ws.readyState !== s.ws.OPEN) return;
     s.send({ v: 1, t: "hello.ok", re: id, d: { user_id: auth.user._id, protocol: 1 } });
     runtime.join(s, profile?.look ?? { palette: defaultPalette(auth.user._id) });

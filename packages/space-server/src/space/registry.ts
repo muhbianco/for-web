@@ -1,7 +1,9 @@
 import type { Log } from "../log.ts";
+import type { LiveKitAdmin } from "../media/ports.ts";
 import type { MemberCache, StoatMembers } from "../stoat/api.ts";
 import type { StoatCache } from "../stoat/cache.ts";
 import type { RuntimeRegistry } from "../ws/gateway.ts";
+import type { MediaHub } from "./roomMedia.ts";
 import { SpaceRuntime } from "./runtime.ts";
 import type { AssignmentStore } from "./store.ts";
 
@@ -19,6 +21,7 @@ export class Registry implements RuntimeRegistry {
   private readonly now: () => number;
   /** Servers where the space is switched on; null = all (tests/lab). */
   private readonly enabled: (serverId: string) => boolean;
+  private readonly media: { hub: MediaHub; lk: LiveKitAdmin } | undefined;
 
   constructor(deps: {
     cache: StoatCache;
@@ -27,6 +30,8 @@ export class Registry implements RuntimeRegistry {
     log: Log;
     now?: () => number;
     enabled?: (serverId: string) => boolean;
+    /** Room media (Phase 3); without it the space is presence only. */
+    media?: { hub: MediaHub; lk: LiveKitAdmin };
   }) {
     this.cache = deps.cache;
     this.store = deps.store;
@@ -34,6 +39,7 @@ export class Registry implements RuntimeRegistry {
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
     this.enabled = deps.enabled ?? (() => true);
+    this.media = deps.media;
     deps.cache.on((change) => {
       switch (change.kind) {
         case "structure": {
@@ -42,7 +48,9 @@ export class Registry implements RuntimeRegistry {
           return;
         }
         case "server_gone": {
-          this.live.get(change.serverId)?.closeAll(4403, "server gone");
+          const gone = this.live.get(change.serverId);
+          gone?.closeAll(4403, "server gone");
+          gone?.dispose();
           this.live.delete(change.serverId);
           this.runtimes.delete(change.serverId);
           return;
@@ -50,7 +58,8 @@ export class Registry implements RuntimeRegistry {
         case "member": {
           this.members.invalidate?.(change.serverId, change.userId);
           const rt = this.live.get(change.serverId);
-          if (!rt?.sessionOf(change.userId)) return;
+          // Also while reconnecting: a removed role must end media during the grace.
+          if (!rt?.hasAvatar(change.userId)) return;
           void this.members.member(change.serverId, change.userId).then((res) => {
             if (res.kind === "ok") rt.memberChanged(change.userId, res.member);
             else if (res.kind === "not_member") rt.memberChanged(change.userId, null);
@@ -73,12 +82,22 @@ export class Registry implements RuntimeRegistry {
     if (!this.cache.servers.has(serverId) || !this.enabled(serverId)) return Promise.resolve(null);
     let p = this.runtimes.get(serverId);
     if (!p) {
-      const rt = new SpaceRuntime({ serverId, cache: this.cache, store: this.store, log: this.log, now: this.now });
+      const rt = new SpaceRuntime({
+        serverId,
+        cache: this.cache,
+        store: this.store,
+        log: this.log,
+        now: this.now,
+        media: this.media,
+      });
       p = rt.init().then(() => {
         this.live.set(serverId, rt);
         return rt;
       });
-      p.catch(() => this.runtimes.delete(serverId));
+      p.catch(() => {
+        this.runtimes.delete(serverId);
+        rt.dispose();
+      });
       this.runtimes.set(serverId, p);
     }
     return p;

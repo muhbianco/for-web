@@ -139,6 +139,13 @@ export class RedisLeaseStore implements LeaseStore {
   async get(identity: string): Promise<LeaseV1 | null> {
     return parseLease(await this.redis.get(leaseKey(identity)));
   }
+
+  async current(userId: string): Promise<LeaseV1 | null> {
+    const identity = await this.redis.get(userLeaseKey(userId));
+    if (!identity) return null;
+    const lease = await this.get(identity);
+    return lease && lease.user_id === userId ? lease : null;
+  }
 }
 
 function parseLease(raw: string | null): LeaseV1 | null {

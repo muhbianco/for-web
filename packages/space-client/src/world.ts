@@ -45,7 +45,8 @@ export interface Remote {
 }
 
 export type WorldEvent =
-  | { kind: "room_changed"; from: string | null; to: string | null }
+  /** `local`: our own predicted walk crossed the door (the person's intent), not a server placement. */
+  | { kind: "room_changed"; from: string | null; to: string | null; local?: boolean }
   | { kind: "corrected"; reason: string }
   | { kind: "layout_changed"; fingerprint: string; url: string }
   | { kind: "rooms_changed" };
@@ -79,8 +80,18 @@ export class World {
     this.fingerprint = map.fingerprint;
   }
 
-  /** The door opens for rooms we may enter, and always for the room we are in. */
-  readonly doorRule: DoorRule = (roomId) => roomId === this.me?.room || this.rooms.get(roomId)?.can_enter === true;
+  /** The door opens for rooms we may enter that have a free place, and always for the room we are in. */
+  readonly doorRule: DoorRule = (roomId) =>
+    roomId === this.me?.room || (this.rooms.get(roomId)?.can_enter === true && !this.isFull(roomId));
+
+  /** Same rule as the server (voice.max_users), from the avatars we see inside. */
+  isFull(roomId: string): boolean {
+    const cap = this.rooms.get(roomId)?.capacity ?? null;
+    if (cap === null) return false;
+    let n = this.me?.room === roomId ? 1 : 0;
+    for (const o of this.others.values()) if (o.room === roomId) n++;
+    return n >= cap;
+  }
 
   applySnapshot(d: {
     layout: { fingerprint: string };
@@ -145,7 +156,7 @@ export class World {
     if (!this.me || this.me.room === room) return;
     const from = this.me.room;
     this.me.room = room;
-    this.emit({ kind: "room_changed", from, to: room });
+    this.emit({ kind: "room_changed", from, to: room, local: true });
   }
 
   layoutChanged(fingerprint: string, url: string) {
