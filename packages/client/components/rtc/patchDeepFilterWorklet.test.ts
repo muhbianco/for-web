@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  DF_INIT_ERROR_MESSAGE,
   DF_STATS_MESSAGE,
+  isDeepFilterInitError,
   isDeepFilterStats,
   patchDeepFilterWorkletSource,
   workletHasOutputHole,
@@ -30,8 +32,14 @@ const BROKEN = `            const frameLength = this.dfModel.frameLength;
             }
             return true;`;
 
+const INIT_CATCH = `            catch (error) {
+                console.error('Failed to initialize DeepFilter in AudioWorklet:', error);
+                this.isInitialized = false;
+            }`;
+
 const WITH_INIT = `                this.tempFrame = new Float32Array(frameLength);
                 this.isInitialized = true;
+${INIT_CATCH}
 ${BROKEN}`;
 
 test("rejects unknown worklet source instead of loading the hole", () => {
@@ -78,4 +86,38 @@ test("recognises stats messages only", () => {
     false,
   );
   assert.equal(isDeepFilterStats(null), false);
+});
+
+test("reports a failed model load instead of passing audio through silently", () => {
+  const patched = patchDeepFilterWorkletSource(WITH_INIT);
+  assert.match(
+    patched,
+    new RegExp(
+      `this\\.isInitialized = false;\\s+this\\.port\\.postMessage\\(\\{\\s+type: '${DF_INIT_ERROR_MESSAGE}'`,
+    ),
+  );
+});
+
+test("refuses a worklet whose init error handling moved", () => {
+  const withoutCatch = WITH_INIT.replace(INIT_CATCH, "");
+  assert.throws(
+    () => patchDeepFilterWorkletSource(withoutCatch),
+    /init error handling/,
+  );
+});
+
+test("recognises init error messages only", () => {
+  assert.equal(
+    isDeepFilterInitError({
+      type: DF_INIT_ERROR_MESSAGE,
+      message: "unreachable",
+    }),
+    true,
+  );
+  assert.equal(isDeepFilterInitError({ type: DF_INIT_ERROR_MESSAGE }), false);
+  assert.equal(
+    isDeepFilterInitError({ type: DF_STATS_MESSAGE, frames: 1 }),
+    false,
+  );
+  assert.equal(isDeepFilterInitError(undefined), false);
 });

@@ -1,0 +1,6 @@
+# Voice noise-suppression models and WASM (packages/client/public/noise-suppression)
+# are pinned by SHA-256 in scripts/verify-noise-suppression-assets.mjs. Keep Git
+# away from their bytes: no line-ending conversion, no textual diff or merge.
+*.wasm binary
+*.onnx binary
+*.gz binary
