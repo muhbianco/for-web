@@ -1,0 +1,22 @@
+{
+  "name": "@muchat/space-server",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Muchat Espaço: servidor autoritativo (posição, salas, portas) e emissor de mídia LiveKit",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"src/**/*.test.ts\"",
+    "cli": "node src/cli.ts",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@muchat/space-core": "workspace:*",
+    "ioredis": "5.10.1",
+    "livekit-server-sdk": "2.19.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.1",
+    "typescript": "^6.0.3"
+  }
+}

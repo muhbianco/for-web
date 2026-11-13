@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>lab espaço</title>
+    <script src="livekit-client.umd.js"></script>
+  </head>
+  <body>
+    <pre id="log"></pre>
+    <script>
+      // Página de teste: uma "pessoa" por aba. O harness chama window.lab.*.
+      const LK = window.LivekitClient;
+      const state = { room: null, disconnectedAt: null, disconnectReason: null };
+
+      function wire(room) {
+        room.on(LK.RoomEvent.Disconnected, (reason) => {
+          state.disconnectedAt = Date.now();
+          state.disconnectReason = reason;
+        });
+      }
+
+      async function inboundAudioBytes() {
+        let total = 0;
+        if (!state.room) return 0;
+        for (const p of state.room.remoteParticipants.values()) {
+          for (const pub of p.trackPublications.values()) {
+            const receiver = pub.track && pub.track.receiver;
+            if (!receiver) continue;
+            const stats = await receiver.getStats();
+            stats.forEach((s) => {
+              if (s.type === "inbound-rtp" && s.kind === "audio") total += s.bytesReceived || 0;
+            });
+          }
+        }
+        return total;
+      }
+
+      window.lab = {
+        async join(url, token, publish) {
+          const room = new LK.Room({ adaptiveStream: false, dynacast: false });
+          wire(room);
+          state.disconnectedAt = null;
+          state.disconnectReason = null;
+          try {
+            await room.connect(url, token, { autoSubscribe: true, maxRetries: 0 });
+          } catch (e) {
+            return { ok: false, name: e && e.name, reason: e && e.reason, status: e && e.status, message: String(e && e.message) };
+          }
+          state.room = room;
+          if (publish) await room.localParticipant.setMicrophoneEnabled(true);
+          return { ok: true, identity: room.localParticipant.identity, room: room.name };
+        },
+        async stats() {
+          const r = state.room;
+          return {
+            state: r ? r.state : "none",
+            remote: r ? [...r.remoteParticipants.keys()].sort() : [],
+            inboundAudioBytes: await inboundAudioBytes(),
+            disconnectedAt: state.disconnectedAt,
+            disconnectReason: state.disconnectReason,
+          };
+        },
+        async mic(on) {
+          if (state.room) await state.room.localParticipant.setMicrophoneEnabled(on);
+        },
+        refreshedToken() {
+          return state.room && state.room.engine ? state.room.engine.token : null;
+        },
+        async leave() {
+          if (state.room) await state.room.disconnect(true);
+        },
+      };
+      document.getElementById("log").textContent = "pronto";
+    </script>
+  </body>
+</html>

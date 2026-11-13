@@ -1,0 +1,9 @@
+# Sem segredo aqui: as chaves entram por LIVEKIT_KEYS (compose, a partir de .env).
+port: 7880
+log_level: info
+rtc:
+  udp_port: 7882
+  tcp_port: 7881
+  use_external_ip: false
+room:
+  auto_create: true

@@ -10,3 +10,4 @@ packages/client/test-results
 .vscode
 .github
 docs
+packages/space-server/lab

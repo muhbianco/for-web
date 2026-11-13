@@ -40,6 +40,17 @@ steps:
       - corepack enable
       - pnpm exec eslint --ext .ts,.tsx packages/client
 
+  # Muchat Espaço: regras compartilhadas e núcleo de mídia (docs/espaco no overlay muchat).
+  space:
+    image: node:24-alpine
+    depends_on: [deps]
+    commands:
+      - corepack enable
+      - pnpm --filter @muchat/space-core test
+      - pnpm --filter @muchat/space-core typecheck
+      - pnpm --filter @muchat/space-server test
+      - pnpm --filter @muchat/space-server typecheck
+
   # O main ainda não passa no tsc (22 erros, parte herdada do upstream): relatório até zerar.
   typecheck:
     image: node:24-alpine

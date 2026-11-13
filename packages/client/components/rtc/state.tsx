@@ -369,10 +369,16 @@ class Voice {
     });
   }
 
+  /**
+   * Joins `channel`. A refused or failed join (join_call error, the LiveKit
+   * admission gate answering 403, no reachable node) never leaves the call
+   * stuck in CONNECTING: the half-made room is torn down and the error is
+   * reported. Pass `rethrow` when the caller retries on its own.
+   */
   async connect(
     channel: Channel,
     auth?: { url: string; token: string },
-    opts?: { recipients?: string[] },
+    opts?: { recipients?: string[]; rethrow?: boolean },
   ) {
     this.disconnect();
 
@@ -506,35 +512,42 @@ class Voice {
       }
     });
 
-    if (!auth) {
-      const selected = await Promise.any(
-        this.config.features.livekit.nodes.map(async (node) => {
-          return fetch(node.public_url.replace("wss", "https")).then(() => {
-            return node.name;
-          });
-        }),
-      );
-      const startingPrivate =
-        (channel.type === "DirectMessage" || channel.type === "Group") &&
-        channel.voiceParticipants.size === 0;
-      const recipients =
-        opts?.recipients ??
-        (startingPrivate ? privateCallTargets(channel) : undefined);
-      auth = await channel.joinCall(selected, true, recipients);
-      if (startingPrivate) {
-        const peerId = recipients?.[0] ?? channel.recipient?.id ?? "";
-        this.beginOutgoingRing(channel, peerId);
-        if (peerId) {
-          void notifyPushRing(channel, peerId).catch(() => {
-            /* push is best-effort; WS ring still works */
-          });
+    try {
+      if (!auth) {
+        const selected = await Promise.any(
+          this.config.features.livekit.nodes.map(async (node) => {
+            return fetch(node.public_url.replace("wss", "https")).then(() => {
+              return node.name;
+            });
+          }),
+        );
+        const startingPrivate =
+          (channel.type === "DirectMessage" || channel.type === "Group") &&
+          channel.voiceParticipants.size === 0;
+        const recipients =
+          opts?.recipients ??
+          (startingPrivate ? privateCallTargets(channel) : undefined);
+        auth = await channel.joinCall(selected, true, recipients);
+        if (startingPrivate) {
+          const peerId = recipients?.[0] ?? channel.recipient?.id ?? "";
+          this.beginOutgoingRing(channel, peerId);
+          if (peerId) {
+            void notifyPushRing(channel, peerId).catch(() => {
+              /* push is best-effort; WS ring still works */
+            });
+          }
         }
       }
-    }
 
-    await room.connect(auth.url, auth.token, {
-      autoSubscribe: false,
-    });
+      await room.connect(auth.url, auth.token, {
+        autoSubscribe: false,
+      });
+    } catch (error) {
+      // Only tear down if a newer connect() has not replaced this room meanwhile.
+      if (this.room() === room) this.disconnect({ silent: true });
+      if (opts?.rethrow) throw error;
+      this.onErr(error);
+    }
   }
 
   /**
@@ -1223,12 +1236,13 @@ class Voice {
       this.sound.playSound("userMoved");
       try {
         if (node && event.token) {
-          await this.connect(dest, {
-            url: node.public_url,
-            token: event.token,
-          });
+          await this.connect(
+            dest,
+            { url: node.public_url, token: event.token },
+            { rethrow: true },
+          );
         } else {
-          await this.connect(dest);
+          await this.connect(dest, undefined, { rethrow: true });
         }
       } catch (error) {
         console.error("[voice] move reconnect failed, retry joinCall", error);

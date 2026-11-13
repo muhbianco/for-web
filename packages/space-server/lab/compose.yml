@@ -1,0 +1,93 @@
+# Laboratório da Fase 1 (Muchat Espaço): prova de isolamento e revogação de mídia.
+# Nada aqui fala com a produção. Chaves geradas por setup.sh em .env (gitignored).
+#
+#   ./setup.sh && docker compose up -d --build livekit valkey gate caddy
+#   docker compose run --rm harness
+#
+# A mesma imagem do LiveKit da hel1 e o mesmo Caddy (tag fixa).
+
+name: muchat-space-lab
+
+networks:
+  lab: {}
+
+services:
+  livekit:
+    image: ghcr.io/stoatchat/livekit-server:v1.9.14
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LAB_LIVEKIT_KEY}: ${LAB_LIVEKIT_SECRET}"
+    volumes:
+      - ./${LIVEKIT_CONFIG:-livekit.yaml}:/etc/livekit.yaml:ro
+    networks: [lab]
+    cpus: 1.5
+    mem_limit: 1g
+
+  valkey:
+    image: valkey/valkey:9-alpine
+    networks:
+      lab:
+        # Nome padrão do Redis no Revolt.toml do Stoat (perfil r5).
+        aliases: [redis]
+
+  gate:
+    build:
+      # livekit-gate mora no repositório do overlay (muchat), ao lado deste worktree.
+      context: ${GATE_SRC:-../../../../muchat-espaco/livekit-gate}
+    environment:
+      GATE_MODE: ${GATE_MODE:-enforce}
+      GATE_REDIS_ADDR: valkey:6379
+    networks:
+      lab:
+        # Nome usado pelo Caddyfile de produção (muchat/Caddyfile).
+        aliases: [livekit-gate]
+    depends_on: [valkey]
+
+  caddy:
+    # LAB_CADDYFILE/LAB_CADDY_IMAGE permitem rodar o Caddyfile e a imagem de produção.
+    image: ${LAB_CADDY_IMAGE:-caddy:2.11.4}
+    environment:
+      HOSTNAME: ":8080"
+    volumes:
+      - ${LAB_CADDYFILE:-./Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ./www:/srv/lab:ro
+    networks: [lab]
+    depends_on: [gate, livekit]
+
+  harness:
+    build:
+      context: ../..
+      dockerfile: space-server/lab/harness.Dockerfile
+    environment:
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_API_KEY: ${LAB_LIVEKIT_KEY}
+      LIVEKIT_API_SECRET: ${LAB_LIVEKIT_SECRET}
+      REDIS_URL: redis://valkey:6379
+      DIRECT_WS: ws://livekit:7880
+      CADDY_HTTP: http://caddy:8080
+    networks: [lab]
+    depends_on: [caddy]
+    profiles: [run]
+    ipc: host
+
+  # --- Perfil r5: o voice-ingress do Stoat recebendo webhooks de rooms msp_* ---
+  database:
+    image: mongo:8.2
+    networks: [lab]
+    profiles: [r5]
+
+  rabbit:
+    image: rabbitmq:4
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbituser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    networks: [lab]
+    profiles: [r5]
+
+  voice-ingress:
+    image: ghcr.io/stoatchat/voice-ingress:v0.15.5
+    volumes:
+      - ./Revolt.lab.toml:/Revolt.toml:ro
+    networks: [lab]
+    depends_on: [database, rabbit, valkey]
+    profiles: [r5]

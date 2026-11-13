@@ -1,0 +1,40 @@
+{
+	admin off
+	# O log de erro (5xx, por exemplo com o controle fora do ar) carrega a URI
+	# inteira, e o sinal do LiveKit traz o token na query. Logger nomeado só
+	# para http.log.error, com o parâmetro apagado (fase-0-achados.md).
+	log errs {
+		include http.log.error
+		format filter {
+			request>uri query {
+				delete access_token
+			}
+		}
+	}
+}
+
+:8080 {
+	# Lista fechada: só a sondagem do nó e o sinal passam, sempre pelo controle.
+	@lk_allowed path /livekit /livekit/ /livekit/rtc /livekit/rtc/v1 /livekit/rtc/validate /livekit/rtc/v1/validate
+	route @lk_allowed {
+		forward_auth gate:8096 {
+			uri /check
+			header_up -Upgrade
+			header_up -Connection
+			transport http {
+				dial_timeout 500ms
+				response_header_timeout 1s
+			}
+		}
+		uri strip_prefix /livekit
+		reverse_proxy livekit:7880
+	}
+	route /livekit* {
+		respond 404
+	}
+
+	handle_path /lab/* {
+		root * /srv/lab
+		file_server
+	}
+}

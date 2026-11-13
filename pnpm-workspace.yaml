@@ -2,6 +2,8 @@ packages:
   - packages/client
   - packages/stoat.js
   - packages/solid-livekit-components
+  - packages/space-core
+  - packages/space-server
 allowBuilds:
   "@swc/core": true
   esbuild: true

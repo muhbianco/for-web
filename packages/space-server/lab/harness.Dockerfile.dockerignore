@@ -1,0 +1,7 @@
+*
+!space-core/package.json
+!space-core/src
+!space-server/package.json
+!space-server/src
+!space-server/lab/e2e
+!space-server/lab/www

@@ -1,0 +1,22 @@
+{
+  "name": "@muchat/space-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Muchat Espaço: regras compartilhadas entre cliente e servidor (nomes de mídia, lease, protocolo)",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "node --test \"src/**/*.test.ts\"",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.7.1",
+    "typescript": "^6.0.3"
+  }
+}
