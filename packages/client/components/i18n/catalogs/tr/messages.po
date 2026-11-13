@@ -919,6 +919,15 @@ msgstr "Kanal Yavaş mod"
 msgid "Channels"
 msgstr "Kanallar"
 
+#: components/space/SpacePage.tsx
+msgid "Chat da sala"
+msgstr ""
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Chat de {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Chat Input"
 msgstr "Sohbet Girdisi"
@@ -2148,6 +2157,11 @@ msgstr "Davet Eden"
 msgid "Invites"
 msgstr "Davetler"
 
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Ir para {0}"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "irrelevant joke badge 1"
 msgstr "alakasız mizah rozeti 1"
@@ -2698,6 +2712,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui falar com o servidor."
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Não dá para chegar nessa sala daqui."
 msgstr ""
 
 #: components/space/AudioCheck.tsx

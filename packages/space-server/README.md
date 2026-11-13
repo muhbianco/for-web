@@ -87,6 +87,17 @@ pelo servidor move a mídia: entrar na sala dá a mídia daquela sala, sair tira
   - Lease perdida (Redis reiniciou): nova concessão.
   - Redis fora do ar: nada muda, porque a lease ainda tem até 120 s.
 
+**Virada do servidor** (`space/spatialSwitch.ts`, ADR 0006): cada servidor ligado em
+`SPACE_ENABLED_SERVERS` (`*` = todos, inclusive os novos) recebe a chave
+`muchat:space:enabled:<servidor>` no Redis. O delta patcheado lê essa chave e recusa `join_call` e
+o mover de voz naquele servidor (`FeatureDisabled{spatial_only}`); DMs e grupos não mudam.
+
+- Na virada, as rooms clássicas daquele servidor são fechadas no LiveKit.
+- Tirar o servidor da variável apaga a chave e devolve a voz clássica.
+- Servidor que o cache não conhece fica como está: uma falha do banco nunca religa a voz
+  clássica em todo lugar.
+- A sincronia roda a cada mudança de estrutura e a cada minuto.
+
 Eventos ao cliente:
 - `media.grant {room_id, url, token, identity, sources, can_subscribe, expires_at}`;
 - `media.revoked {room_id, reason: left|access|regrant|elsewhere}`;

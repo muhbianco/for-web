@@ -3,6 +3,7 @@ import {
   Match,
   Show,
   Switch,
+  createEffect,
   createSignal,
   onCleanup,
   onMount,
@@ -21,7 +22,7 @@ import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
 import { useClient } from "@revolt/client";
-import { useParams } from "@revolt/routing";
+import { useLocation, useParams } from "@revolt/routing";
 import { useVoice } from "@revolt/rtc";
 import { Button, IconButton } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
@@ -32,12 +33,26 @@ import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
 
 /**
- * Full-screen space of a server (route `/server/:server/space`, lazy-loaded so
- * PixiJS never reaches the main bundle). The map is decoration for whoever can
- * see it; the room list carries the same information as text.
+ * Route `/server/:server/space`, lazy-loaded so PixiJS never reaches the main
+ * bundle. The router keeps this component when only `:server` changes, so the
+ * page is recreated per server: each server has its own space.
  */
 export default function SpacePage() {
   const params = useParams<{ server: string }>();
+  return (
+    <Show when={params.server} keyed>
+      {(serverId) => <ServerSpace serverId={serverId} />}
+    </Show>
+  );
+}
+
+/**
+ * Full-screen space of one server. The map is decoration for whoever can see
+ * it; the room list carries the same information as text. `?sala=<channel>`
+ * (the voice channels of the sidebar) walks to that room.
+ */
+function ServerSpace(props: { serverId: string }) {
+  const loc = useLocation();
   const client = useClient();
   const voice = useVoice();
   const { t } = useLingui();
@@ -47,6 +62,7 @@ export default function SpacePage() {
   const [failed, setFailed] = createSignal<string | null>(null);
   const [showList, setShowList] = createSignal(true);
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
+  const [notice, setNotice] = createSignal("");
   let host: HTMLDivElement | undefined;
   let disposed = false;
   let unsubscribe: (() => void) | undefined;
@@ -88,7 +104,28 @@ export default function SpacePage() {
     return null;
   };
 
-  const serverId = params.server;
+  const serverId = props.serverId;
+
+  /** Walk to a room (sidebar link or list); says so when the door will not open. */
+  function goToRoom(roomId: string) {
+    const v = view();
+    if (!v) return;
+    setNotice(v.walkToRoom(roomId) ? "" : t`Não dá para chegar nessa sala daqui.`);
+    host?.focus();
+  }
+
+  // The sidebar's voice channels open `?sala=<id>`: walk there once the map is in.
+  let walkedTo: string | null = null;
+  createEffect(() => {
+    const sala = new URLSearchParams(loc.search).get("sala");
+    if (!sala) {
+      walkedTo = null;
+      return;
+    }
+    if (sala === walkedTo || !view() || !ui()?.location) return;
+    walkedTo = sala;
+    goToRoom(sala);
+  });
 
   onMount(async () => {
     const token = sessionToken(client());
@@ -144,6 +181,9 @@ export default function SpacePage() {
       <Bar>
         <strong>{ui()?.location || t`Espaço`}</strong>
         <Muted>{ui() ? statusText(ui()!.status) : ""}</Muted>
+        <Show when={notice()}>
+          <Muted role="status">{notice()}</Muted>
+        </Show>
         <Show when={ui()?.status === "replaced"}>
           <Button variant="tonal" onPress={() => view()?.takeOver()}>
             {t`Usar aqui`}
@@ -242,13 +282,29 @@ export default function SpacePage() {
                     <For each={wing.rooms}>
                       {(room) => (
                         <li data-here={room.here ? "" : undefined}>
-                          <span>
-                            <Show when={room.isPrivate && !room.canEnter}>
-                              <Symbol size={14}>lock</Symbol>{" "}
-                            </Show>
-                            {room.title}
-                          </span>
-                          <Muted>{room.status}</Muted>
+                          <RoomButton
+                            type="button"
+                            disabled={!room.canEnter || room.here}
+                            onClick={() => goToRoom(room.roomId)}
+                            aria-label={t`Ir para ${room.title}`}
+                          >
+                            <span>
+                              <Show when={room.isPrivate && !room.canEnter}>
+                                <Symbol size={14}>lock</Symbol>{" "}
+                              </Show>
+                              {room.title}
+                            </span>
+                            <Muted>{room.status}</Muted>
+                          </RoomButton>
+                          <Show when={room.canView}>
+                            <ChatLink
+                              href={`/server/${serverId}/channel/${room.roomId}`}
+                              aria-label={t`Chat de ${room.title}`}
+                              title={t`Chat da sala`}
+                            >
+                              <Symbol size={18}>chat</Symbol>
+                            </ChatLink>
+                          </Show>
                         </li>
                       )}
                     </For>
@@ -259,7 +315,7 @@ export default function SpacePage() {
           </List>
         </Show>
       </Body>
-      <SrOnly aria-live="polite">{ui()?.announcement ?? ""}</SrOnly>
+      <SrOnly aria-live="polite">{notice() || ui()?.announcement || ""}</SrOnly>
     </Page>
   );
 }
@@ -338,8 +394,8 @@ const List = styled("aside", {
     "& ul": { listStyle: "none", margin: 0, padding: 0 },
     "& li": {
       display: "flex",
-      flexDirection: "column",
-      padding: "6px 8px",
+      alignItems: "center",
+      gap: "4px",
       borderRadius: "8px",
     },
     "& li[data-here]": {
@@ -366,6 +422,39 @@ const MediaChip = styled("span", {
       background: "var(--md-sys-color-error-container)",
       color: "var(--md-sys-color-on-error-container)",
     },
+  },
+});
+
+const RoomButton = styled("button", {
+  base: {
+    flex: 1,
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    padding: "6px 8px",
+    border: "none",
+    borderRadius: "8px",
+    background: "transparent",
+    color: "inherit",
+    font: "inherit",
+    textAlign: "start",
+    cursor: "pointer",
+    "&:hover:not(:disabled)": { background: "var(--md-sys-color-surface-container-high)" },
+    "&:disabled": { cursor: "default" },
+    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+  },
+});
+
+const ChatLink = styled("a", {
+  base: {
+    display: "grid",
+    placeItems: "center",
+    width: "32px",
+    height: "32px",
+    borderRadius: "8px",
+    color: "var(--md-sys-color-on-surface-variant)",
+    "&:hover": { background: "var(--md-sys-color-surface-container-high)" },
   },
 });
 

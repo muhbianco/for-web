@@ -949,6 +949,15 @@ msgstr "Channel Slowmode"
 msgid "Channels"
 msgstr "Channels"
 
+#: components/space/SpacePage.tsx
+msgid "Chat da sala"
+msgstr "Chat da sala"
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Chat de {0}"
+msgstr "Chat de {0}"
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Chat Input"
 msgstr "Chat Input"
@@ -2186,6 +2195,11 @@ msgstr "Inviter"
 msgid "Invites"
 msgstr "Invites"
 
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Ir para {0}"
+msgstr "Ir para {0}"
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "irrelevant joke badge 1"
 msgstr "irrelevant joke badge 1"
@@ -2750,6 +2764,10 @@ msgstr "Não consegui abrir o checkout. Tente de novo em instantes."
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui falar com o servidor."
 msgstr "Não consegui falar com o servidor."
+
+#: components/space/SpacePage.tsx
+msgid "Não dá para chegar nessa sala daqui."
+msgstr "Não dá para chegar nessa sala daqui."
 
 #: components/space/AudioCheck.tsx
 msgid "Não deu para testar o microfone agora."

@@ -912,6 +912,15 @@ msgstr "Modalità lenta del canale"
 msgid "Channels"
 msgstr "Canali"
 
+#: components/space/SpacePage.tsx
+msgid "Chat da sala"
+msgstr ""
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Chat de {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Chat Input"
 msgstr "Scrittura in chat"
@@ -2136,6 +2145,11 @@ msgstr "Invitante"
 msgid "Invites"
 msgstr "Inviti"
 
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Ir para {0}"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "irrelevant joke badge 1"
 msgstr "premio battuta fuori luogo 1"
@@ -2683,6 +2697,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui falar com o servidor."
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Não dá para chegar nessa sala daqui."
 msgstr ""
 
 #: components/space/AudioCheck.tsx

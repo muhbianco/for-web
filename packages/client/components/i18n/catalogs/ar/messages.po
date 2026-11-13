@@ -941,6 +941,15 @@ msgstr "الوضع البطيء للقناة"
 msgid "Channels"
 msgstr "القنوات"
 
+#: components/space/SpacePage.tsx
+msgid "Chat da sala"
+msgstr ""
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Chat de {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Chat Input"
 msgstr "إدخال الدردشة"
@@ -2173,6 +2182,11 @@ msgstr "الداعي"
 msgid "Invites"
 msgstr "الدعوات"
 
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Ir para {0}"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "irrelevant joke badge 1"
 msgstr "شارة النكتة في غير موضعها 1"
@@ -2723,6 +2737,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui falar com o servidor."
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Não dá para chegar nessa sala daqui."
 msgstr ""
 
 #: components/space/AudioCheck.tsx

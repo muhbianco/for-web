@@ -933,6 +933,15 @@ msgstr ""
 msgid "Channels"
 msgstr "Canales"
 
+#: components/space/SpacePage.tsx
+msgid "Chat da sala"
+msgstr ""
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Chat de {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Chat Input"
 msgstr "Entrada de chat"
@@ -2158,6 +2167,11 @@ msgstr "Invitador"
 msgid "Invites"
 msgstr "Invitaciones"
 
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Ir para {0}"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "irrelevant joke badge 1"
 msgstr ""
@@ -2708,6 +2722,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui falar com o servidor."
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Não dá para chegar nessa sala daqui."
 msgstr ""
 
 #: components/space/AudioCheck.tsx

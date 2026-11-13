@@ -11,6 +11,7 @@ import { LiveKitRoomAdmin, LiveKitTokenMinter, RedisLeaseStore } from "./media/a
 import { MediaController } from "./media/controller.ts";
 import { Sweeper } from "./media/sweeper.ts";
 import { MediaHub } from "./space/roomMedia.ts";
+import { SpatialSwitch } from "./space/spatialSwitch.ts";
 import { Registry } from "./space/registry.ts";
 import { MongoProfileStore } from "./space/profiles.ts";
 import { MongoAssignmentStore } from "./space/store.ts";
@@ -72,6 +73,7 @@ function startMedia() {
   return {
     hub,
     lk,
+    redis,
     ready: () => redis.status === "ready",
     async stop() {
       // Grants are NOT revoked on shutdown: leases outlive a redeploy (120 s)
@@ -120,6 +122,39 @@ async function main() {
   const bonfire = new BonfireClient(env("STOAT_WS_URL", "ws://events:14703"), botToken, cache, log, (event) =>
     routeBonfireEvent(event, cache, structure),
   );
+  // The switch (ADR 0006): enabled servers carry the key the patched delta
+  // reads to refuse classic voice. Kept equal to SPACE_ENABLED_SERVERS after
+  // every structure change (new servers too) and every minute.
+  let switchTimer: ReturnType<typeof setInterval> | undefined;
+  if (media) {
+    const r = media.redis;
+    const spatial = new SpatialSwitch({
+      store: {
+        set: (k, v) => r.set(k, v),
+        del: (k) => r.del(k),
+        async keysWithPrefix(prefix) {
+          const out: string[] = [];
+          let cursor = "0";
+          do {
+            const [next, keys] = await r.scan(cursor, "MATCH", `${prefix}*`, "COUNT", 200);
+            out.push(...keys);
+            cursor = next;
+          } while (cursor !== "0" && out.length < 100_000);
+          return out;
+        },
+      },
+      lk: media.lk,
+      cache,
+      enabled,
+      log,
+    });
+    cache.on((change) => {
+      if (change.kind !== "member") void spatial.sync();
+    });
+    void spatial.sync();
+    switchTimer = setInterval(() => void spatial.sync(), 60_000);
+    switchTimer.unref?.();
+  }
   const gateway = new Gateway({
     auth: api,
     members,
@@ -140,6 +175,7 @@ async function main() {
     log.info("shutting down", { signal });
     bonfire.stop();
     structure.stop();
+    if (switchTimer) clearInterval(switchTimer);
     await gateway.close().catch(() => undefined);
     await media?.stop();
     await mongo.close().catch(() => undefined);

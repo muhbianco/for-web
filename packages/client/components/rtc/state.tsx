@@ -75,6 +75,7 @@ import {
 } from "./voiceEngineStatus";
 import { VoiceProcessor } from "./VoiceProcessor";
 import { participantUserId } from "./identity";
+import { isSpaceServer } from "../space/config";
 
 type State =
   | "READY"
@@ -1092,6 +1093,8 @@ class Voice {
   }
 
   showCard(channel: Channel) {
+    // In a space server the room's call lives in the map (and its floating card).
+    if (channel.serverId && isSpaceServer(channel.serverId)) return false;
     return (
       channel.isVoice &&
       (this.channel()?.id === channel.id ||
@@ -1190,6 +1193,14 @@ class Voice {
   }
 
   private onErr(e: unknown) {
+    // A server switched to the Muchat Espaço refuses classic voice
+    // (FeatureDisabled{spatial_only}, raw JSON text from stoat-api): its rooms
+    // are reached by walking in on the map, not by this call. Not a failure.
+    if (typeof e === "string" && e.includes('"spatial_only"')) {
+      console.warn("[voice] this server's voice lives in the space");
+      return;
+    }
+
     // Always leave a trace: a silently swallowed rejection here is exactly how
     // screen sharing "did nothing" with no error for days.
     console.error("[voice]", e);

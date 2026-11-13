@@ -41,6 +41,7 @@ import {
 } from "@revolt/ui/components/features/voice/VoiceMemberDrag";
 import { createDragHandle } from "@revolt/ui/components/utils/Draggable";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
+import { isSpaceServer } from "@revolt/space/config";
 import { SpaceSidebarEntry } from "@revolt/space/SpaceSidebarEntry";
 
 import MdChevronRight from "@material-design-icons/svg/filled/chevron_right.svg?component-solid";
@@ -498,11 +499,21 @@ function Entry(
   const inCall = () => props.channel.id === voice.channel()?.id;
 
   /**
+   * In a server switched to the Muchat Espaço, a voice channel is a room of
+   * the map: the link opens the space and walks there. Classic voice is off
+   * there (the server refuses join_call), and its text chat stays reachable
+   * from the room list.
+   */
+  const asRoom = () =>
+    props.channel.isVoice && isSpaceServer(props.channel.serverId);
+
+  /**
    * Clicking a voice channel joins it, like every other voice client does.
    *
    * Navigation still happens through the link; this only adds the connect.
    */
   function onEntryClick() {
+    if (asRoom()) return;
     if (!props.channel.isVoice || inCall()) return;
     if (!props.channel.havePermission("Connect")) return;
     void voice.connect(props.channel);
@@ -522,7 +533,9 @@ function Entry(
 
   return (
     <div
-      data-voice-drop={props.channel.isVoice ? props.channel.id : undefined}
+      data-voice-drop={
+        props.channel.isVoice && !asRoom() ? props.channel.id : undefined
+      }
       style={{
         outline: voiceDrag?.isDropTarget(props.channel.id)
           ? "2px solid var(--md-sys-color-primary)"
@@ -533,7 +546,11 @@ function Entry(
     <Column gap="sm">
       <div {...createDragHandle(props.dragDisabled, props.setDragDisabled)}>
       <MenuButton
-        href={`/server/${props.channel.serverId}/channel/${props.channel.id}`}
+        href={
+          asRoom()
+            ? `/server/${props.channel.serverId}/space?sala=${props.channel.id}`
+            : `/server/${props.channel.serverId}/channel/${props.channel.id}`
+        }
         onClick={onEntryClick}
         use:floating={props.menuGenerator(props.channel)}
         size="normal"
@@ -542,6 +559,13 @@ function Entry(
         icon={
           <>
             <Switch fallback={<Symbol>grid_3x3</Symbol>}>
+              <Match when={asRoom()}>
+                <Symbol
+                  color={inCall() ? "var(--md-sys-color-primary)" : undefined}
+                >
+                  meeting_room
+                </Symbol>
+              </Match>
               <Match when={props.channel.isVoice}>
                 <Symbol
                   color={inCall() ? "var(--md-sys-color-primary)" : undefined}

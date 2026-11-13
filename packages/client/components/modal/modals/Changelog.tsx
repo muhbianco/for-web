@@ -20,7 +20,13 @@ export interface ChangelogResponse {
   updated_at?: string;
 }
 
-const CHANGELOG_ENDPOINT = "https://changelog.stoat.chat/v1/changelogs/latest";
+/**
+ * Muchat's own release notes, served by the overlay from brand/public
+ * (muchat/brand/public/changelog/latest.json). Same origin on web, desktop
+ * and Android. The upstream feed (changelog.stoat.chat) told Muchat users
+ * about Stoat releases they do not run.
+ */
+const CHANGELOG_ENDPOINT = "/muchat-brand/changelog/latest.json";
 
 export async function fetchLatestChangelog(): Promise<ChangelogResponse | null> {
   try {

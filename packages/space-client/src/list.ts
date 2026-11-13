@@ -13,6 +13,8 @@ export interface ListRoom {
   here: boolean;
   canEnter: boolean;
   isPrivate: boolean;
+  /** The viewer may see the room's name and chat (Stoat ViewChannel). */
+  canView: boolean;
   occupants: number | null;
   status: string;
 }
@@ -68,6 +70,7 @@ export function buildList(world: World): ListWing[] {
       here,
       canEnter: view?.can_enter ?? false,
       isPrivate: view?.private ?? true,
+      canView: view?.label != null,
       occupants,
       status: parts.join(" · "),
     };
