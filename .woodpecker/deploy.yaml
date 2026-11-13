@@ -47,7 +47,7 @@ steps:
       - /var/run/docker.sock:/var/run/docker.sock
     when:
       - path:
-          include: ["packages/space-core/**", "packages/space-server/**", "pnpm-lock.yaml"]
+          include: ["packages/space-core/**", "packages/space-server/**", "pnpm-lock.yaml", ".woodpecker/deploy.yaml"]
     commands:
       - >-
         hel1-build --image muchat-space --tag ${CI_COMMIT_SHA:0:12} --extra-tag latest --local
@@ -61,11 +61,12 @@ steps:
       - /usr/src/stoat:/usr/src/stoat:ro
     when:
       - path:
-          include: ["packages/space-core/**", "packages/space-server/**", "pnpm-lock.yaml"]
+          include: ["packages/space-core/**", "packages/space-server/**", "pnpm-lock.yaml", ".woodpecker/deploy.yaml"]
     commands:
+      # hel1-deploy confere o commit no clone do CI: rode-o no workspace, nunca depois de um
+      # `cd /usr/src/stoat` (a pasta do overlay não tem o histórico do for-web).
       - |
-        cd /usr/src/stoat
-        if ! docker compose -p stoat config --services | grep -qx space; then
+        if ! (cd /usr/src/stoat && docker compose -p stoat config --services) | grep -qx space; then
           echo "space: serviço ainda desligado no overlay (COMPOSE_PROFILES); imagem pronta, nada a subir"
           exit 0
         fi
