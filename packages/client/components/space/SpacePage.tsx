@@ -17,6 +17,7 @@ import {
   wingHeading,
 } from "@muchat/space-client";
 import { type ProfileView, ONBOARDING_VERSION } from "@muchat/space-core";
+import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
 import { useClient } from "@revolt/client";
@@ -189,12 +190,21 @@ export default function SpacePage() {
         </IconButton>
       </Bar>
       <Body data-list={showList() ? "" : undefined}>
-        <MapHost
-          ref={host}
-          tabIndex={0}
-          role="application"
-          aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas tem as mesmas informações.`}
-        >
+        {/*
+          Two siblings, never one: the map canvas is appended by PixiJS to a
+          native element with no JSX children, so Solid never rewrites it.
+          Overlays (first access, notices) live next to it. When the only
+          dynamic child of an element becomes empty, Solid clears the whole
+          element (`textContent = ""`), and that used to wipe the map.
+        */}
+        <div class={mapArea}>
+          <div
+            ref={host}
+            class={mapCanvas}
+            tabIndex={0}
+            role="application"
+            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas tem as mesmas informações.`}
+          />
           <Switch>
             <Match when={failed()}>{(msg) => <Notice>{msg()}</Notice>}</Match>
             <Match
@@ -221,7 +231,7 @@ export default function SpacePage() {
               />
             </Match>
           </Switch>
-        </MapHost>
+        </div>
         <Show when={showList()}>
           <List aria-label={t`Lista de salas`}>
             <For each={ui()?.list ?? []}>
@@ -295,17 +305,21 @@ const Body = styled("div", {
   },
 });
 
-const MapHost = styled("div", {
-  base: {
-    position: "relative",
-    minWidth: 0,
-    minHeight: 0,
-    overflow: "hidden",
-    outline: "none",
-    "& canvas": { position: "absolute", inset: 0 },
-    "&:focus-visible": {
-      boxShadow: "inset 0 0 0 3px var(--md-sys-color-primary)",
-    },
+const mapArea = css({
+  position: "relative",
+  minWidth: 0,
+  minHeight: 0,
+  overflow: "hidden",
+});
+
+/** Only the map's own canvas: the first-access previews are canvases too. */
+const mapCanvas = css({
+  position: "absolute",
+  inset: 0,
+  outline: "none",
+  "& > canvas": { position: "absolute", inset: 0 },
+  "&:focus-visible": {
+    boxShadow: "inset 0 0 0 3px var(--md-sys-color-primary)",
   },
 });
 
