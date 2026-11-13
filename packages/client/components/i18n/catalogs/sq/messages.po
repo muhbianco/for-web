@@ -206,6 +206,10 @@ msgstr ""
 msgid "{usernames} reacted"
 msgstr ""
 
+#: components/space/Onboarding.tsx
+msgid "+ e − mudam o zoom. Esc cancela o caminho."
+msgstr ""
+
 #: components/ui/components/features/messaging/elements/SystemMessage.tsx
 msgid "<0/> has been added by <1/>"
 msgstr ""
@@ -356,6 +360,10 @@ msgstr ""
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Aberto em outra aba"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Able to access channels on this server"
 msgstr ""
@@ -442,6 +450,10 @@ msgstr "I avancuar"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "aguardando a primeira janela"
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Algumas salas têm a porta fechada para você. A lista de salas ao lado mostra tudo em texto, se preferir não usar o mapa."
 msgstr ""
 
 #: src/interface/Friends.tsx
@@ -556,6 +568,10 @@ msgstr ""
 msgid "Assign Roles"
 msgstr "Cakto role"
 
+#: components/space/Onboarding.tsx
+msgid "Atravesse a porta para entrar numa sala; saia por ela quando quiser."
+msgstr ""
+
 #: components/modal/modals/ScreenShareSettings.tsx
 msgid "Audio disabled by browser"
 msgstr ""
@@ -566,6 +582,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Áudio reconstruído"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Aumentar zoom"
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -730,6 +750,10 @@ msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Bypasses slowmode in channels"
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
@@ -1007,8 +1031,20 @@ msgstr ""
 msgid "Como a rede está se comportando agora, por pessoa. Abra isto durante uma chamada com problema e copie o resultado."
 msgstr ""
 
+#: components/space/Onboarding.tsx
+msgid "Como andar"
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Compartilhar tela"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Conectado"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Conectando ao espaço…"
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -1052,6 +1088,10 @@ msgstr ""
 #: components/modal/modals/ReportContent.tsx
 msgid "Content breaks one or more laws"
 msgstr "Përmbajtja shkel një ose më shumë ligje"
+
+#: components/space/Onboarding.tsx
+msgid "Continuar"
+msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Continuar no Mercado Pago"
@@ -1443,6 +1483,10 @@ msgstr "Fshij Rolin"
 msgid "Delete Server"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Desconectado"
+msgstr ""
+
 #. placeholder {0}: props.invite.username
 #: components/modal/modals/AddBot.tsx
 msgid "Description provided by {0}"
@@ -1458,6 +1502,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Diagnóstico da chamada"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Diminuir zoom"
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -1713,8 +1761,33 @@ msgstr ""
 msgid "Enter your preferred username."
 msgstr "Shkruani emrin e dëshiruar."
 
+#: components/space/Onboarding.tsx
+msgid "Entrar no espaço"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Entre em uma chamada para ver os números."
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Entre na sua conta para usar o espaço."
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Escolha seu personagem"
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Escolher personagem"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Esconder lista de salas"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+#: components/space/SpaceSidebarEntry.tsx
+msgid "Espaço"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
@@ -2244,6 +2317,10 @@ msgstr ""
 msgid "limitada por"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Lista de salas"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Listen"
 msgstr ""
@@ -2337,6 +2414,10 @@ msgstr "Menaxho serverin"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Manage Webhooks"
 msgstr "Menaxho Webhooks"
+
+#: components/space/SpacePage.tsx
+msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas tem as mesmas informações."
+msgstr ""
 
 #: components/modal/modals/ChannelToggleMature.tsx
 msgid "Mark as mature"
@@ -2518,6 +2599,10 @@ msgstr ""
 msgid "More Contrast"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Mostrar lista de salas"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Move Members"
 msgstr "Zhvendos anëtarët"
@@ -2616,6 +2701,10 @@ msgstr ""
 msgid "Não consegui falar com o servidor."
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
 msgstr ""
@@ -2707,6 +2796,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O Mercado Pago pede e-mail no apoio mensal."
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "O Muchat virou um espaço"
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -2872,6 +2965,15 @@ msgstr ""
 msgid "Permissions available without any role"
 msgstr ""
 
+#. placeholder {0}: i + 1
+#: components/space/Onboarding.tsx
+msgid "Personagem {0}"
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Personagens"
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 #~ msgid "Pick a Screen to Share"
 #~ msgstr ""
@@ -2977,6 +3079,10 @@ msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "Provided email or password is wrong."
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Pular"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -3372,6 +3478,10 @@ msgstr ""
 msgid "Select your language"
 msgstr "Zgjidhni gjuhën tuaj"
 
+#: components/space/SpacePage.tsx
+msgid "Sem conexão com o espaço — tentando de novo"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Send a short sound alert to a member in a voice channel"
 msgstr ""
@@ -3471,6 +3581,10 @@ msgstr ""
 msgid "Server Roles"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Sessão expirada"
+msgstr ""
+
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Sessions"
 msgstr "Seancat"
@@ -3481,6 +3595,10 @@ msgstr ""
 
 #: components/modal/modals/CustomStatus.tsx
 msgid "Set your status"
+msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Setas ou W A S D para andar; clique ou toque para ir até um ponto."
 msgstr ""
 
 #: components/modal/modals/ServerInfo.tsx
@@ -4130,6 +4248,10 @@ msgstr "Ngarko skedarë"
 msgid "Upload to Gifbox"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Usar aqui"
+msgstr ""
+
 #: components/modal/modals/JoinServer.tsx
 msgid "Use a code or invite link"
 msgstr ""
@@ -4292,6 +4414,10 @@ msgstr ""
 msgid "Você é apoiador."
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Você não é membro deste servidor"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Voice"
@@ -4320,6 +4446,10 @@ msgstr ""
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #~ msgid "Voice Processing"
 #~ msgstr ""
+
+#: components/space/Onboarding.tsx
+msgid "Voltar"
+msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"

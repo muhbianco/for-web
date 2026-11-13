@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Espaço (dev)</title>
+    <style>
+      :root {
+        --bg: #14151c;
+        --panel: #1e2029;
+        --text: #eceaf2;
+        --muted: #a5a3b3;
+        --accent: #7aa2ff;
+        --line: #2d3040;
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
+      .app { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: auto 1fr; height: 100%; }
+      header { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
+      header .where { font-weight: 600; }
+      header .status { color: var(--muted); }
+      header .spacer { flex: 1; }
+      header button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+      #space { position: relative; min-height: 0; min-width: 0; overflow: hidden; outline: none; }
+      #space canvas { position: absolute; inset: 0; }
+      #space:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); }
+      aside { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 12px; }
+      aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
+      aside ul { list-style: none; margin: 0; padding: 0; }
+      aside li { padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; }
+      aside li.here { background: #2a3150; }
+      aside li .status { color: var(--muted); font-size: 12px; }
+      .help { color: var(--muted); font-size: 12px; margin-top: 18px; }
+      .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+      @media (max-width: 760px) { .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr 40%; } aside { border-left: 0; border-top: 1px solid var(--line); } }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <span class="where" id="where">Carregando mapa…</span>
+        <span class="status" id="status">Conectando ao espaço…</span>
+        <span class="spacer"></span>
+        <span id="who"></span>
+        <button type="button" id="zoom-out" aria-label="Diminuir zoom">−</button>
+        <button type="button" id="zoom-in" aria-label="Aumentar zoom">+</button>
+      </header>
+      <div
+        id="space"
+        tabindex="0"
+        role="application"
+        aria-label="Mapa do espaço. Use as setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas ao lado tem as mesmas informações."
+      ></div>
+      <aside aria-label="Lista de salas">
+        <div id="list"></div>
+        <p class="help">Dev: entre como <a href="?as=ana">Ana</a>, <a href="?as=bia">Bia</a> (diretoria) ou <a href="?as=caio">Caio</a>. Abra duas abas para ver uma pessoa andando na outra.</p>
+      </aside>
+    </div>
+    <div class="sr-only" aria-live="polite" id="live"></div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -8,15 +8,19 @@
   "scripts": {
     "test": "node --test \"src/**/*.test.ts\"",
     "cli": "node src/cli.ts",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "start": "node src/main.ts"
   },
   "dependencies": {
     "@muchat/space-core": "workspace:*",
     "ioredis": "5.10.1",
-    "livekit-server-sdk": "2.19.2"
+    "livekit-server-sdk": "2.19.2",
+    "mongodb": "7.7.0",
+    "ws": "8.18.2"
   },
   "devDependencies": {
     "@types/node": "^24.7.1",
+    "@types/ws": "8.18.1",
     "typescript": "^6.0.3"
   }
 }

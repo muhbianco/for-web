@@ -3,7 +3,7 @@
  */
 import "./sentry";
 
-import { JSX, onMount } from "solid-js";
+import { JSX, lazy, onMount } from "solid-js";
 import { render } from "solid-js/web";
 
 import { attachDevtoolsOverlay } from "@solid-devtools/overlay";
@@ -52,6 +52,9 @@ import { Discover } from "./interface/Discover";
 import { Friends } from "./interface/Friends";
 import { HomePage } from "./interface/Home";
 import { ServerHome } from "./interface/ServerHome";
+
+// Muchat Espaço: PixiJS stays out of the main bundle (loaded with this route).
+const SpacePage = lazy(() => import("@revolt/space/SpacePage"));
 import { ChannelPage } from "./interface/channels/ChannelPage";
 import "./serviceWorkerInterface";
 import { watchBootSplash } from "./splash";
@@ -171,6 +174,7 @@ const routes = () => (
       <Route path="/friends" component={Friends} />
       <Route path="/server/:server/*">
         <Route path="/channel/:channel/*" component={ChannelPage} />
+        <Route path="/space" component={SpacePage} />
         <Route path="/*" component={ServerHome} />
       </Route>
       <Route path="/channel/:channel/*" component={ChannelPage} />

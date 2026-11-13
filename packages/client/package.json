@@ -77,6 +77,8 @@
     "@material/material-color-utilities": "^0.3.0",
     "@material/web": "^2.3.0",
     "@minht11/solid-virtual-container": "^0.2.1",
+    "@muchat/space-client": "workspace:*",
+    "@muchat/space-core": "workspace:*",
     "@panzoom/panzoom": "^4.6.0",
     "@sentry/browser": "^8.55.0",
     "@solid-aria/button": "^0.1.3",

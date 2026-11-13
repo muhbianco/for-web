@@ -50,6 +50,8 @@ steps:
       - pnpm --filter @muchat/space-core typecheck
       - pnpm --filter @muchat/space-server test
       - pnpm --filter @muchat/space-server typecheck
+      - pnpm --filter @muchat/space-client test
+      - pnpm --filter @muchat/space-client typecheck
 
   # O main ainda não passa no tsc (22 erros, parte herdada do upstream): relatório até zerar.
   typecheck:

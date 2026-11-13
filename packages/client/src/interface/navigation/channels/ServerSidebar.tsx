@@ -41,6 +41,7 @@ import {
 } from "@revolt/ui/components/features/voice/VoiceMemberDrag";
 import { createDragHandle } from "@revolt/ui/components/utils/Draggable";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
+import { SpaceSidebarEntry } from "@revolt/space/SpaceSidebarEntry";
 
 import MdChevronRight from "@material-design-icons/svg/filled/chevron_right.svg?component-solid";
 import MdSettings from "@material-symbols/svg-400/outlined/settings-fill.svg?component-solid";
@@ -232,6 +233,7 @@ export const ServerSidebar = (props: Props) => {
         style={{ "flex-grow": 1, "margin-bottom": "var(--gap-md)" }}
         use:floating={props.menuGenerator(props.server)}
       >
+        <SpaceSidebarEntry server={props.server} />
         <VoiceMemberDragProvider>
         <Draggable
           dragHandles
