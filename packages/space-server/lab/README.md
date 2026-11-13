@@ -44,6 +44,35 @@ docker compose up -d --build livekit valkey gate caddy
 docker compose --profile run run --rm --no-deps harness
 ```
 
-Desligar: `docker compose --profile run --profile r5 down`.
+## Fase 3d: voz nas salas, fluxo completo (perfil `space`)
+
+O servidor do espaço sobe da **mesma imagem da hel1** (`packages/space-server/Dockerfile`). Junto
+vêm o Mongo e um Stoat simulado (`e2e/stoatSim.ts`): REST, bonfire e a semente do banco
+`revolt`. O `Ready` do bot simulado deixa de fora a sala privada, como o do Stoat real.
+
+A página de teste (`www/space.html`, de `e2e/spacePage.ts`) usa, sem PixiJS:
+- o protocolo, o mundo, o movimento e o `MediaLink` do app;
+- o `livekit-client` no lugar do `Voice`.
+
+O Caddy do laboratório tem a rota `/_muchat/space`, e o gate fica em `enforce`.
+
+```bash
+pnpm --filter @muchat/space-server lab:bundle      # na raiz do for-web, no Windows: www/space-lab.js
+# no WSL, com `wsl -e sleep 5400` segurando o Docker acordado:
+docker compose --profile space up -d --build livekit valkey gate caddy database stoat-sim space
+docker compose --profile run --profile space build harness
+docker compose --profile run --profile space run --rm --no-deps harness node space-server/lab/e2e/space.ts
+```
+
+Reinício sob uma chamada: rode o harness com `-e SCENARIO=restart`. Quando ele imprimir
+`RESTART_NOW`, faça `docker compose --profile space restart space`.
+
+**Pare o `space` antes da bateria da fase 1.** Os IDs de sala coincidem, e a varredura dele
+apagaria as salas de teste.
+
+Rodadas com menos de 60 s de intervalo herdam o estado da anterior, porque o avatar fica na
+tolerância de reconexão.
+
+Desligar: `docker compose --profile run --profile r5 --profile space down`.
 
 A saída termina com `RESUMO n/m ok` e uma linha `RESULTS_JSON` com o detalhe de cada caso.

@@ -29,6 +29,7 @@ export function voicePort(voice: Voice, client: () => Client): VoicePort {
     },
     disconnect: () => voice.disconnect(),
     identity: () => voice.room()?.localParticipant?.identity || null,
+    live: () => voice.state() === "CONNECTED",
     busyElsewhere: (roomId) => {
       const current = voice.channel();
       return !!current && current.id !== roomId;

@@ -23,8 +23,13 @@ export interface VoicePort {
   connect(grant: MediaGrant): Promise<void>;
   /** Leaves the current call. Only called while the call is this space's. */
   disconnect(): void;
-  /** LiveKit identity of the call the app is in now, or null. */
+  /**
+   * LiveKit identity of the call the app holds now, connected or not (a call
+   * LiveKit dropped is still held until the app leaves it), or null.
+   */
   identity(): string | null;
+  /** True while that call is connected. */
+  live(): boolean;
   /** True when the app is in a call of another channel (a DM, a group, another room). */
   busyElsewhere(roomId: string): boolean;
 }
@@ -108,7 +113,7 @@ export class MediaLink {
     const intent = this.intent;
     this.intent = false;
     this.active = { roomId: d.room_id, identity: d.identity };
-    if (this.o.voice.identity() === d.identity) {
+    if (this.o.voice.identity() === d.identity && this.o.voice.live()) {
       // Same admission still connected (our socket came back, a fresh token): nothing to do.
       this.attempt = 0;
       return this.set({ kind: "connected", roomId: d.room_id });
@@ -186,6 +191,23 @@ export class MediaLink {
       this.dropTimer = null;
       if (this.active?.roomId === roomId && this.status.kind === "connected") this.failed(roomId);
     }, this.o.dropGraceMs);
+  }
+
+  /**
+   * The space session ended here (another tab took over, the Stoat session
+   * ended): leave this space's call, keep nothing pending. A later session
+   * (takeover) starts over from the server's events.
+   */
+  detach() {
+    if (this.destroyed) return;
+    this.clearTimers();
+    this.connectSeq++;
+    const ours = this.ours() || this.status.kind === "connecting";
+    this.active = null;
+    this.attempt = 0;
+    this.intent = false;
+    if (ours) this.o.voice.disconnect();
+    this.set({ kind: "idle" });
   }
 
   /** "Tentar de novo", "Usar aqui", "Voltar ao áudio". */

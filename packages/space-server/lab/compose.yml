@@ -65,16 +65,64 @@ services:
       REDIS_URL: redis://valkey:6379
       DIRECT_WS: ws://livekit:7880
       CADDY_HTTP: http://caddy:8080
+      SPACE_INTERNAL: http://space:8095
+      STOAT_SIM: http://stoat-sim:14702
+      SCENARIO: ${SCENARIO:-main}
     networks: [lab]
     depends_on: [caddy]
     profiles: [run]
     ipc: host
 
+  # --- Perfil space (fase 3d): o servidor do espaço da imagem de produção ---
+  # Stoat simulado: REST, bonfire e a semente do banco `revolt` (lab/e2e/stoatSim.ts).
+  stoat-sim:
+    build:
+      context: ../..
+      dockerfile: space-server/lab/harness.Dockerfile
+    command: ["node", "space-server/lab/e2e/stoatSim.ts"]
+    environment:
+      MONGO_URL: mongodb://database:27017
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:14702/_lab/health').then(r=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+    networks: [lab]
+    depends_on: [database]
+    profiles: [space]
+
+  space:
+    build:
+      # A mesma imagem que vai para a hel1 (muchat-space).
+      context: ../../..
+      dockerfile: packages/space-server/Dockerfile
+    environment:
+      SPACE_BOT_TOKEN: lab-bot-token-0000000000
+      STOAT_API_URL: http://stoat-sim:14702
+      STOAT_WS_URL: ws://stoat-sim:14702/ws
+      MONGO_URL: mongodb://database:27017
+      REDIS_URL: redis://valkey:6379
+      LIVEKIT_URL: http://livekit:7880
+      LIVEKIT_PUBLIC_URL: ws://localhost:8080/livekit
+      LIVEKIT_SPACE_KEY: ${LAB_LIVEKIT_KEY}
+      LIVEKIT_SPACE_SECRET: ${LAB_LIVEKIT_SECRET}
+      SPACE_ENABLED_SERVERS: "*"
+      SPACE_ALLOWED_ORIGINS: http://localhost:8080
+    networks: [lab]
+    depends_on:
+      stoat-sim:
+        condition: service_healthy
+      valkey:
+        condition: service_started
+      livekit:
+        condition: service_started
+    profiles: [space]
+
   # --- Perfil r5: o voice-ingress do Stoat recebendo webhooks de rooms msp_* ---
   database:
     image: mongo:8.2
     networks: [lab]
-    profiles: [r5]
+    profiles: [r5, space]
 
   rabbit:
     image: rabbitmq:4

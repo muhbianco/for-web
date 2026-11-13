@@ -10,7 +10,8 @@
     "cli": "node src/cli.ts",
     "typecheck": "tsc -p tsconfig.json",
     "start": "node src/main.ts",
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "lab:bundle": "node lab/bundle.mjs"
   },
   "dependencies": {
     "@muchat/space-core": "workspace:*",

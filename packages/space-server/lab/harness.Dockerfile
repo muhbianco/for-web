@@ -4,7 +4,8 @@ FROM mcr.microsoft.com/playwright:v1.60.0-noble
 WORKDIR /app
 RUN printf '{"name":"lab-harness","private":true,"type":"module"}\n' > package.json \
  && npm install --no-audit --no-fund --omit=dev \
-      ioredis@5.10.1 livekit-server-sdk@2.19.2 zod@4.6.7 playwright@1.60.0
+      ioredis@5.10.1 livekit-server-sdk@2.19.2 zod@4.6.7 playwright@1.60.0 \
+      ws@8.18.2 mongodb@7.7.0
 COPY space-core/package.json /app/space-core/package.json
 COPY space-core/src /app/space-core/src
 COPY space-server/package.json /app/space-server/package.json

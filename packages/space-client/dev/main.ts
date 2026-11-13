@@ -42,6 +42,7 @@ const voice: VoicePort = {
     fakeCall.identity = fakeCall.room = null;
   },
   identity: () => fakeCall.identity,
+  live: () => fakeCall.identity !== null,
   busyElsewhere: (roomId) => fakeCall.room !== null && fakeCall.room !== roomId,
 };
 const MEDIA: Record<MediaStatus["kind"], string> = {

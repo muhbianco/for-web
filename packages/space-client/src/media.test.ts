@@ -9,10 +9,13 @@ const OTHER = "01JPRV00000000000000000000";
 /** The app's voice, reduced to what MediaLink sees. */
 class FakeVoice implements VoicePort {
   current: { identity: string; channel: string } | null = null;
+  /** LiveKit dropped the call; the app still holds it. */
+  dropped = false;
   pending: Array<{ grant: MediaGrant; resolve: () => void; reject: (e: unknown) => void }> = [];
   disconnects = 0;
   connect(grant: MediaGrant): Promise<void> {
     this.current = null;
+    this.dropped = false;
     return new Promise((resolve, reject) => {
       this.pending.push({
         grant,
@@ -27,9 +30,13 @@ class FakeVoice implements VoicePort {
   disconnect() {
     this.disconnects++;
     this.current = null;
+    this.dropped = false;
   }
   identity() {
     return this.current?.identity ?? null;
+  }
+  live() {
+    return this.current !== null && !this.dropped;
   }
   busyElsewhere(roomId: string) {
     return this.current !== null && this.current.channel !== roomId;
@@ -224,4 +231,45 @@ test("closing the space leaves only its own call", async () => {
   b.link.onGrant(grant("sp_A_1"));
   b.link.destroy();
   assert.equal(b.voice.disconnects, 0);
+});
+
+test("the server removes us first, then revokes: the dropped call is left, not kept", async () => {
+  const { voice, timers, link } = setup();
+  link.roomChanged(ROOM);
+  link.onGrant(grant("sp_A_1"));
+  voice.pending[0]!.resolve();
+  await tick();
+  voice.dropped = true; // LiveKit removed the participant before the WS event
+  link.voiceChanged("dropped");
+  link.onRevoked({ room_id: ROOM, reason: "left" });
+  assert.equal(voice.disconnects, 1, "the held, dead call is cleaned up");
+  assert.equal(voice.identity(), null);
+  assert.deepEqual(link.status, { kind: "idle" });
+  assert.equal(timers.queue.length, 0);
+});
+
+test("a reissued token for a dropped call reconnects instead of claiming it is up", async () => {
+  const { voice, link } = setup();
+  link.roomChanged(ROOM);
+  link.onGrant(grant("sp_A_1"));
+  voice.pending[0]!.resolve();
+  await tick();
+  voice.dropped = true;
+  link.onGrant(grant("sp_A_1")); // same admission, fresh token
+  assert.equal(voice.pending.length, 2, "connects again");
+  assert.deepEqual(link.status, { kind: "connecting", roomId: ROOM });
+});
+
+test("another tab took the session: this one leaves its call and waits", async () => {
+  const { voice, timers, link } = setup();
+  link.roomChanged(ROOM);
+  link.onGrant(grant("sp_A_1"));
+  voice.pending[0]!.resolve();
+  await tick();
+  voice.dropped = true; // LiveKit kicked the duplicate identity
+  link.voiceChanged("dropped");
+  link.detach();
+  assert.equal(voice.disconnects, 1);
+  assert.deepEqual(link.status, { kind: "idle" });
+  assert.equal(timers.queue.length, 0, "no retry from a replaced tab");
 });

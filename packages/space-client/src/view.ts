@@ -74,7 +74,11 @@ export class SpaceView {
       sessionToken: opts.sessionToken,
       serverId: opts.serverId,
       client: opts.client,
-      onStatus: (status) => this.patch({ status }),
+      onStatus: (status) => {
+        // The session is over here (another tab, expired, not a member): leave its call.
+        if (status === "replaced" || status === "unauthenticated" || status === "not_member") this.media?.detach();
+        this.patch({ status });
+      },
       onEvent: (e) => void this.onEvent(e),
     });
     this.media = opts.voice

@@ -33,6 +33,13 @@
 		respond 404
 	}
 
+	# Servidor do espaço (perfil space), como na produção (muchat/Caddyfile).
+	@space path /_muchat/space/*
+	route @space {
+		uri strip_prefix /_muchat/space
+		reverse_proxy space:8095
+	}
+
 	handle_path /lab/* {
 		root * /srv/lab
 		file_server
