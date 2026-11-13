@@ -4,8 +4,7 @@ import lnk from "lnk";
 import { lstat, readdir, readlink, rmdir, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 
-import { fetchDeepFilterAssets } from "./fetch-deepfilternet-assets.mjs";
-import { fetchSileroVadAssets } from "./fetch-silero-vad-assets.mjs";
+import { verifyNoiseSuppressionAssets } from "./verify-noise-suppression-assets.mjs";
 
 const publicFolder = resolve("public");
 const path = resolve("public", "assets");
@@ -36,8 +35,8 @@ async function createSymlink() {
   }
 }
 
-await fetchDeepFilterAssets();
-await fetchSileroVadAssets();
+// Committed and pinned by SHA-256: no network, and a bad copy fails the build.
+await verifyNoiseSuppressionAssets();
 
 try {
   await lstat(path);

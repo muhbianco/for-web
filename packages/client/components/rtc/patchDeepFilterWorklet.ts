@@ -5,7 +5,8 @@
  * addModule so we always fill the quantum and prime two frames of latency.
  *
  * The same patch adds per-frame timing so the main thread can see when the
- * model does not keep up with real time (see DeepFilterStats).
+ * model does not keep up with real time (see DeepFilterStats), and reports
+ * a failed model load instead of swallowing it (see DeepFilterInitError).
  */
 
 /** `type` of the stats message the patched worklet posts on its port. */
@@ -34,6 +35,22 @@ export function isDeepFilterStats(data: unknown): data is DeepFilterStats {
     typeof d.slowFrames === "number" &&
     typeof d.maxMs === "number"
   );
+}
+
+/** `type` of the message the patched worklet posts when df_create throws. */
+export const DF_INIT_ERROR_MESSAGE = "stoat-df-init-error";
+
+export interface DeepFilterInitError {
+  type: typeof DF_INIT_ERROR_MESSAGE;
+  message: string;
+}
+
+export function isDeepFilterInitError(
+  data: unknown,
+): data is DeepFilterInitError {
+  if (!data || typeof data !== "object") return false;
+  const d = data as Partial<DeepFilterInitError>;
+  return d.type === DF_INIT_ERROR_MESSAGE && typeof d.message === "string";
 }
 
 const BROKEN_OUTPUT = `const outputAvailable = this.getOutputAvailable();
@@ -117,6 +134,21 @@ const FRAME_PATCH = `const frameStart = Date.now();
                 if (frameMs > this.statMaxMs) this.statMaxMs = frameMs;
                 if (frameMs >= ${DF_SLOW_FRAME_MS}) this.statSlowFrames++;`;
 
+/**
+ * Upstream logs a failed df_create (bad model bytes, WASM panic) and then
+ * passes the microphone through untouched for the rest of the call, telling
+ * nobody: no stats are posted either, so the RNNoise fallback never fires.
+ * Post the failure so VoiceProcessor can switch engines.
+ */
+const INIT_FAILURE_NEEDLE =
+  "console.error('Failed to initialize DeepFilter in AudioWorklet:', error);\n                this.isInitialized = false;";
+const INIT_FAILURE_PATCH = `console.error('Failed to initialize DeepFilter in AudioWorklet:', error);
+                this.isInitialized = false;
+                this.port.postMessage({
+                    type: '${DF_INIT_ERROR_MESSAGE}',
+                    message: String((error && error.message) || error),
+                });`;
+
 export function patchDeepFilterWorkletSource(source: string): string {
   if (!source.includes(BROKEN_OUTPUT)) {
     throw new Error(
@@ -131,7 +163,13 @@ export function patchDeepFilterWorkletSource(source: string): string {
   if (!source.includes(FRAME_NEEDLE)) {
     throw new Error("DeepFilter worklet frame loop changed; refusing to patch");
   }
+  if (!source.includes(INIT_FAILURE_NEEDLE)) {
+    throw new Error(
+      "DeepFilter worklet init error handling changed; refusing to patch",
+    );
+  }
   return source
+    .replace(INIT_FAILURE_NEEDLE, INIT_FAILURE_PATCH)
     .replace(INIT_NEEDLE, INIT_PATCH)
     .replace(FRAME_NEEDLE, FRAME_PATCH)
     .replace(BROKEN_OUTPUT, FIXED_OUTPUT);

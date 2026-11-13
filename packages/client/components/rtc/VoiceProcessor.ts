@@ -14,9 +14,11 @@ import {
 } from "@revolt/state/stores/noiseSuppressionPolicy";
 
 import { DeepFilterHealth } from "./deepFilterHealth";
+import { installDeepFilterModelNormalizer } from "./deepFilterModel";
 import { canUseDeepFilter } from "./deepFilterSupport";
 import {
   addPatchedDeepFilterModule,
+  isDeepFilterInitError,
   isDeepFilterStats,
 } from "./patchDeepFilterWorklet";
 import { ensureProductionMeterNode } from "./productionMeter";
@@ -142,7 +144,10 @@ function deepFilterCdnUrl(): string {
 function getDeepFilterCore(): Promise<DeepFilterNet3Core> {
   if (!sharedDeepFilterCore) {
     sharedDeepFilterCore = import("deepfilternet3-noise-filter")
-      .then(async ({ DeepFilterNet3Core }) => {
+      .then(async ({ AssetLoader, DeepFilterNet3Core }) => {
+        // The web image's server marks *.gz as Content-Encoding: gzip, so the
+        // browser delivers the model as a plain tar; libDF only opens gzip.
+        installDeepFilterModelNormalizer(AssetLoader);
         const core = new DeepFilterNet3Core({
           sampleRate: 48000,
           // Initial atten_lim; applyDeepFilterStrength() overrides it live.
@@ -197,6 +202,12 @@ export class VoiceProcessor implements TrackProcessor<
   private deepFilterHealth?: DeepFilterHealth;
   /** Set when DeepFilter fell behind on this device; stays on for the call. */
   private deepFilterOverloaded = false;
+  /**
+   * Set when the worklet could not load the model; stays on for the call.
+   * Kept apart from deepFilterOverloaded, which the UI and the call
+   * diagnosis read as "the CPU could not keep up".
+   */
+  private deepFilterInitFailed = false;
   private degrading = false;
 
   private vadClient?: VadClient;
@@ -472,6 +483,10 @@ export class VoiceProcessor implements TrackProcessor<
    * Per-second frame timing from the patched worklet. Three slow seconds in a
    * row means the CPU cannot run the model in real time right now; rewire to
    * RNNoise instead of letting the voice chop.
+   *
+   * The same port reports a model that failed to load. That worklet only
+   * passes audio through, so it is dropped from the per-context cache (a
+   * later graph must not reuse it) and RNNoise takes over.
    */
   private listenToDeepFilterStats(
     node: AudioWorkletNode,
@@ -480,17 +495,40 @@ export class VoiceProcessor implements TrackProcessor<
     const health = new DeepFilterHealth();
     this.deepFilterHealth = health;
     node.port.onmessage = (event: MessageEvent) => {
+      if (isDeepFilterInitError(event.data)) {
+        if (deepFilterNodes.get(context) === node) {
+          deepFilterNodes.delete(context);
+        }
+        if (this.engine !== "deepfilter" || this.deepFilterNode !== node) {
+          return;
+        }
+        if (!this.degrading) {
+          void this.degradeToRnnoise(context, {
+            kind: "init-failed",
+            message: event.data.message,
+          });
+        }
+        return;
+      }
       if (!isDeepFilterStats(event.data)) return;
       if (this.engine !== "deepfilter" || this.deepFilterNode !== node) return;
       const overloaded = health.observe(event.data);
       this.emitStatus();
       if (overloaded && !this.degrading) {
-        void this.degradeToRnnoise(context, event.data.maxMs);
+        void this.degradeToRnnoise(context, {
+          kind: "overloaded",
+          maxMs: event.data.maxMs,
+        });
       }
     };
   }
 
-  private async degradeToRnnoise(context: AudioContext, maxMs: number) {
+  private async degradeToRnnoise(
+    context: AudioContext,
+    cause:
+      | { kind: "overloaded"; maxMs: number }
+      | { kind: "init-failed"; message: string },
+  ) {
     this.degrading = true;
     const token = ++this.graphToken;
     try {
@@ -501,9 +539,16 @@ export class VoiceProcessor implements TrackProcessor<
       if (token !== this.graphToken || !this.sourceNode || !this.gainNode)
         return;
       this.disconnectNoiseGraph();
-      this.deepFilterOverloaded = true;
+      if (cause.kind === "overloaded") {
+        this.deepFilterOverloaded = true;
+      } else {
+        this.deepFilterInitFailed = true;
+      }
       this.connectRnnoise(context);
-      this.lastError = `DeepFilterNet fell behind real time (slowest frame ${maxMs} ms); using RNNoise for this call`;
+      this.lastError =
+        cause.kind === "overloaded"
+          ? `DeepFilterNet fell behind real time (slowest frame ${cause.maxMs} ms); using RNNoise for this call`
+          : `DeepFilterNet could not load its model (${cause.message}); using RNNoise for this call`;
       console.warn("[voice]", this.lastError);
     } catch (error) {
       // Keep DeepFilter running rather than dropping to no suppression.
@@ -733,8 +778,12 @@ export class VoiceProcessor implements TrackProcessor<
       return;
     }
 
-    if (mode === "advanced" && this.deepFilterOverloaded) {
-      // Already proven too slow during this call; do not retry on rewire.
+    if (
+      mode === "advanced" &&
+      (this.deepFilterOverloaded || this.deepFilterInitFailed)
+    ) {
+      // Already proven too slow (or unable to load) during this call; do not
+      // retry on rewire.
       // `context` may be the 48 kHz DeepFilter context, which never saw
       // RNNoise's worklet; addModule with the same URL is idempotent.
       await RNNoiseNode.loadModule(
