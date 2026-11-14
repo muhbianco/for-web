@@ -27,8 +27,10 @@ import { useVoice } from "@revolt/rtc";
 import { Button, IconButton } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
-import { clientKind, sessionToken } from "./config";
 import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
+import { clientKind, sessionToken } from "./config";
+import { DecorPanel } from "./DecorPanel";
+import { InteractionDialog } from "./InteractionDialog";
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
 
@@ -49,7 +51,8 @@ export default function SpacePage() {
 /**
  * Full-screen space of one server. The map is decoration for whoever can see
  * it; the room list carries the same information as text. `?sala=<channel>`
- * (the voice channels of the sidebar) walks to that room.
+ * (the voice channels of the sidebar) walks to that room. "Decorar" opens the
+ * store and editor (ADR 0007) for whoever may decorate.
  */
 function ServerSpace(props: { serverId: string }) {
   const loc = useLocation();
@@ -60,7 +63,7 @@ function ServerSpace(props: { serverId: string }) {
   const [view, setView] = createSignal<SpaceView | null>(null);
   const [profile, setProfile] = createSignal<ProfileView | null>(null);
   const [failed, setFailed] = createSignal<string | null>(null);
-  const [showList, setShowList] = createSignal(true);
+  const [panel, setPanel] = createSignal<"rooms" | "decor" | null>("rooms");
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
   let host: HTMLDivElement | undefined;
@@ -106,11 +109,28 @@ function ServerSpace(props: { serverId: string }) {
 
   const serverId = props.serverId;
 
+  /** Roles of this Stoat server, for "who may decorate". */
+  const roles = () =>
+    (client().servers.get(serverId)?.orderedRoles ?? []).map((r) => ({
+      id: r.id,
+      name: r.name,
+    }));
+
   /** Walk to a room (sidebar link or list); says so when the door will not open. */
   function goToRoom(roomId: string) {
     const v = view();
     if (!v) return;
-    setNotice(v.walkToRoom(roomId) ? "" : t`Não dá para chegar nessa sala daqui.`);
+    setNotice(
+      v.walkToRoom(roomId) ? "" : t`Não dá para chegar nessa sala daqui.`,
+    );
+    host?.focus();
+  }
+
+  function openDecor(on: boolean) {
+    const v = view();
+    if (!v) return;
+    v.setEditing(on);
+    setPanel(on ? "decor" : "rooms");
     host?.focus();
   }
 
@@ -125,6 +145,12 @@ function ServerSpace(props: { serverId: string }) {
     if (sala === walkedTo || !view() || !ui()?.location) return;
     walkedTo = sala;
     goToRoom(sala);
+  });
+
+  // Rights taken away while editing: the view already left the editor; follow it.
+  createEffect(() => {
+    const s = ui();
+    if (s && panel() === "decor" && !s.editor.enabled) setPanel("rooms");
   });
 
   onMount(async () => {
@@ -206,7 +232,23 @@ function ServerSpace(props: { serverId: string }) {
             </Button>
           )}
         </Show>
+        <Show when={ui()?.prompt && !ui()?.editor.enabled}>
+          {(_) => (
+            <PromptChip type="button" onClick={() => view()?.interact()}>
+              <Kbd>E</Kbd> {ui()!.prompt!.label}
+            </PromptChip>
+          )}
+        </Show>
         <span style={{ flex: 1 }} />
+        <Show when={ui()?.rights.can_edit}>
+          <Button
+            variant={panel() === "decor" ? "filled" : "tonal"}
+            onPress={() => openDecor(panel() !== "decor")}
+            aria-pressed={panel() === "decor"}
+          >
+            <Symbol size={18}>chair</Symbol> {t`Decorar`}
+          </Button>
+        </Show>
         <IconButton
           aria-label={t`Diminuir zoom`}
           onPress={() => view()?.setZoom((ui()?.zoom ?? 2) - 1)}
@@ -221,15 +263,23 @@ function ServerSpace(props: { serverId: string }) {
         </IconButton>
         <IconButton
           aria-label={
-            showList() ? t`Esconder lista de salas` : t`Mostrar lista de salas`
+            panel() === "rooms"
+              ? t`Esconder lista de salas`
+              : t`Mostrar lista de salas`
           }
-          aria-pressed={showList()}
-          onPress={() => setShowList(!showList())}
+          aria-pressed={panel() === "rooms"}
+          onPress={() => {
+            if (panel() === "decor") openDecor(false);
+            else setPanel(panel() === "rooms" ? null : "rooms");
+          }}
         >
           <Symbol>list</Symbol>
         </IconButton>
       </Bar>
-      <Body data-list={showList() ? "" : undefined}>
+      <Body
+        data-list={panel() ? "" : undefined}
+        data-wide={panel() === "decor" ? "" : undefined}
+      >
         {/*
           Two siblings, never one: the map canvas is appended by PixiJS to a
           native element with no JSX children, so Solid never rewrites it.
@@ -243,7 +293,7 @@ function ServerSpace(props: { serverId: string }) {
             class={mapCanvas}
             tabIndex={0}
             role="application"
-            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas tem as mesmas informações.`}
+            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações.`}
           />
           <Switch>
             <Match when={failed()}>{(msg) => <Notice>{msg()}</Notice>}</Match>
@@ -270,9 +320,29 @@ function ServerSpace(props: { serverId: string }) {
                 }}
               />
             </Match>
+            <Match when={ui()?.interaction}>
+              {(interaction) => (
+                <InteractionDialog
+                  interaction={interaction()}
+                  canEdit={ui()?.rights.can_edit ?? false}
+                  onClose={() => {
+                    view()?.closeInteraction();
+                    host?.focus();
+                  }}
+                />
+              )}
+            </Match>
           </Switch>
         </div>
-        <Show when={showList()}>
+        <Show when={panel() === "decor" && view() && ui()}>
+          <DecorPanel
+            view={view()!}
+            ui={ui()!}
+            roles={roles()}
+            onClose={() => openDecor(false)}
+          />
+        </Show>
+        <Show when={panel() === "rooms"}>
           <List aria-label={t`Lista de salas`}>
             <For each={ui()?.list ?? []}>
               {(wing) => (
@@ -315,7 +385,9 @@ function ServerSpace(props: { serverId: string }) {
           </List>
         </Show>
       </Body>
-      <SrOnly aria-live="polite">{notice() || ui()?.announcement || ""}</SrOnly>
+      <SrOnly aria-live="polite">
+        {notice() || ui()?.editor.message || ui()?.announcement || ""}
+      </SrOnly>
     </Page>
   );
 }
@@ -342,6 +414,7 @@ const Bar = styled("div", {
     padding: "var(--gap-sm) var(--gap-md)",
     background: "var(--md-sys-color-surface-container)",
     minHeight: "48px",
+    flexWrap: "wrap",
   },
 });
 
@@ -352,10 +425,15 @@ const Body = styled("div", {
     display: "grid",
     gridTemplateColumns: "1fr",
     "&[data-list]": { gridTemplateColumns: "1fr 280px" },
+    "&[data-wide]": { gridTemplateColumns: "1fr 340px" },
     "@media (max-width: 760px)": {
       "&[data-list]": {
         gridTemplateColumns: "1fr",
         gridTemplateRows: "1fr 40%",
+      },
+      "&[data-wide]": {
+        gridTemplateColumns: "1fr",
+        gridTemplateRows: "1fr 50%",
       },
     },
   },
@@ -425,6 +503,38 @@ const MediaChip = styled("span", {
   },
 });
 
+const PromptChip = styled("button", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "2px 10px 2px 4px",
+    borderRadius: "999px",
+    border: "1px solid var(--md-sys-color-primary)",
+    background: "var(--md-sys-color-primary-container)",
+    color: "var(--md-sys-color-on-primary-container)",
+    font: "inherit",
+    fontSize: "0.85em",
+    cursor: "pointer",
+    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+  },
+});
+
+const Kbd = styled("kbd", {
+  base: {
+    display: "inline-grid",
+    placeItems: "center",
+    minWidth: "20px",
+    height: "20px",
+    borderRadius: "5px",
+    background: "var(--md-sys-color-on-primary-container)",
+    color: "var(--md-sys-color-primary-container)",
+    fontFamily: "inherit",
+    fontSize: "0.8em",
+    fontWeight: 700,
+  },
+});
+
 const RoomButton = styled("button", {
   base: {
     flex: 1,
@@ -440,7 +550,9 @@ const RoomButton = styled("button", {
     font: "inherit",
     textAlign: "start",
     cursor: "pointer",
-    "&:hover:not(:disabled)": { background: "var(--md-sys-color-surface-container-high)" },
+    "&:hover:not(:disabled)": {
+      background: "var(--md-sys-color-surface-container-high)",
+    },
     "&:disabled": { cursor: "default" },
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
   },

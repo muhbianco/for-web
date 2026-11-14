@@ -6,7 +6,7 @@
  *   node packages/space-server/src/dev.ts   → http://127.0.0.1:8095
  *   pnpm --filter @muchat/space-client dev  → http://localhost:5180/?as=ana
  */
-import { findPath, MAX_SPEED, MOVE_SEND_HZ, Perm, TILE, tileCenter, indexMap } from "@muchat/space-core";
+import { findPath, MAX_SPEED, MOVE_SEND_HZ, Perm, TILE, tileCenter } from "@muchat/space-core";
 
 import { jsonLog } from "./log.ts";
 import { MediaController } from "./media/controller.ts";
@@ -65,7 +65,7 @@ cache.apply({
   servers: [
     {
       _id: DEV_SERVER_ID,
-      owner: "01JDEV0WNER000000000000000",
+      owner: "01JDEVANA00000000000000000", // Ana: ManageServer, so she can decorate
       name: "Muchat (dev)",
       channels: channels.map((c) => c._id),
       categories: [
@@ -134,7 +134,7 @@ async function npc(rt: SpaceRuntime, key: keyof typeof npcs, seed: number) {
   const rand = () => ((r = (Math.imul(r, 1103515245) + 12345) >>> 0) / 4294967296);
   const step = (MAX_SPEED * 0.8) / MOVE_SEND_HZ;
   for (;;) {
-    const ix = indexMap(rt.map);
+    const ix = rt.index;
     const targets = rt.map.rooms.filter((room) => rt.canEnter(session.viewer, room.roomId));
     const goal = rand() < 0.3 ? rt.map.spawns[Math.floor(rand() * rt.map.spawns.length)]! : targets[Math.floor(rand() * targets.length)]?.inside;
     const path = goal ? findPath(ix, { tx: Math.floor(pos.x / TILE), ty: Math.floor(pos.y / TILE) }, goal, (id) => rt.canEnter(session.viewer, id)) : null;

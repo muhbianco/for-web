@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { after, before, test } from "node:test";
 
-import { findPath, indexMap, MOVE_SEND_HZ, MAX_SPEED, Perm, tileCenter } from "@muchat/space-core";
+import { findPath, MOVE_SEND_HZ, MAX_SPEED, Perm, tileCenter } from "@muchat/space-core";
 import WebSocket from "ws";
 
 import { silentLog } from "../log.ts";
@@ -230,7 +230,7 @@ test("privacy: an avatar inside a private room disappears for who cannot view it
   const { c: ana } = await join("token-ana-0000000000");
   const { c: bia, snap } = await join("token-bia-0000000000");
   const rt = (await registry.get(SRV))!;
-  const ix = indexMap(rt.map);
+  const ix = rt.index;
   const room = ix.roomsById.get(PRIV)!;
   const me = snap.d.you;
   const startTile = { tx: Math.floor(me.x / 32), ty: Math.floor(me.y / 32) };

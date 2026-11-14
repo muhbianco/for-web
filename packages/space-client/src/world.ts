@@ -1,13 +1,22 @@
 import {
+  applyDecorOp,
   type AvatarView,
+  CATALOG,
   type CompiledMap,
   type CompiledMapWire,
+  type DecorOp,
+  type DecorRights,
+  type DecorState,
   type Direction,
   type DoorRule,
   indexMap,
   type MapIndex,
   type RoomView,
+  setSolid,
+  solidMask,
   type WingView,
+  type ZoneIndex,
+  zonesOf,
 } from "@muchat/space-core";
 
 /** Remote avatars are drawn this far in the past, between two received samples. */
@@ -49,7 +58,12 @@ export type WorldEvent =
   | { kind: "room_changed"; from: string | null; to: string | null; local?: boolean }
   | { kind: "corrected"; reason: string }
   | { kind: "layout_changed"; fingerprint: string; url: string }
-  | { kind: "rooms_changed" };
+  | { kind: "rooms_changed" }
+  /** The decoration changed by one op (or wholesale: `reset`). */
+  | { kind: "decor_changed"; op: DecorOp }
+  /** We missed a revision: fetch the whole decoration again. */
+  | { kind: "decor_stale" }
+  | { kind: "rights_changed" };
 
 /**
  * Client copy of the world: what the server confirmed, plus our own predicted
@@ -58,11 +72,18 @@ export type WorldEvent =
 export class World {
   map: CompiledMap | null = null;
   ix: MapIndex | null = null;
+  zones: ZoneIndex | null = null;
   fingerprint = "";
   me: Me | null = null;
   readonly rooms = new Map<string, RoomView>();
   readonly wings = new Map<number, WingView>();
   readonly others = new Map<string, Remote>();
+  /** Decoration of this space (ADR 0007); null until the first fetch. */
+  decor: DecorState | null = null;
+  decorUrl = "";
+  /** Revision the server announced last; the fetch brings at least this one. */
+  decorRevWanted = 0;
+  rights: DecorRights = { can_edit: false, can_manage: false };
   private readonly listeners = new Set<(e: WorldEvent) => void>();
 
   on(fn: (e: WorldEvent) => void): () => void {
@@ -77,7 +98,9 @@ export class World {
   setMap(map: CompiledMap) {
     this.map = map;
     this.ix = indexMap(map);
+    this.zones = zonesOf(map);
     this.fingerprint = map.fingerprint;
+    this.refreshSolid();
   }
 
   /** The door opens for rooms we may enter that have a free place, and always for the room we are in. */
@@ -95,7 +118,8 @@ export class World {
 
   applySnapshot(d: {
     layout: { fingerprint: string };
-    you: { user_id: string; name: string; look: { palette: number }; x: number; y: number; room: string | null; seq: number };
+    decor?: { rev: number; url: string };
+    you: { user_id: string; name: string; look: { palette: number }; x: number; y: number; room: string | null; seq: number; decor?: DecorRights };
     rooms: RoomView[];
     wings: WingView[];
     avatars: AvatarView[];
@@ -105,6 +129,11 @@ export class World {
     this.setRooms(d.rooms, d.wings);
     this.others.clear();
     for (const a of d.avatars) this.upsertRemote(a, nowMs);
+    if (d.decor) {
+      this.decorUrl = d.decor.url;
+      this.decorRevWanted = d.decor.rev;
+    }
+    if (d.you.decor) this.setRights(d.you.decor);
     if (prevRoom !== d.you.room) this.emit({ kind: "room_changed", from: prevRoom, to: d.you.room });
   }
 
@@ -114,6 +143,44 @@ export class World {
     this.wings.clear();
     for (const w of wings) this.wings.set(w.index, w);
     this.emit({ kind: "rooms_changed" });
+  }
+
+  setRights(rights: DecorRights) {
+    if (rights.can_edit === this.rights.can_edit && rights.can_manage === this.rights.can_manage) return;
+    this.rights = rights;
+    this.emit({ kind: "rights_changed" });
+  }
+
+  // ---- decoration ----------------------------------------------------------
+
+  /** Whole state from the server (first load, or after a missed revision). */
+  setDecor(state: DecorState) {
+    this.decor = state;
+    this.decorRevWanted = Math.max(this.decorRevWanted, state.rev);
+    this.refreshSolid();
+    this.emit({ kind: "decor_changed", op: { kind: "reset" } });
+  }
+
+  /**
+   * One change announced by the server. Applied only when it is the very next
+   * revision; otherwise the whole state is fetched again (`decor_stale`).
+   */
+  applyDecorOp(rev: number, op: DecorOp): boolean {
+    this.decorRevWanted = Math.max(this.decorRevWanted, rev);
+    if (!this.decor || op.kind === "reset" || rev !== this.decor.rev + 1) {
+      if (this.decor?.rev !== rev) this.emit({ kind: "decor_stale" });
+      return false;
+    }
+    this.decor = applyDecorOp(this.decor, op, rev);
+    this.refreshSolid();
+    this.emit({ kind: "decor_changed", op });
+    return true;
+  }
+
+  /** Movement and pathing see the furniture exactly as the server does. */
+  private refreshSolid() {
+    if (!this.map || !this.ix || !this.zones || !this.decor) return;
+    setSolid(this.ix, solidMask(this.map, this.zones, CATALOG, this.decor.items));
   }
 
   private upsertRemote(a: AvatarView, nowMs: number) {

@@ -13,7 +13,7 @@ const ROOM_A = fakeUlid(1);
 const ROOM_B = fakeUlid(2);
 
 const map = generateLayout({
-  templateVersion: 1,
+  templateVersion: 2,
   wings: [
     {
       index: 0,

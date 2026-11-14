@@ -10,7 +10,7 @@ import { decodeMap, INTERP_DELAY_MS, World } from "./world.ts";
 const ROOM_A = "01JR00000000000000000000AA";
 const ROOM_P = "01JR00000000000000000000PP";
 const map = generateLayout({
-  templateVersion: 1,
+  templateVersion: 2,
   wings: [
     { index: 0, title: "", slots: [{ roomId: ROOM_A, label: "", size: "M" }] },
     { index: 1, title: "", slots: [{ roomId: ROOM_P, label: "", size: "S" }] },
@@ -128,7 +128,7 @@ test("list: private room and its wing title stay hidden; status in plain text", 
       ["Ala restrita", [["Sala privada", "sem acesso"]]],
     ],
   );
-  assert.equal(locationText(w), "Entrada");
+  assert.equal(locationText(w), "Hall de entrada");
 });
 
 test("a full room keeps its door shut in the prediction too, never for who is inside", () => {

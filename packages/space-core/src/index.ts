@@ -1,3 +1,4 @@
+export * from "./decor/index.ts";
 export * from "./map/constants.ts";
 export * from "./map/grid.ts";
 export * from "./map/layout.ts";

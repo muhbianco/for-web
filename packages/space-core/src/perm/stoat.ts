@@ -102,4 +102,26 @@ export function channelPermissions(input: {
   return perm;
 }
 
+/**
+ * Permissions of `user` on the server itself (no channel): the backend's
+ * calculate_server_permissions (crates/core/permissions/src/impl.rs). Used
+ * for ManageServer, which decides who may change the space's decoration
+ * settings (ADR 0007).
+ */
+export function serverPermissions(input: {
+  user: PermUser;
+  server: PermServer;
+  member: PermMember | null;
+  nowMs: number;
+}): bigint {
+  const { user, server, member, nowMs } = input;
+  if (user.privileged) return Perm.GrantAllSafe;
+  if (server.ownerId === user.id) return Perm.GrantAllSafe;
+  if (!member) return 0n;
+  let perm = big(server.defaultPermissions);
+  for (const id of orderedRoleIds(server, member)) perm = apply(perm, server.roles.get(id)?.permissions);
+  if (member.timeoutUntil != null && member.timeoutUntil > nowMs) perm &= ALLOW_IN_TIMEOUT;
+  return perm;
+}
+
 export const has = (perm: bigint, bit: bigint): boolean => (perm & bit) === bit;

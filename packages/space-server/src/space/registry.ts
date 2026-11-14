@@ -5,6 +5,7 @@ import type { StoatCache } from "../stoat/cache.ts";
 import type { RuntimeRegistry } from "../ws/gateway.ts";
 import type { MediaHub } from "./roomMedia.ts";
 import { SpaceRuntime } from "./runtime.ts";
+import type { DecorStore } from "./decorStore.ts";
 import type { AssignmentStore } from "./store.ts";
 
 /**
@@ -16,6 +17,7 @@ export class Registry implements RuntimeRegistry {
   private readonly live = new Map<string, SpaceRuntime>();
   private readonly cache: StoatCache;
   private readonly store: AssignmentStore;
+  private readonly decorStore: DecorStore | undefined;
   private readonly members: StoatMembers & Partial<Pick<MemberCache, "invalidate">>;
   private readonly log: Log;
   private readonly now: () => number;
@@ -26,6 +28,8 @@ export class Registry implements RuntimeRegistry {
   constructor(deps: {
     cache: StoatCache;
     store: AssignmentStore;
+    /** Decoration per server (ADR 0007); in-memory when absent (tests, lab). */
+    decorStore?: DecorStore;
     members: StoatMembers & Partial<Pick<MemberCache, "invalidate">>;
     log: Log;
     now?: () => number;
@@ -86,6 +90,7 @@ export class Registry implements RuntimeRegistry {
         serverId,
         cache: this.cache,
         store: this.store,
+        decorStore: this.decorStore,
         log: this.log,
         now: this.now,
         media: this.media,

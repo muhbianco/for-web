@@ -14,6 +14,7 @@ import { MediaHub } from "./space/roomMedia.ts";
 import { SpatialSwitch } from "./space/spatialSwitch.ts";
 import { Registry } from "./space/registry.ts";
 import { MongoProfileStore } from "./space/profiles.ts";
+import { MongoDecorStore } from "./space/decorStore.ts";
 import { MongoAssignmentStore } from "./space/store.ts";
 import { MemberCache, StoatApi } from "./stoat/api.ts";
 import { BonfireClient } from "./stoat/bonfire.ts";
@@ -105,6 +106,7 @@ async function main() {
   const registry = new Registry({
     cache,
     store: new MongoAssignmentStore(mongo),
+    decorStore: new MongoDecorStore(mongo),
     members,
     log,
     enabled,

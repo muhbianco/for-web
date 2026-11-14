@@ -117,6 +117,29 @@ simulada no navegador:
 O personagem escolhido vai para o servidor (`PUT /v1/me/profile`) e chega aos outros na próxima
 difusão; verificado entre duas abas.
 
+## Decoração e editor (ADR 0007)
+
+- `render/pixel.ts`, `render/items.ts`, `render/floors.ts`: pixel art em código (16 px/tile a 2×),
+  um desenho por item do catálogo e um por material de piso; `render/atlas.ts` faz as texturas
+  e as miniaturas da loja com o mesmo desenho.
+- `renderer.ts`: camadas chão → portas → tapetes → cena (móveis, itens de parede e personagens
+  ordenados por profundidade) → luzes de teto → nomes → overlay do editor (grade, fantasma,
+  seleção) e balão "E · …". Pisos por zona pintados nos blocos.
+- `world.ts`: `decor`, `zones`, `rights`; `applyDecorOp` só aplica a próxima revisão (senão
+  `decor_stale` e a view busca tudo); a máscara sólida entra no índice de movimento.
+- `editor.ts`: ferramentas colocar/piso/selecionar, fantasma validado com a regra do servidor,
+  arrastar, girar (R), remover (Delete), duplicar (Ctrl+D), desfazer/refazer (Ctrl+Z/Y) com pilha
+  de inversas confirmadas pelo servidor. Nada muda localmente antes do `decor.changed`.
+- `interact.ts`: objeto interativo a ≤ 1 tile → prompt; E/Enter/toque usa (portal vai ao
+  servidor; o resto vira `ui.interaction` para o app abrir o diálogo).
+- No app: `DecorPanel.tsx` (loja, variantes, selecionado, quem decora) e `InteractionDialog.tsx`
+  (link com confirmação, nota, imagem, iframe https com sandbox). Botão "Decorar" só para quem
+  pode.
+
+Verificado em 14/11/2026 na página de dev (`?as=ana` é dona): tema padrão desenhado, andar até a
+sala sem correção, colocar/girar/arrastar/remover/desfazer, piso, portal com teleporte, prompt,
+Caio recusado pelo servidor, sincronização entre abas e persistência ao recarregar.
+
 ## Ainda não
 
 - **Voz com LiveKit de verdade:** ainda não testada. O caminho completo (gate, enforcer, voice-ingress)

@@ -1,5 +1,7 @@
 import { z } from "zod";
 
+import { ID_PATTERN, MAX_TEXT, MAX_TITLE, MAX_URL } from "../decor/placement.ts";
+import type { DecorOp, DecorSettings, PlacementError } from "../decor/index.ts";
 import { isUlid } from "../media/naming.ts";
 import type { CompiledMap } from "../map/types.ts";
 
@@ -42,7 +44,7 @@ export interface ProfileView {
   onboarding_version: number;
 }
 
-/** Largest accepted client frame; a move is ~80 bytes. */
+/** Largest accepted client frame; a move is ~80 bytes, a decoration op under 1 KB. */
 export const MAX_FRAME_BYTES = 4096;
 
 const ulid = z.string().refine(isUlid, "ulid");
@@ -91,7 +93,100 @@ export const MediaRequestCmd = z.object({
   id: commandId,
 });
 
-export const ClientCommand = z.discriminatedUnion("t", [HelloCmd, MoveCmd, IdleCmd, PingCmd, MediaRequestCmd]);
+// ---- decoration (ADR 0007) -------------------------------------------------
+
+const zoneKey = z.string().min(1).max(64);
+const instanceId = z.string().regex(ID_PATTERN);
+const itemId = z.string().min(1).max(64);
+
+export const InteractionConfigSchema = z
+  .object({
+    title: z.string().max(MAX_TITLE).optional(),
+    url: z.string().max(MAX_URL).optional(),
+    text: z.string().max(MAX_TEXT).optional(),
+    target: zoneKey.optional(),
+  })
+  .strict();
+
+/** An instance as the client proposes it; the server validates it against the map (placement.ts). */
+export const DecorInstanceSchema = z
+  .object({
+    id: instanceId,
+    item: itemId,
+    zone: zoneKey,
+    x: z.number().int().min(-1).max(10_000),
+    y: z.number().int().min(-1).max(10_000),
+    rot: z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]),
+    variant: z.string().min(1).max(40).optional(),
+    config: InteractionConfigSchema.optional(),
+  })
+  .strict();
+
+export const DecorSettingsSchema = z
+  .object({
+    editors: z.enum(["admins", "roles", "everyone"]),
+    roles: z.array(z.string().min(1).max(64)).max(50),
+  })
+  .strict();
+
+export const DecorPlaceCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("decor.place"),
+  id: commandId,
+  d: DecorInstanceSchema,
+});
+
+/** Move, rotate, change variant or configuration: the whole instance again. */
+export const DecorUpdateCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("decor.update"),
+  id: commandId,
+  d: DecorInstanceSchema,
+});
+
+export const DecorRemoveCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("decor.remove"),
+  id: commandId,
+  d: z.object({ id: instanceId }),
+});
+
+/** Floor of a zone: `<item>:<variant>`, or null to go back to the theme's default. */
+export const DecorFloorCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("decor.floor"),
+  id: commandId,
+  d: z.object({ zone: zoneKey, floor: z.string().min(1).max(80).nullable() }),
+});
+
+export const DecorSettingsCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("decor.settings"),
+  id: commandId,
+  d: DecorSettingsSchema,
+});
+
+/** Use a portal: the server moves the avatar to the portal's target zone. */
+export const TeleportCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("avatar.teleport"),
+  id: commandId,
+  d: z.object({ id: instanceId }),
+});
+
+export const ClientCommand = z.discriminatedUnion("t", [
+  HelloCmd,
+  MoveCmd,
+  IdleCmd,
+  PingCmd,
+  MediaRequestCmd,
+  DecorPlaceCmd,
+  DecorUpdateCmd,
+  DecorRemoveCmd,
+  DecorFloorCmd,
+  DecorSettingsCmd,
+  TeleportCmd,
+]);
 export type ClientCommand = z.infer<typeof ClientCommand>;
 
 /** LiveKit track sources a grant may publish (mirrors Stoat's Speak/Video). */
@@ -138,6 +233,13 @@ export interface MediaUnavailableEvent {
   d: { room_id: string; reason: "livekit" | "elsewhere" };
 }
 
+/** Server → every member of the space: the decoration changed (apply the op if `rev` follows yours, else fetch). */
+export interface DecorChangedEvent {
+  v: 1;
+  t: "decor.changed";
+  d: { rev: number; op: DecorOp };
+}
+
 /** Parses a raw frame; never throws. */
 export function parseCommand(raw: string): { ok: true; cmd: ClientCommand } | { ok: false; error: string } {
   if (raw.length > MAX_FRAME_BYTES) return { ok: false, error: "frame_too_large" };
@@ -159,7 +261,18 @@ export type ErrorCode =
   | "invalid_message"
   | "rate_limited"
   | "stoat_unavailable"
+  | "not_allowed"
+  | "decor_invalid"
+  | "conflict"
+  | "not_found"
   | "internal";
+
+export interface ErrorEvent {
+  v: 1;
+  t: "error";
+  re?: string;
+  d: { code: ErrorCode; reason?: PlacementError | string; retry_after_ms?: number };
+}
 
 /** WS close codes (§F.8). */
 export const Close = {
@@ -201,6 +314,13 @@ export interface AvatarView {
   state: "online" | "idle" | "reconnecting";
 }
 
+/** What this person may do to the decoration (server-decided, mirrored for the UI). */
+export interface DecorRights {
+  can_edit: boolean;
+  /** ManageServer: may change who edits. */
+  can_manage: boolean;
+}
+
 export interface SnapshotEvent {
   v: 1;
   t: "space.snapshot";
@@ -208,7 +328,18 @@ export interface SnapshotEvent {
   d: {
     server_id: string;
     layout: { fingerprint: string; url: string };
-    you: { user_id: string; name: string; look: AvatarLook; x: number; y: number; room: string | null; seq: number };
+    /** Current decoration revision; the state itself comes from `url` (GET, session header). */
+    decor: { rev: number; url: string; settings: DecorSettings };
+    you: {
+      user_id: string;
+      name: string;
+      look: AvatarLook;
+      x: number;
+      y: number;
+      room: string | null;
+      seq: number;
+      decor: DecorRights;
+    };
     rooms: RoomView[];
     wings: WingView[];
     avatars: AvatarView[];

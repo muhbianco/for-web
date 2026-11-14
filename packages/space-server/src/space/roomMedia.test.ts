@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import {
   findPath,
-  indexMap,
+
   managedRoomName,
   MAX_SPEED,
   MOVE_SEND_HZ,
@@ -149,7 +149,7 @@ const tileOf = (p: { x: number; y: number }): TilePos => ({ tx: Math.floor(p.x /
 
 /** Walks at legal speed to `goal`; stops at the first correction. */
 function walk(w: World, rt: SpaceRuntime, s: FakeSession, goal: TilePos): { corrected: boolean } {
-  const ix = indexMap(rt.map);
+  const ix = rt.index;
   const path = findPath(ix, tileOf(s.pos), goal, () => true);
   assert.ok(path, "path exists");
   const step = MAX_SPEED / MOVE_SEND_HZ;
@@ -169,7 +169,7 @@ function walk(w: World, rt: SpaceRuntime, s: FakeSession, goal: TilePos): { corr
   return { corrected: false };
 }
 
-const roomOf = (rt: SpaceRuntime, id: string) => indexMap(rt.map).roomsById.get(id)!;
+const roomOf = (rt: SpaceRuntime, id: string) => rt.index.roomsById.get(id)!;
 const goIn = (w: World, rt: SpaceRuntime, s: FakeSession, id: string) => walk(w, rt, s, roomOf(rt, id).inside);
 const goOut = (w: World, rt: SpaceRuntime, s: FakeSession, id: string) => walk(w, rt, s, roomOf(rt, id).outside);
 

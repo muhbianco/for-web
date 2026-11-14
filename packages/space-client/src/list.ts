@@ -26,6 +26,12 @@ export interface ListWing {
   rooms: ListRoom[];
 }
 
+/** A zone as the editor shows it (portal targets, floor tool). */
+export interface ZoneOption {
+  key: string;
+  label: string;
+}
+
 /** Display name of a wing for headings and the location line. */
 export function wingHeading(title: string | null): string {
   return title ? `Ala ${title}` : "Ala restrita";
@@ -90,7 +96,25 @@ export function announceRoomChange(world: World, from: string | null, to: string
   return "";
 }
 
-/** "Entrada", "Corredor · Ala X" or the room name: where we are, in words. */
+/** Name of a zone key for the editor, with the viewer's room names. */
+export function zoneLabel(world: World, key: string): string {
+  if (key === "hall") return "Hall de entrada";
+  if (key === "spine") return "Corredor principal";
+  if (key.startsWith("wing:")) return `Corredor · ${wingHeading(world.wings.get(Number(key.slice(5)))?.title ?? null)}`;
+  if (key.startsWith("room:")) return roomTitle(world, key.slice(5));
+  return key;
+}
+
+/** Zones a portal may point to: common areas and the rooms this person can view. */
+export function zoneList(world: World): ZoneOption[] {
+  const zones = world.zones;
+  if (!zones) return [];
+  return zones.list
+    .filter((z) => z.kind !== "room" || world.rooms.get(z.roomId ?? "")?.label != null)
+    .map((z) => ({ key: z.key, label: zoneLabel(world, z.key) }));
+}
+
+/** "Hall de entrada", "Corredor · Ala X" or the room name: where we are, in words. */
 export function locationText(world: World): string {
   const me = world.me;
   const map = world.map;
@@ -99,10 +123,10 @@ export function locationText(world: World): string {
   const tx = Math.floor(me.x / TILE);
   const ty = Math.floor(me.y / TILE);
   const l = map.lobby;
-  if (tx >= l.x0 && tx <= l.x1 && ty >= l.y0 && ty <= l.y1) return "Entrada";
+  if (tx >= l.x0 && tx <= l.x1 && ty >= l.y0 && ty <= l.y1) return "Hall de entrada";
   for (const w of map.wings) {
     const c = w.corridor;
     if (tx >= c.x0 && tx <= c.x1 && ty >= c.y0 && ty <= c.y1) return `Corredor · ${wingHeading(world.wings.get(w.index)?.title ?? null)}`;
   }
-  return "Corredor";
+  return "Corredor principal";
 }

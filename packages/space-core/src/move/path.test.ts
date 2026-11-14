@@ -10,7 +10,7 @@ import { findPath } from "./path.ts";
 
 const ROOM = fakeUlid(7);
 const map = generateLayout({
-  templateVersion: 1,
+  templateVersion: 2,
   wings: [
     { index: 0, title: "N", slots: [null, { roomId: ROOM, label: "Sala", size: "L" }] },
     { index: 1, title: "S", slots: [] },

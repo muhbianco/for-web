@@ -106,6 +106,21 @@ Eventos ao cliente:
 Comando: `media.session.request` (sem sala: quem decide a sala é o servidor), no máximo 1 a cada
 3 s.
 
+## Decoração (ADR 0007)
+
+- Mongo `muchat_space.decor`: um documento por servidor (`rev`, `floors`, `items`, `settings`,
+  `furnished`), compare-and-set em `rev` (`decorStore.ts`). Já coberto pelo backup do banco.
+- Na primeira carga o runtime mobília tudo com o tema padrão e grava a rev 1; salas novas são
+  mobiliadas quando aparecem; itens que deixaram de caber no mapa são descartados (`pruneDecor`).
+- Comandos: `decor.place|update|remove|floor|settings` e `avatar.teleport`; validação com as
+  regras do `space-core`, fila por espaço, difusão de `decor.changed {rev, op, by}` (autor recebe
+  `re`), `decor.rights` quando a permissão de alguém muda, empurrão de quem ficou sob um móvel.
+- REST: `GET /v1/spaces/{id}/decor` (membro; sem cache). Snapshot traz `decor {rev, url, settings}`
+  e `you.decor {can_edit, can_manage}`.
+- Direitos: `ManageServer` (porte de `serverPermissions`) edita e gerencia; `settings.editors`
+  abre para cargos ou todos.
+- Testes: `space/decor.test.ts` (direitos, ops, empurrão, portal, conflito de CAS).
+
 ## Ainda não
 
 - **Overlay (3c):**

@@ -10,6 +10,10 @@ espinha que cresce para leste; dela saem as alas, as pares para o norte e as ím
 Cada ala é um corredor de 3 tiles com vagas dos dois lados, e cada vaga recebe uma sala P, M ou G
 (tamanho pela capacidade na criação, `roomSizeFor`).
 
+- **Template 2 (ADR 0007):** hall de 12×9, primeira ala colada no hall, salas de 7 de profundidade
+  em "rua" dos dois lados do corredor (P 7×5, M 7×7, G 7×12), a primeira de cada lado abrindo para
+  a espinha, paredes compartilhadas. Vaga livre guarda o tamanho (`roomId: null`); `null` legado
+  vale G.
 - `generateLayout(input)` é função pura e determinística: a mesma entrada dá o mesmo mapa e o
   mesmo `fingerprint` (FNV-1a, não criptográfico).
 - **Estabilidade por construção:** a posição de uma ala depende só do índice dela, e a de uma
@@ -40,6 +44,21 @@ Cada ala é um corredor de 3 tiles com vagas dos dois lados, e cada vaga recebe 
 - **`findPath`:** A* de 4 vizinhos para o clique e o toque, limitado a 20 mil tiles explorados
   para nunca travar um quadro. Destinos mais longe (do outro lado de um mapa enorme) vão pela
   lista de salas ("Ir para"), que o servidor resolve.
+
+## Decoração (`src/decor`, ADR 0007)
+
+- **Catálogo** (`catalog.ts`): ~80 itens em 8 categorias, só dados (id, nome PT-BR, camada,
+  footprint, rotações, sólido, variantes, interação). A arte fica no `space-client`.
+- **Zonas** (`zones.ts`): `hall`, `spine`, `wing:<i>`, `room:<id>`; instâncias guardam
+  coordenadas relativas à zona.
+- **Colocação** (`placement.ts`): `validatePlacement` (zona, chão/parede, sobreposição por camada,
+  porta/spawn livres, flood fill até todas as portas), `solidMask` (vira `MapIndex.solid`, que
+  colisão, movimento e A* respeitam), `applyDecorOp`, `pruneDecor`, limites e validação de
+  `config` (URL http(s), texto, alvo de portal).
+- **Tema** (`theme.ts`): `furnish`/`defaultDecor`, mobília padrão determinística por zona e
+  tamanho de sala, sempre validada; `defaultFloor` por zona.
+- Protocolo: comandos `decor.*` e `avatar.teleport`, evento `decor.changed`, `DecorRights` no
+  snapshot (`protocol/messages.ts`).
 
 ## Mídia (`src/media`)
 

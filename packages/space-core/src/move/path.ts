@@ -1,5 +1,5 @@
 import { Tile } from "../map/constants.ts";
-import { type MapIndex, tileAt } from "../map/grid.ts";
+import { type MapIndex, solidAt, tileAt } from "../map/grid.ts";
 import type { TilePos } from "../map/types.ts";
 import type { DoorRule } from "./collision.ts";
 
@@ -8,7 +8,7 @@ export const MAX_PATH_NODES = 20_000;
 
 function walkable(ix: MapIndex, tx: number, ty: number, door: DoorRule): boolean {
   const kind = tileAt(ix.map, tx, ty);
-  if (kind === Tile.Floor) return true;
+  if (kind === Tile.Floor) return !solidAt(ix, tx, ty);
   if (kind === Tile.Door) {
     const room = ix.doorOf.get(`${tx},${ty}`);
     return Boolean(room && door(room.roomId));

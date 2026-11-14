@@ -1,7 +1,23 @@
-import { type CompiledMapWire, type ProfilePatch, type ProfileView, TILE } from "@muchat/space-core";
+import {
+  CATALOG,
+  type CompiledMapWire,
+  type DecorInstance,
+  type DecorItem,
+  type DecorRights,
+  type DecorSettings,
+  type DecorState,
+  instanceRect,
+  type InteractionConfig,
+  itemOf,
+  type ProfilePatch,
+  type ProfileView,
+  TILE,
+} from "@muchat/space-core";
 
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
-import { announceRoomChange, buildList, type ListWing, locationText } from "./list.ts";
+import { Editor, type EditorState } from "./editor.ts";
+import { nearestInteractive, type Prompt } from "./interact.ts";
+import { announceRoomChange, buildList, type ListWing, locationText, zoneList, type ZoneOption } from "./list.ts";
 import { MediaLink, type MediaStatus, type VoicePort } from "./media.ts";
 import { Mover } from "./mover.ts";
 import { Renderer } from "./render/renderer.ts";
@@ -20,6 +36,13 @@ export interface SpaceViewOptions {
   voice?: VoicePort;
 }
 
+/** An interactive object the person just used; the app shows the matching dialog. */
+export interface Interaction {
+  inst: DecorInstance;
+  item: DecorItem;
+  config: InteractionConfig;
+}
+
 export interface SpaceUiState {
   status: ConnStatus;
   location: string;
@@ -28,6 +51,16 @@ export interface SpaceUiState {
   announcement: string;
   zoom: number;
   media: MediaStatus;
+  /** Decoration (ADR 0007). */
+  rights: DecorRights;
+  decorRev: number;
+  settings: DecorSettings | null;
+  editor: EditorState;
+  /** Zones the person may send a portal to (keys and labels). */
+  zones: ZoneOption[];
+  /** Interactive object within reach, if any. */
+  prompt: { id: string; label: string } | null;
+  interaction: Interaction | null;
 }
 
 const KEYS: Record<string, "up" | "down" | "left" | "right"> = {
@@ -42,29 +75,27 @@ const KEYS: Record<string, "up" | "down" | "left" | "right"> = {
 };
 
 /**
- * Wires connection + world + local movement + renderer + input. Framework
- * agnostic: the Muchat client (Solid) only mounts it and renders SpaceUiState.
+ * Wires connection + world + local movement + renderer + input + editor.
+ * Framework agnostic: the Muchat client (Solid) only mounts it and renders
+ * SpaceUiState.
  */
 export class SpaceView {
   readonly world = new World();
+  readonly editor: Editor;
   private readonly renderer = new Renderer();
   private readonly conn: SpaceConnection;
   private readonly mover: Mover;
   private readonly opts: SpaceViewOptions;
   private readonly listeners = new Set<(s: SpaceUiState) => void>();
-  private state: SpaceUiState = {
-    status: "connecting",
-    location: "",
-    list: [],
-    announcement: "",
-    zoom: 2,
-    media: { kind: "idle" },
-  };
+  private state: SpaceUiState;
   private dirtyUi = true;
   private uiTimer: ReturnType<typeof setInterval> | undefined;
   private inputCleanup: Array<() => void> = [];
   private readonly media: MediaLink | null;
   private attached = true;
+  private prompt: Prompt | null = null;
+  private decorLoading: Promise<void> | null = null;
+  private pointerDownAt: { x: number; y: number; t: number } | null = null;
 
   private constructor(opts: SpaceViewOptions) {
     this.opts = opts;
@@ -88,6 +119,33 @@ export class SpaceView {
           onStatus: (media) => this.patch({ media }),
         })
       : null;
+    this.editor = new Editor(
+      this.world,
+      (cmd) => {
+        const id = this.conn.nextId();
+        this.conn.send({ ...cmd, id });
+        return id;
+      },
+      () => {
+        this.patch({ editor: this.editor.state });
+        this.syncOverlay();
+      },
+    );
+    this.state = {
+      status: "connecting",
+      location: "",
+      list: [],
+      announcement: "",
+      zoom: 2,
+      media: { kind: "idle" },
+      rights: { can_edit: false, can_manage: false },
+      decorRev: 0,
+      settings: null,
+      editor: this.editor.state,
+      zones: [],
+      prompt: null,
+      interaction: null,
+    };
   }
 
   static async mount(opts: SpaceViewOptions): Promise<SpaceView> {
@@ -96,13 +154,34 @@ export class SpaceView {
     await v.renderer.init(opts.el);
     v.bindInput(opts.el);
     v.world.on((e) => {
-      if (e.kind === "room_changed") {
-        if (e.local) v.media?.roomChanged(e.to);
-        v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
+      switch (e.kind) {
+        case "room_changed":
+          if (e.local) v.media?.roomChanged(e.to);
+          v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
+          break;
+        case "corrected":
+          v.mover.resync();
+          break;
+        case "layout_changed":
+          void v.loadMap(e.url);
+          break;
+        case "rooms_changed":
+          v.renderer.rebuildStatic(v.world);
+          break;
+        case "decor_changed":
+          if (e.op.kind === "reset") v.renderer.rebuildDecor(v.world);
+          else v.renderer.applyDecorOp(v.world, e.op);
+          v.patch({ decorRev: v.world.decor?.rev ?? 0, settings: v.world.decor?.settings ?? null });
+          v.updatePrompt();
+          break;
+        case "decor_stale":
+          void v.loadDecor();
+          break;
+        case "rights_changed":
+          if (!v.world.rights.can_edit && v.editor.state.enabled) v.editor.setEnabled(false);
+          v.patch({ rights: v.world.rights });
+          break;
       }
-      if (e.kind === "corrected") v.mover.resync();
-      if (e.kind === "layout_changed") void v.loadMap(e.url);
-      if (e.kind === "rooms_changed") v.renderer.rebuildStatic(v.world);
       v.dirtyUi = true;
     });
     v.renderer.app.ticker.add((t) => {
@@ -110,9 +189,10 @@ export class SpaceView {
       v.mover.step(t.deltaMS, now);
       v.renderer.frame(v.world, now, t.deltaMS);
     });
-    // List and location at 4 Hz: occupancy follows movement without a re-render per frame.
+    // List, location and prompts at 4 Hz: occupancy follows movement without a re-render per frame.
     v.uiTimer = setInterval(() => {
       v.dirtyUi = true;
+      v.updatePrompt();
       v.flushUi();
     }, 250);
     v.conn.start();
@@ -138,7 +218,7 @@ export class SpaceView {
   private flushUi() {
     if (!this.dirtyUi) return;
     this.dirtyUi = false;
-    this.patch({ location: locationText(this.world), list: buildList(this.world), zoom: this.renderer.zoom });
+    this.patch({ location: locationText(this.world), list: buildList(this.world), zoom: this.renderer.zoom, zones: zoneList(this.world) });
   }
 
   private async loadMap(url: string) {
@@ -147,7 +227,25 @@ export class SpaceView {
     const wire = (await res.json()) as CompiledMapWire;
     this.world.setMap(decodeMap(wire));
     this.renderer.rebuildStatic(this.world);
+    this.renderer.rebuildDecor(this.world);
     this.dirtyUi = true;
+  }
+
+  /** Whole decoration from the server; coalesced so a burst of stale events fetches once. */
+  private loadDecor(): Promise<void> {
+    if (this.decorLoading) return this.decorLoading;
+    this.decorLoading = (async () => {
+      const url = this.world.decorUrl || `/_muchat/space/v1/spaces/${this.opts.serverId}/decor`;
+      const res = await fetch(new URL(url, this.opts.baseUrl), { headers: { "X-Session-Token": this.opts.sessionToken } });
+      if (!res.ok) throw new Error(`decor ${res.status}`);
+      const state = (await res.json()) as DecorState;
+      this.world.setDecor({ ...state, furnished: state.furnished ?? [] });
+    })().finally(() => {
+      this.decorLoading = null;
+      // A newer revision was announced while we fetched: once more.
+      if (this.world.decor && this.world.decor.rev < this.world.decorRevWanted) void this.loadDecor();
+    });
+    return this.decorLoading;
   }
 
   private async onEvent(e: Record<string, unknown>) {
@@ -161,6 +259,8 @@ export class SpaceView {
         this.world.applySnapshot(d, now);
         this.mover.resync();
         this.renderer.rebuildStatic(this.world);
+        if (!this.world.decor || this.world.decor.rev !== d.decor?.rev) await this.loadDecor().catch(() => undefined);
+        this.patch({ rights: this.world.rights, settings: this.world.decor?.settings ?? null, decorRev: this.world.decor?.rev ?? 0 });
         this.dirtyUi = true;
         return;
       }
@@ -176,6 +276,16 @@ export class SpaceView {
       case "space.layout.changed":
         this.world.layoutChanged(d.fingerprint, d.url);
         return;
+      case "decor.changed":
+        this.world.applyDecorOp(d.rev, d.op);
+        this.editor.onChanged(d.op, typeof e.re === "string" ? e.re : undefined);
+        return;
+      case "decor.rights":
+        this.world.setRights(d);
+        return;
+      case "error":
+        if (d?.code && (typeof e.re === "string" || d.code === "not_allowed")) this.editor.onError(typeof e.re === "string" ? e.re : undefined, d.code, d.reason);
+        return;
       case "media.grant":
         return this.media?.onGrant(d);
       case "media.revoked":
@@ -185,16 +295,32 @@ export class SpaceView {
     }
   }
 
+  // ---- input -----------------------------------------------------------------
+
   private bindInput(el: HTMLElement) {
     if (!el.hasAttribute("tabindex")) el.tabIndex = 0;
     const down = (ev: KeyboardEvent) => {
+      if (this.editor.state.enabled && this.editorKey(ev)) {
+        ev.preventDefault();
+        return;
+      }
       const k = KEYS[ev.code];
       if (k) {
         ev.preventDefault();
         this.mover.setKey(k, true);
         return;
       }
-      if (ev.key === "Escape") this.mover.cancelPath();
+      if (ev.code === "KeyE" || ev.key === "Enter") {
+        if (this.prompt && !this.editor.state.enabled) {
+          ev.preventDefault();
+          this.interact();
+        }
+        return;
+      }
+      if (ev.key === "Escape") {
+        this.mover.cancelPath();
+        if (this.state.interaction) this.patch({ interaction: null });
+      }
       if (ev.key === "+" || ev.key === "=") this.setZoom(this.renderer.zoom + 1);
       if (ev.key === "-") this.setZoom(this.renderer.zoom - 1);
     };
@@ -203,27 +329,148 @@ export class SpaceView {
       if (k) this.mover.setKey(k, false);
     };
     const blur = () => this.mover.clearKeys();
-    const pointer = (ev: PointerEvent) => {
+    const canvasPoint = (ev: PointerEvent) => {
+      const rect = this.renderer.app.canvas.getBoundingClientRect();
+      return this.renderer.screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top);
+    };
+    const pointerDown = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
       el.focus();
-      const rect = this.renderer.app.canvas.getBoundingClientRect();
-      const p = this.renderer.screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top);
+      const p = canvasPoint(ev);
+      this.pointerDownAt = { x: p.x, y: p.y, t: performance.now() };
+      if (this.editor.state.enabled) {
+        this.editor.pointerDown(p.x, p.y);
+        return;
+      }
+    };
+    const pointerMove = (ev: PointerEvent) => {
+      if (!this.editor.state.enabled) return;
+      const p = canvasPoint(ev);
+      this.editor.hover(p.x, p.y);
+    };
+    const pointerUp = (ev: PointerEvent) => {
+      if (ev.button !== 0) return;
+      const p = canvasPoint(ev);
+      const start = this.pointerDownAt;
+      this.pointerDownAt = null;
+      if (this.editor.state.enabled) {
+        this.editor.pointerUp(p.x, p.y);
+        return;
+      }
+      if (!start) return;
+      // A tap on an interactive object within reach uses it; otherwise walk there.
+      const hit = this.editor.instanceAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+      if (hit && this.prompt && hit.inst.id === this.prompt.inst.id) {
+        this.interact();
+        return;
+      }
       if (!this.mover.walkTo(p.x, p.y)) this.patch({ announcement: "Não dá para chegar lá." });
+    };
+    const leave = () => {
+      if (this.editor.state.enabled) this.editor.hover(-1e9, -1e9);
     };
     const visibility = () =>
       this.conn.send({ v: 1, t: "presence.idle", id: this.conn.nextId(), d: { idle: document.visibilityState === "hidden" } });
+    const canvas = this.renderer.app.canvas;
     el.addEventListener("keydown", down);
     el.addEventListener("keyup", up);
     el.addEventListener("blur", blur);
-    this.renderer.app.canvas.addEventListener("pointerdown", pointer);
+    canvas.addEventListener("pointerdown", pointerDown);
+    canvas.addEventListener("pointermove", pointerMove);
+    canvas.addEventListener("pointerup", pointerUp);
+    canvas.addEventListener("pointerleave", leave);
     document.addEventListener("visibilitychange", visibility);
     this.inputCleanup.push(
       () => el.removeEventListener("keydown", down),
       () => el.removeEventListener("keyup", up),
       () => el.removeEventListener("blur", blur),
-      () => this.renderer.app.canvas.removeEventListener("pointerdown", pointer),
+      () => canvas.removeEventListener("pointerdown", pointerDown),
+      () => canvas.removeEventListener("pointermove", pointerMove),
+      () => canvas.removeEventListener("pointerup", pointerUp),
+      () => canvas.removeEventListener("pointerleave", leave),
       () => document.removeEventListener("visibilitychange", visibility),
     );
+  }
+
+  /** Editor shortcuts; true when handled. */
+  private editorKey(ev: KeyboardEvent): boolean {
+    const mod = ev.ctrlKey || ev.metaKey;
+    if (mod && ev.code === "KeyZ") {
+      if (ev.shiftKey) this.editor.redo();
+      else this.editor.undo();
+      return true;
+    }
+    if (mod && ev.code === "KeyY") {
+      this.editor.redo();
+      return true;
+    }
+    if (mod && ev.code === "KeyD") {
+      this.editor.duplicateSelected();
+      return true;
+    }
+    if (ev.code === "KeyR" && !mod) {
+      this.editor.rotate();
+      return true;
+    }
+    if (ev.key === "Delete" || ev.key === "Backspace") {
+      this.editor.removeSelected();
+      return true;
+    }
+    if (ev.key === "Escape") {
+      this.editor.cancel();
+      return true;
+    }
+    return false;
+  }
+
+  private syncOverlay() {
+    const s = this.editor.state;
+    const sel = s.selected;
+    let selectedRect = null;
+    if (sel && this.world.zones) {
+      const zone = this.world.zones.byKey.get(sel.zone);
+      const item = itemOf(CATALOG, sel.item);
+      if (zone && item) selectedRect = instanceRect(zone, item, sel);
+    }
+    this.renderer.overlay = {
+      enabled: s.enabled,
+      hoverTile: s.hoverTile,
+      zoneRect: s.hoverZone?.rect ?? null,
+      floorTool: s.tool.kind === "floor",
+      ghost: s.ghost ? { item: s.ghost.item, rot: s.ghost.inst.rot, variant: s.ghost.inst.variant, rect: s.ghost.rect, valid: s.ghost.error === null } : null,
+      selected: selectedRect,
+    };
+  }
+
+  private updatePrompt() {
+    const p = this.editor.state.enabled ? null : nearestInteractive(this.world);
+    const changed = (p?.inst.id ?? null) !== (this.prompt?.inst.id ?? null) || p?.label !== this.prompt?.label;
+    this.prompt = p;
+    this.renderer.prompt = p ? { x: p.x, y: p.y, label: p.label } : null;
+    if (changed) this.patch({ prompt: p ? { id: p.inst.id, label: p.label } : null });
+  }
+
+  /** Use the interactive object within reach (E, Enter, tap). */
+  interact() {
+    const p = this.prompt;
+    if (!p) return;
+    if (p.item.interaction === "teleport") {
+      this.conn.send({ v: 1, t: "avatar.teleport", id: this.conn.nextId(), d: { id: p.inst.id } });
+      return;
+    }
+    this.patch({ interaction: { inst: p.inst, item: p.item, config: p.inst.config ?? {} } });
+  }
+
+  closeInteraction() {
+    if (this.state.interaction) this.patch({ interaction: null });
+  }
+
+  // ---- editor API for the app ------------------------------------------------
+
+  setEditing(on: boolean) {
+    if (on && !this.world.rights.can_edit) return;
+    this.editor.setEnabled(on);
+    this.updatePrompt();
   }
 
   /** Profile (chosen look, first-access progress) of the signed-in person. */
@@ -300,6 +547,7 @@ export class SpaceView {
     this.inputCleanup = [];
     this.mover.clearKeys();
     this.mover.cancelPath();
+    this.editor.setEnabled(false);
     this.renderer.detach();
   }
 
@@ -310,6 +558,7 @@ export class SpaceView {
     this.renderer.attach(el);
     this.bindInput(el);
     this.renderer.rebuildStatic(this.world);
+    this.renderer.rebuildDecor(this.world);
     this.dirtyUi = true;
     this.flushUi();
   }

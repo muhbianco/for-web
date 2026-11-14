@@ -167,6 +167,18 @@ export class Gateway {
         case "media.session.request":
           if (!s.runtime.requestMedia(s)) s.send({ v: 1, t: "error", re: cmd.id, d: { code: "rate_limited" } });
           return;
+        case "decor.place":
+          return s.runtime.decorCommand(s, cmd.id, { kind: "place", item: cmd.d });
+        case "decor.update":
+          return s.runtime.decorCommand(s, cmd.id, { kind: "update", item: cmd.d });
+        case "decor.remove":
+          return s.runtime.decorCommand(s, cmd.id, { kind: "remove", id: cmd.d.id });
+        case "decor.floor":
+          return s.runtime.decorCommand(s, cmd.id, { kind: "floor", zone: cmd.d.zone, floor: cmd.d.floor });
+        case "decor.settings":
+          return s.runtime.decorCommand(s, cmd.id, { kind: "settings", settings: cmd.d });
+        case "avatar.teleport":
+          return s.runtime.teleport(s, cmd.id, cmd.d.id);
       }
     });
     ws.on("close", () => {
@@ -287,14 +299,18 @@ export class Gateway {
         }
         return json(405, { error: "method" });
       }
-      const m = /^\/v1\/spaces\/([0-9A-HJKMNP-TV-Z]{26})\/layout\/([0-9a-f]{8})$/.exec(url.pathname);
+      const m = /^\/v1\/spaces\/([0-9A-HJKMNP-TV-Z]{26})\/(layout\/([0-9a-f]{8})|decor)$/.exec(url.pathname);
       if (!m || req.method !== "GET") return json(404, { error: "not_found" });
-      const [, serverId, fingerprint] = m as unknown as [string, string, string];
+      const [, serverId, what, fingerprint] = m as unknown as [string, string, string, string | undefined];
       const member = await this.memberOrNull(serverId, user);
       if (member === "unavailable") return json(503, { error: "stoat_unavailable" });
       if (!member) return json(403, { error: "not_member" });
       const runtime = await this.deps.runtimes.get(serverId).catch(() => null);
       if (!runtime) return json(404, { error: "not_found" });
+      if (what === "decor") {
+        // Every member sees the same decoration; it changes, so no caching.
+        return json(200, runtime.decorWire);
+      }
       if (runtime.layoutFingerprint !== fingerprint) return json(404, { error: "stale_layout" });
       // Same geometry for every member; the wire map carries no room or wing
       // names (runtime.ts): those come per viewer in the snapshot.

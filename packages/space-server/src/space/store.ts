@@ -1,6 +1,6 @@
 import type { Collection, MongoClient } from "mongodb";
 
-import type { Assignment } from "./assignment.ts";
+import { type Assignment, normalizeWings, type StoredWing } from "./assignment.ts";
 
 /**
  * Persistence of room placement. `save` is compare-and-set on `rev`, so two
@@ -31,7 +31,8 @@ export class MemoryAssignmentStore implements AssignmentStore {
 interface AssignmentDoc {
   _id: string;
   rev: number;
-  wings: Assignment["wings"];
+  /** Template 1 documents hold `null` for free slots; normalized on load. */
+  wings: StoredWing[];
   updated_at: Date;
 }
 
@@ -45,7 +46,7 @@ export class MongoAssignmentStore implements AssignmentStore {
 
   async load(serverId: string): Promise<Assignment | null> {
     const doc = await this.col.findOne({ _id: serverId }, { maxTimeMS: 3_000 });
-    return doc ? { serverId: doc._id, rev: doc.rev, wings: doc.wings } : null;
+    return doc ? { serverId: doc._id, rev: doc.rev, wings: normalizeWings(doc.wings) } : null;
   }
 
   async save(next: Assignment, expectedRev: number): Promise<boolean> {

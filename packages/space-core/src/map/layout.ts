@@ -1,7 +1,9 @@
 import {
   MAX_SLOTS_PER_WING,
   MAX_WINGS,
+  ROOM_DEPTH,
   ROOM_INTERIOR,
+  ROOM_LENGTH,
   type RoomSize,
   Tile,
   TILE,
@@ -12,41 +14,55 @@ import type {
   CompiledRoom,
   CompiledWing,
   LayoutInput,
+  SlotInput,
   TilePos,
   TileRect,
 } from "./types.ts";
 
 /**
- * Deterministic layout: one fixed template for every Stoat server (ADR 0005).
+ * Deterministic layout, template 2: one fixed template for every Stoat server
+ * (ADR 0005; proportions and shared walls from ADR 0007).
  *
  *            north wings (even index) grow up ↑
- *   ┌──────lobby──────┐═══ spine (hall) ═══════════════════→ grows east
+ *   ┌─hall─┐═══ spine ═══════════════════════→ grows east
  *            south wings (odd index) grow down ↓
  *
- * Stability is by construction, not by bookkeeping: a wing's position depends
- * only on its index and a slot's position only on (wing index, slot index).
- * Appending a wing or a room never moves anything already placed; only the
- * spine and wing end caps extend. Coordinates are signed tile coordinates with
- * a fixed origin (the lobby's top-left), so north growth never shifts them.
+ * A wing is a 3-tile corridor leaving the spine, with rooms lined up on both
+ * sides like houses on a street: even slots on the west side, odd slots on the
+ * east side, each side stacking away from the spine. Every room is ROOM_DEPTH
+ * deep, so a wing has straight outer walls; a room's length along the corridor
+ * comes from its size. The first room of each side sits on the spine and opens
+ * onto it; the others open onto the wing corridor. Walls are shared (room ↔
+ * room, room ↔ corridor, wing ↔ wing, hall ↔ first wing), so the whole map
+ * reads as one building.
+ *
+ * Stability is by construction, not by bookkeeping: a wing's x depends only
+ * on its index, and a room's rows only on the sizes of the earlier slots on
+ * its side of the same wing. Archived rooms keep their slot (and size) as a
+ * walled, doorless block, so nothing after them moves. Appending a wing or a
+ * room never moves anything already placed; only the spine and the far end of
+ * a corridor extend. Coordinates are signed tile coordinates with a fixed
+ * origin (the hall's top-left), so north growth never shifts them.
  */
 
-export const TEMPLATE_VERSION = 1 as const;
+export const TEMPLATE_VERSION = 2 as const;
 
-// Lobby (outer, walls included) and the spine rows it opens onto.
-const LOBBY_W = 22;
-const LOBBY_H = 16;
-const MID_Y = 8;
-const SPINE_WALL_N = MID_Y - 2; // 6
-const SPINE_WALL_S = MID_Y + 2; // 10
-const SPINE_X0 = LOBBY_W; // first spine column, right after the lobby east wall
-const SPINE_LEAD = 3;
+// Hall (outer, walls included) and the spine rows it opens onto.
+const LOBBY_W = 14;
+const LOBBY_H = 11;
+const MID_Y = 5;
+const SPINE_WALL_N = MID_Y - 2; // 3
+const SPINE_WALL_S = MID_Y + 2; // 7
+const SPINE_X0 = LOBBY_W; // first spine floor column, right after the hall's east wall
+const SPINE_STUB = 4; // spine floor length when there is no wing yet
 
-// Slots: an L room (12×9 interior, 14×11 outer) fills a slot exactly.
-const SLOT_W = ROOM_INTERIOR.L.w + 2; // across the wing (x)
-const SLOT_L = ROOM_INTERIOR.L.h + 2; // along the wing (y)
+const SIDE_W = ROOM_DEPTH + 2; // outer wall + interior + corridor-side wall
 const CORRIDOR = 3;
-const WING_W = 2 * SLOT_W + CORRIDOR; // 31
-const WING_GAP = 2;
+const WING_W = 2 * SIDE_W + CORRIDOR; // 21
+/** Adjacent wing pairs share their outer wall. */
+const WING_PITCH = WING_W - 1;
+/** A legacy `null` slot (template 1) had the largest footprint. */
+const LEGACY_FREE_SIZE: RoomSize = "L";
 
 export class LayoutError extends Error {
   constructor(message: string) {
@@ -107,19 +123,15 @@ const rect = (x0: number, y0: number, x1: number, y1: number): TileRect => ({
   y1: Math.max(y0, y1),
 });
 
-/** Left edge of the wing pair holding wing `index` (north and south share x). */
+/** West outer wall of the wing pair holding wing `index` (north and south share x). */
 function wingX0(index: number): number {
   const pair = Math.floor(index / 2);
-  return SPINE_X0 + SPINE_LEAD + pair * (WING_W + WING_GAP);
+  return LOBBY_W - 1 + pair * WING_PITCH;
 }
 
-/** Rows of a slot level, as an inclusive range, for a north or south wing. */
-function levelRows(north: boolean, level: number): { y0: number; y1: number } {
-  const d0 = level * SLOT_L;
-  const d1 = d0 + SLOT_L - 1;
-  return north
-    ? { y0: SPINE_WALL_N - 1 - d1, y1: SPINE_WALL_N - 1 - d0 }
-    : { y0: SPINE_WALL_S + 1 + d0, y1: SPINE_WALL_S + 1 + d1 };
+/** A slot as the generator sees it: legacy `null` is a free slot of the largest size. */
+function slotOf(s: SlotInput | null | undefined): SlotInput {
+  return s ?? { roomId: null, label: "", size: LEGACY_FREE_SIZE };
 }
 
 function validate(input: LayoutInput) {
@@ -136,12 +148,13 @@ function validate(input: LayoutInput) {
     if (wingIdx.has(w.index)) throw new LayoutError(`duplicate wing index ${w.index}`);
     wingIdx.add(w.index);
     if (w.slots.length > MAX_SLOTS_PER_WING) throw new LayoutError(`too many slots in wing ${w.index}`);
-    for (const s of w.slots) {
-      if (!s) continue;
-      if (!s.roomId) throw new LayoutError("room without id");
-      if (roomIds.has(s.roomId)) throw new LayoutError(`room ${s.roomId} placed twice`);
-      roomIds.add(s.roomId);
-      if (!(s.size in ROOM_INTERIOR)) throw new LayoutError(`bad size for ${s.roomId}`);
+    for (const raw of w.slots) {
+      if (!raw) continue;
+      if (!(raw.size in ROOM_INTERIOR)) throw new LayoutError(`bad size ${String(raw.size)}`);
+      if (raw.roomId === null) continue;
+      if (!raw.roomId) throw new LayoutError("room without id");
+      if (roomIds.has(raw.roomId)) throw new LayoutError(`room ${raw.roomId} placed twice`);
+      roomIds.add(raw.roomId);
     }
   }
 }
@@ -150,18 +163,20 @@ export function generateLayout(input: LayoutInput): CompiledMap {
   validate(input);
   const c = new Canvas();
 
-  // Lobby, opening east onto the spine.
+  // Hall, opening east onto the spine.
   const lobby = rect(0, 0, LOBBY_W - 1, LOBBY_H - 1);
   c.box(lobby, Tile.Floor);
   for (let y = SPINE_WALL_N + 1; y <= SPINE_WALL_S - 1; y++) c.set(LOBBY_W - 1, y, Tile.Floor);
+  const hall = rect(1, 1, LOBBY_W - 2, LOBBY_H - 2);
 
-  // Spine long enough for the furthest wing pair (or a stub with no wings).
+  // Spine up to the last wing pair's outer wall (or a stub with no wings).
   const maxWing = input.wings.reduce((m, w) => Math.max(m, w.index), -1);
-  const spineEnd = maxWing >= 0 ? wingX0(maxWing) + WING_W - 1 + SPINE_LEAD : SPINE_X0 + SPINE_LEAD + 4;
+  const spineEnd = maxWing >= 0 ? wingX0(maxWing) + WING_W - 2 : SPINE_X0 + SPINE_STUB - 1;
   c.rect(rect(SPINE_X0, SPINE_WALL_N, spineEnd + 1, SPINE_WALL_N), Tile.Wall);
   c.rect(rect(SPINE_X0, SPINE_WALL_S, spineEnd + 1, SPINE_WALL_S), Tile.Wall);
   c.rect(rect(spineEnd + 1, SPINE_WALL_N, spineEnd + 1, SPINE_WALL_S), Tile.Wall);
-  c.rect(rect(SPINE_X0, SPINE_WALL_N + 1, spineEnd, SPINE_WALL_S - 1), Tile.Floor);
+  const spine = rect(SPINE_X0, SPINE_WALL_N + 1, spineEnd, SPINE_WALL_S - 1);
+  c.rect(spine, Tile.Floor);
 
   const wings: CompiledWing[] = [];
   const rooms: CompiledRoom[] = [];
@@ -169,95 +184,100 @@ export function generateLayout(input: LayoutInput): CompiledMap {
   for (const w of [...input.wings].sort((a, b) => a.index - b.index)) {
     const north = w.index % 2 === 0;
     const x0 = wingX0(w.index);
-    const cx0 = x0 + SLOT_W; // first corridor column
+    const wallW = x0 + SIDE_W - 1; // corridor west wall = west rooms' corridor-side wall
+    const cx0 = wallW + 1;
     const cx1 = cx0 + CORRIDOR - 1;
-    const wallW = cx0 - 1;
-    const wallE = cx1 + 1;
-    let lastSlot = -1;
-    w.slots.forEach((s, i) => {
-      if (s) lastSlot = i;
-    });
-    const levels = Math.max(1, Math.floor(Math.max(lastSlot, w.slots.length - 1) / 2) + 1);
-    const far = levelRows(north, levels - 1);
-    const near = levelRows(north, 0);
-    const corridor = north
-      ? rect(cx0, far.y0, cx1, near.y1)
-      : rect(cx0, near.y0, cx1, far.y1);
+    const wallE = cx1 + 1; // corridor east wall = east rooms' corridor-side wall
+    const xEnd = x0 + WING_W - 1;
+    const spineWall = north ? SPINE_WALL_N : SPINE_WALL_S;
+    const away = north ? -1 : 1;
 
-    // Corridor, its side walls, the end cap, and the opening in the spine wall.
+    // Two streets, each stacking away from the spine; the first room's near
+    // wall is the spine wall itself, and its door opens onto the spine.
+    const near = { west: spineWall, east: spineWall };
+    const first = { west: true, east: true };
+    w.slots.forEach((raw, i) => {
+      const s = slotOf(raw);
+      const west = i % 2 === 0;
+      const side = west ? "west" : "east";
+      const h = ROOM_INTERIOR[s.size].h;
+      const far = near[side] + away * (h + 1);
+      const outer = rect(west ? x0 : wallE, near[side], west ? wallW : xEnd, far);
+      c.box(outer, Tile.Floor);
+      if (s.roomId !== null) {
+        const interior = rect(outer.x0 + 1, outer.y0 + 1, outer.x1 - 1, outer.y1 - 1);
+        let door: TilePos;
+        let outside: TilePos;
+        let inside: TilePos;
+        if (first[side]) {
+          // Street corner: door in the spine wall, in the middle of the room.
+          const doorX = interior.x0 + Math.floor(ROOM_DEPTH / 2);
+          door = { tx: doorX, ty: spineWall };
+          outside = { tx: doorX, ty: spineWall - away };
+          inside = { tx: doorX, ty: spineWall + away };
+        } else {
+          const doorX = west ? wallW : wallE;
+          const doorY = outer.y0 + 1 + Math.floor((h - 1) / 2);
+          door = { tx: doorX, ty: doorY };
+          outside = { tx: west ? doorX + 1 : doorX - 1, ty: doorY };
+          inside = { tx: west ? doorX - 1 : doorX + 1, ty: doorY };
+        }
+        c.set(door.tx, door.ty, Tile.Door);
+        rooms.push({
+          roomId: s.roomId,
+          label: s.label,
+          size: s.size,
+          wingIndex: w.index,
+          slotIndex: i,
+          interior,
+          outer,
+          door,
+          outside,
+          inside,
+          labelAnchor: {
+            tx: Math.floor((interior.x0 + interior.x1) / 2),
+            ty: Math.floor((interior.y0 + interior.y1) / 2),
+          },
+        });
+      }
+      near[side] = far;
+      first[side] = false;
+    });
+
+    // The corridor runs to the longer street's end (at least one S room deep).
+    const minFar = spineWall + away * (ROOM_LENGTH.S + 1);
+    const farthest = north
+      ? Math.min(near.west, near.east, minFar)
+      : Math.max(near.west, near.east, minFar);
+    const corridor = north
+      ? rect(cx0, farthest + 1, cx1, spineWall - 1)
+      : rect(cx0, spineWall + 1, cx1, farthest - 1);
     c.rect(rect(wallW, corridor.y0, wallW, corridor.y1), Tile.Wall);
     c.rect(rect(wallE, corridor.y0, wallE, corridor.y1), Tile.Wall);
-    const capY = north ? corridor.y0 - 1 : corridor.y1 + 1;
-    c.rect(rect(wallW, capY, wallE, capY), Tile.Wall);
+    c.rect(rect(wallW, farthest, wallE, farthest), Tile.Wall);
     c.rect(corridor, Tile.Floor);
-    c.rect(rect(cx0, north ? SPINE_WALL_N : SPINE_WALL_S, cx1, north ? SPINE_WALL_N : SPINE_WALL_S), Tile.Floor);
+    // Opening in the spine wall.
+    c.rect(rect(cx0, spineWall, cx1, spineWall), Tile.Floor);
     wings.push({ index: w.index, title: w.title, north, corridor });
-
-    w.slots.forEach((s, i) => {
-      if (!s) return;
-      rooms.push(placeRoom(c, s.roomId, s.label, s.size, w.index, i, north, wallW, wallE));
-    });
   }
 
-  // Spawn points spread over the lobby floor, away from walls.
+  // Spawn points in the middle of the hall, in front of the exit.
   const spawns: TilePos[] = [];
-  for (const ty of [5, 8, 11]) for (const tx of [5, 9, 13]) spawns.push({ tx, ty });
+  for (const ty of [MID_Y - 1, MID_Y + 1]) for (const tx of [5, 7, 9]) spawns.push({ tx, ty });
 
-  return compile(c, lobby, rooms, wings, spawns);
-}
-
-function placeRoom(
-  c: Canvas,
-  roomId: string,
-  label: string,
-  size: RoomSize,
-  wingIndex: number,
-  slotIndex: number,
-  north: boolean,
-  wallW: number,
-  wallE: number,
-): CompiledRoom {
-  const { w, h } = ROOM_INTERIOR[size];
-  const outW = w + 2;
-  const outH = h + 2;
-  const west = slotIndex % 2 === 0;
-  const level = Math.floor(slotIndex / 2);
-  const rows = levelRows(north, level);
-  const y0 = rows.y0 + Math.floor((SLOT_L - outH) / 2);
-  const y1 = y0 + outH - 1;
-  // The room's corridor-facing wall IS the corridor side wall.
-  const x1 = west ? wallW : wallE + outW - 1;
-  const x0 = west ? wallW - outW + 1 : wallE;
-  const outer = rect(x0, y0, x1, y1);
-  c.box(outer, Tile.Floor);
-  const doorY = y0 + Math.floor(outH / 2);
-  const doorX = west ? wallW : wallE;
-  c.set(doorX, doorY, Tile.Door);
-  const interior = rect(x0 + 1, y0 + 1, x1 - 1, y1 - 1);
-  return {
-    roomId,
-    label,
-    size,
-    wingIndex,
-    slotIndex,
-    interior,
-    outer,
-    door: { tx: doorX, ty: doorY },
-    outside: { tx: west ? doorX + 1 : doorX - 1, ty: doorY },
-    inside: { tx: west ? doorX - 1 : doorX + 1, ty: doorY },
-    labelAnchor: {
-      tx: Math.floor((interior.x0 + interior.x1) / 2),
-      ty: Math.floor((interior.y0 + interior.y1) / 2),
-    },
-  };
+  return compile(c, { lobby, hall, spine, rooms, wings, spawns });
 }
 
 function compile(
   c: Canvas,
-  lobby: TileRect,
-  rooms: CompiledRoom[],
-  wings: CompiledWing[],
-  spawns: TilePos[],
+  parts: {
+    lobby: TileRect;
+    hall: TileRect;
+    spine: TileRect;
+    rooms: CompiledRoom[];
+    wings: CompiledWing[];
+    spawns: TilePos[];
+  },
 ): CompiledMap {
   const originTx = c.minX;
   const originTy = c.minY;
@@ -267,10 +287,10 @@ function compile(
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) tiles[y * width + x] = c.get(x + originTx, y + originTy);
   }
-  rooms.sort((a, b) => a.wingIndex - b.wingIndex || a.slotIndex - b.slotIndex);
+  parts.rooms.sort((a, b) => a.wingIndex - b.wingIndex || a.slotIndex - b.slotIndex);
   const map: CompiledMap = {
     format: "muchat.space.map",
-    formatVersion: 1,
+    formatVersion: 2,
     templateVersion: TEMPLATE_VERSION,
     tileSize: TILE,
     originTx,
@@ -278,10 +298,12 @@ function compile(
     width,
     height,
     tiles,
-    rooms,
-    wings,
-    lobby,
-    spawns,
+    rooms: parts.rooms,
+    wings: parts.wings,
+    lobby: parts.lobby,
+    hall: parts.hall,
+    spine: parts.spine,
+    spawns: parts.spawns,
     fingerprint: "",
   };
   map.fingerprint = fingerprint(map);

@@ -1,5 +1,5 @@
 import { AVATAR_RADIUS, Tile, TILE } from "../map/constants.ts";
-import { type MapIndex, tileAt, tileOfPx } from "../map/grid.ts";
+import { type MapIndex, solidAt, tileAt, tileOfPx } from "../map/grid.ts";
 
 /**
  * Whether this person may cross `roomId`'s door right now. Door state and
@@ -15,7 +15,7 @@ export interface Point {
 
 function blocked(ix: MapIndex, tx: number, ty: number, door: DoorRule): boolean {
   const kind = tileAt(ix.map, tx, ty);
-  if (kind === Tile.Floor) return false;
+  if (kind === Tile.Floor) return solidAt(ix, tx, ty);
   if (kind === Tile.Door) {
     const room = ix.doorOf.get(`${tx},${ty}`);
     return !room || !door(room.roomId);

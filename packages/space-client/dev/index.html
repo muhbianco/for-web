@@ -15,24 +15,33 @@
       }
       * { box-sizing: border-box; }
       html, body { margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, sans-serif; }
-      .app { display: grid; grid-template-columns: 1fr 300px; grid-template-rows: auto 1fr; height: 100%; }
-      header { grid-column: 1 / -1; display: flex; gap: 16px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); }
+      .app { display: grid; grid-template-columns: 1fr 340px; grid-template-rows: auto 1fr; height: 100%; }
+      header { grid-column: 1 / -1; display: flex; gap: 12px; align-items: center; padding: 8px 14px; border-bottom: 1px solid var(--line); background: var(--panel); flex-wrap: wrap; }
       header .where { font-weight: 600; }
       header .status { color: var(--muted); }
       header .spacer { flex: 1; }
-      header button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; }
+      button { background: transparent; color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 10px; cursor: pointer; font: inherit; }
+      button.on, button[aria-pressed="true"] { background: #2a3150; border-color: var(--accent); }
+      button:disabled { opacity: .4; cursor: default; }
       #space { position: relative; min-height: 0; min-width: 0; overflow: hidden; outline: none; }
       #space canvas { position: absolute; inset: 0; }
       #space:focus-visible { box-shadow: inset 0 0 0 3px var(--accent); }
-      aside { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 12px; }
+      aside { border-left: 1px solid var(--line); background: var(--panel); overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
       aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 6px; }
       aside ul { list-style: none; margin: 0; padding: 0; }
       aside li { padding: 6px 8px; border-radius: 6px; display: flex; flex-direction: column; }
       aside li.here { background: #2a3150; }
-      aside li .status { color: var(--muted); font-size: 12px; }
+      aside li .status, .muted { color: var(--muted); font-size: 12px; }
       .help { color: var(--muted); font-size: 12px; margin-top: 18px; }
+      .row { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+      #items { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; max-height: 260px; overflow: auto; }
+      #items .item { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 4px; font-size: 11px; line-height: 1.1; text-align: center; }
+      #items canvas { image-rendering: pixelated; }
+      #msg { color: #ff8a8a; min-height: 1.2em; }
+      #prompt { color: var(--accent); font-weight: 600; }
+      input, select { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font: inherit; }
       .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-      @media (max-width: 760px) { .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr 40%; } aside { border-left: 0; border-top: 1px solid var(--line); } }
+      @media (max-width: 760px) { .app { grid-template-columns: 1fr; grid-template-rows: auto 1fr 45%; } aside { border-left: 0; border-top: 1px solid var(--line); } }
     </style>
   </head>
   <body>
@@ -40,8 +49,11 @@
       <header>
         <span class="where" id="where">Carregando mapa…</span>
         <span class="status" id="status">Conectando ao espaço…</span>
+        <span id="prompt"></span>
+        <button type="button" id="interact">Usar (E)</button>
         <span class="spacer"></span>
         <span id="who"></span>
+        <button type="button" id="edit">Decorar</button>
         <button type="button" id="zoom-out" aria-label="Diminuir zoom">−</button>
         <button type="button" id="zoom-in" aria-label="Aumentar zoom">+</button>
       </header>
@@ -49,11 +61,37 @@
         id="space"
         tabindex="0"
         role="application"
-        aria-label="Mapa do espaço. Use as setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas ao lado tem as mesmas informações."
+        aria-label="Mapa do espaço. Use as setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas ao lado tem as mesmas informações."
       ></div>
-      <aside aria-label="Lista de salas">
+      <aside aria-label="Lista de salas e editor">
+        <div id="toolbar">
+          <div class="muted" id="rights"></div>
+          <div class="row">
+            <select id="cat"></select>
+            <input id="search" type="search" placeholder="Buscar…" />
+          </div>
+          <div id="items"></div>
+          <div id="tool" class="muted"></div>
+          <div id="variants" class="row"></div>
+          <div class="row">
+            <button type="button" id="rotate">Girar (R)</button>
+            <button type="button" id="dup">Duplicar</button>
+            <button type="button" id="remove">Remover</button>
+            <button type="button" id="cancel">Cancelar</button>
+            <button type="button" id="undo">Desfazer</button>
+            <button type="button" id="redo">Refazer</button>
+          </div>
+          <div class="row">
+            <button type="button" id="everyone">Todos decoram</button>
+            <button type="button" id="admins">Só admins</button>
+          </div>
+          <div id="selected" class="muted"></div>
+          <div id="msg" role="status"></div>
+          <div id="interaction" class="muted"></div>
+          <button type="button" id="close-interaction" hidden>Fechar interação</button>
+        </div>
         <div id="list"></div>
-        <p class="help">Dev: entre como <a href="?as=ana">Ana</a>, <a href="?as=bia">Bia</a> (diretoria) ou <a href="?as=caio">Caio</a>. Abra duas abas para ver uma pessoa andando na outra.</p>
+        <p class="help">Dev: entre como <a href="?as=ana">Ana</a> (dona), <a href="?as=bia">Bia</a> (diretoria) ou <a href="?as=caio">Caio</a>. Abra duas abas para ver uma pessoa andando na outra.</p>
       </aside>
     </div>
     <div class="sr-only" aria-live="polite" id="live"></div>

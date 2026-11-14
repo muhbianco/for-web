@@ -1,4 +1,6 @@
-import { type ConnStatus, type MediaStatus, SpaceView, type VoicePort, wingHeading } from "../src/index.ts";
+import { CATALOG, CATEGORY_LABELS, type DecorItem, floorRef, itemOf, parseFloorRef, searchCatalog } from "@muchat/space-core";
+
+import { type ConnStatus, floorSwatch, type MediaStatus, SpaceView, thumbnail, type VoicePort, wingHeading } from "../src/index.ts";
 
 // Must match packages/space-server/src/dev.ts.
 const DEV_SERVER_ID = "01JDEV0SRV0000000000000000";
@@ -78,6 +80,66 @@ let zoom = 2;
 $("zoom-in").onclick = () => view.setZoom(zoom + 1);
 $("zoom-out").onclick = () => view.setZoom(zoom - 1);
 
+// ---- editor toolbar (dev only) -------------------------------------------------
+
+const editBtn = $("edit") as HTMLButtonElement;
+const catSel = $("cat") as HTMLSelectElement;
+const search = $("search") as HTMLInputElement;
+const grid = $("items");
+const variants = $("variants");
+const selectedBox = $("selected");
+const msg = $("msg");
+const promptEl = $("prompt");
+const interactionEl = $("interaction");
+
+for (const c of ["all", ...Object.keys(CATEGORY_LABELS), "interactive"]) {
+  const o = document.createElement("option");
+  o.value = c;
+  o.textContent = c === "all" ? "Todos" : c === "interactive" ? "Interativos" : CATEGORY_LABELS[c as keyof typeof CATEGORY_LABELS];
+  catSel.append(o);
+}
+
+function pick(item: DecorItem, variant?: string) {
+  if (item.layer === "floor") view.editor.pickFloor(floorRef(item.id, variant ?? item.variants?.[0]));
+  else view.editor.pickItem(item.id, variant);
+}
+
+function renderGrid() {
+  const cat = catSel.value;
+  const items = searchCatalog(CATALOG, search.value, cat === "all" ? undefined : (cat as never));
+  grid.replaceChildren(
+    ...items.map((item) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "item";
+      b.title = item.description ?? item.name;
+      const canvas = item.layer === "floor" ? floorSwatch(item.id, item.variants?.[0], 40) : thumbnail(item, item.variants?.[0], 40);
+      const name = document.createElement("span");
+      name.textContent = item.name;
+      b.append(canvas, name);
+      b.onclick = () => pick(item);
+      return b;
+    }),
+  );
+}
+catSel.onchange = renderGrid;
+search.oninput = renderGrid;
+renderGrid();
+
+editBtn.onclick = () => view.setEditing(!view.ui.editor.enabled);
+$("rotate").onclick = () => view.editor.rotate();
+$("remove").onclick = () => view.editor.removeSelected();
+$("dup").onclick = () => view.editor.duplicateSelected();
+$("undo").onclick = () => view.editor.undo();
+$("redo").onclick = () => view.editor.redo();
+$("cancel").onclick = () => view.editor.cancel();
+$("everyone").onclick = () => view.editor.setSettings({ editors: "everyone", roles: [] });
+$("admins").onclick = () => view.editor.setSettings({ editors: "admins", roles: [] });
+$("interact").onclick = () => view.interact();
+$("close-interaction").onclick = () => view.closeInteraction();
+// Stop the toolbar's keys from walking the avatar.
+$("toolbar").addEventListener("keydown", (e) => e.stopPropagation());
+
 let lastAnnouncement = "";
 view.subscribe((s) => {
   zoom = s.zoom;
@@ -89,6 +151,30 @@ view.subscribe((s) => {
     lastAnnouncement = s.announcement;
     $("live").textContent = s.announcement;
   }
+  editBtn.textContent = s.editor.enabled ? "Sair do editor" : "Decorar";
+  editBtn.disabled = !s.rights.can_edit;
+  $("rights").textContent = `rev ${s.decorRev} · edita: ${s.rights.can_edit} · gerencia: ${s.rights.can_manage} · quem: ${s.settings?.editors ?? "?"}`;
+  msg.textContent = s.editor.message ?? "";
+  const tool = s.editor.tool;
+  const toolItem = tool.kind === "place" ? tool.item : tool.kind === "floor" ? itemOf(CATALOG, parseFloorRef(tool.floor).item) : null;
+  const toolVariant = tool.kind === "place" ? tool.variant : tool.kind === "floor" ? parseFloorRef(tool.floor).variant : undefined;
+  $("tool").textContent = toolItem ? `${tool.kind === "floor" ? "Piso" : "Colocando"}: ${toolItem.name}${toolVariant ? ` (${toolVariant})` : ""}` : "";
+  variants.replaceChildren(
+    ...(toolItem?.variants ?? []).map((v) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = v;
+      b.className = v === toolVariant ? "on" : "";
+      b.onclick = () => pick(toolItem!, v);
+      return b;
+    }),
+  );
+  const sel = s.editor.selected;
+  const selItem = sel ? itemOf(CATALOG, sel.item) : undefined;
+  selectedBox.textContent = sel && selItem ? `Selecionado: ${selItem.name} #${sel.id} em ${sel.zone} (${sel.x},${sel.y}) rot ${sel.rot}${sel.variant ? ` ${sel.variant}` : ""}` : "";
+  promptEl.textContent = s.prompt ? `E · ${s.prompt.label}` : "";
+  interactionEl.textContent = s.interaction ? `${s.interaction.item.interaction}: ${JSON.stringify(s.interaction.config)}` : "";
+  ($("close-interaction") as HTMLButtonElement).hidden = !s.interaction;
   const list = $("list");
   list.replaceChildren(
     ...s.list.map((wing) => {

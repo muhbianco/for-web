@@ -51,9 +51,6 @@ msgstr ""
 msgid "{0, plural, one {# blocked message} other {# blocked messages}}"
 msgstr ""
 
-#~ msgid "{0, plural, one {# Member} other {# Members}}"
-#~ msgstr ""
-
 #. placeholder {0}: items().length
 #: components/ui/components/utils/files/FileDropAnywhereCollector.tsx
 msgid "{0, plural, one {Drop a file} other {Drop # files}}"
@@ -169,12 +166,6 @@ msgstr ""
 msgid "{device} Hz (não bate com {context} Hz)"
 msgstr ""
 
-#~ msgid "{h} hours"
-#~ msgstr ""
-
-#~ msgid "{m} minutes"
-#~ msgstr ""
-
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{ms} ms/s"
 msgstr ""
@@ -187,9 +178,6 @@ msgstr ""
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{pct}% ({0} ms)"
 msgstr ""
-
-#~ msgid "{sec} seconds"
-#~ msgstr ""
 
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "{unknown} reacted"
@@ -272,59 +260,17 @@ msgstr ""
 msgid "<0>Be careful!</0><1/>This is not the same as the link that was displayed:"
 msgstr ""
 
-#~ msgid "1 day"
-#~ msgstr ""
-
-#~ msgid "1 hour"
-#~ msgstr ""
-
-#~ msgid "1 minute"
-#~ msgstr ""
-
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "1 person reacted"
 msgstr "1 чалавек адрэагаваў"
-
-#~ msgid "1 second"
-#~ msgstr ""
-
-#~ msgid "10 minutes"
-#~ msgstr ""
-
-#~ msgid "10 seconds"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "12 hours"
 msgstr ""
 
-#~ msgid "2 hours"
-#~ msgstr ""
-
 #: components/app/interface/settings/user/Language.tsx
 msgid "24 hours"
 msgstr ""
-
-#~ msgid "3 days"
-#~ msgstr ""
-
-#~ msgid "30 minutes"
-#~ msgstr ""
-
-#~ msgid "30 seconds"
-#~ msgstr ""
-
-#~ msgid "5 minutes"
-#~ msgstr ""
-
-#~ msgid "5 seconds"
-#~ msgstr ""
-
-#~ msgid "6 hours"
-#~ msgstr ""
-
-#~ msgid "7 days"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A chamada está saudável"
@@ -355,12 +301,16 @@ msgstr ""
 msgid "Able to speak in voice call"
 msgstr ""
 
-#: components/auth/src/AuthPage.tsx
-#~ msgid "About"
-#~ msgstr "Пра нас"
+#: components/space/InteractionDialog.tsx
+msgid "Abra o modo Decorar, selecione o objeto e preencha o que ele mostra."
+msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abrindo…"
+msgstr ""
+
+#: components/space/InteractionDialog.tsx
+msgid "Abrir"
 msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
@@ -421,9 +371,6 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Advanced"
 msgstr "Пашыраныя"
-
-#~ msgid "Affects all roles and users"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "aguardando a primeira janela"
@@ -520,9 +467,6 @@ msgstr ""
 msgid "Are you sure you want to go to "
 msgstr ""
 
-#~ msgid "Are you sure you want to go to <0>{0}</0>?"
-#~ msgstr ""
-
 #: components/modal/modals/PinMessage.tsx
 msgid "Are you sure you want to pin this message?"
 msgstr ""
@@ -544,6 +488,10 @@ msgstr ""
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Assign Roles"
 msgstr "Прызначэнне роляў"
+
+#: components/space/DecorPanel.tsx
+msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
+msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Atravesse a porta para entrar numa sala; saia por ela quando quiser."
@@ -589,10 +537,6 @@ msgstr ""
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Automatic gain control"
 msgstr ""
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-#~ msgid "Automatic Gain Control"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Avatar"
@@ -689,19 +633,12 @@ msgid "Browser"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-#~ msgid "Browser Echo Cancellation"
-#~ msgstr ""
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Browser gain control"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Browser noise suppression"
 msgstr ""
-
-#~ msgid "Browser Noise Supression"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
@@ -717,6 +654,14 @@ msgstr "Журнал багаў"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Built-in browser noise suppression only."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Buscar item"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Buscar item…"
 msgstr ""
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
@@ -814,12 +759,24 @@ msgstr ""
 msgid "Cancel your discover request and remove it from the review queue"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Cancelar"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Cannot delete account until servers are deleted or transferred"
 msgstr "Немагчыма выдаліць уліковы запіс, пакуль вашы серверы не выдалены, альбо вы не перадалі іншаму ўдзельніку ролю уладальніка"
 
 #: components/i18n/errors.tsx
 msgid "Cannot edit this message."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Cargos escolhidos"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Categorias"
 msgstr ""
 
 #: components/modal/modals/EditBotUsername.tsx
@@ -885,9 +842,6 @@ msgstr ""
 #: components/app/interface/settings/user/profile/EditProfile.tsx
 msgid "Change your profile per-server"
 msgstr ""
-
-#~ msgid "Changelog"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Changes what other people hear from you, not what you hear from them. Only one suppressor runs at a time."
@@ -976,6 +930,18 @@ msgstr ""
 msgid "Client Settings"
 msgstr "Налады кліента"
 
+#: components/space/DecorPanel.tsx
+msgid "Clique no mapa para colocar. Esc cancela."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Clique no mapa para colocar. R gira, Esc cancela."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Clique num ambiente para trocar o piso dele."
+msgstr ""
+
 #: components/modal/modals/AddFriend.tsx
 #: components/modal/modals/AddMembersToGroup.tsx
 #: components/modal/modals/Changelog.tsx
@@ -1019,6 +985,11 @@ msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Collapse call window"
+msgstr ""
+
+#. placeholder {0}: item().name
+#: components/space/DecorPanel.tsx
+msgid "Colocando: {0}"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -1226,9 +1197,6 @@ msgstr "Стварыць"
 msgid "Create a channel before inviting others!"
 msgstr ""
 
-#~ msgid "Create a group"
-#~ msgstr "Стварыць групу"
-
 #: src/interface/Home.tsx
 msgid "Create a group or server"
 msgstr ""
@@ -1250,16 +1218,9 @@ msgstr ""
 msgid "Create a new group"
 msgstr ""
 
-#~ msgid "Create a new role"
-#~ msgstr "Стварыць новую ролю"
-
 #: components/modal/modals/CreateWebhook.tsx
 msgid "Create a webhook"
 msgstr ""
-
-#: components/auth/src/flows/FlowCreate.tsx
-#~ msgid "Create an account"
-#~ msgstr "Стварыць уліковы запіс"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Create and edit server roles"
@@ -1382,6 +1343,15 @@ msgstr ""
 msgid "Decodificador"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Decoração"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+#: components/space/SpacePage.tsx
+msgid "Decorar"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "DeepFilterNet (recommended)"
 msgstr ""
@@ -1402,12 +1372,6 @@ msgstr ""
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Default"
 msgstr "Прадвызначаныя"
-
-#~ msgid "Default Permissions"
-#~ msgstr ""
-
-#~ msgid "Defean"
-#~ msgstr ""
 
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Degraded Performance"
@@ -1489,8 +1453,16 @@ msgstr ""
 msgid "Description provided by {0}"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Desfazer"
+msgstr ""
+
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Desktop"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Desmarcar"
 msgstr ""
 
 #: components/app/interface/settings/user/bots/MyBots.tsx
@@ -1522,18 +1494,10 @@ msgstr ""
 msgid "Disconnected"
 msgstr ""
 
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Discord RPC"
-#~ msgstr ""
-
 #: components/app/interface/settings/ServerSettings.tsx
 #: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Discover"
 msgstr ""
-
-#: src/interface/Home.tsx
-#~ msgid "Discover Stoat"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Display & Text"
@@ -1559,9 +1523,6 @@ msgstr ""
 msgid "Don't ask me again for "
 msgstr ""
 
-#~ msgid "Don't ask me again for <0>{0}</0>"
-#~ msgstr ""
-
 #: components/modal/modals/BanMember.tsx
 msgid "Don't delete messages"
 msgstr ""
@@ -1574,21 +1535,9 @@ msgstr ""
 msgid "Don't show this again"
 msgstr ""
 
-#: components/app/interface/settings/UserSettings.tsx
-#~ msgid "Donate"
-#~ msgstr ""
-
 #: src/interface/Home.tsx
 msgid "Donate to Muchat"
 msgstr ""
-
-#: src/interface/Home.tsx
-#~ msgid "Donate to Stoat"
-#~ msgstr ""
-
-#: components/ui/components/features/profiles/ProfileBadges.tsx
-#~ msgid "Donated to Stoat"
-#~ msgstr ""
 
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"
@@ -1596,6 +1545,10 @@ msgstr "Гатова"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Drugs or illegal goods"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Duplicar"
 msgstr ""
 
 #: components/modal/modals/TimeoutMember.tsx
@@ -1711,6 +1664,14 @@ msgstr ""
 msgid "End call"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Endereço da imagem"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Endereço da página (https)"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Engine"
 msgstr ""
@@ -1770,12 +1731,20 @@ msgstr ""
 msgid "Entre na sua conta para usar o espaço."
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Enviado."
+msgstr ""
+
 #: components/space/AudioCheck.tsx
 msgid "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
 msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Escolha seu personagem"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Escolha um ambiente"
 msgstr ""
 
 #: components/space/Onboarding.tsx
@@ -1789,6 +1758,18 @@ msgstr ""
 #: components/space/SpacePage.tsx
 #: components/space/SpaceSidebarEntry.tsx
 msgid "Espaço"
+msgstr ""
+
+#: components/space/InteractionDialog.tsx
+msgid "Este objeto abre um site em outra aba:"
+msgstr ""
+
+#: components/space/InteractionDialog.tsx
+msgid "Este objeto ainda não foi configurado."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Este servidor ainda não tem cargos."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
@@ -1842,6 +1823,14 @@ msgstr ""
 msgid "Fans, street, other people talking."
 msgstr ""
 
+#: components/space/InteractionDialog.tsx
+msgid "Fechar"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Fechar o editor"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Feedback"
@@ -1851,14 +1840,6 @@ msgstr "Зваротная сувязь"
 #: components/ui/components/utils/Form2.tsx
 msgid "File must be smaller than {0}"
 msgstr ""
-
-#: src/interface/Home.tsx
-#~ msgid "Find a community based on your hobbies or interests."
-#~ msgstr "Знайдзіце супольнасць на аснове вашых хобі або інтарэсаў."
-
-#: components/auth/src/flows/FlowHome.tsx
-#~ msgid "Find your com<0/>munity,<1/>connect with the world."
-#~ msgstr ""
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -1949,9 +1930,9 @@ msgstr ""
 msgid "GIFs are now powered by Gifbox"
 msgstr ""
 
-#: src/interface/Home.tsx
-#~ msgid "Give feedback on Stoat"
-#~ msgstr ""
+#: components/space/DecorPanel.tsx
+msgid "Girar"
+msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Give us some detail"
@@ -1979,9 +1960,6 @@ msgstr ""
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Go to the Stoat Lounge"
 msgstr ""
-
-#~ msgid "Go to the testers server"
-#~ msgstr "Перайсці на сервер тэсціроўшчыкаў"
 
 #: components/modal/modals/Onboarding.tsx
 msgid "Good"
@@ -2086,9 +2064,6 @@ msgstr "Неактыўны"
 msgid "Illegal hacking or cracking"
 msgstr ""
 
-#~ msgid "Image by @fakurian"
-#~ msgstr ""
-
 #: components/modal/modals/ReportContent.tsx
 msgid "Impersonation"
 msgstr ""
@@ -2109,9 +2084,9 @@ msgstr ""
 msgid "Instead of closing, Muchat will hide in your tray."
 msgstr ""
 
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Instead of closing, Stoat will hide in your tray."
-#~ msgstr ""
+#: components/space/DecorPanel.tsx
+msgid "Interativos"
+msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Interface Font"
@@ -2196,9 +2171,6 @@ msgstr ""
 msgid "Join a voice call to see the live meter."
 msgstr ""
 
-#~ msgid "Join call"
-#~ msgstr ""
-
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Join the Stoat Lounge"
 msgstr ""
@@ -2266,10 +2238,6 @@ msgstr "Апошнія"
 msgid "Launch Muchat when you log into your computer."
 msgstr ""
 
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Launch Stoat when you log into your computer."
-#~ msgstr ""
-
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Learn more"
 msgstr ""
@@ -2302,13 +2270,9 @@ msgstr "Выйсці з сервера"
 msgid "Let Muchat use its own custom titlebar."
 msgstr ""
 
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Let Stoat use its own custom titlebar."
-#~ msgstr ""
-
-#: src/interface/Home.tsx
-#~ msgid "Let us know how we can improve our app by giving us feedback."
-#~ msgstr "Паведаміце, як мы можам палепшыць нашу праграму, пакінуўшы водгук."
+#: components/space/DecorPanel.tsx
+msgid "Leva para"
+msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Libera 30 dias de VIP."
@@ -2325,6 +2289,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "limitada por"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Link (abre em nova aba)"
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -2426,7 +2394,7 @@ msgid "Manage Webhooks"
 msgstr "Кіраванне вэбхукамі"
 
 #: components/space/SpacePage.tsx
-msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, + e − para o zoom. A lista de salas tem as mesmas informações."
+msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações."
 msgstr ""
 
 #: components/modal/modals/ChannelToggleMature.tsx
@@ -2689,6 +2657,10 @@ msgstr "Мой уліковы запіс"
 #: components/app/interface/settings/UserSettings.tsx
 msgid "My Bots"
 msgstr "Мае боты"
+
+#: components/space/DecorPanel.tsx
+msgid "Nada encontrado."
+msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Nada para mostrar nesta aba."
@@ -3000,10 +2972,6 @@ msgstr ""
 msgid "Personagens"
 msgstr ""
 
-#: components/modal/modals/ScreenSharePicker.tsx
-#~ msgid "Pick a Screen to Share"
-#~ msgstr ""
-
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Pick a username that you want people to be able to find you by. This can be changed later in your user settings."
 msgstr "Абярыце імя карыстальніка, па якому людзі змогуць знаходзіць вас. Пазней яго можна будзе змяніць у наладах карыстальніка."
@@ -3019,6 +2987,15 @@ msgstr ""
 #: components/app/menus/MessageContextMenu.tsx
 #: components/modal/modals/PinMessage.tsx
 msgid "Pin message"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "piso"
+msgstr ""
+
+#. placeholder {0}: item().name
+#: components/space/DecorPanel.tsx
+msgid "Piso: {0}"
 msgstr ""
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
@@ -3058,10 +3035,6 @@ msgid "Please select a reason"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-#~ msgid "Powered by RNNoise"
-#~ msgstr ""
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Powered by RNNoise. Light on CPU."
 msgstr ""
 
@@ -3072,10 +3045,6 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Privacy"
 msgstr ""
-
-#: components/auth/src/AuthPage.tsx
-#~ msgid "Privacy Policy"
-#~ msgstr "Палітыка прыватнасці"
 
 #: components/markdown/plugins/anchors.tsx
 msgid "Private Channel"
@@ -3123,6 +3092,14 @@ msgstr ""
 msgid "Quality"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Quem gerencia o servidor sempre pode."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Quem pode decorar"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Quiet ({rounded} dBFS)"
 msgstr ""
@@ -3155,9 +3132,6 @@ msgstr ""
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Read Message History"
 msgstr "Чытаць гісторыю паведамленняў"
-
-#~ msgid "Read More"
-#~ msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Read past messages sent in channel"
@@ -3213,6 +3187,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Reduced"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Refazer"
 msgstr ""
 
 #: components/auth/src/flows/FlowCreate.tsx
@@ -3281,6 +3259,10 @@ msgstr ""
 msgid "Remove Timeout"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Remover"
+msgstr ""
+
 #: components/app/interface/settings/user/Sessions.tsx
 #: components/modal/modals/EditCategory.tsx
 #: components/modal/modals/RenameSession.tsx
@@ -3295,10 +3277,6 @@ msgstr ""
 #: components/modal/modals/RenameSession.tsx
 msgid "Rename Session"
 msgstr ""
-
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Rep Stoat using Discord rich presence."
-#~ msgstr ""
 
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Reply"
@@ -3387,9 +3365,6 @@ msgstr ""
 msgid "Review policy changes"
 msgstr ""
 
-#~ msgid "Roadmap"
-#~ msgstr ""
-
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Role Colour"
 msgstr ""
@@ -3414,6 +3389,14 @@ msgstr "Ролі"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "Roles with No Overrides"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Salvar"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Salvar permissões"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -3477,8 +3460,9 @@ msgstr ""
 msgid "Search for users..."
 msgstr ""
 
-#~ msgid "See what we're currently working on."
-#~ msgstr ""
+#: components/space/DecorPanel.tsx
+msgid "Selecionado"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Select audio input"
@@ -3491,10 +3475,6 @@ msgstr ""
 #: components/modal/modals/CreateGroup.tsx
 msgid "Select members to add"
 msgstr ""
-
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-#~ msgid "Select noise suppression"
-#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/ScreenShareOptions.tsx
 msgid "Select screen share quality"
@@ -3689,10 +3669,6 @@ msgstr ""
 msgid "Sign into Muchat"
 msgstr ""
 
-#: components/auth/src/flows/FlowLogin.tsx
-#~ msgid "Sign into Stoat"
-#~ msgstr ""
-
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Sign Up"
 msgstr ""
@@ -3717,6 +3693,14 @@ msgstr ""
 msgid "Slowmode off"
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Só administradores"
+msgstr ""
+
+#: components/space/InteractionDialog.tsx
+msgid "Só páginas https podem ser mostradas aqui."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "software"
 msgstr ""
@@ -3738,9 +3722,6 @@ msgstr ""
 msgid "Something went wrong! {error}"
 msgstr ""
 
-#~ msgid "Something went wrong! Try again later."
-#~ msgstr ""
-
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Sound louder than the marker is sent to others; anything quieter is muted. Speak normally and check that the bar passes the marker."
 msgstr ""
@@ -3748,10 +3729,6 @@ msgstr ""
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Sounds"
 msgstr "Гукі"
-
-#: components/app/interface/settings/UserSettings.tsx
-#~ msgid "Source Code"
-#~ msgstr "Зыходны код"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Spam or similar platform abuse"
@@ -3789,32 +3766,17 @@ msgstr ""
 msgid "Status"
 msgstr ""
 
-#~ msgid "Stoat Desktop"
-#~ msgstr ""
-
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Stoat Developer"
 msgstr ""
-
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Stoat for Desktop"
-#~ msgstr ""
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "Stoat Founder"
 msgstr ""
 
-#: components/auth/src/flows/FlowHome.tsx
-#~ msgid "Stoat is one of the best ways to stay connected with your friends and community, anywhere, anytime."
-#~ msgstr ""
-
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Stoat rocks!"
 msgstr ""
-
-#: components/app/interface/settings/user/Native.tsx
-#~ msgid "Stoat will start in the system tray."
-#~ msgstr ""
 
 #: src/AndroidNag.tsx
 msgid "Stoat works best as an app"
@@ -3942,10 +3904,6 @@ msgstr ""
 msgid "Terms"
 msgstr ""
 
-#: components/auth/src/AuthPage.tsx
-#~ msgid "Terms of Service"
-#~ msgstr "Умовы карыстання"
-
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Test voice"
 msgstr ""
@@ -3964,6 +3922,10 @@ msgstr "Тэкставы канал"
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Text-to-speech"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Texto"
 msgstr ""
 
 #: components/i18n/errors.tsx
@@ -4027,10 +3989,6 @@ msgstr ""
 #: components/i18n/errors.tsx
 msgid "This account is not activated yet. Open the verification email we sent and click the link."
 msgstr ""
-
-#: components/i18n/errors.tsx
-#~ msgid "This account is not activated! Please check your account's inbox and try again."
-#~ msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "This bot is private and can only be added by the creator."
@@ -4164,8 +4122,20 @@ msgstr ""
 msgid "Timeout Members"
 msgstr "Адстраняць удзельнікаў"
 
+#: components/space/DecorPanel.tsx
+msgid "Título (aparece no aviso)"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Todo mês"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Todo mundo"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Todos"
 msgstr ""
 
 #: src/interface/common/CommonHeader.tsx
@@ -4385,12 +4355,6 @@ msgstr ""
 msgid "Uses your output volume."
 msgstr ""
 
-#~ msgid "Using default microphone"
-#~ msgstr ""
-
-#~ msgid "Using default speaker"
-#~ msgstr ""
-
 #: components/app/interface/settings/user/Support.tsx
 msgid "Valor"
 msgstr ""
@@ -4427,9 +4391,6 @@ msgstr "Паглядзець актыўныя ў бягучы час справ�
 #: src/interface/channels/ChannelHeader.tsx
 msgid "View members"
 msgstr ""
-
-#~ msgid "View older updates"
-#~ msgstr "Праглядзець старыя абнаўленні"
 
 #: src/interface/channels/ChannelHeader.tsx
 msgid "View pinned messages"
@@ -4497,10 +4458,6 @@ msgstr ""
 msgid "Voice detection could not start, so the microphone gate is using loudness only for this call."
 msgstr ""
 
-#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-#~ msgid "Voice Processing"
-#~ msgstr ""
-
 #: components/space/AudioCheck.tsx
 #: components/space/Onboarding.tsx
 msgid "Voltar"
@@ -4538,10 +4495,6 @@ msgstr ""
 msgid "We've sent you a verification email. Open it and click the link to activate your account. Please allow up to 10 minutes for it to arrive."
 msgstr ""
 
-#: components/auth/src/flows/FlowCheck.tsx
-#~ msgid "We've sent you a verification email. Please allow up to 10 minutes for it to arrive."
-#~ msgstr "Мы адправілі вам электронны ліст для пацвяржэння вашага ўліковага запісу. Вы атрымайце яго ня больш, чым праз 10 хвілін."
-
 #: components/app/interface/channels/text/Message.tsx
 msgid "Webhook"
 msgstr ""
@@ -4558,9 +4511,6 @@ msgstr ""
 #: components/app/interface/settings/ChannelSettings.tsx
 msgid "Webhooks"
 msgstr "Вэбхукі"
-
-#~ msgid "Welcome to"
-#~ msgstr "Сардэчна запрашаем у"
 
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Welcome!"
@@ -4586,9 +4536,6 @@ msgstr ""
 #: components/ui/components/features/voice/callCard/VoiceCallCardPreview.tsx
 msgid "with {0}"
 msgstr ""
-
-#~ msgid "With {0}"
-#~ msgstr ""
 
 #. placeholder {0}: names.length
 #: components/ui/components/features/voice/callCard/VoiceCallCardPreview.tsx
@@ -4634,9 +4581,6 @@ msgstr ""
 #: src/interface/Home.tsx
 msgid "You can also click the gear icon in the bottom left."
 msgstr ""
-
-#~ msgid "You can also right-click the user icon in the top left, or left click it if you're already home."
-#~ msgstr "Вы таксама можаце націснуць правай кнопкай мышы на значок карыстальніка ў левым верхнім вуглу, або левай кнопкай мышы, калі вы на дамашняй старонцы."
 
 #: components/modal/modals/DeleteChannel.tsx
 msgid "You can re-open it later, but it will disappear on both sides."

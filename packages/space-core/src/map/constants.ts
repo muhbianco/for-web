@@ -28,12 +28,24 @@ export type TileKind = (typeof Tile)[keyof typeof Tile];
 
 export type RoomSize = "S" | "M" | "L";
 
-/** Interior size (tiles) per room size; walls add one tile on each side. */
+/**
+ * Interior size (tiles) per room size, template 2 (ADR 0007). Rooms line a
+ * wing corridor like houses on a street: `depth` is measured away from the
+ * corridor and is the same for every room, so a wing has straight outer
+ * walls; `length` runs along the corridor and grows with the size.
+ */
+export const ROOM_DEPTH = 7;
+export const ROOM_LENGTH: Record<RoomSize, number> = { S: 5, M: 7, L: 12 };
+
+/** Interior (w across the wing, h along it) per room size. */
 export const ROOM_INTERIOR: Record<RoomSize, { w: number; h: number }> = {
-  S: { w: 6, h: 5 },
-  M: { w: 8, h: 7 },
-  L: { w: 12, h: 9 },
+  S: { w: ROOM_DEPTH, h: ROOM_LENGTH.S },
+  M: { w: ROOM_DEPTH, h: ROOM_LENGTH.M },
+  L: { w: ROOM_DEPTH, h: ROOM_LENGTH.L },
 };
+
+/** Size classes in growing order, for "a free slot fits this room". */
+export const SIZE_RANK: Record<RoomSize, number> = { S: 0, M: 1, L: 2 };
 
 /** Size class from the Stoat channel capacity (`voice.max_users`), fixed at creation. */
 export function roomSizeFor(capacity: number | null | undefined): RoomSize {

@@ -16,7 +16,7 @@ export interface TileRect {
 
 /** What the layout generator needs; slot/wing indexes are persisted by the server. */
 export interface LayoutInput {
-  templateVersion: 1;
+  templateVersion: 2;
   wings: WingInput[];
 }
 
@@ -24,12 +24,17 @@ export interface WingInput {
   /** Stable index (append-only). */
   index: number;
   title: string;
-  /** Sparse: a missing or null slot is a free (archived) slot. */
+  /**
+   * Sparse, append-only. A slot whose room was archived keeps its size with
+   * `roomId: null`, so the rooms after it never move (ADR 0005). A bare
+   * `null` is a legacy free slot of unknown size and counts as "L".
+   */
   slots: Array<SlotInput | null | undefined>;
 }
 
 export interface SlotInput {
-  roomId: string;
+  /** null = free slot (archived room): walled, no door, keeps its footprint. */
+  roomId: string | null;
   label: string;
   size: RoomSize;
 }
@@ -63,8 +68,8 @@ export interface CompiledWing {
 
 export interface CompiledMap {
   format: "muchat.space.map";
-  formatVersion: 1;
-  templateVersion: 1;
+  formatVersion: 2;
+  templateVersion: 2;
   tileSize: number;
   /** Grid covers [originTx, originTx + width) × [originTy, originTy + height). */
   originTx: number;
@@ -75,7 +80,12 @@ export interface CompiledMap {
   tiles: Uint8Array;
   rooms: CompiledRoom[];
   wings: CompiledWing[];
+  /** Entrance hall, outer rectangle (walls included). */
   lobby: TileRect;
+  /** Walkable interior of the hall. */
+  hall: TileRect;
+  /** Walkable main corridor east of the hall. */
+  spine: TileRect;
   spawns: TilePos[];
   /** Non-cryptographic fingerprint of the generated content (cache key, change detection). */
   fingerprint: string;
