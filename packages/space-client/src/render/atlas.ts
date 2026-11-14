@@ -38,10 +38,15 @@ export function spriteFor(item: DecorItem, rot: Rotation, variant: string | unde
   return s;
 }
 
+/**
+ * Shared by every space on the page: a renderer must never destroy these
+ * (see `Renderer.destroy`). A destroyed one is replaced rather than handed out,
+ * or the next space would draw its decoration with no texture at all.
+ */
 export function textureFor(item: DecorItem, rot: Rotation, variant: string | undefined): Texture {
   const k = key(item, rot, variant);
   let t = textures.get(k);
-  if (t) return t;
+  if (t && !t.destroyed) return t;
   const s = spriteFor(item, rot, variant);
   t = Texture.from(s.canvas);
   t.source.scaleMode = "nearest";

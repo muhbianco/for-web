@@ -23,6 +23,9 @@ import { CHUNK, chunksIn, drawChunk, type FloorLookup } from "./tiles.ts";
 const AVATAR_SCALE = 2; // 16 px art drawn at 32 px, one tile
 const STEP_MS = 140;
 
+/** Removes the canvas; leaves PixiJS's global pools alone (see `Renderer.destroy`). */
+export const RENDERER_DESTROY = { removeView: true, releaseGlobalResources: false } as const;
+
 interface AvatarSprite {
   palette: number;
   root: Container;
@@ -78,6 +81,8 @@ export class Renderer {
   private readonly avatars = new Map<string, AvatarSprite>();
   private readonly decor = new Map<string, Sprite>();
   private readonly paletteFrames = new Map<number, Texture[]>();
+  /** Textures created for this renderer alone (avatar sheets); chunks are tracked in `chunks`. */
+  private readonly ownedTextures: Texture[] = [];
   private cam = { x: 0, y: 0, ready: false };
   zoom = 2;
   reducedMotion = false;
@@ -135,6 +140,7 @@ export class Renderer {
     let frames = this.paletteFrames.get(idx);
     if (!frames) {
       const base = Texture.from(characterSheet(palette(idx)));
+      this.ownedTextures.push(base);
       base.source.scaleMode = "nearest";
       frames = [];
       for (let i = 0; i < DIRS.length * FRAMES; i++) {
@@ -468,7 +474,22 @@ export class Renderer {
     this.drawPrompt();
   }
 
+  /**
+   * Frees what this renderer owns, and only that. Another space can be alive on
+   * the same page (one kept connected for its room audio), so:
+   * - never `app.destroy(true, …)`: `true` also means `releaseGlobalResources`,
+   *   which destroys PixiJS's module-wide batch pool that every other
+   *   Application is drawing with; the kept space then crashed on its next
+   *   render ("reading 'clear'") and the page showed "Não foi possível abrir o
+   *   mapa";
+   * - never `texture: true` on the stage: decoration textures are shared by
+   *   every space through the atlas cache.
+   */
   destroy() {
-    this.app.destroy(true, { children: true, texture: true, textureSource: true });
+    this.dropChunks();
+    for (const t of this.ownedTextures) t.destroy(true);
+    this.ownedTextures.length = 0;
+    this.paletteFrames.clear();
+    this.app.destroy(RENDERER_DESTROY, { children: true });
   }
 }

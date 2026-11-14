@@ -59,8 +59,23 @@ export function openSpace(
 ): Promise<SpaceView> {
   const existing = sessions.get(opts.serverId);
   if (existing) {
-    existing.view.attach(opts.el);
-    return Promise.resolve(existing.view);
+    try {
+      existing.view.attach(opts.el);
+      return Promise.resolve(existing.view);
+    } catch (err) {
+      // A kept space that can no longer draw would fail the same way on every
+      // visit until the app restarts: drop it (its audio too) and open anew.
+      console.error(
+        "[space] could not reattach the kept space; reopening",
+        err,
+      );
+      try {
+        closeSpace(opts.serverId, existing);
+      } catch (closeErr) {
+        // Already out of `sessions` and its socket stopped; only drawing state is left.
+        console.error("[space] closing the broken space failed", closeErr);
+      }
+    }
   }
   const pending = opening.get(opts.serverId);
   if (pending) return pending;

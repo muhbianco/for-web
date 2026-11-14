@@ -175,7 +175,8 @@ function ServerSpace(props: { serverId: string }) {
       unsubscribe = v.subscribe(setUi);
       host.focus();
       setProfile(await v.profile().catch(() => null));
-    } catch {
+    } catch (err) {
+      console.error("[space] could not open the map", err);
       setFailed(
         t`Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala.`,
       );
