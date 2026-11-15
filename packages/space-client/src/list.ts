@@ -89,6 +89,52 @@ export function buildList(world: World): ListWing[] {
     .map((w) => ({ index: w.index, title: world.wings.get(w.index)?.title ?? null, rooms: byWing.get(w.index) ?? [] }));
 }
 
+function sameRoom(a: ListRoom, b: ListRoom): boolean {
+  return (
+    a.roomId === b.roomId &&
+    a.title === b.title &&
+    a.here === b.here &&
+    a.canEnter === b.canEnter &&
+    a.isPrivate === b.isPrivate &&
+    a.canView === b.canView &&
+    a.occupants === b.occupants &&
+    a.status === b.status
+  );
+}
+
+/**
+ * Reuses `prev` items that did not change (matched by `key`), and `prev` itself
+ * when nothing changed. Keyed UI lists (Solid's `<For>` compares by reference)
+ * then keep their DOM: rebuilt from scratch every 250 ms, the room list lost
+ * hover and focus and redid every row 4 times a second.
+ */
+function share<T>(prev: readonly T[], next: T[], key: (item: T) => string | number, same: (a: T, b: T) => boolean): T[] {
+  const byKey = new Map(prev.map((item) => [key(item), item]));
+  let unchanged = prev.length === next.length;
+  const out = next.map((item, i) => {
+    const old = byKey.get(key(item));
+    const kept = old !== undefined && same(old, item) ? old : item;
+    if (kept !== prev[i]) unchanged = false;
+    return kept;
+  });
+  return unchanged ? (prev as T[]) : out;
+}
+
+/** `next` with every unchanged wing and room taken from `prev` (see `share`). */
+export function shareList(prev: readonly ListWing[], next: ListWing[]): ListWing[] {
+  const prevByIndex = new Map(prev.map((w) => [w.index, w]));
+  const withRooms = next.map((w) => {
+    const old = prevByIndex.get(w.index);
+    return old ? { ...w, rooms: share(old.rooms, w.rooms, (r) => r.roomId, sameRoom) } : w;
+  });
+  return share(prev, withRooms, (w) => w.index, (a, b) => a.title === b.title && a.rooms === b.rooms);
+}
+
+/** `next` with every unchanged zone taken from `prev` (see `share`). */
+export function shareZones(prev: readonly ZoneOption[], next: ZoneOption[]): ZoneOption[] {
+  return share(prev, next, (z) => z.key, (a, b) => a.label === b.label);
+}
+
 /** What the live region says when our room changes. */
 export function announceRoomChange(world: World, from: string | null, to: string | null): string {
   if (to) return `Você entrou em ${roomTitle(world, to)}.`;

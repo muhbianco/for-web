@@ -22,6 +22,13 @@ import { CHUNK, chunksIn, drawChunk, type FloorLookup } from "./tiles.ts";
 
 const AVATAR_SCALE = 2; // 16 px art drawn at 32 px, one tile
 const STEP_MS = 140;
+/**
+ * Frame cap. Uncapped, the ticker followed the display (144 Hz on 144 Hz
+ * panels) for the whole call, competing with the voice chain for CPU.
+ */
+export const MAX_FPS = 60;
+/** Backing-store density cap: DPR 3 phones paid 9× the pixels of the map for nothing. */
+export const MAX_RESOLUTION = 2;
 
 /** Removes the canvas; leaves PixiJS's global pools alone (see `Renderer.destroy`). */
 export const RENDERER_DESTROY = { removeView: true, releaseGlobalResources: false } as const;
@@ -91,6 +98,15 @@ export class Renderer {
   private floorLookup: FloorLookup = () => null;
   overlay: EditorOverlay = EMPTY_OVERLAY;
   prompt: PromptView | null = null;
+  /** Overlay/prompt as last drawn (by reference / by value), so idle frames skip them. */
+  private drawnOverlay: EditorOverlay | null = null;
+  private drawnPrompt: PromptView | null = null;
+  /**
+   * Something on screen changed since the last present. The map is drawn on
+   * demand: standing still in a room (the usual case during a call) costs no
+   * GPU work at all. Every mutation of the scene must set this.
+   */
+  private dirty = true;
 
   async init(el: HTMLElement) {
     await this.app.init({
@@ -98,9 +114,13 @@ export class Renderer {
       background: "#14151c",
       antialias: false,
       autoDensity: true,
-      resolution: globalThis.devicePixelRatio || 1,
+      resolution: Math.min(globalThis.devicePixelRatio || 1, MAX_RESOLUTION),
       roundPixels: true,
     });
+    this.app.ticker.maxFPS = MAX_FPS;
+    // We present from frame() only when dirty; the TickerPlugin would render
+    // every tick. (ResizePlugin still renders on its own after a resize.)
+    this.app.ticker.remove(this.app.render, this.app);
     this.app.canvas.setAttribute("aria-hidden", "true");
     this.app.canvas.style.display = "block";
     el.appendChild(this.app.canvas);
@@ -118,7 +138,13 @@ export class Renderer {
   attach(el: HTMLElement) {
     this.app.resizeTo = el;
     el.appendChild(this.app.canvas);
+    this.dirty = true;
     this.app.ticker.start();
+  }
+
+  /** Forces the next frame to be drawn (e.g. the page became visible again). */
+  invalidate() {
+    this.dirty = true;
   }
 
   /** Takes the canvas off the page and stops drawing; the world keeps updating. */
@@ -129,6 +155,7 @@ export class Renderer {
 
   setZoom(z: number) {
     this.zoom = Math.max(1, Math.min(3, Math.round(z)));
+    this.dirty = true;
   }
 
   /** Screen (CSS px relative to the canvas) → world px. */
@@ -157,6 +184,7 @@ export class Renderer {
   rebuildStatic(world: World) {
     const { map, ix } = world;
     if (!map || !ix) return;
+    this.dirty = true;
     if (map.fingerprint !== this.mapFingerprint) {
       this.dropChunks();
       this.mapFingerprint = map.fingerprint;
@@ -218,6 +246,7 @@ export class Renderer {
   private dropChunks() {
     for (const s of this.chunks.values()) s.destroy({ texture: true, textureSource: true });
     this.chunks.clear();
+    this.dirty = true;
   }
 
   /** Floors per zone changed (or the decoration was loaded): chunks repaint lazily. */
@@ -260,11 +289,13 @@ export class Renderer {
       s.position.set(cx * CHUNK * TILE, cy * CHUNK * TILE);
       this.floor.addChild(s);
       this.chunks.set(key, s);
+      this.dirty = true;
     }
     for (const [key, s] of this.chunks) {
       if (need.has(key)) continue;
       s.destroy({ texture: true, textureSource: true });
       this.chunks.delete(key);
+      this.dirty = true;
     }
   }
 
@@ -272,6 +303,7 @@ export class Renderer {
 
   /** Whole decoration (re)built: after a load, a reset, or a map change. */
   rebuildDecor(world: World) {
+    this.dirty = true;
     for (const s of this.decor.values()) s.destroy();
     this.decor.clear();
     this.refreshFloors(world);
@@ -281,6 +313,7 @@ export class Renderer {
 
   /** One change: keeps every other sprite as it is. */
   applyDecorOp(world: World, op: DecorOp) {
+    this.dirty = true;
     switch (op.kind) {
       case "place":
         this.addDecor(world, op.item);
@@ -344,6 +377,7 @@ export class Renderer {
     if (a && a.palette !== paletteIndex) {
       a.palette = paletteIndex;
       a.frames = this.framesFor(paletteIndex);
+      this.dirty = true;
     }
     if (!a) {
       const frames = this.framesFor(paletteIndex);
@@ -362,21 +396,69 @@ export class Renderer {
       this.scene.addChild(root);
       a = { palette: paletteIndex, root, body, name: tag, frames };
       this.avatars.set(userId, a);
+      this.dirty = true;
     }
-    if (a.name.text !== name) a.name.text = name;
+    if (a.name.text !== name) {
+      a.name.text = name;
+      this.dirty = true;
+    }
     return a;
   }
 
-  private pose(a: AvatarSprite, dir: Direction, moving: boolean, nowMs: number) {
+  private pose(a: AvatarSprite, dir: Direction, moving: boolean, nowMs: number, visible: boolean) {
     const d = DIRS.indexOf(dir);
     const f = moving ? 1 + (Math.floor(nowMs / STEP_MS) % 2) : 0;
-    a.body.texture = a.frames[d * FRAMES + f] ?? a.frames[0]!;
+    const tex = a.frames[d * FRAMES + f] ?? a.frames[0]!;
+    if (a.body.texture === tex) return;
+    a.body.texture = tex;
+    if (visible) this.dirty = true;
+  }
+
+  /** World rect on screen (plus a margin for sprites and name tags), set each frame. */
+  private readonly view = { x0: 0, y0: 0, x1: 0, y1: 0 };
+
+  private inView(x: number, y: number): boolean {
+    const v = this.view;
+    return x >= v.x0 && x <= v.x1 && y >= v.y0 && y <= v.y1;
+  }
+
+  /**
+   * Moves an avatar. Marks the frame dirty only when something on screen
+   * changed: someone walking around the hall while we sit in a room does not
+   * cost a frame. Returns whether the avatar is (or just was) visible.
+   */
+  private place(a: AvatarSprite, x: number, y: number, alpha: number): boolean {
+    const px = Math.round(x);
+    const py = Math.round(y + 6);
+    const pos = a.root.position;
+    const visible = this.inView(px, py) || this.inView(pos.x, pos.y);
+    if (pos.x !== px || pos.y !== py) {
+      pos.set(px, py);
+      if (visible) this.dirty = true;
+    }
+    // zIndex's setter is a no-op on equal values, so idle avatars never re-sort the scene.
+    const z = y + 6;
+    if (a.root.zIndex !== z) {
+      a.root.zIndex = z;
+      if (visible) this.dirty = true;
+    }
+    if (a.root.alpha !== alpha) {
+      a.root.alpha = alpha;
+      if (visible) this.dirty = true;
+    }
+    return visible;
   }
 
   // ---- overlays ------------------------------------------------------------
 
   private drawOverlay() {
     const o = this.overlay;
+    // `overlay` is replaced (never mutated) on every editor change. Clearing the
+    // Graphics on every frame made PixiJS rebuild the instructions of the whole
+    // stage on every frame, even with the editor closed.
+    if (o === this.drawnOverlay) return;
+    this.drawnOverlay = o;
+    this.dirty = true;
     const g = this.overlayGfx;
     g.clear();
     if (!o.enabled) {
@@ -417,6 +499,11 @@ export class Renderer {
 
   private drawPrompt() {
     const p = this.prompt;
+    const was = this.drawnPrompt;
+    // Re-set at 4 Hz with a fresh object; redraw only when it actually moved.
+    if (p === was || (p && was && p.x === was.x && p.y === was.y && p.label === was.label)) return;
+    this.drawnPrompt = p;
+    this.dirty = true;
     if (!p) {
       this.promptBox.visible = false;
       return;
@@ -432,7 +519,23 @@ export class Renderer {
     this.promptBox.position.set(Math.round(p.x - w / 2), Math.round(p.y - h - 6));
   }
 
+  /** Updates the scene from World, then draws it if anything visible changed. */
   frame(world: World, nowMs: number, dtMs: number) {
+    this.update(world, nowMs, dtMs);
+    this.present();
+  }
+
+  /**
+   * Draws only when the scene changed since the last present, and never while
+   * the page is hidden (the frame stays owed and is drawn on return).
+   */
+  private present() {
+    if (!this.dirty || globalThis.document?.hidden) return;
+    this.dirty = false;
+    this.app.render();
+  }
+
+  private update(world: World, nowMs: number, dtMs: number) {
     const me = world.me;
     if (!me || !world.map) return;
     // Camera follows us; smoothing off with reduced motion.
@@ -443,32 +546,41 @@ export class Renderer {
       this.cam.x += (me.x - this.cam.x) * k;
       this.cam.y += (me.y - this.cam.y) * k;
     }
-    this.stage.scale.set(this.zoom);
-    this.stage.position.set(
-      Math.round(this.app.screen.width / 2 - this.cam.x * this.zoom),
-      Math.round(this.app.screen.height / 2 - this.cam.y * this.zoom),
-    );
+    if (this.stage.scale.x !== this.zoom) {
+      this.stage.scale.set(this.zoom);
+      this.dirty = true;
+    }
+    // Rounded: the eased camera converges asymptotically, and once it is within
+    // half a pixel the stage stops moving and idle frames stop drawing.
+    const sx = Math.round(this.app.screen.width / 2 - this.cam.x * this.zoom);
+    const sy = Math.round(this.app.screen.height / 2 - this.cam.y * this.zoom);
+    if (this.stage.position.x !== sx || this.stage.position.y !== sy) {
+      this.stage.position.set(sx, sy);
+      this.dirty = true;
+    }
     this.ensureChunks(world);
+
+    const margin = SPRITE * AVATAR_SCALE * 2;
+    this.view.x0 = -this.stage.position.x / this.zoom - margin;
+    this.view.y0 = -this.stage.position.y / this.zoom - margin;
+    this.view.x1 = this.view.x0 + this.app.screen.width / this.zoom + margin * 2;
+    this.view.y1 = this.view.y0 + this.app.screen.height / this.zoom + margin * 2;
 
     const seen = new Set<string>([me.userId]);
     const mine = this.avatarFor(me.userId, me.name, me.palette);
-    mine.root.position.set(Math.round(me.x), Math.round(me.y + 6));
-    mine.root.zIndex = me.y + 6;
-    mine.root.alpha = 1;
-    this.pose(mine, me.dir, me.moving, nowMs);
+    this.pose(mine, me.dir, me.moving, nowMs, this.place(mine, me.x, me.y, 1));
     for (const r of world.others.values()) {
       seen.add(r.userId);
       const p = world.positionOf(r, nowMs);
       const a = this.avatarFor(r.userId, r.name, r.palette);
-      a.root.position.set(Math.round(p.x), Math.round(p.y + 6));
-      a.root.zIndex = p.y + 6;
-      a.root.alpha = r.state === "reconnecting" ? 0.45 : r.state === "idle" ? 0.75 : 1;
-      this.pose(a, r.dir, r.moving, nowMs);
+      const visible = this.place(a, p.x, p.y, r.state === "reconnecting" ? 0.45 : r.state === "idle" ? 0.75 : 1);
+      this.pose(a, r.dir, r.moving, nowMs, visible);
     }
     for (const [id, a] of this.avatars) {
       if (seen.has(id)) continue;
       a.root.destroy({ children: true });
       this.avatars.delete(id);
+      this.dirty = true;
     }
     this.drawOverlay();
     this.drawPrompt();

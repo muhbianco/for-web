@@ -70,7 +70,12 @@ export const DEEPFILTER_ATTEN_DB: Record<
 };
 
 export const DEEPFILTER_AUTO_ATTEN_MIN_DB = 40;
-export const DEEPFILTER_AUTO_ATTEN_MAX_DB = 90;
+/**
+ * Auto never goes past "medium". It used to climb to 90 dB, and DFN3 near its
+ * ceiling over-suppresses into metallic, robotic voice; the manual "strong"
+ * preset stays available for whoever wants more.
+ */
+export const DEEPFILTER_AUTO_ATTEN_MAX_DB = 60;
 /** Noise floor (dBFS, pre-DeepFilter) below which the light preset is enough. */
 export const DEEPFILTER_AUTO_QUIET_FLOOR_DBFS = -60;
 /** Noise floor above which we go to the maximum limit. */
@@ -81,11 +86,12 @@ export const DEEPFILTER_AUTO_STEP_DB = 5;
 /**
  * Map a measured background-noise floor to a DeepFilter attenuation limit.
  * Quiet room (< -60 dBFS): 40 dB keeps the voice natural.
- * Loud room (> -40 dBFS, fan / street): 90 dB.
+ * Loud room (> -40 dBFS, fan / street): 60 dB.
  * Linear in between, rounded to DEEPFILTER_AUTO_STEP_DB.
+ * No usable measurement: the light end, never the aggressive one.
  */
 export function attenDbFromNoiseFloor(floorDbfs: number): number {
-  if (!Number.isFinite(floorDbfs)) return DEEPFILTER_ATTEN_DB.strong;
+  if (!Number.isFinite(floorDbfs)) return DEEPFILTER_AUTO_ATTEN_MIN_DB;
   if (floorDbfs <= DEEPFILTER_AUTO_QUIET_FLOOR_DBFS) {
     return DEEPFILTER_AUTO_ATTEN_MIN_DB;
   }
@@ -106,8 +112,10 @@ export function deepFilterAttenDb(
   noiseFloorDbfs?: number,
 ): number {
   if (sensitivity === "auto") {
+    // Before the first floor reading (~1-2 s) start light: it used to start at
+    // "strong" (80 dB), the worst setting for artifacts, on every room entry.
     return noiseFloorDbfs === undefined
-      ? DEEPFILTER_ATTEN_DB.strong
+      ? DEEPFILTER_AUTO_ATTEN_MIN_DB
       : attenDbFromNoiseFloor(noiseFloorDbfs);
   }
   return DEEPFILTER_ATTEN_DB[sensitivity];

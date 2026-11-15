@@ -16,6 +16,7 @@ import {
 import { DeepFilterHealth } from "./deepFilterHealth";
 import { installDeepFilterModelNormalizer } from "./deepFilterModel";
 import { canUseDeepFilter } from "./deepFilterSupport";
+import { createDfContextPool } from "./dfContextPool";
 import {
   addPatchedDeepFilterModule,
   isDeepFilterInitError,
@@ -86,6 +87,16 @@ import type { VoiceEngineId } from "./voiceEngineStatus";
 let sharedDeepFilterCore: Promise<DeepFilterNet3Core> | undefined;
 const deepFilterNodes = new WeakMap<BaseAudioContext, AudioWorkletNode>();
 
+/** Shared 48 kHz DeepFilter context across rooms (see dfContextPool.ts). */
+const dfContexts = createDfContextPool();
+/**
+ * Which processor has the (shared, per-context) DeepFilter node wired in. A
+ * processor whose teardown runs late (LiveKit stops its track after the next
+ * room already built a new chain) must not disconnect the node or drop the
+ * stats listener out from under the new owner.
+ */
+const deepFilterOwners = new WeakMap<AudioWorkletNode, object>();
+
 /** How often the auto preset samples the pre-filter noise floor. */
 const NOISE_FLOOR_POLL_MS = 200;
 /** EMA coefficient for the noise floor (slow: fans, not keystrokes). */
@@ -151,7 +162,7 @@ function getDeepFilterCore(): Promise<DeepFilterNet3Core> {
         const core = new DeepFilterNet3Core({
           sampleRate: 48000,
           // Initial atten_lim; applyDeepFilterStrength() overrides it live.
-          noiseReductionLevel: DEEPFILTER_ATTEN_DB.strong,
+          noiseReductionLevel: DEEPFILTER_ATTEN_DB.light,
           assetConfig: { cdnUrl: deepFilterCdnUrl() },
         });
         await core.initialize();
@@ -586,8 +597,10 @@ export class VoiceProcessor implements TrackProcessor<
     this.sourceTrack = undefined;
     await this.teardown();
     if (this.dfContext) {
-      void this.dfContext.close();
+      // Back to the pool, not closed: the next room reuses its warm worklet.
+      const ctx = this.dfContext;
       this.dfContext = undefined;
+      dfContexts.release(ctx);
     }
     this.deepFilterNode = undefined;
     this.deepFilterCore = undefined;
@@ -600,17 +613,32 @@ export class VoiceProcessor implements TrackProcessor<
     if (this.gateNode) {
       this.gateNode.port.onmessage = null;
     }
-    if (this.deepFilterNode) {
+    // The DeepFilter node outlives this processor (shared context); only its
+    // current owner may unhook it.
+    const ownsDeepFilter =
+      !!this.deepFilterNode &&
+      deepFilterOwners.get(this.deepFilterNode) === this;
+    if (this.deepFilterNode && ownsDeepFilter) {
       this.deepFilterNode.port.onmessage = null;
+      deepFilterOwners.delete(this.deepFilterNode);
     }
     this.deepFilterHealth = undefined;
     this.stopNoiseFloorTracking();
     this.deepFilterAttenDb = undefined;
     this.noiseFloorDb = undefined;
     this.compressorNode?.disconnect();
+    if (ownsDeepFilter) {
+      this.deepFilterNode?.disconnect();
+    } else if (this.deepFilterNode && this.gateNode) {
+      // Not ours any more: cut only our own edge out of it.
+      try {
+        this.deepFilterNode.disconnect(this.gateNode);
+      } catch {
+        // that edge was already gone
+      }
+    }
     this.gateNode?.disconnect();
     this.noiseSuppressionNode?.disconnect();
-    this.deepFilterNode?.disconnect();
     this.highpassNode?.disconnect();
     this.sourceNode?.disconnect();
     this.compressorNode = undefined;
@@ -670,19 +698,9 @@ export class VoiceProcessor implements TrackProcessor<
       }
       return this.dfContext;
     }
-    const ctx = new AudioContext({
-      sampleRate: 48000,
-      latencyHint: "interactive",
-    });
-    if (ctx.sampleRate !== 48000) {
-      const rate = ctx.sampleRate;
-      await ctx.close();
-      throw new Error(
-        `AudioContext sampleRate is ${rate}, DeepFilterNet needs 48000`,
-      );
-    }
-    this.dfContext = ctx;
-    return ctx;
+    // Held once per processor; destroy() gives it back.
+    this.dfContext = await dfContexts.acquire();
+    return this.dfContext;
   }
 
   private async ensureDeepFilterNode(
@@ -690,6 +708,9 @@ export class VoiceProcessor implements TrackProcessor<
   ): Promise<AudioWorkletNode> {
     const cached = deepFilterNodes.get(context);
     if (cached) {
+      // A previous processor built it (same shared context). Strength goes
+      // through the core, which this instance has not seen yet.
+      this.deepFilterCore = await getDeepFilterCore();
       this.deepFilterNode = cached;
       return cached;
     }
@@ -803,6 +824,7 @@ export class VoiceProcessor implements TrackProcessor<
         if (this.settings.noiseSupression !== "advanced") return;
         this.gateNode = gate;
         this.listenToGate(gate);
+        deepFilterOwners.set(node, this);
         this.listenToDeepFilterStats(node, context);
         this.applyGateSettings();
         this.connectMlChain(node, context, gate);

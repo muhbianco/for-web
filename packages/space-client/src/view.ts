@@ -17,7 +17,7 @@ import {
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { Editor, type EditorState } from "./editor.ts";
 import { nearestInteractive, type Prompt } from "./interact.ts";
-import { announceRoomChange, buildList, type ListWing, locationText, zoneList, type ZoneOption } from "./list.ts";
+import { announceRoomChange, buildList, type ListWing, locationText, shareList, shareZones, zoneList, type ZoneOption } from "./list.ts";
 import { MediaLink, type MediaStatus, type VoicePort } from "./media.ts";
 import { Mover } from "./mover.ts";
 import { Renderer } from "./render/renderer.ts";
@@ -218,7 +218,15 @@ export class SpaceView {
   private flushUi() {
     if (!this.dirtyUi) return;
     this.dirtyUi = false;
-    this.patch({ location: locationText(this.world), list: buildList(this.world), zoom: this.renderer.zoom, zones: zoneList(this.world) });
+    const s = this.state;
+    const location = locationText(this.world);
+    const list = shareList(s.list, buildList(this.world));
+    const zones = shareZones(s.zones, zoneList(this.world));
+    const zoom = this.renderer.zoom;
+    // The 4 Hz timer marks the UI dirty unconditionally; only tell the page when
+    // something it shows actually moved.
+    if (location === s.location && list === s.list && zones === s.zones && zoom === s.zoom) return;
+    this.patch({ location, list, zoom, zones });
   }
 
   private async loadMap(url: string) {
@@ -369,8 +377,11 @@ export class SpaceView {
     const leave = () => {
       if (this.editor.state.enabled) this.editor.hover(-1e9, -1e9);
     };
-    const visibility = () =>
+    const visibility = () => {
+      // The renderer draws on demand and skips while hidden: repaint on return.
+      if (document.visibilityState === "visible") this.renderer.invalidate();
       this.conn.send({ v: 1, t: "presence.idle", id: this.conn.nextId(), d: { idle: document.visibilityState === "hidden" } });
+    };
     const canvas = this.renderer.app.canvas;
     el.addEventListener("keydown", down);
     el.addEventListener("keyup", up);

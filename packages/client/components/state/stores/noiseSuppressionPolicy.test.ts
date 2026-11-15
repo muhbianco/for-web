@@ -70,8 +70,11 @@ test("fixed presets map to their attenuation limits", () => {
 });
 
 test("auto preset follows the noise floor", () => {
-  // No measurement yet: start strong, never silent-with-noise.
-  assert.equal(deepFilterAttenDb("auto"), DEEPFILTER_ATTEN_DB.strong);
+  // No measurement yet: start at the light end, not the artifact-prone one.
+  assert.equal(deepFilterAttenDb("auto"), DEEPFILTER_AUTO_ATTEN_MIN_DB);
+  // Auto tops out at "medium"; "strong" stays a manual choice.
+  assert.equal(DEEPFILTER_AUTO_ATTEN_MAX_DB, DEEPFILTER_ATTEN_DB.medium);
+  assert.ok(DEEPFILTER_AUTO_ATTEN_MAX_DB < DEEPFILTER_ATTEN_DB.strong);
   assert.equal(attenDbFromNoiseFloor(-90), DEEPFILTER_AUTO_ATTEN_MIN_DB);
   assert.equal(attenDbFromNoiseFloor(-60), DEEPFILTER_AUTO_ATTEN_MIN_DB);
   assert.equal(attenDbFromNoiseFloor(-40), DEEPFILTER_AUTO_ATTEN_MAX_DB);
@@ -80,7 +83,7 @@ test("auto preset follows the noise floor", () => {
   assert.ok(mid > DEEPFILTER_AUTO_ATTEN_MIN_DB);
   assert.ok(mid < DEEPFILTER_AUTO_ATTEN_MAX_DB);
   assert.equal(mid % DEEPFILTER_AUTO_STEP_DB, 0);
-  assert.equal(attenDbFromNoiseFloor(Number.NaN), DEEPFILTER_ATTEN_DB.strong);
+  assert.equal(attenDbFromNoiseFloor(Number.NaN), DEEPFILTER_AUTO_ATTEN_MIN_DB);
   assert.equal(deepFilterAttenDb("auto", -70), DEEPFILTER_AUTO_ATTEN_MIN_DB);
 });
 
