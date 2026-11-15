@@ -1,13 +1,15 @@
 import { Trans, useLingui } from "@lingui/solid/macro";
-import { For, Show, createSignal } from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 import { styled } from "styled-system/jsx";
 
 import { useVoice } from "@revolt/rtc";
 import type { CallVerdict } from "@revolt/rtc/callDiagnosis";
 import { diagnoseCall } from "@revolt/rtc/callDiagnosis";
+import { downloadReport } from "@revolt/rtc/callRecorder";
 import type {
   CallStatsSnapshot,
   ParticipantCallStats,
+  TransportStats,
 } from "@revolt/rtc/callStats";
 import type { VoiceEngineStatus } from "@revolt/rtc/voiceEngineStatus";
 import { Button, Column, Text } from "@revolt/ui";
@@ -34,12 +36,28 @@ export function CallDiagnosticsOptions() {
     diagnoseCall(stats(), {
       deepFilterSlowRatio: rtc.engineStatus().deepFilterSlowRatio,
       deepFilterOverloaded: rtc.engineStatus().deepFilterOverloaded,
+      silentMsPerSec: rtc.engineStatus().silentMsPerSec,
+      gateOpen: rtc.engineStatus().gateOpen,
     });
+
+  // The last finished call on this device. Re-read whenever a call ends.
+  const hasLastReport = createMemo(() => {
+    void stats().inCall;
+    return !!rtc.lastCallReport();
+  });
+  const downloadLast = () => {
+    const report = rtc.lastCallReport();
+    if (report) downloadReport(report);
+  };
 
   const verdictText = (v: CallVerdict) => {
     switch (v.kind) {
       case "local-cpu":
         return t`Seu computador não está dando conta`;
+      case "local-origin":
+        return t`Seu microfone processado está saindo com silêncio`;
+      case "local-playout":
+        return t`A reprodução neste computador está engasgando`;
       case "local-uplink":
         return t`Sua conexão de subida está com problema`;
       case "local-downlink":
@@ -85,6 +103,21 @@ export function CallDiagnosticsOptions() {
 
   const ms = (value: number | undefined) =>
     value === undefined ? "—" : `${value} ms`;
+  const kbps = (value: number | undefined) =>
+    value === undefined ? "—" : `${value} kbps`;
+  /** "udp srflx→host :7882", or the relay protocol when TURN is in the way. */
+  const pathLabel = (transport: TransportStats | undefined) => {
+    if (!transport) return "—";
+    const proto = transport.usesRelay
+      ? `TURN ${transport.relayProtocol ?? ""}`.trim()
+      : (transport.protocol ?? "?").toUpperCase();
+    const port = transport.remotePort ? ` :${transport.remotePort}` : "";
+    return `${proto} ${transport.localCandidateType ?? "?"}→${transport.remoteCandidateType ?? "?"}${port}`;
+  };
+  const codecLabel = (codec: { mimeType?: string; fmtp?: string } | undefined) =>
+    codec?.mimeType
+      ? `${codec.mimeType.replace("audio/", "")}${codec.fmtp ? ` (${codec.fmtp})` : ""}`
+      : "—";
   const pct = (value: number | undefined) =>
     value === undefined ? "—" : `${value}%`;
 
@@ -99,6 +132,20 @@ export function CallDiagnosticsOptions() {
         label: t`Áudio enviado`,
         value:
           audio?.bitrateKbps === undefined ? "—" : `${audio.bitrateKbps} kbps`,
+      },
+      { label: t`Codec`, value: codecLabel(audio?.codec) },
+      { label: t`Caminho`, value: pathLabel(current.transport?.publisher) },
+      {
+        label: t`Ida e volta do transporte`,
+        value: ms(current.transport?.publisher?.currentRttMs),
+      },
+      {
+        label: t`Banda de subida estimada`,
+        value: kbps(current.transport?.publisher?.availableOutgoingKbps),
+      },
+      {
+        label: t`Reconexões`,
+        value: `${current.reconnects ?? 0} · ${t`sinal`} ${current.signalReconnects ?? 0}`,
       },
     ];
     for (const video of current.self.video) {
@@ -142,6 +189,18 @@ export function CallDiagnosticsOptions() {
               : `${audio.concealedMsPerSec} ms/s`,
         },
         { label: t`Buffer`, value: ms(audio.jitterBufferMs) },
+        {
+          label: t`Pacotes por segundo`,
+          value:
+            audio.packetsPerSec === undefined ? "—" : `${audio.packetsPerSec}`,
+        },
+        {
+          label: t`Eventos de reconstrução`,
+          value:
+            audio.concealmentEventsPerSec === undefined
+              ? "—"
+              : `${audio.concealmentEventsPerSec}/s`,
+        },
       );
     }
     const video = participant.video;
@@ -249,6 +308,17 @@ export function CallDiagnosticsOptions() {
             </Show>
           </Button>
         </Show>
+        <Show when={hasLastReport()}>
+          <Button variant="tonal" onPress={downloadLast}>
+            <Trans>Baixar relatório da última chamada</Trans>
+          </Button>
+          <Text class="label" size="small">
+            <Trans>
+              Linha do tempo completa (rede, caminho, codec e processamento),
+              em JSON, da última chamada encerrada neste aparelho.
+            </Trans>
+          </Text>
+        </Show>
       </Card>
     </Column>
   );
@@ -302,8 +372,13 @@ function buildReport(
         noiseSuppression: engine.noiseSuppression,
         lastError: engine.lastError,
         vadError: engine.vadError,
+        agcGainDb: engine.agcGainDb,
       },
       self: stats.self,
+      transport: stats.transport,
+      connectionState: stats.connectionState,
+      reconnects: stats.reconnects,
+      signalReconnects: stats.signalReconnects,
       participants: stats.participants.map((p) => ({
         name: p.name,
         quality: p.quality,

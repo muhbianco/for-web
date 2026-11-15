@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <title>Muchat — laboratório de voz</title>
+    <meta name="robots" content="noindex" />
+    <style>
+      body { font: 14px/1.4 system-ui, sans-serif; margin: 16px; background: #141210; color: #eee; }
+      label { display: block; margin: 6px 0; }
+      input[type="text"] { width: 100%; max-width: 720px; }
+      pre { background: #1e1b18; padding: 8px; overflow: auto; max-height: 60vh; }
+      button { margin-right: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Laboratório de voz</h1>
+    <p>
+      Esta página monta a mesma Room e a mesma cadeia de processamento de
+      microfone do app (<code>roomOptions.ts</code>, <code>VoiceProcessor.ts</code>)
+      sem login no Stoat. O driver <code>run.mjs</code> a controla por
+      <code>window.__lab</code>; os campos abaixo servem para uso manual.
+    </p>
+    <label>URL do LiveKit <input id="url" type="text" placeholder="wss://…/livekit" /></label>
+    <label>Token <input id="token" type="text" /></label>
+    <label><input id="publish" type="checkbox" checked /> publicar microfone</label>
+    <label>Supressão
+      <select id="ns">
+        <option value="advanced">advanced (DeepFilterNet3)</option>
+        <option value="enhanced">enhanced (RNNoise)</option>
+        <option value="browser">browser</option>
+        <option value="disabled">disabled</option>
+      </select>
+    </label>
+    <label><input id="gate" type="checkbox" checked /> portão de voz (VAD)</label>
+    <p>
+      <button id="connect">Conectar</button>
+      <button id="stop">Parar</button>
+    </p>
+    <pre id="out">pronto</pre>
+    <script type="module" src="./lab.ts"></script>
+  </body>
+</html>

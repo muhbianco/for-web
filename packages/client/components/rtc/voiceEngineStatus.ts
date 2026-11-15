@@ -65,6 +65,8 @@ export interface VoiceEngineStatus {
   vadInferMs?: number;
   /** Why the VAD is not running, if it is not. */
   vadError?: string;
+  /** Make-up gain applied before the suppressor (dB); 0 for a normal talker. */
+  agcGainDb?: number;
   /**
    * Milliseconds of digital silence this chain published per second.
    *

@@ -4,15 +4,20 @@ import type { CallStatsSnapshot, ParticipantCallStats } from "./callStats";
  * Turns the raw call stats into one sentence a person can act on.
  *
  * The whole point of the diagnostics work is that "the voice is chopping" has
- * four different causes that look identical to the ear:
+ * several different causes that look identical to the ear:
  *
  *   local-cpu        this machine cannot encode/decode/denoise fast enough
+ *   local-origin     our own DSP chain is emitting silence (gate / glitches),
+ *                    so the gaps leave this machine already in the signal
  *   local-uplink     our upload is losing packets
  *   local-downlink   our download is losing packets (everyone sounds bad)
+ *   local-playout    packets arrive fine (no loss, low jitter) but our decoder
+ *                    still conceals / time-stretches: the problem is at the
+ *                    destination (playout starving, clock, busy audio thread)
  *   remote-network   one specific peer's connection is bad (only they do)
  *
- * The last two are told apart by counting how many peers are affected: one bad
- * peer out of several is their problem, everyone bad at once is ours.
+ * Downlink and remote are told apart by counting how many peers are affected:
+ * one bad peer out of several is their problem, everyone bad at once is ours.
  */
 
 /**
@@ -39,6 +44,14 @@ export const JITTER_MS_BAD = 30;
 export const DSP_SLOW_RATIO_BAD = 0.25;
 
 /**
+ * Digital silence leaving our own chain, per second of call, while the gate
+ * says someone is talking. The production meter counts zeros at the point
+ * LiveKit publishes; 20 ms/s of them during speech is already audible as a
+ * missing syllable per minute of talk.
+ */
+export const SILENT_MS_PER_SEC_BAD = 20;
+
+/**
  * Packets a 2 s window needs before a verdict means anything. Continuous
  * speech is ~50 packets/s; DTX during silence drops to a couple of
  * comfort-noise packets a second. Below this the window is silence, every
@@ -52,8 +65,10 @@ export type CallVerdictKind =
   | "no-data"
   | "ok"
   | "local-cpu"
+  | "local-origin"
   | "local-uplink"
   | "local-downlink"
+  | "local-playout"
   | "remote-network";
 
 export interface CallVerdict {
@@ -68,6 +83,10 @@ export interface CallVerdict {
 export interface DspHealth {
   deepFilterSlowRatio?: number;
   deepFilterOverloaded?: boolean;
+  /** Digital silence the local chain emitted (ms/s), from the production meter. */
+  silentMsPerSec?: number;
+  /** True while the local gate is open (someone is talking into the mic). */
+  gateOpen?: boolean;
 }
 
 /** True when this peer's inbound audio is visibly suffering. */
@@ -80,6 +99,24 @@ export function audioIsSuffering(participant: ParticipantCallStats): boolean {
     (audio.lossPct ?? 0) >= LOSS_PCT_BAD ||
     (audio.jitterMs ?? 0) >= JITTER_MS_BAD
   );
+}
+
+/**
+ * Suffering with a clean network: no loss, low jitter, yet the decoder is
+ * concealing or time-stretching. That cannot be the network's doing.
+ */
+export function sufferingWithCleanNetwork(
+  participant: ParticipantCallStats,
+): boolean {
+  const audio = participant.audio;
+  if (!audio) return false;
+  const cleanNetwork =
+    (audio.lossPct ?? 0) < LOSS_PCT_BAD &&
+    (audio.jitterMs ?? 0) < JITTER_MS_BAD;
+  const degraded =
+    (audio.acceleratedMsPerSec ?? 0) >= ACCELERATED_MS_PER_SEC_BAD ||
+    (audio.concealedMsPerSec ?? 0) >= CONCEALED_MS_PER_SEC_BAD;
+  return cleanNetwork && degraded;
 }
 
 /** How bad, so we can name the worst offender rather than an arbitrary one. */
@@ -141,6 +178,17 @@ export function diagnoseCall(
       detail: `${pct}% dos quadros de áudio estão atrasados`,
     };
   }
+  // Our own chain is handing LiveKit silence while the gate says we are
+  // talking: the gaps are made here, before any network is involved.
+  if (
+    dsp?.gateOpen === true &&
+    (dsp.silentMsPerSec ?? 0) >= SILENT_MS_PER_SEC_BAD
+  ) {
+    return {
+      kind: "local-origin",
+      detail: `${dsp.silentMsPerSec} ms/s de silêncio saindo do seu microfone processado`,
+    };
+  }
 
   const uplinkLoss = stats.self.audio?.lossPct ?? 0;
   const bandwidthLimited = stats.self.video.find(
@@ -178,9 +226,19 @@ export function diagnoseCall(
   );
 
   // Everyone at once is far more likely to be our own download than every
-  // peer having gone bad simultaneously.
+  // peer having gone bad simultaneously. If the network numbers are clean for
+  // all of them, it is not the download either: it is our playout.
   if (withAudio.length > 1 && suffering.length === withAudio.length) {
+    if (suffering.every(sufferingWithCleanNetwork)) {
+      return { kind: "local-playout", detail: describe(worst) };
+    }
     return { kind: "local-downlink", detail: describe(worst) };
+  }
+
+  // A single peer with clean network numbers but concealment on our side is
+  // still us, not them: nothing was lost or late on the wire.
+  if (withAudio.length === 1 && sufferingWithCleanNetwork(worst)) {
+    return { kind: "local-playout", detail: describe(worst) };
   }
 
   return { kind: "remote-network", who: worst.name, detail: describe(worst) };

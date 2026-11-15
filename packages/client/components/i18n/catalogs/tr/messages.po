@@ -281,6 +281,10 @@ msgstr ""
 msgid "A conexão de {0} está instável"
 msgstr ""
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "A reprodução neste computador está engasgando"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
 msgstr ""
@@ -560,6 +564,10 @@ msgstr ""
 msgid "Badges"
 msgstr "Rozetler"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Baixar relatório da última chamada"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Balanced removal for everyday calls."
 msgstr ""
@@ -596,6 +604,10 @@ msgstr "Kullanıcıyı yasakla"
 #: components/modal/modals/BanNonMember.tsx
 msgid "Ban User"
 msgstr "Kullanıcıyı Yasakla"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Banda de subida estimada"
+msgstr ""
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Banner"
@@ -702,6 +714,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Câmera"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Caminho"
 msgstr ""
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
@@ -983,6 +999,10 @@ msgstr "{0} ile olan konuşmayı kapat?"
 #: components/modal/modals/JoinServer.tsx
 msgid "Code"
 msgstr "Kod"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Codec"
+msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Collapse call window"
@@ -1775,6 +1795,10 @@ msgstr ""
 msgid "Este servidor ainda não tem cargos."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Eventos de reconstrução"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
@@ -2056,6 +2080,10 @@ msgstr "Kimlik panoya kopyalandı"
 msgid "Ida e volta"
 msgstr ""
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Ida e volta do transporte"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
 #: src/interface/navigation/channels/HomeSidebar.tsx
@@ -2292,6 +2320,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "limitada por"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Linha do tempo completa (rede, caminho, codec e processamento), em JSON, da última chamada encerrada neste aparelho."
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -2924,6 +2956,10 @@ msgstr "Genel Bakış"
 msgid "Owner"
 msgstr "Kurucu"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Pacotes por segundo"
+msgstr ""
+
 #: components/app/interface/settings/server/bans/ListBans.tsx
 msgid "Pardon User"
 msgstr "Kullanıcıyı Affet"
@@ -3175,6 +3211,10 @@ msgstr "Sekme açıkken bildirimler gelsin."
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive push notifications while the app is closed."
 msgstr "Uyguluma kapalıyken bildirimler gelsin."
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Reconexões"
+msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardStatus.tsx
 msgid "Reconnecting"
@@ -3638,6 +3678,10 @@ msgstr ""
 msgid "Seu computador não está dando conta"
 msgstr ""
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Seu microfone processado está saindo com silêncio"
+msgstr ""
+
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Several people are typing…"
 msgstr "Birkaç kişi yazıyor…"
@@ -3684,6 +3728,10 @@ msgstr ""
 #: components/app/interface/channels/text/Message.tsx
 msgid "Silent"
 msgstr "Sessiz"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "sinal"
+msgstr ""
 
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode Immune"

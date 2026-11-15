@@ -28,12 +28,20 @@ test("frame geometry: 512 samples at 16 kHz is 12 quanta at 48 kHz", () => {
   assert.equal(VAD_FRAME_QUANTA, 12);
 });
 
-test("without VAD the gate is the legacy RMS gate", () => {
+test("without VAD the gate opens on level and closes after the hangover", () => {
   const s = { open: false, hold: 0 };
   decideGate(s, { ...base, rms: 0.5, prob: -1, vadActive: false });
   assert.equal(s.open, true);
+  for (let i = 0; i < RMS_QUIET_HOLD_QUANTA - 1; i++) {
+    decideGate(s, { ...base, rms: 0.001, prob: -1, vadActive: false });
+  }
+  assert.equal(s.open, true, "a pause shorter than the hangover stays open");
   decideGate(s, { ...base, rms: 0.001, prob: -1, vadActive: false });
-  assert.equal(s.open, false, "closes immediately when quiet");
+  assert.equal(s.open, false, "closes once the hangover is over");
+});
+
+test("hangover covers pauses between words", () => {
+  assert.ok(RMS_QUIET_HOLD_QUANTA * (128 / 48) >= 300, "at least 300 ms");
 });
 
 test("a loud bark with low speech probability never opens", () => {
@@ -44,12 +52,16 @@ test("a loud bark with low speech probability never opens", () => {
   assert.equal(s.open, false);
 });
 
-test("speech opens only when both loud and probable", () => {
+test("speech opens when loud, even while the VAD is still unsure", () => {
   const s = { open: false, hold: 0 };
   decideGate(s, { ...base, rms: 0.001, prob: 0.95, vadActive: true });
   assert.equal(s.open, false, "quiet speech-like noise stays closed");
-  decideGate(s, { ...base, rms: 0.3, prob: 0.9, vadActive: true });
-  assert.equal(s.open, true);
+  // First frame of a word: Silero often scores it 0.2-0.4. Must open.
+  decideGate(s, { ...base, rms: 0.3, prob: 0.3, vadActive: true });
+  assert.equal(s.open, true, "onset with an unsure VAD opens");
+  const t = { open: false, hold: 0 };
+  decideGate(t, { ...base, rms: 0.3, prob: 0.9, vadActive: true });
+  assert.equal(t.open, true);
 });
 
 test("pauses between words survive the hold; a long bark does not", () => {

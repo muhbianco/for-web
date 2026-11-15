@@ -7,11 +7,14 @@
  * - RMS only (legacy): open above `openThreshold`, close under `closeThreshold`.
  *   Used when no VAD port was given, `vadMode` is 0, or the Worker has gone
  *   quiet for `staleQuanta` (fallback is automatic).
- * - VAD: audio is delayed by one VAD frame (32 ms) so the speech probability
- *   for a frame arrives before that frame reaches the output; the gate opens
- *   only when loud AND probably speech (see vadPolicy.decideGate).
+ * - VAD: the speech probability for a frame arrives before that frame reaches
+ *   the output; the gate opens on level unless the VAD is sure it is not
+ *   speech (see vadPolicy.decideGate).
  *
- * The delay is switched only while the gate is closed so it never clicks.
+ * The audio is always delayed by one VAD frame (32 ms) so the attack ramp
+ * finishes before the onset reaches the output, in both modes: the word
+ * start is never clipped by the gate's own reaction time. Release is slow
+ * (~200 ms to -20 dB) so a closing gate fades instead of cutting.
  */
 import type {
   createDecimatorState,
@@ -193,8 +196,9 @@ class StoatRmsGate extends AudioWorkletProcessor {
       quietHoldQuanta: ${c.quietHoldQuanta},
     });
 
-    // Retarget the delay only while (nearly) silent so it never clicks.
-    const targetDelay = vadActive ? ${c.lookahead} : 0;
+    // Lookahead in both modes: the onset must not pay for the attack ramp.
+    // Retarget only while (nearly) silent so it never clicks.
+    const targetDelay = ${c.lookahead};
     if (this.delay !== targetDelay && this.gain < 0.01) {
       this.delay = targetDelay;
     }
@@ -211,7 +215,8 @@ class StoatRmsGate extends AudioWorkletProcessor {
     this.writePos = w;
 
     const target = this.state.open ? 1 : 0;
-    const coeff = this.state.open ? 0.25 : 0.08;
+    // Attack ~10 ms (hidden by the lookahead); release ~200 ms to -20 dB.
+    const coeff = this.state.open ? 0.25 : 0.03;
     for (let i = 0; i < n; i++) {
       this.gain += (target - this.gain) * coeff;
       output[i] = ring[r] * this.gain;

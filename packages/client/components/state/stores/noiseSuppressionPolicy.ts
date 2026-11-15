@@ -160,6 +160,77 @@ export function applyNoiseSuppressionSchema(
   };
 }
 
+/**
+ * Make-up gain BEFORE the suppressor, for quiet microphones.
+ *
+ * DeepFilterNet3 is trained on nominal levels: in the voice lab (15/11/2026)
+ * speech at −48 dBFS RMS (a talker 24 dB under the reference) came out of it
+ * as noise — RMS 0 at the gate, VAD probability 0.001 — so no gate or AGC
+ * placed after the suppressor could ever bring it back. The browser AGC is off
+ * in ML modes (it pumped the noise floor into the suppressor), so the chain
+ * lifts the pre-suppressor level itself: slowly, from the level of the 200 ms
+ * polls that stand clearly above the measured noise floor, never attenuating,
+ * capped at PRE_GAIN_MAX_DB. A normal talker (−30…−20 dBFS) gets 0 dB.
+ */
+export const PRE_GAIN_TARGET_DBFS = -26;
+export const PRE_GAIN_MAX_DB = 18;
+/** The poll runs every 200 ms: 0.6 dB per poll is 3 dB/s up, 2.4 is 12 dB/s down. */
+export const PRE_GAIN_UP_DB_PER_POLL = 0.6;
+export const PRE_GAIN_DOWN_DB_PER_POLL = 2.4;
+/** A poll counts as "someone talking" only this far above the noise floor. */
+export const PRE_GAIN_ACTIVITY_ABOVE_FLOOR_DB = 12;
+/** And never below this absolute level (a dead mic must not be amplified). */
+export const PRE_GAIN_MIN_ACTIVITY_DBFS = -70;
+/**
+ * The tracked level is a peak-hold of the speech-like polls (decaying this much
+ * per poll, 2.5 dB/s): it follows the loud part of the voice, so a normal
+ * talker whose quiet syllables dip to −40 dBFS is not pushed up on their account.
+ */
+export const PRE_GAIN_ACTIVITY_DECAY_DB_PER_POLL = 0.5;
+
+/**
+ * Tracks the level of speech-like polls (dBFS, pre-gain) as a slowly decaying
+ * peak-hold. Polls at or near the floor leave the estimate untouched.
+ */
+export function updateActivityDb(
+  current: number | undefined,
+  sampleDbfs: number,
+  floorDbfs: number | undefined,
+): number | undefined {
+  if (!Number.isFinite(sampleDbfs)) return current;
+  const floor = floorDbfs ?? -120;
+  if (
+    sampleDbfs < PRE_GAIN_MIN_ACTIVITY_DBFS ||
+    sampleDbfs < floor + PRE_GAIN_ACTIVITY_ABOVE_FLOOR_DB
+  ) {
+    return current;
+  }
+  return current === undefined
+    ? sampleDbfs
+    : Math.max(sampleDbfs, current - PRE_GAIN_ACTIVITY_DECAY_DB_PER_POLL);
+}
+
+/**
+ * Next pre-gain (dB) one poll later: moves toward TARGET − activity, clamped to
+ * [0, PRE_GAIN_MAX_DB], at most UP/DOWN dB per poll. No activity yet: unchanged.
+ */
+export function nextPreGainDb(
+  activityDbfs: number | undefined,
+  currentDb: number,
+): number {
+  if (activityDbfs === undefined || !Number.isFinite(activityDbfs)) {
+    return currentDb;
+  }
+  const desired = Math.min(
+    PRE_GAIN_MAX_DB,
+    Math.max(0, PRE_GAIN_TARGET_DBFS - activityDbfs),
+  );
+  if (desired > currentDb) {
+    return Math.min(desired, currentDb + PRE_GAIN_UP_DB_PER_POLL);
+  }
+  return Math.max(desired, currentDb - PRE_GAIN_DOWN_DB_PER_POLL);
+}
+
 /** Browser AGC fights ML denoisers and pumps the noise floor. */
 export function captureAutoGainEnabled(
   mode: NoiseSuppresionState | undefined,

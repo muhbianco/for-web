@@ -1,0 +1,13 @@
+# Renderizado por up.sh. Espelha o essencial da hel1 (porta UDP muxada 7882,
+# ICE/TCP 7881), sem TURN e sem Redis: um nó só, IP do WSL anunciado direto.
+port: 7880
+rtc:
+  udp_port: 7882
+  tcp_port: 7881
+  use_external_ip: false
+  node_ip: __NODE_IP__
+keys:
+  __KEY__: __SECRET__
+logging:
+  level: info
+  json: false

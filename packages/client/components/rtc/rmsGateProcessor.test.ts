@@ -114,18 +114,22 @@ const peak = (buf: Float32Array) => Math.max(...Array.from(buf).map(Math.abs));
 
 test("without a VAD port: loud speech opens and reaches every output channel", () => {
   const gate = instantiate();
-  const [left, right] = run(gate, loud, 8, params(), 2);
+  // 12 quanta of lookahead + the attack ramp before the level shows up.
+  const [left, right] = run(gate, loud, 20, params(), 2);
   assert.ok(left[127] > 0.45, `left channel silent: ${left[127]}`);
   assert.deepEqual(Array.from(right), Array.from(left));
 });
 
-test("without a VAD port: no delay is added (legacy behaviour)", () => {
+test("without a VAD port: the lookahead delay still applies", () => {
   const gate = instantiate();
-  // Ramp up first, then send a marker quantum and expect it straight away.
-  run(gate, loud, 8);
+  // Ramp up first, then send a marker quantum: it comes out 12 quanta later,
+  // so the attack ramp never eats the onset even with the VAD unavailable.
+  run(gate, loud, 20);
   const marker = new Float32Array(128).fill(0.25);
-  const [out] = run(gate, marker, 1);
-  assert.ok(Math.abs(out[127] - 0.25) < 0.02, `delayed: ${out[127]}`);
+  const [first] = run(gate, marker, 1);
+  assert.ok(Math.abs(first[127] - 0.5) < 0.05, `marker arrived early: ${first[127]}`);
+  const [later] = run(gate, loud, LOOKAHEAD / 128);
+  assert.ok(Math.abs(later[127] - 0.25) < 0.05, `marker never came out: ${later[127]}`);
 });
 
 test("no input silences every output channel", () => {
@@ -155,7 +159,7 @@ test("quiet input keeps the gate closed", () => {
 test("VAD attached but silent Worker: falls back to RMS, still opens", () => {
   const gate = instantiate();
   withVad(gate);
-  const [out] = run(gate, loud, 8);
+  const [out] = run(gate, loud, 20);
   assert.ok(out[127] > 0.45, "stale VAD must not mute the mic");
 });
 
@@ -237,7 +241,7 @@ test("vadMode 0 ignores the Worker entirely", () => {
   const gate = instantiate();
   const vad = withVad(gate);
   vad.receive({ type: "prob", seq: 0, prob: 0.05, ms: 1 });
-  const [out] = run(gate, loud, 8, params(0));
+  const [out] = run(gate, loud, 20, params(0));
   assert.ok(out[127] > 0.45, "vadMode=0 must behave like the RMS gate");
   assert.equal(vad.posted.length, 0, "no frames when vadMode is 0");
 });

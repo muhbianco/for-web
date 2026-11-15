@@ -1,0 +1,24 @@
+# SFU de laboratório: a mesma imagem de LiveKit da hel1, mais um sidecar com
+# iproute2/iptables no mesmo namespace de rede para injetar atraso, jitter,
+# perda e limite de banda (tc netem) no caminho SFU -> clientes.
+# Sobe com `lab/up.sh` dentro do WSL (gera livekit.yaml e .env).
+name: voice-lab
+services:
+  livekit:
+    image: ghcr.io/stoatchat/livekit-server:v1.9.14
+    command: --config /etc/livekit.yaml
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "7880:7880"
+      - "7881:7881"
+      - "7882:7882/udp"
+    restart: unless-stopped
+
+  netem:
+    image: alpine:3.20
+    network_mode: service:livekit
+    cap_add:
+      - NET_ADMIN
+    command: ["sh", "-c", "apk add -q iproute2 iptables && sleep infinity"]
+    restart: unless-stopped

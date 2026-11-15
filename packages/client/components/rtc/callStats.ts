@@ -4,6 +4,7 @@ import {
   type RemoteTrack,
   type Room,
   ConnectionQuality,
+  RoomEvent,
   Track,
 } from "livekit-client";
 
@@ -19,12 +20,13 @@ import {
  *                                   is literally the "sped up voice"
  *   insertedSamplesForDeceleration  NetEQ stretched audio to slow down
  *
- * so remote tracks are read through RemoteTrack.getRTCStatsReport() while the
- * local side uses livekit's typed sender stats.
+ * so every track is read through getRTCStatsReport(); that one report also
+ * carries the codec actually negotiated, the ICE candidate pair in use (and
+ * whether it is a TURN relay), the transport RTT and the bandwidth estimate.
  *
  * Everything reported here is a rate over the last window, never a lifetime
  * total: a counter that only grows says nothing about how the call is doing
- * right now.
+ * right now. The raw counters are kept between windows and diffed.
  */
 
 /** Matches livekit's own monitorFrequency, so we sample in step with it. */
@@ -38,6 +40,17 @@ const OPUS_SAMPLE_RATE = 48000;
 
 /** Below this many packets in a window, a loss percentage is just noise. */
 const MIN_PACKETS_FOR_LOSS = 20;
+
+/** The codec the browser actually negotiated for a track. */
+export interface CodecInfo {
+  /** e.g. "audio/opus", "audio/red" */
+  mimeType?: string;
+  clockRate?: number;
+  channels?: number;
+  payloadType?: number;
+  /** e.g. "minptime=10;useinbandfec=1;usedtx=1" */
+  fmtp?: string;
+}
 
 export interface InboundAudioStats {
   /** Network jitter as measured by the receiver (ms). */
@@ -53,8 +66,16 @@ export interface InboundAudioStats {
    * concealment during silence, which DTX makes constant and harmless.
    */
   concealedMsPerSec?: number;
+  /** Concealment during silence / DTX (ms/s). Harmless, kept for context. */
+  silentConcealedMsPerSec?: number;
+  /** How many separate loss events NetEQ had to paper over (per second). */
+  concealmentEventsPerSec?: number;
   /** Average jitter buffer delay over the window (ms). */
   jitterBufferMs?: number;
+  /** What NetEQ was aiming for over the window (ms). */
+  jitterBufferTargetMs?: number;
+  /** Lower bound NetEQ imposed on itself over the window (ms). */
+  jitterBufferMinimumMs?: number;
   /** Playout delay we asked for on this track, if any (ms). */
   playoutDelayMs?: number;
   /**
@@ -64,6 +85,17 @@ export interface InboundAudioStats {
    * either way. Anything reading these stats has to check this first.
    */
   packetsInWindow?: number;
+  packetsPerSec?: number;
+  bitrateKbps?: number;
+  /** Opus in-band FEC packets that were used / thrown away (per second). */
+  fecPacketsReceivedPerSec?: number;
+  fecPacketsDiscardedPerSec?: number;
+  /** Packets the jitter buffer dropped as too late (per second). */
+  packetsDiscardedPerSec?: number;
+  nackPerSec?: number;
+  /** Decoded audio level 0-1 (what the listener's decoder is putting out). */
+  audioLevel?: number;
+  codec?: CodecInfo;
 }
 
 export interface InboundVideoStats {
@@ -84,8 +116,18 @@ export interface OutboundAudioStats {
   rttMs?: number;
   /** Loss the remote reported on our audio (0-100). */
   lossPct?: number;
+  /** Loss fraction the remote reported in its last RTCP RR (0-100). */
+  fractionLostPct?: number;
   jitterMs?: number;
   bitrateKbps?: number;
+  /** What the encoder was told to aim for (kbps). */
+  targetBitrateKbps?: number;
+  packetsPerSec?: number;
+  nackPerSec?: number;
+  retransmittedPerSec?: number;
+  /** Level of the processed microphone signal handed to the encoder (0-1). */
+  audioLevel?: number;
+  codec?: CodecInfo;
 }
 
 export interface OutboundVideoStats {
@@ -100,6 +142,34 @@ export interface OutboundVideoStats {
    * between "your connection is bad" and "your computer is busy".
    */
   limitedBy?: string;
+}
+
+/**
+ * The transport under one peer connection. LiveKit uses two: PUBLISHER (our
+ * media up to the SFU) and SUBSCRIBER (everyone else's media down to us).
+ */
+export interface TransportStats {
+  role: "publisher" | "subscriber";
+  iceState?: string;
+  dtlsState?: string;
+  /** host / srflx / prflx / relay */
+  localCandidateType?: string;
+  remoteCandidateType?: string;
+  /** udp / tcp */
+  protocol?: string;
+  /** Set when our local candidate is a TURN relay: udp / tcp / tls. */
+  relayProtocol?: string;
+  /** True when media goes through TURN on either side. */
+  usesRelay: boolean;
+  /** Port on the SFU side: 7882 = UDP mux, 7881 = ICE/TCP, 3478 = TURN. */
+  remotePort?: number;
+  /** STUN round trip on the selected pair (ms). */
+  currentRttMs?: number;
+  /** Sender-side bandwidth estimate (kbps), publisher only. */
+  availableOutgoingKbps?: number;
+  availableIncomingKbps?: number;
+  sendKbps?: number;
+  recvKbps?: number;
 }
 
 export interface ParticipantCallStats {
@@ -122,6 +192,16 @@ export interface CallStatsSnapshot {
   updatedAt?: number;
   self: SelfCallStats;
   participants: ParticipantCallStats[];
+  transport?: {
+    publisher?: TransportStats;
+    subscriber?: TransportStats;
+  };
+  /** livekit Room.state at sample time. */
+  connectionState?: string;
+  /** Full reconnects (ICE restart / new session) since the call started. */
+  reconnects?: number;
+  /** Signal-only reconnects (WebSocket dropped, media kept) since start. */
+  signalReconnects?: number;
 }
 
 export const IDLE_CALL_STATS: CallStatsSnapshot = {
@@ -130,53 +210,12 @@ export const IDLE_CALL_STATS: CallStatsSnapshot = {
   participants: [],
 };
 
+type Stat = Record<string, unknown>;
+
 /** Raw counters kept between windows so we can diff them. */
-interface AudioCounters {
+interface Counters {
   timestamp: number;
-  packetsReceived: number;
-  packetsLost: number;
-  concealedSamples: number;
-  silentConcealedSamples: number;
-  removedSamplesForAcceleration: number;
-  insertedSamplesForDeceleration: number;
-  jitterBufferDelay: number;
-  jitterBufferEmittedCount: number;
-}
-
-interface VideoCounters {
-  timestamp: number;
-  packetsReceived: number;
-  packetsLost: number;
-  framesDropped: number;
-  totalFreezesDuration: number;
-}
-
-interface SentCounters {
-  timestamp: number;
-  bytesSent: number;
-  packetsSent: number;
-  packetsLost: number;
-}
-
-interface SentAudioSample {
-  roundTripTime?: number;
-  packetsLost?: number;
-  packetsSent?: number;
-  jitter?: number;
-  bytesSent?: number;
-  timestamp: number;
-}
-
-interface SentVideoSample {
-  rid?: string;
-  framesPerSecond?: number;
-  frameWidth?: number;
-  frameHeight?: number;
-  bytesSent?: number;
-  packetsSent?: number;
-  packetsLost?: number;
-  timestamp: number;
-  qualityLimitationReason?: string;
+  values: Record<string, number>;
 }
 
 function num(value: unknown): number {
@@ -187,6 +226,10 @@ function optional(value: unknown): number | undefined {
   return typeof value === "number" && Number.isFinite(value)
     ? value
     : undefined;
+}
+
+function str(value: unknown): string | undefined {
+  return typeof value === "string" ? value : undefined;
 }
 
 /**
@@ -200,7 +243,7 @@ function lossPercent(
 ): number | undefined {
   const total = lostDelta + receivedDelta;
   if (total < MIN_PACKETS_FOR_LOSS) return undefined;
-  return Math.round((lostDelta / total) * 1000) / 10;
+  return Math.round((Math.max(0, lostDelta) / total) * 1000) / 10;
 }
 
 /**
@@ -213,7 +256,7 @@ function sentLossPercent(
   sentDelta: number,
 ): number | undefined {
   if (sentDelta < MIN_PACKETS_FOR_LOSS) return undefined;
-  return Math.round((lostDelta / sentDelta) * 1000) / 10;
+  return Math.round((Math.max(0, lostDelta) / sentDelta) * 1000) / 10;
 }
 
 function samplesToMsPerSec(
@@ -224,71 +267,184 @@ function samplesToMsPerSec(
   return Math.round(((sampleDelta / OPUS_SAMPLE_RATE) * 1000) / elapsedSec);
 }
 
-/** Finds the inbound-rtp entry of the given kind in a raw stats report. */
-function findInbound(
-  report: RTCStatsReport,
-  kind: "audio" | "video",
-): Record<string, unknown> | undefined {
-  let found: Record<string, unknown> | undefined;
+function round1(value: number): number {
+  return Math.round(value * 10) / 10;
+}
+
+function findAll(report: RTCStatsReport, type: string): Stat[] {
+  const found: Stat[] = [];
   report.forEach((entry) => {
-    const stat = entry as Record<string, unknown>;
-    if (stat.type === "inbound-rtp" && stat.kind === kind) {
-      found = stat;
-    }
+    const stat = entry as Stat;
+    if (stat.type === type) found.push(stat);
   });
   return found;
 }
 
+/** Finds the inbound-rtp entry of the given kind in a raw stats report. */
+function findInbound(
+  report: RTCStatsReport,
+  kind: "audio" | "video",
+): Stat | undefined {
+  return findAll(report, "inbound-rtp").find((s) => s.kind === kind);
+}
+
+function findById(report: RTCStatsReport, id: unknown): Stat | undefined {
+  if (typeof id !== "string") return undefined;
+  const entry = report.get(id) as Stat | undefined;
+  return entry;
+}
+
+function readCodec(report: RTCStatsReport, codecId: unknown): CodecInfo | undefined {
+  const codec = findById(report, codecId);
+  if (!codec) return undefined;
+  return {
+    mimeType: str(codec.mimeType),
+    clockRate: optional(codec.clockRate),
+    channels: optional(codec.channels),
+    payloadType: optional(codec.payloadType),
+    fmtp: str(codec.sdpFmtpLine),
+  };
+}
+
 /** With simulcast there is one entry per layer; the widest is what peers see. */
-function pickTopLayer<T extends { frameWidth?: number }>(
-  layers: T[],
-): T | undefined {
+function pickTopLayer(layers: Stat[]): Stat | undefined {
   if (!layers.length) return undefined;
   return layers.reduce((best, layer) =>
-    (layer.frameWidth ?? 0) > (best.frameWidth ?? 0) ? layer : best,
+    num(layer.frameWidth) > num(best.frameWidth) ? layer : best,
   );
 }
 
-function hasSenderStats<T>(
-  track: unknown,
-): track is { getSenderStats(): Promise<T> } {
-  return (
-    typeof track === "object" &&
-    track !== null &&
-    typeof (track as { getSenderStats?: unknown }).getSenderStats === "function"
-  );
+/**
+ * Diffs raw counters between two samples of the same object. `rate(key)`
+ * gives per-second, `delta(key)` the raw difference; both undefined on the
+ * first sample.
+ */
+class Window {
+  readonly elapsedSec: number;
+  constructor(
+    private readonly previous: Counters | undefined,
+    private readonly now: Counters,
+  ) {
+    this.elapsedSec = previous
+      ? (now.timestamp - previous.timestamp) / 1000
+      : 0;
+  }
+  get valid(): boolean {
+    return !!this.previous && this.elapsedSec > 0;
+  }
+  delta(key: string): number {
+    if (!this.previous) return 0;
+    return num(this.now.values[key]) - num(this.previous.values[key]);
+  }
+  rate(key: string): number | undefined {
+    if (!this.valid) return undefined;
+    return round1(this.delta(key) / this.elapsedSec);
+  }
+  kbps(key: string): number | undefined {
+    if (!this.valid) return undefined;
+    return Math.round((this.delta(key) * 8) / this.elapsedSec / 1000);
+  }
 }
+
+function counters(stat: Stat, keys: string[]): Counters {
+  const values: Record<string, number> = {};
+  for (const key of keys) values[key] = num(stat[key]);
+  return { timestamp: num(stat.timestamp), values };
+}
+
+const INBOUND_AUDIO_KEYS = [
+  "packetsReceived",
+  "packetsLost",
+  "packetsDiscarded",
+  "bytesReceived",
+  "concealedSamples",
+  "silentConcealedSamples",
+  "concealmentEvents",
+  "removedSamplesForAcceleration",
+  "insertedSamplesForDeceleration",
+  "jitterBufferDelay",
+  "jitterBufferTargetDelay",
+  "jitterBufferMinimumDelay",
+  "jitterBufferEmittedCount",
+  "fecPacketsReceived",
+  "fecPacketsDiscarded",
+  "nackCount",
+];
+
+const INBOUND_VIDEO_KEYS = [
+  "packetsReceived",
+  "packetsLost",
+  "framesDropped",
+  "totalFreezesDuration",
+];
+
+const OUTBOUND_KEYS = [
+  "bytesSent",
+  "packetsSent",
+  "nackCount",
+  "retransmittedPacketsSent",
+];
+
+const REMOTE_INBOUND_KEYS = ["packetsLost"];
+
+const PAIR_KEYS = ["bytesSent", "bytesReceived"];
 
 export class CallStatsCollector {
   #timer?: ReturnType<typeof setInterval>;
   #room?: Room;
   #onSnapshot: (snapshot: CallStatsSnapshot) => void;
-  /** Previous window, keyed by track sid. Pruned on every sample. */
-  #audioIn = new Map<string, AudioCounters>();
-  #videoIn = new Map<string, VideoCounters>();
-  #sentOut = new Map<string, SentCounters>();
+  /** Previous window, keyed by stats object id (track sid / pair id). */
+  #previous = new Map<string, Counters>();
   #sampling = false;
+  #reconnects = 0;
+  #signalReconnects = 0;
+  #detachRoom?: () => void;
 
   constructor(onSnapshot: (snapshot: CallStatsSnapshot) => void) {
     this.#onSnapshot = onSnapshot;
   }
 
-  start(room: Room) {
+  /**
+   * `manual`: no timer; the owner calls sampleNow() itself (the voice lab does,
+   * so its 2 s windows are not split by a second clock).
+   */
+  start(room: Room, opts: { manual?: boolean } = {}) {
     this.stop();
     this.#room = room;
-    this.#timer = setInterval(() => {
-      void this.sample();
-    }, CALL_STATS_INTERVAL_MS);
+    this.#reconnects = 0;
+    this.#signalReconnects = 0;
+    const onReconnecting = () => {
+      this.#reconnects += 1;
+    };
+    const onSignalReconnecting = () => {
+      this.#signalReconnects += 1;
+    };
+    room.on(RoomEvent.Reconnecting, onReconnecting);
+    room.on(RoomEvent.SignalReconnecting, onSignalReconnecting);
+    this.#detachRoom = () => {
+      room.off(RoomEvent.Reconnecting, onReconnecting);
+      room.off(RoomEvent.SignalReconnecting, onSignalReconnecting);
+    };
+    if (!opts.manual) {
+      this.#timer = setInterval(() => {
+        void this.sample();
+      }, CALL_STATS_INTERVAL_MS);
+    }
   }
 
   stop() {
     if (this.#timer) clearInterval(this.#timer);
     this.#timer = undefined;
+    this.#detachRoom?.();
+    this.#detachRoom = undefined;
     this.#room = undefined;
-    this.#audioIn.clear();
-    this.#videoIn.clear();
-    this.#sentOut.clear();
+    this.#previous.clear();
     this.#onSnapshot(IDLE_CALL_STATS);
+  }
+
+  /** Take one sample now (the lab calls this instead of waiting for the timer). */
+  async sampleNow(): Promise<void> {
+    await this.sample();
   }
 
   /**
@@ -302,7 +458,7 @@ export class CallStatsCollector {
     this.#sampling = true;
 
     try {
-      const [participants, self] = await Promise.all([
+      const [remote, local] = await Promise.all([
         this.sampleRemote([...room.remoteParticipants.values()]),
         this.sampleLocal(room.localParticipant),
       ]);
@@ -310,8 +466,15 @@ export class CallStatsCollector {
       this.#onSnapshot({
         inCall: true,
         updatedAt: Date.now(),
-        self,
-        participants,
+        self: local.self,
+        participants: remote.participants,
+        transport: {
+          publisher: local.transport,
+          subscriber: remote.transport,
+        },
+        connectionState: room.state,
+        reconnects: this.#reconnects,
+        signalReconnects: this.#signalReconnects,
       });
     } catch (error) {
       // A call can end mid-sample; losing one window is not worth an error toast.
@@ -321,10 +484,12 @@ export class CallStatsCollector {
     }
   }
 
-  private async sampleRemote(
-    participants: RemoteParticipant[],
-  ): Promise<ParticipantCallStats[]> {
-    return Promise.all(
+  private async sampleRemote(participants: RemoteParticipant[]): Promise<{
+    participants: ParticipantCallStats[];
+    transport?: TransportStats;
+  }> {
+    let transport: TransportStats | undefined;
+    const result = await Promise.all(
       participants.map(async (participant) => {
         const stats: ParticipantCallStats = {
           identity: participant.identity,
@@ -345,6 +510,12 @@ export class CallStatsCollector {
           }
           if (!report) continue;
 
+          // Every subscribed track shares the SUBSCRIBER peer connection, so
+          // one report is enough for the transport.
+          if (!transport) {
+            transport = this.readTransport(report, "subscriber");
+          }
+
           const sid = publication.trackSid;
           if (publication.kind === Track.Kind.Audio) {
             stats.audio = this.readInboundAudio(sid, report, track);
@@ -356,6 +527,7 @@ export class CallStatsCollector {
         return stats;
       }),
     );
+    return { participants: result, transport };
   }
 
   private readInboundAudio(
@@ -366,19 +538,9 @@ export class CallStatsCollector {
     const stat = findInbound(report, "audio");
     if (!stat) return undefined;
 
-    const now: AudioCounters = {
-      timestamp: num(stat.timestamp),
-      packetsReceived: num(stat.packetsReceived),
-      packetsLost: num(stat.packetsLost),
-      concealedSamples: num(stat.concealedSamples),
-      silentConcealedSamples: num(stat.silentConcealedSamples),
-      removedSamplesForAcceleration: num(stat.removedSamplesForAcceleration),
-      insertedSamplesForDeceleration: num(stat.insertedSamplesForDeceleration),
-      jitterBufferDelay: num(stat.jitterBufferDelay),
-      jitterBufferEmittedCount: num(stat.jitterBufferEmittedCount),
-    };
-    const previous = this.#audioIn.get(sid);
-    this.#audioIn.set(sid, now);
+    const now = counters(stat, INBOUND_AUDIO_KEYS);
+    const window = new Window(this.#previous.get(sid), now);
+    this.#previous.set(sid, now);
 
     const jitter = optional(stat.jitter);
     const playoutDelay = track.getPlayoutDelay();
@@ -387,45 +549,55 @@ export class CallStatsCollector {
       playoutDelayMs: playoutDelay
         ? Math.round(playoutDelay * 1000)
         : undefined,
+      audioLevel: optional(stat.audioLevel),
+      codec: readCodec(report, stat.codecId),
     };
-    if (!previous) return result;
+    if (!window.valid) return result;
 
-    const elapsedSec = (now.timestamp - previous.timestamp) / 1000;
-    if (elapsedSec <= 0) return result;
-
-    result.packetsInWindow = Math.max(
-      0,
-      now.packetsReceived - previous.packetsReceived,
-    );
+    const elapsedSec = window.elapsedSec;
+    result.packetsInWindow = Math.max(0, window.delta("packetsReceived"));
+    result.packetsPerSec = window.rate("packetsReceived");
+    result.bitrateKbps = window.kbps("bytesReceived");
     result.lossPct = lossPercent(
-      now.packetsLost - previous.packetsLost,
-      now.packetsReceived - previous.packetsReceived,
+      window.delta("packetsLost"),
+      window.delta("packetsReceived"),
     );
     result.acceleratedMsPerSec = samplesToMsPerSec(
-      now.removedSamplesForAcceleration -
-        previous.removedSamplesForAcceleration,
+      window.delta("removedSamplesForAcceleration"),
       elapsedSec,
     );
     result.deceleratedMsPerSec = samplesToMsPerSec(
-      now.insertedSamplesForDeceleration -
-        previous.insertedSamplesForDeceleration,
+      window.delta("insertedSamplesForDeceleration"),
       elapsedSec,
     );
     // Silent concealment is DTX doing its job, not a problem worth showing.
-    const concealed =
-      now.concealedSamples -
-      previous.concealedSamples -
-      (now.silentConcealedSamples - previous.silentConcealedSamples);
+    const silent = window.delta("silentConcealedSamples");
+    const concealed = window.delta("concealedSamples") - silent;
     result.concealedMsPerSec = samplesToMsPerSec(
       Math.max(0, concealed),
       elapsedSec,
     );
+    result.silentConcealedMsPerSec = samplesToMsPerSec(
+      Math.max(0, silent),
+      elapsedSec,
+    );
+    result.concealmentEventsPerSec = window.rate("concealmentEvents");
+    result.fecPacketsReceivedPerSec = window.rate("fecPacketsReceived");
+    result.fecPacketsDiscardedPerSec = window.rate("fecPacketsDiscarded");
+    result.packetsDiscardedPerSec = window.rate("packetsDiscarded");
+    result.nackPerSec = window.rate("nackCount");
 
-    const emitted =
-      now.jitterBufferEmittedCount - previous.jitterBufferEmittedCount;
+    const emitted = window.delta("jitterBufferEmittedCount");
     if (emitted > 0) {
-      const delay = now.jitterBufferDelay - previous.jitterBufferDelay;
-      result.jitterBufferMs = Math.round((delay / emitted) * 1000);
+      result.jitterBufferMs = Math.round(
+        (window.delta("jitterBufferDelay") / emitted) * 1000,
+      );
+      result.jitterBufferTargetMs = Math.round(
+        (window.delta("jitterBufferTargetDelay") / emitted) * 1000,
+      );
+      result.jitterBufferMinimumMs = Math.round(
+        (window.delta("jitterBufferMinimumDelay") / emitted) * 1000,
+      );
     }
     return result;
   }
@@ -437,160 +609,212 @@ export class CallStatsCollector {
     const stat = findInbound(report, "video");
     if (!stat) return undefined;
 
-    const now: VideoCounters = {
-      timestamp: num(stat.timestamp),
-      packetsReceived: num(stat.packetsReceived),
-      packetsLost: num(stat.packetsLost),
-      framesDropped: num(stat.framesDropped),
-      totalFreezesDuration: num(stat.totalFreezesDuration),
-    };
-    const previous = this.#videoIn.get(sid);
-    this.#videoIn.set(sid, now);
+    const now = counters(stat, INBOUND_VIDEO_KEYS);
+    const window = new Window(this.#previous.get(sid), now);
+    this.#previous.set(sid, now);
 
     const result: InboundVideoStats = {
       fps: optional(stat.framesPerSecond),
       width: optional(stat.frameWidth),
       height: optional(stat.frameHeight),
-      decoder:
-        typeof stat.decoderImplementation === "string"
-          ? stat.decoderImplementation
-          : undefined,
+      decoder: str(stat.decoderImplementation),
       powerEfficientDecoder:
         typeof stat.powerEfficientDecoder === "boolean"
           ? stat.powerEfficientDecoder
           : undefined,
     };
-    if (!previous) return result;
-
-    const elapsedSec = (now.timestamp - previous.timestamp) / 1000;
-    if (elapsedSec <= 0) return result;
+    if (!window.valid) return result;
 
     result.lossPct = lossPercent(
-      now.packetsLost - previous.packetsLost,
-      now.packetsReceived - previous.packetsReceived,
+      window.delta("packetsLost"),
+      window.delta("packetsReceived"),
     );
     result.framesDroppedPerSec = Math.round(
-      (now.framesDropped - previous.framesDropped) / elapsedSec,
+      window.delta("framesDropped") / window.elapsedSec,
     );
     result.freezeMsPerSec = Math.round(
-      ((now.totalFreezesDuration - previous.totalFreezesDuration) * 1000) /
-        elapsedSec,
+      (window.delta("totalFreezesDuration") * 1000) / window.elapsedSec,
     );
     return result;
   }
 
   private async sampleLocal(
     participant: LocalParticipant,
-  ): Promise<SelfCallStats> {
+  ): Promise<{ self: SelfCallStats; transport?: TransportStats }> {
     const self: SelfCallStats = {
       quality: participant.connectionQuality,
       video: [],
     };
+    let transport: TransportStats | undefined;
 
     for (const publication of participant.trackPublications.values()) {
       const track = publication.track;
-      if (!track) continue;
+      if (!track || typeof track.getRTCStatsReport !== "function") continue;
 
+      let report: RTCStatsReport | undefined;
       try {
-        if (publication.source === Track.Source.Microphone) {
-          if (!hasSenderStats<SentAudioSample | undefined>(track)) continue;
-          const sent = await track.getSenderStats();
-          if (sent) {
-            self.audio = this.readOutboundAudio(publication.trackSid, sent);
-          }
-        } else if (
-          publication.source === Track.Source.Camera ||
-          publication.source === Track.Source.ScreenShare
-        ) {
-          if (!hasSenderStats<SentVideoSample[]>(track)) continue;
-          const top = pickTopLayer(await track.getSenderStats());
-          if (top) {
-            self.video.push(
-              this.readOutboundVideo(
-                publication.trackSid,
-                top,
-                publication.source === Track.Source.Camera
-                  ? "camera"
-                  : "screenshare",
-              ),
-            );
-          }
-        }
+        report = await track.getRTCStatsReport();
       } catch {
         // Same as remote: a track can vanish mid-sample.
         continue;
       }
+      if (!report) continue;
+
+      if (!transport) transport = this.readTransport(report, "publisher");
+
+      if (publication.source === Track.Source.Microphone) {
+        self.audio = this.readOutboundAudio(publication.trackSid, report);
+      } else if (
+        publication.source === Track.Source.Camera ||
+        publication.source === Track.Source.ScreenShare
+      ) {
+        const layers = findAll(report, "outbound-rtp").filter(
+          (s) => s.kind === "video",
+        );
+        const top = pickTopLayer(layers);
+        if (top) {
+          self.video.push(
+            this.readOutboundVideo(
+              publication.trackSid,
+              top,
+              publication.source === Track.Source.Camera
+                ? "camera"
+                : "screenshare",
+            ),
+          );
+        }
+      }
     }
 
-    return self;
+    return { self, transport };
   }
 
   private readOutboundAudio(
     sid: string,
-    sent: SentAudioSample,
-  ): OutboundAudioStats {
-    const window = this.outboundWindow(sid, sent);
-    return {
-      rttMs: sent.roundTripTime
-        ? Math.round(sent.roundTripTime * 1000)
-        : undefined,
-      jitterMs: sent.jitter ? Math.round(sent.jitter * 1000) : undefined,
-      lossPct: window.lossPct,
-      bitrateKbps: window.bitrateKbps,
+    report: RTCStatsReport,
+  ): OutboundAudioStats | undefined {
+    const out = findAll(report, "outbound-rtp").find((s) => s.kind === "audio");
+    if (!out) return undefined;
+    const remote = findAll(report, "remote-inbound-rtp").find(
+      (s) => s.kind === "audio",
+    );
+    const source = findAll(report, "media-source").find(
+      (s) => s.kind === "audio",
+    );
+
+    const now = counters(out, OUTBOUND_KEYS);
+    if (remote) {
+      now.values.remotePacketsLost = num(remote.packetsLost);
+    }
+    const window = new Window(this.#previous.get(sid), now);
+    this.#previous.set(sid, now);
+
+    const rtt = remote ? optional(remote.roundTripTime) : undefined;
+    const jitter = remote ? optional(remote.jitter) : undefined;
+    const fractionLost = remote ? optional(remote.fractionLost) : undefined;
+    const result: OutboundAudioStats = {
+      rttMs: rtt === undefined ? undefined : Math.round(rtt * 1000),
+      jitterMs: jitter === undefined ? undefined : Math.round(jitter * 1000),
+      fractionLostPct:
+        fractionLost === undefined ? undefined : round1(fractionLost * 100),
+      targetBitrateKbps:
+        optional(out.targetBitrate) === undefined
+          ? undefined
+          : Math.round(num(out.targetBitrate) / 1000),
+      audioLevel: source ? optional(source.audioLevel) : undefined,
+      codec: readCodec(report, out.codecId),
     };
+    if (!window.valid) return result;
+
+    result.bitrateKbps = window.kbps("bytesSent");
+    result.packetsPerSec = window.rate("packetsSent");
+    result.nackPerSec = window.rate("nackCount");
+    result.retransmittedPerSec = window.rate("retransmittedPacketsSent");
+    if (remote) {
+      result.lossPct = sentLossPercent(
+        window.delta("remotePacketsLost"),
+        window.delta("packetsSent"),
+      );
+    }
+    return result;
   }
 
   private readOutboundVideo(
     sid: string,
-    layer: SentVideoSample,
+    layer: Stat,
     source: "camera" | "screenshare",
   ): OutboundVideoStats {
+    const now = counters(layer, OUTBOUND_KEYS);
+    const window = new Window(this.#previous.get(sid), now);
+    this.#previous.set(sid, now);
+    const reason = str(layer.qualityLimitationReason);
     return {
       source,
       fps: optional(layer.framesPerSecond),
       width: optional(layer.frameWidth),
       height: optional(layer.frameHeight),
-      bitrateKbps: this.outboundWindow(sid, layer).bitrateKbps,
-      limitedBy:
-        layer.qualityLimitationReason &&
-        layer.qualityLimitationReason !== "none"
-          ? layer.qualityLimitationReason
-          : undefined,
+      bitrateKbps: window.kbps("bytesSent"),
+      limitedBy: reason && reason !== "none" ? reason : undefined,
     };
   }
 
-  /** Bitrate and loss over the last window for one published track. */
-  private outboundWindow(
-    sid: string,
-    sample: {
-      timestamp: number;
-      bytesSent?: number;
-      packetsSent?: number;
-      packetsLost?: number;
-    },
-  ): { bitrateKbps?: number; lossPct?: number } {
-    const now: SentCounters = {
-      timestamp: num(sample.timestamp),
-      bytesSent: num(sample.bytesSent),
-      packetsSent: num(sample.packetsSent),
-      packetsLost: num(sample.packetsLost),
-    };
-    const previous = this.#sentOut.get(sid);
-    this.#sentOut.set(sid, now);
-    if (!previous) return {};
+  /**
+   * The selected ICE candidate pair and the DTLS/ICE state of the peer
+   * connection this report came from. Addresses are deliberately left out;
+   * candidate types, protocol and the SFU port say everything the diagnosis
+   * needs (7882 UDP mux, 7881 ICE/TCP, 3478 TURN).
+   */
+  private readTransport(
+    report: RTCStatsReport,
+    role: "publisher" | "subscriber",
+  ): TransportStats | undefined {
+    const transports = findAll(report, "transport");
+    const transport =
+      transports.find((t) => t.dtlsState === "connected") ?? transports[0];
+    let pair = transport
+      ? findById(report, transport.selectedCandidatePairId)
+      : undefined;
+    if (!pair) {
+      pair = findAll(report, "candidate-pair").find(
+        (p) => p.nominated === true || p.state === "succeeded",
+      );
+    }
+    if (!transport && !pair) return undefined;
 
-    const elapsedSec = (now.timestamp - previous.timestamp) / 1000;
-    if (elapsedSec <= 0) return {};
-
-    return {
-      bitrateKbps: Math.round(
-        ((now.bytesSent - previous.bytesSent) * 8) / elapsedSec / 1000,
-      ),
-      lossPct: sentLossPercent(
-        now.packetsLost - previous.packetsLost,
-        now.packetsSent - previous.packetsSent,
-      ),
+    const local = pair ? findById(report, pair.localCandidateId) : undefined;
+    const remote = pair ? findById(report, pair.remoteCandidateId) : undefined;
+    const result: TransportStats = {
+      role,
+      iceState: transport ? str(transport.iceState) : undefined,
+      dtlsState: transport ? str(transport.dtlsState) : undefined,
+      localCandidateType: local ? str(local.candidateType) : undefined,
+      remoteCandidateType: remote ? str(remote.candidateType) : undefined,
+      protocol: local ? str(local.protocol) : undefined,
+      relayProtocol: local ? str(local.relayProtocol) : undefined,
+      usesRelay:
+        (local ? str(local.candidateType) : undefined) === "relay" ||
+        (remote ? str(remote.candidateType) : undefined) === "relay",
+      remotePort: remote ? optional(remote.port) : undefined,
     };
+    if (pair) {
+      const rtt = optional(pair.currentRoundTripTime);
+      result.currentRttMs = rtt === undefined ? undefined : Math.round(rtt * 1000);
+      const out = optional(pair.availableOutgoingBitrate);
+      result.availableOutgoingKbps =
+        out === undefined ? undefined : Math.round(out / 1000);
+      const inc = optional(pair.availableIncomingBitrate);
+      result.availableIncomingKbps =
+        inc === undefined ? undefined : Math.round(inc / 1000);
+      const id = `pair:${role}:${str(pair.id) ?? ""}`;
+      const now = counters(pair, PAIR_KEYS);
+      const window = new Window(this.#previous.get(id), now);
+      this.#previous.set(id, now);
+      if (window.valid) {
+        result.sendKbps = window.kbps("bytesSent");
+        result.recvKbps = window.kbps("bytesReceived");
+      }
+    }
+    return result;
   }
 
   /** Drop counters for tracks that are gone, so the maps stay call-sized. */
@@ -602,10 +826,9 @@ export class CallStatsCollector {
     for (const sid of room.localParticipant.trackPublications.keys()) {
       live.add(sid);
     }
-    for (const map of [this.#audioIn, this.#videoIn, this.#sentOut]) {
-      for (const sid of [...map.keys()]) {
-        if (!live.has(sid)) map.delete(sid);
-      }
+    for (const key of [...this.#previous.keys()]) {
+      if (key.startsWith("pair:")) continue;
+      if (!live.has(key)) this.#previous.delete(key);
     }
   }
 }

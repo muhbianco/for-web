@@ -281,6 +281,10 @@ msgstr "A chamada está saudável"
 msgid "A conexão de {0} está instável"
 msgstr "A conexão de {0} está instável"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "A reprodução neste computador está engasgando"
+msgstr "A reprodução neste computador está engasgando"
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
 msgstr "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
@@ -559,6 +563,10 @@ msgstr "Background noise"
 msgid "Badges"
 msgstr "Badges"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Baixar relatório da última chamada"
+msgstr "Baixar relatório da última chamada"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Balanced removal for everyday calls."
 msgstr "Balanced removal for everyday calls."
@@ -595,6 +603,10 @@ msgstr "Ban user"
 #: components/modal/modals/BanNonMember.tsx
 msgid "Ban User"
 msgstr "Ban User"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Banda de subida estimada"
+msgstr "Banda de subida estimada"
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Banner"
@@ -702,6 +714,10 @@ msgstr "Calling…"
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Câmera"
 msgstr "Câmera"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Caminho"
+msgstr "Caminho"
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Can't find the perfect GIF? Head to Gifbox and upload your own for everyone to use."
@@ -982,6 +998,10 @@ msgstr "Close conversation with {0}?"
 #: components/modal/modals/JoinServer.tsx
 msgid "Code"
 msgstr "Code"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Codec"
+msgstr "Codec"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Collapse call window"
@@ -1772,6 +1792,10 @@ msgstr "Este objeto ainda não foi configurado."
 msgid "Este servidor ainda não tem cargos."
 msgstr "Este servidor ainda não tem cargos."
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Eventos de reconstrução"
+msgstr "Eventos de reconstrução"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
@@ -2053,6 +2077,10 @@ msgstr "ID copied to clipboard"
 msgid "Ida e volta"
 msgstr "Ida e volta"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Ida e volta do transporte"
+msgstr "Ida e volta do transporte"
+
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
 #: src/interface/navigation/channels/HomeSidebar.tsx
@@ -2290,6 +2318,10 @@ msgstr "Light (quiet room)"
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "limitada por"
 msgstr "limitada por"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Linha do tempo completa (rede, caminho, codec e processamento), em JSON, da última chamada encerrada neste aparelho."
+msgstr "Linha do tempo completa (rede, caminho, codec e processamento), em JSON, da última chamada encerrada neste aparelho."
 
 #: components/space/DecorPanel.tsx
 msgid "Link (abre em nova aba)"
@@ -2921,6 +2953,10 @@ msgstr "Overview"
 msgid "Owner"
 msgstr "Owner"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Pacotes por segundo"
+msgstr "Pacotes por segundo"
+
 #: components/app/interface/settings/server/bans/ListBans.tsx
 msgid "Pardon User"
 msgstr "Pardon User"
@@ -3172,6 +3208,10 @@ msgstr "Receive notifications while the tab is open."
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive push notifications while the app is closed."
 msgstr "Receive push notifications while the app is closed."
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Reconexões"
+msgstr "Reconexões"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardStatus.tsx
 msgid "Reconnecting"
@@ -3635,6 +3675,10 @@ msgstr "Seu áudio está em outra aba ou outro servidor"
 msgid "Seu computador não está dando conta"
 msgstr "Seu computador não está dando conta"
 
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "Seu microfone processado está saindo com silêncio"
+msgstr "Seu microfone processado está saindo com silêncio"
+
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Several people are typing…"
 msgstr "Several people are typing…"
@@ -3680,6 +3724,10 @@ msgstr "Silêncio publicado"
 #: components/app/interface/channels/text/Message.tsx
 msgid "Silent"
 msgstr "Silent"
+
+#: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
+msgid "sinal"
+msgstr "sinal"
 
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode Immune"

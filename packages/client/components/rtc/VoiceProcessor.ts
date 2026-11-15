@@ -10,7 +10,9 @@ import {
   DEEPFILTER_AUTO_STEP_DB,
   deepFilterAttenDb,
   gateThresholdsFromSensitivity,
+  nextPreGainDb,
   rmsToDbfs,
+  updateActivityDb,
 } from "@revolt/state/stores/noiseSuppressionPolicy";
 
 import { DeepFilterHealth } from "./deepFilterHealth";
@@ -43,6 +45,8 @@ import type { VoiceEngineId } from "./voiceEngineStatus";
  *
  *   getUserMedia (EC on, AGC off in ML modes, browser NS off in ML modes)
  *     -> highpass 50 Hz (explicit mono: a stereo capture is downmixed here)
+ *     -> make-up gain for quiet microphones (0..+18 dB, follows the
+ *        "auto gain" setting; see noiseSuppressionPolicy PRE_GAIN_*)
  *     -> ONE neural noise suppressor: DeepFilterNet3 (default) or RNNoise
  *     -> voice gate (DeepFilter only, sits *after* the suppressor)
  *          RMS + Silero VAD speech probability; 32 ms lookahead
@@ -137,6 +141,8 @@ export interface VoiceProcessorSnapshot {
   vadInferMs?: number;
   /** Why the VAD is not running, if it is not. */
   vadError?: string;
+  /** Make-up gain applied before the suppressor right now (dB). */
+  agcGainDb?: number;
 }
 
 function deepFilterCdnUrl(): string {
@@ -226,6 +232,10 @@ export class VoiceProcessor implements TrackProcessor<
   private speechProb?: number;
   private vadInferMs?: number;
   private vadError?: string;
+  /** Pre-suppressor make-up gain (see noiseSuppressionPolicy PRE_GAIN_*). */
+  private preGainNode?: GainNode;
+  private preGainDb = 0;
+  private activityDb?: number;
 
   private noiseSuppressionNode?: RNNoiseNode;
   private deepFilterNode?: AudioWorkletNode;
@@ -302,6 +312,10 @@ export class VoiceProcessor implements TrackProcessor<
       speechProb: this.vadActive ? this.speechProb : undefined,
       vadInferMs: this.vadActive ? this.vadInferMs : undefined,
       vadError: this.vadError,
+      agcGainDb:
+        this.engine === "deepfilter" || this.engine === "rnnoise"
+          ? this.preGainDb
+          : undefined,
       silentMsPerSec: this.lastProduction
         ? silentMsPerSec(this.lastProduction)
         : undefined,
@@ -445,6 +459,7 @@ export class VoiceProcessor implements TrackProcessor<
       let sum = 0;
       for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
       const db = rmsToDbfs(Math.sqrt(sum / buffer.length));
+      this.trackPreGain(context, db);
       // Gate open = someone talking; that is not the floor.
       if (this.gateOpen) return;
       this.noiseFloorDb =
@@ -455,6 +470,36 @@ export class VoiceProcessor implements TrackProcessor<
         this.applyDeepFilterStrength();
       }
     }, NOISE_FLOOR_POLL_MS);
+  }
+
+  /**
+   * Make-up gain for quiet microphones, decided from the pre-suppressor level
+   * of polls that stand above the noise floor. Applied on the GainNode in front
+   * of the suppressor; off (0 dB) when the user disables auto gain.
+   */
+  private trackPreGain(context: AudioContext, sampleDbfs: number) {
+    if (!this.preGainNode) return;
+    if (this.settings.autoGainControl === false) {
+      if (this.preGainDb !== 0) this.setPreGainDb(context, 0);
+      return;
+    }
+    this.activityDb = updateActivityDb(
+      this.activityDb,
+      sampleDbfs,
+      this.noiseFloorDb,
+    );
+    const next = nextPreGainDb(this.activityDb, this.preGainDb);
+    if (next !== this.preGainDb) this.setPreGainDb(context, next);
+  }
+
+  private setPreGainDb(context: AudioContext, db: number) {
+    this.preGainDb = db;
+    this.preGainNode?.gain.setTargetAtTime(
+      10 ** (db / 20),
+      context.currentTime,
+      0.1,
+    );
+    this.emitStatus();
   }
 
   private stopNoiseFloorTracking() {
@@ -639,6 +684,10 @@ export class VoiceProcessor implements TrackProcessor<
     }
     this.gateNode?.disconnect();
     this.noiseSuppressionNode?.disconnect();
+    this.preGainNode?.disconnect();
+    this.preGainNode = undefined;
+    this.preGainDb = 0;
+    this.activityDb = undefined;
     this.highpassNode?.disconnect();
     this.sourceNode?.disconnect();
     this.compressorNode = undefined;
@@ -670,8 +719,16 @@ export class VoiceProcessor implements TrackProcessor<
     this.compressorNode.attack.value = 0.003;
     this.compressorNode.release.value = 0.05;
 
+    // Make-up gain sits after the highpass (the noise-floor tap reads the
+    // highpass output, i.e. the level BEFORE this gain) and before the
+    // suppressor, which needs nominal levels to keep quiet speech.
+    this.preGainNode = context.createGain();
+    this.preGainNode.gain.value = 10 ** (this.preGainDb / 20);
+    forceMono(this.preGainNode);
+
     this.sourceNode!.connect(this.highpassNode);
-    this.highpassNode.connect(nsNode);
+    this.highpassNode.connect(this.preGainNode);
+    this.preGainNode.connect(nsNode);
     if (gate) {
       nsNode.connect(gate);
       gate.connect(this.compressorNode);

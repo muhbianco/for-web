@@ -108,7 +108,11 @@ export default defineConfig({
     sourcemap: true,
   },
   optimizeDeps: {
-    exclude: ["hast"],
+    // onnxruntime-web resolves its WASM/glue next to its own module URL. The
+    // dev pre-bundle would move it under node_modules/.vite/deps, where the
+    // files do not exist, and the Silero VAD worker would get index.html back
+    // (dev only; the production build hashes the asset correctly).
+    exclude: ["hast", "onnxruntime-web"],
   },
   resolve: {
     alias: {

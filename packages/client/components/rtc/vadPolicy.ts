@@ -1,10 +1,18 @@
 /**
- * Voice gate policy: the microphone opens on *speech*, not on loudness.
+ * Voice gate policy: open fast on level, close slowly on silence or non-speech.
  *
  * The RMS gate alone opens on anything loud (a dog bark, a keyboard). Silero
- * VAD gives a speech probability per 32 ms frame; the gate requires both
- * "loud enough" and "probably speech" to open, and holds a little before
- * closing so pauses between words do not chop.
+ * VAD gives a speech probability per 32 ms frame. The first version required
+ * "loud AND prob >= 0.5" to open and closed 40 ms after the level dropped;
+ * measured against a clean reference in the voice lab (qa/voice-lab,
+ * 15/11/2026) that cut 2.7 % of the speech frames — half at word onsets (the
+ * VAD scores the first frame of speech low and arrives late), half inside
+ * words (plosive closures and short pauses outlast 40 ms). So now:
+ * - the level opens the gate; the VAD only vetoes frames it is sure are not
+ *   speech (prob < VAD_OPEN, far below the 0.5 "speech" line), which still
+ *   keeps a bark or a keystroke out;
+ * - once open, quiet input holds RMS_QUIET_HOLD_MS (a hangover that covers
+ *   pauses between words) and loud non-speech holds VAD_HOLD_MS before closing.
  *
  * Everything here is free of imports so `decideGate` can be embedded verbatim
  * into the AudioWorklet source (see rmsGateProcessor.ts) and unit-tested in
@@ -23,14 +31,21 @@ export const RENDER_QUANTUM = 128;
 /** Quanta per VAD frame: 1536 / 128. */
 export const VAD_FRAME_QUANTA = VAD_LOOKAHEAD_48K / RENDER_QUANTUM;
 
-/** Speech probability needed to open. */
-export const VAD_OPEN = 0.5;
+/**
+ * Below this probability a loud frame is a transient (bark, click), not an
+ * onset, and does not open the gate. Speech onsets score 0.2–0.6 on their
+ * first 32 ms frame, so the threshold sits well under the 0.5 "speech" line.
+ */
+export const VAD_OPEN = 0.15;
 /** Below this the frame counts as non-speech while open. */
 export const VAD_CLOSE = 0.35;
 /** Loud but non-speech for this long closes the gate (bark after a sentence). */
-export const VAD_HOLD_MS = 200;
-/** Quiet (RMS below close threshold) for this long closes; covers the lookahead tail. */
-export const RMS_QUIET_HOLD_MS = 40;
+export const VAD_HOLD_MS = 400;
+/**
+ * Quiet (RMS below close threshold) for this long closes: the hangover. Pauses
+ * between words and plosive closures last 50–300 ms; 40 ms chopped them.
+ */
+export const RMS_QUIET_HOLD_MS = 400;
 /** No probability from the Worker for this long → treat VAD as gone, RMS only. */
 export const VAD_STALE_MS = 600;
 
@@ -64,10 +79,12 @@ export interface GateDecisionInput {
 /**
  * One gate decision per render quantum. Mutates and returns `state`.
  *
- * Without VAD this is exactly the legacy RMS gate: open above `openTh`,
- * close the moment RMS drops under `closeTh`. With VAD:
- * - open needs RMS above `openTh` AND prob >= `vadOpen`;
- * - quiet input closes after `quietHoldQuanta` (lets the lookahead tail out);
+ * Without VAD: open above `openTh`, close after `quietHoldQuanta` of RMS under
+ * `closeTh` (the same hangover; the old gate closed on the first quiet quantum
+ * and chopped inside words). With VAD:
+ * - open needs RMS above `openTh` AND prob >= `vadOpen` (a low bar: only clear
+ *   non-speech is vetoed);
+ * - quiet input closes after `quietHoldQuanta`;
  * - loud non-speech (prob < `vadClose`) closes after `vadHoldQuanta`.
  *
  * Self-contained on purpose: this function's source is inlined into the
@@ -78,11 +95,19 @@ export function decideGate(
   i: GateDecisionInput,
 ): GateDecisionState {
   if (!i.vadActive) {
-    s.hold = 0;
-    if (s.open) {
-      if (i.rms < i.closeTh) s.open = false;
-    } else if (i.rms > i.openTh) {
-      s.open = true;
+    if (!s.open) {
+      s.hold = 0;
+      if (i.rms > i.openTh) s.open = true;
+      return s;
+    }
+    if (i.rms < i.closeTh) {
+      s.hold += 1;
+      if (s.hold >= i.quietHoldQuanta) {
+        s.open = false;
+        s.hold = 0;
+      }
+    } else {
+      s.hold = 0;
     }
     return s;
   }

@@ -17,14 +17,12 @@ import {
 } from "solid-livekit-components";
 
 import {
-  AudioPresets,
   LocalTrackPublication,
   Room,
   ScreenShareCaptureOptions,
   ScreenSharePresets,
   Track,
   VideoEncoding,
-  VideoPresets,
 } from "livekit-client";
 import { Channel, Client, Message } from "stoat.js";
 
@@ -39,10 +37,6 @@ import { ModalController, useModals } from "@revolt/modal";
 import type { ScreenShareSelection } from "@revolt/modal/types";
 import { useState } from "@revolt/state";
 import {
-  captureAutoGainEnabled,
-  captureBrowserNoiseSuppression,
-} from "@revolt/state/stores/noiseSuppressionPolicy";
-import {
   ScreenShareQualityName,
   Voice as VoiceSettings,
 } from "@revolt/state/stores/Voice";
@@ -50,6 +44,14 @@ import { VoiceCallCardContext } from "@revolt/ui/components/features/voice/callC
 
 import { Device, useDevice } from "@revolt/common";
 import { notifyPushRing, privateCallTargets } from "./callPush";
+import { diagnoseCall } from "./callDiagnosis";
+import {
+  type CallReport,
+  CallRecorder,
+  dspSampleFrom,
+  loadLastReport,
+  saveReport,
+} from "./callRecorder";
 import {
   type CallStatsSnapshot,
   CallStatsCollector,
@@ -57,6 +59,7 @@ import {
 } from "./callStats";
 import { InRoom } from "./components/InRoom";
 import { RoomAudioManager } from "./components/RoomAudioManager";
+import { buildVoiceRoomOptions, voiceCaptureOptions } from "./roomOptions";
 import { deafenAttributeValue, VOICE_DEAFENED_ATTR } from "./deafenAttribute";
 import { canUseDeepFilter } from "./deepFilterSupport";
 import { clearEntitlements, isVip, refreshEntitlements } from "./entitlements";
@@ -153,6 +156,8 @@ class Voice {
   callStats: Accessor<CallStatsSnapshot>;
   #setCallStats: Setter<CallStatsSnapshot>;
   #statsCollector: CallStatsCollector;
+  /** Per-call report: the timeline behind the live panel, kept for export. */
+  #recorder = new CallRecorder(diagnoseCall);
 
   constructor(
     voiceSettings: VoiceSettings,
@@ -216,9 +221,10 @@ class Voice {
       createSignal<CallStatsSnapshot>(IDLE_CALL_STATS);
     this.callStats = callStats;
     this.#setCallStats = setCallStats;
-    this.#statsCollector = new CallStatsCollector((snapshot) =>
-      this.#setCallStats(snapshot),
-    );
+    this.#statsCollector = new CallStatsCollector((snapshot) => {
+      this.#setCallStats(snapshot);
+      this.#recorder.push(snapshot, dspSampleFrom(this.engineStatus()));
+    });
 
     const inst = useInstance();
     this.config = inst.config;
@@ -252,23 +258,9 @@ class Voice {
     );
   }
 
-  /**
-   * One noise suppressor per signal path: browser NS / voiceIsolation are only
-   * requested in "browser" mode. In ML modes (DeepFilter / RNNoise) the
-   * VoiceProcessor owns suppression and browser AGC is off so it does not pump
-   * the residual noise floor. See VoiceProcessor.ts for the full chain.
-   */
+  /** Capture constraints for the current settings (see roomOptions.ts). */
   private captureAudioOptions() {
-    const mode = this.#settings.noiseSupression;
-    return {
-      echoCancellation: this.#settings.echoCancellation ?? true,
-      autoGainControl: captureAutoGainEnabled(
-        mode,
-        this.#settings.autoGainControl,
-      ),
-      noiseSuppression: captureBrowserNoiseSuppression(mode),
-      voiceIsolation: captureBrowserNoiseSuppression(mode),
-    };
+    return voiceCaptureOptions(this.#settings);
   }
 
   private async applyCaptureConstraints() {
@@ -368,6 +360,7 @@ class Voice {
       silentMsPerSec: snapshot?.silentMsPerSec,
       longestSilentRunMs: snapshot?.longestSilentRunMs,
       outputPeak: snapshot?.outputPeak,
+      agcGainDb: snapshot?.agcGainDb,
     });
   }
 
@@ -385,51 +378,15 @@ class Voice {
     this.disconnect();
 
     this.device.setWakeLocked();
+    this.#recorder.start({ room: channel.id });
 
     // Lido uma vez por chamada: o tier decide o que esta Room pode publicar, e
     // mudá-lo no meio exigiria republicar as tracks.
     const vip = isVip();
 
-    const room = new Room({
-      audioCaptureDefaults: {
-        deviceId: this.#settings.preferredAudioInputDevice,
-        ...this.captureAudioOptions(),
-      },
-      audioOutput: {
-        deviceId: this.#settings.preferredAudioOutputDevice,
-      },
-      videoCaptureDefaults: {
-        // Era um TODO fixado em 720p. O teto agora é o tier: o servidor libera
-        // 1920x1080 para todo mundo, e quem separa as contas é o VIP.
-        resolution: vip
-          ? VideoPresets.h1080.resolution
-          : VideoPresets.h720.resolution,
-        deviceId: this.#settings.preferredVideoDevice,
-      },
-      publishDefaults: {
-        videoEncoding: vip
-          ? VideoPresets.h1080.encoding
-          : VideoPresets.h720.encoding,
-        screenShareEncoding: ScreenSharePresets.h720fps30.encoding,
-        // Audio used to ride on livekit's defaults, which only hold while the
-        // published track is mono. VoiceProcessor forces mono today, but the
-        // day someone changes that, `red` would switch itself off in silence
-        // and we would lose our only real protection against packet loss.
-        // RED resends the previous payload alongside the current one, so a
-        // single lost packet is still heard; it is worth the extra bandwidth.
-        // (`voice_quality` in Revolt.toml is dead config: nothing in the
-        // client reads it. This is the value that actually ships.)
-        // 48 kbps para todo mundo, 96 para quem apoia. Mono nos dois casos,
-        // senão `red` e `dtx` se desligam sozinhos (ver acima).
-        audioPreset: vip ? AudioPresets.musicHighQuality : AudioPresets.music,
-        dtx: true,
-        red: true,
-        forceStereo: false,
-      },
-      // Stop the SFU from pulling layers nobody is subscribed to. Pure upload
-      // saving for whoever is publishing, invisible to everyone else.
-      dynacast: true,
-    });
+    // Capture, output and publish options live in roomOptions.ts so the voice
+    // lab (qa/voice-lab) measures exactly the Room this app builds.
+    const room = new Room(buildVoiceRoomOptions(this.#settings, vip));
 
     this.vidTracks = useTracks(
       [
@@ -471,6 +428,23 @@ class Voice {
       this.syncNativeVoiceSession();
       this.publishDeafenState();
       this.#statsCollector.start(room);
+      this.#recorder.connected({
+        room: room.name,
+        identity: room.localParticipant.identity,
+      });
+    });
+
+    room.addListener("reconnecting", () => {
+      this.#recorder.event("reconnecting");
+    });
+    room.addListener("reconnected", () => {
+      this.#recorder.event("reconnected");
+    });
+    room.addListener("signalReconnecting", () => {
+      this.#recorder.event("signalReconnecting");
+    });
+    room.addListener("connectionQualityChanged", (quality, participant) => {
+      this.#recorder.event("quality", `${participant.identity}:${quality}`);
     });
 
     room.addListener("disconnected", () => {
@@ -484,12 +458,14 @@ class Voice {
       }
     });
 
-    room.addListener("participantConnected", () => {
+    room.addListener("participantConnected", (participant) => {
       this.sound.playSound("userJoinVoice");
+      this.#recorder.event("participantConnected", participant.identity);
     });
 
-    room.addListener("participantDisconnected", () => {
+    room.addListener("participantDisconnected", (participant) => {
       this.sound.playSound("userLeaveVoice");
+      this.#recorder.event("participantDisconnected", participant.identity);
     });
 
     room.addListener("trackPublished", (pub) => {
@@ -582,8 +558,16 @@ class Voice {
     }
   }
 
+  /** The last finished call's report (this device), for the diagnostics panel. */
+  lastCallReport(): CallReport | undefined {
+    return loadLastReport();
+  }
+
   disconnect(opts?: { silent?: boolean }) {
     this.#statsCollector.stop();
+    const report = this.#recorder.stop();
+    // Only calls that actually connected and ran for a while are worth keeping.
+    if (report && report.windows >= 3) saveReport(report);
     this.device.releaseWakeLock();
     this.clearRing();
     this.syncNativeVoiceSession(true);
