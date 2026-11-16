@@ -33,6 +33,8 @@ type Info = {
   pos: DOMRect;
   parentRect: DOMRect;
   drawer?: SlideState;
+  /** The mount's parent is a stage: the card fills it (the space's media stage). */
+  fill?: boolean;
 };
 
 const PAD = 16,
@@ -114,7 +116,8 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
       sty.height = "";
       setMode();
     } else if (
-      voice.layout() === "expanded" &&
+      (voice.layout() === "expanded" ||
+        (inf?.fill && voice.layout() !== "collapsed")) &&
       inf?.parentRect &&
       (!inf.drawer || inf.drawer === SlideState.SHOWN)
     ) {
@@ -243,8 +246,14 @@ const Float = styled("div", {
   ],
 });
 
-/** 'Marker' to send position information for mounting the floating call card */
-export function VoiceChannelCallCardMount(props: { channel: Channel }) {
+/**
+ * 'Marker' to send position information for mounting the floating call card.
+ * With `fill`, the card takes the whole parent element (the space's stage).
+ */
+export function VoiceChannelCallCardMount(props: {
+  channel: Channel;
+  fill?: boolean;
+}) {
   const voice = useVoice();
   const state = useState();
   const setInfo = useContext(callCardContext)!;
@@ -259,6 +268,7 @@ export function VoiceChannelCallCardMount(props: { channel: Channel }) {
             pos: ref!.getBoundingClientRect(),
             parentRect: ref!.parentElement!.getBoundingClientRect(),
             drawer: state.appDrawer()?.state,
+            fill: props.fill,
           }
         : undefined,
     );

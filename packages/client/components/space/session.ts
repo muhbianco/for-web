@@ -7,6 +7,7 @@ import {
   type SpaceViewOptions,
   type VoicePort,
 } from "@muchat/space-client";
+import { Track } from "livekit-client";
 import type { Client } from "stoat.js";
 
 import type { useVoice } from "@revolt/rtc";
@@ -98,6 +99,26 @@ export function openSpace(
           { defer: true },
         ),
       );
+      // Someone in the room starts sharing a screen and nothing is in focus:
+      // focus it, so the call card shows the presentation wherever the person
+      // is (the map's stage, the floating card over another channel). Video
+      // is subscribed only by what shows it; nothing else changes in the call.
+      let shared = new Set<string>();
+      createEffect(() => {
+        const media = view.ui.media;
+        // vidTracks is replaced on every connect: track the room to follow it.
+        voice.room();
+        const tracks = voice.vidTracks();
+        const now = new Set<string>();
+        for (const t of tracks) {
+          if (t.source !== Track.Source.ScreenShare || !t.publication) continue;
+          const key = voice.trackId(t);
+          now.add(key);
+          const fresh = !shared.has(key) && !t.participant.isLocal;
+          if (fresh && media.kind === "connected" && !voice.focusTrack()) voice.focus(t);
+        }
+        shared = now;
+      });
       return disposeRoot;
     });
     const entry: Entry = { view, dispose };

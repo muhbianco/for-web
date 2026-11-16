@@ -313,7 +313,9 @@ export class SpaceView {
         return;
       }
       const k = KEYS[ev.code];
-      if (k) {
+      // With a modifier the key belongs to the page (Shift+S shares the
+      // screen, Shift+D deafens, Ctrl+… are the app's): never a step.
+      if (k && !(ev.shiftKey || ev.ctrlKey || ev.altKey || ev.metaKey)) {
         ev.preventDefault();
         this.mover.setKey(k, true);
         return;

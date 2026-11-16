@@ -107,6 +107,21 @@ export class Renderer {
    * GPU work at all. Every mutation of the scene must set this.
    */
   private dirty = true;
+  /**
+   * Pixi's resizeTo only listens to the window: the map's box also changes
+   * when the media stage or a side panel opens. Resize (and redraw) on that.
+   */
+  private resizeObs: ResizeObserver | null = null;
+
+  private observeSize(el: HTMLElement) {
+    this.resizeObs?.disconnect();
+    if (typeof ResizeObserver === "undefined") return;
+    this.resizeObs = new ResizeObserver(() => {
+      this.app.resize();
+      this.dirty = true;
+    });
+    this.resizeObs.observe(el);
+  }
 
   async init(el: HTMLElement) {
     await this.app.init({
@@ -124,6 +139,7 @@ export class Renderer {
     this.app.canvas.setAttribute("aria-hidden", "true");
     this.app.canvas.style.display = "block";
     el.appendChild(this.app.canvas);
+    this.observeSize(el);
     this.scene.sortableChildren = true;
     this.ceiling.alpha = 0.95;
     this.ghost.anchor.set(0, 1);
@@ -138,6 +154,7 @@ export class Renderer {
   attach(el: HTMLElement) {
     this.app.resizeTo = el;
     el.appendChild(this.app.canvas);
+    this.observeSize(el);
     this.dirty = true;
     this.app.ticker.start();
   }
@@ -149,6 +166,8 @@ export class Renderer {
 
   /** Takes the canvas off the page and stops drawing; the world keeps updating. */
   detach() {
+    this.resizeObs?.disconnect();
+    this.resizeObs = null;
     this.app.ticker.stop();
     this.app.canvas.remove();
   }
@@ -598,6 +617,8 @@ export class Renderer {
    *   every space through the atlas cache.
    */
   destroy() {
+    this.resizeObs?.disconnect();
+    this.resizeObs = null;
     this.dropChunks();
     for (const t of this.ownedTextures) t.destroy(true);
     this.ownedTextures.length = 0;

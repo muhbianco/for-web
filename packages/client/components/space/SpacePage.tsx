@@ -31,8 +31,42 @@ import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
 import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
 import { InteractionDialog } from "./InteractionDialog";
+import {
+  MediaStage,
+  type StageMode,
+  type StageTab,
+  useStageShares,
+} from "./MediaStage";
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
+
+const STAGE_MODE_KEY = "muchat.space.stageMode";
+
+function storedStageMode(): StageMode {
+  try {
+    return localStorage.getItem(STAGE_MODE_KEY) === "focus" ? "focus" : "side";
+  } catch {
+    return "side";
+  }
+}
+
+function storeStageMode(mode: StageMode) {
+  try {
+    localStorage.setItem(STAGE_MODE_KEY, mode);
+  } catch {
+    // Private window or blocked storage: the mode just is not remembered.
+  }
+}
+
+/** Narrow screens stack the stage above the map instead of beside it. */
+function useNarrow() {
+  const query = matchMedia("(max-width: 760px)");
+  const [narrow, setNarrow] = createSignal(query.matches);
+  const update = () => setNarrow(query.matches);
+  query.addEventListener("change", update);
+  onCleanup(() => query.removeEventListener("change", update));
+  return narrow;
+}
 
 /**
  * Route `/server/:server/space`, lazy-loaded so PixiJS never reaches the main
@@ -66,6 +100,17 @@ function ServerSpace(props: { serverId: string }) {
   const [panel, setPanel] = createSignal<"rooms" | "decor" | null>("rooms");
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
+  // Media stage (screens, the room's TV): only in a room, only when opened.
+  const [stageOpen, setStageOpen] = createSignal(false);
+  const [stageTab, setStageTab] = createSignal<StageTab>("call");
+  const [stageMode, setStageModeSignal] = createSignal<StageMode>(
+    storedStageMode(),
+  );
+  const [invite, setInvite] = createSignal<{ key: string; name: string } | null>(
+    null,
+  );
+  const shares = useStageShares();
+  const narrow = useNarrow();
   let host: HTMLDivElement | undefined;
   let disposed = false;
   let unsubscribe: (() => void) | undefined;
@@ -131,7 +176,154 @@ function ServerSpace(props: { serverId: string }) {
     if (!v) return;
     v.setEditing(on);
     setPanel(on ? "decor" : "rooms");
+    if (on) setStageOpen(false);
     host?.focus();
+  }
+
+  /** The room the person is in (with or without audio), or null in the halls. */
+  const roomId = () => {
+    const m = ui()?.media;
+    return m && m.kind !== "idle" ? m.roomId : null;
+  };
+  /** The app's call is this room's, and it is up. */
+  const inRoomCall = () => {
+    const id = roomId();
+    return (
+      !!id &&
+      ui()?.media.kind === "connected" &&
+      voice.channel()?.id === id &&
+      voice.state() === "CONNECTED"
+    );
+  };
+  const roomChannel = () => {
+    const id = roomId();
+    return id ? client().channels.get(id) : undefined;
+  };
+  const stageVisible = () => stageOpen() && roomId() !== null;
+
+  function setStageMode(mode: StageMode) {
+    setStageModeSignal(mode);
+    storeStageMode(mode);
+  }
+
+  function openStage(tab: StageTab = "call") {
+    if (panel() === "decor") openDecor(false);
+    setStageTab(tab);
+    setStageOpen(true);
+    // The stage takes the room list's place; the list button brings it back.
+    if (panel() === "rooms") setPanel(null);
+  }
+
+  function closeStage() {
+    setStageOpen(false);
+    host?.focus();
+  }
+
+  /** "Assistir": open the stage on the call and put that screen in focus. */
+  function watch(key: string) {
+    const s = shares().find((x) => x.key === key);
+    openStage("call");
+    if (s) voice.focus(s.track);
+    setInvite(null);
+  }
+
+  // A screen starts in the room: with the stage open on the call, it goes to
+  // focus; otherwise a "Fulano está apresentando · Assistir" chip appears.
+  let seenShares = new Set<string>();
+  createEffect(() => {
+    const list = shares();
+    const now = new Set(list.map((s) => s.key));
+    for (const s of list) {
+      if (seenShares.has(s.key) || s.local) continue;
+      if (stageVisible() && stageTab() === "call") {
+        if (!voice.focusTrack()) voice.focus(s.track);
+      } else {
+        setInvite({ key: s.key, name: s.name });
+      }
+      setNotice(t`${s.name} começou a compartilhar a tela.`);
+    }
+    const inv = invite();
+    if (inv && !now.has(inv.key)) setInvite(null);
+    seenShares = now;
+  });
+
+  // Leaving the room closes the stage; it never holds space in the halls.
+  createEffect(() => {
+    if (roomId() === null && stageOpen()) setStageOpen(false);
+  });
+
+  /** Grid of the page: map, stage (beside it or in focus), side panel. */
+  const gridStyle = () => {
+    const st = stageVisible() ? stageMode() : null;
+    const side =
+      panel() === "rooms" ? "280px" : panel() === "decor" ? "340px" : null;
+    if (narrow()) {
+      const areas: string[] = [];
+      const rows: string[] = [];
+      if (st) {
+        areas.push('"stage"');
+        rows.push(st === "focus" ? "minmax(0, 1fr)" : "45%");
+      }
+      areas.push('"map"');
+      rows.push(st === "focus" ? "30%" : "minmax(0, 1fr)");
+      if (side) {
+        areas.push('"panel"');
+        rows.push(panel() === "decor" ? "50%" : "40%");
+      }
+      return {
+        "grid-template-columns": "minmax(0, 1fr)",
+        "grid-template-rows": rows.join(" "),
+        "grid-template-areas": areas.join(" "),
+      };
+    }
+    const areas: string[] = [];
+    const cols: string[] = [];
+    if (st === "focus") {
+      areas.push("stage", "map");
+      cols.push("minmax(0, 1fr)", "300px");
+    } else {
+      areas.push("map");
+      cols.push("minmax(0, 1fr)");
+      if (st === "side") {
+        areas.push("stage");
+        cols.push("minmax(360px, 44%)");
+      }
+    }
+    if (side) {
+      areas.push("panel");
+      cols.push(side);
+    }
+    return {
+      "grid-template-columns": cols.join(" "),
+      "grid-template-rows": "minmax(0, 1fr)",
+      "grid-template-areas": `"${areas.join(" ")}"`,
+    };
+  };
+
+  /** Page shortcuts that the map does not use (it takes WASD, arrows, E, +, −). */
+  function pageKey(e: KeyboardEvent) {
+    const el = e.target as HTMLElement | null;
+    if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.code === "KeyF" && !e.shiftKey && stageVisible()) {
+      e.preventDefault();
+      setStageMode(stageMode() === "focus" ? "side" : "focus");
+    } else if (e.code === "KeyP" && !e.shiftKey && roomId() !== null) {
+      e.preventDefault();
+      if (stageOpen()) closeStage();
+      else openStage(stageTab());
+    } else if (e.code === "KeyM" && !e.shiftKey && inRoomCall()) {
+      e.preventDefault();
+      voice.toggleMute();
+    } else if (e.code === "KeyD" && e.shiftKey && inRoomCall()) {
+      e.preventDefault();
+      voice.toggleDeafen();
+    } else if (e.code === "KeyS" && e.shiftKey && inRoomCall()) {
+      e.preventDefault();
+      if (voice.screenshare() || voice.channel()?.havePermission("Video")) {
+        voice.toggleScreenshare();
+      }
+    }
   }
 
   // The sidebar's voice channels open `?sala=<id>`: walk there once the map is in.
@@ -204,7 +396,7 @@ function ServerSpace(props: { serverId: string }) {
   }
 
   return (
-    <Page>
+    <Page onKeyDown={pageKey}>
       <Bar>
         <strong>{ui()?.location || t`Espaço`}</strong>
         <Muted>{ui() ? statusText(ui()!.status) : ""}</Muted>
@@ -240,7 +432,33 @@ function ServerSpace(props: { serverId: string }) {
             </PromptChip>
           )}
         </Show>
+        <Show when={invite()}>
+          {(inv) => (
+            <PromptChip type="button" onClick={() => watch(inv().key)}>
+              <Symbol size={16}>present_to_all</Symbol>
+              {t`${inv().name} está apresentando · Assistir`}
+            </PromptChip>
+          )}
+        </Show>
         <span style={{ flex: 1 }} />
+        <Show when={roomId() !== null}>
+          <Button
+            variant={stageVisible() ? "filled" : "tonal"}
+            onPress={() => (stageOpen() ? closeStage() : openStage())}
+            aria-pressed={stageVisible()}
+            use:floating={{
+              tooltip: {
+                placement: "bottom",
+                content: t`Palco da sala: telas compartilhadas e a chamada (P)`,
+              },
+            }}
+          >
+            <Symbol size={18}>co_present</Symbol> {t`Palco`}
+            <Show when={shares().length > 0 && !stageVisible()}>
+              <LiveDot aria-label={t`Alguém está apresentando`} />
+            </Show>
+          </Button>
+        </Show>
         <Show when={ui()?.rights.can_edit}>
           <Button
             variant={panel() === "decor" ? "filled" : "tonal"}
@@ -277,10 +495,7 @@ function ServerSpace(props: { serverId: string }) {
           <Symbol>list</Symbol>
         </IconButton>
       </Bar>
-      <Body
-        data-list={panel() ? "" : undefined}
-        data-wide={panel() === "decor" ? "" : undefined}
-      >
+      <Body style={gridStyle()}>
         {/*
           Two siblings, never one: the map canvas is appended by PixiJS to a
           native element with no JSX children, so Solid never rewrites it.
@@ -288,7 +503,7 @@ function ServerSpace(props: { serverId: string }) {
           dynamic child of an element becomes empty, Solid clears the whole
           element (`textContent = ""`), and that used to wipe the map.
         */}
-        <div class={mapArea}>
+        <div class={mapArea} style={{ "grid-area": "map" }}>
           <div
             ref={host}
             class={mapCanvas}
@@ -335,6 +550,26 @@ function ServerSpace(props: { serverId: string }) {
             </Match>
           </Switch>
         </div>
+        <Show when={stageVisible()}>
+          <div style={{ "grid-area": "stage", display: "flex", "min-height": 0, "min-width": 0 }}>
+            <MediaStage
+              channel={roomChannel()}
+              connected={inRoomCall()}
+              tab={stageTab()}
+              onTab={setStageTab}
+              mode={stageMode()}
+              onMode={setStageMode}
+              onClose={closeStage}
+              mediaText={ui() ? mediaText(ui()!.media) : null}
+              mediaAction={
+                ui() && mediaAction(ui()!.media)
+                  ? { label: mediaAction(ui()!.media)!, run: () => view()?.retryMedia() }
+                  : null
+              }
+              hasTv={false}
+            />
+          </div>
+        </Show>
         <Show when={panel() === "decor" && view() && ui()}>
           <DecorPanel
             view={view()!}
@@ -419,24 +654,28 @@ const Bar = styled("div", {
   },
 });
 
+/**
+ * Map, media stage and side panel (room list or decoration). The columns and
+ * areas come from `gridStyle()` (stage beside the map, in focus, or stacked
+ * on narrow screens); the side panels are the `aside` children.
+ */
 const Body = styled("div", {
   base: {
     flex: 1,
     minHeight: 0,
     display: "grid",
-    gridTemplateColumns: "1fr",
-    "&[data-list]": { gridTemplateColumns: "1fr 280px" },
-    "&[data-wide]": { gridTemplateColumns: "1fr 340px" },
-    "@media (max-width: 760px)": {
-      "&[data-list]": {
-        gridTemplateColumns: "1fr",
-        gridTemplateRows: "1fr 40%",
-      },
-      "&[data-wide]": {
-        gridTemplateColumns: "1fr",
-        gridTemplateRows: "1fr 50%",
-      },
-    },
+    gridTemplateColumns: "minmax(0, 1fr)",
+    "& > aside": { gridArea: "panel", minHeight: 0 },
+  },
+});
+
+const LiveDot = styled("span", {
+  base: {
+    width: "8px",
+    height: "8px",
+    borderRadius: "50%",
+    background: "var(--md-sys-color-error)",
+    marginInlineStart: "2px",
   },
 });
 

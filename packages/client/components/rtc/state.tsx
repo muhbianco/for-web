@@ -1077,8 +1077,14 @@ class Voice {
   }
 
   showCard(channel: Channel) {
-    // In a space server the room's call lives in the map (and its floating card).
-    if (channel.serverId && isSpaceServer(channel.serverId)) return false;
+    // In a space server you get into a room by walking in (the space grants
+    // the media), so the "join" preview — which calls join_call, refused there
+    // — never shows. Once you are in that room's call, its card is the call's
+    // stage (grid, focus on a shared screen, expand, fullscreen), on the
+    // room's chat and on the space's media stage alike.
+    if (channel.serverId && isSpaceServer(channel.serverId)) {
+      return this.channel()?.id === channel.id;
+    }
     return (
       channel.isVoice &&
       (this.channel()?.id === channel.id ||

@@ -6,6 +6,7 @@ import { styled } from "styled-system/jsx";
 
 import { useInstance } from "@revolt/instance";
 import { useVoice } from "@revolt/rtc";
+import { isSpaceServer } from "@revolt/space/config";
 import { useState } from "@revolt/state";
 import { Button, IconButton } from "@revolt/ui/components/design";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
@@ -16,6 +17,18 @@ export function VoiceCallCardActions(props: { size: "xs" | "sm" }) {
   const navigate = useNavigate();
   const { t } = useLingui();
   const { limits } = useInstance();
+  // Same Stoat permission the server reads to allow a screen in the token
+  // (Video); stopping a share in progress is always allowed.
+  const canShare = () =>
+    voice.screenshare() || !!voice.channel()?.havePermission("Video");
+  /** A room of a space server lives on the map; other calls on their channel page. */
+  const callPath = () => {
+    const ch = voice.channel();
+    if (!ch) return "";
+    return ch.serverId && isSpaceServer(ch.serverId)
+      ? `/server/${ch.serverId}/space?sala=${ch.id}`
+      : ch.path;
+  };
 
   return (
     <Actions>
@@ -24,7 +37,7 @@ export function VoiceCallCardActions(props: { size: "xs" | "sm" }) {
           variant="standard"
           size={props.size}
           onPress={() => {
-            navigate(voice.channel()?.path ?? "");
+            navigate(callPath());
             state.appDrawer()?.setShown(true);
           }}
           use:floating={{
@@ -119,16 +132,19 @@ export function VoiceCallCardActions(props: { size: "xs" | "sm" }) {
         size={props.size}
         variant={limits().video && voice.screenshare() ? "filled" : "tonal"}
         onPress={() => {
-          voice.toggleScreenshare();
+          if (canShare()) voice.toggleScreenshare();
         }}
         use:floating={{
           tooltip: {
             placement: "top",
-            content: voice.screenshare()
-              ? t`Stop sharing`
-              : t`Share screen`,
+            content: !canShare()
+              ? t`Sem permissão para compartilhar a tela aqui`
+              : voice.screenshare()
+                ? t`Stop sharing`
+                : t`Share screen`,
           },
         }}
+        isDisabled={!canShare()}
       >
         <Show
           when={voice.screenshare()}

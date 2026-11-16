@@ -9,7 +9,9 @@ import { useClient } from "@revolt/client";
 import { useDevice } from "@revolt/common";
 import { TextWithEmoji } from "@revolt/markdown";
 import { useModals } from "@revolt/modal";
+import { useNavigate } from "@revolt/routing";
 import { useVoice } from "@revolt/rtc";
+import { isSpaceServer } from "@revolt/space/config";
 import { useState } from "@revolt/state";
 import { LAYOUT_SECTIONS } from "@revolt/state/stores/Layout";
 import {
@@ -58,6 +60,7 @@ export function ChannelHeader(props: Props) {
   const { t } = useLingui();
   const state = useState();
   const voice = useVoice();
+  const navigate = useNavigate();
   const { layout } = useDevice();
 
   const searchValue = () => {
@@ -141,7 +144,43 @@ export function ChannelHeader(props: Props) {
 
       <Spacer />
 
-      <Show when={props.channel.isVoice && !voice.showCard(props.channel)}>
+      {/*
+        A room of a space server is entered by walking in: the old "join"
+        called join_call, which the server refuses there, and hung up the
+        room's call on the way. It now opens the room in the space instead.
+      */}
+      <Show
+        when={
+          props.channel.isVoice &&
+          props.channel.serverId &&
+          isSpaceServer(props.channel.serverId) &&
+          voice.channel()?.id !== props.channel.id
+        }
+      >
+        <IconButton
+          onPress={() =>
+            navigate(
+              `/server/${props.channel.serverId}/space?sala=${props.channel.id}`,
+            )
+          }
+          use:floating={{
+            tooltip: {
+              placement: "bottom",
+              content: t`Ir para a sala no Espaço`,
+            },
+          }}
+        >
+          <Symbol>meeting_room</Symbol>
+        </IconButton>
+      </Show>
+
+      <Show
+        when={
+          props.channel.isVoice &&
+          !(props.channel.serverId && isSpaceServer(props.channel.serverId)) &&
+          !voice.showCard(props.channel)
+        }
+      >
         <IconButton
           onPress={() => voice.connect(props.channel)}
           use:floating={{
