@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global window, console, process, setTimeout, performance */
+/* global window, document, console, process, setTimeout, performance */
 /**
  * Driver do laboratório de voz: dois Chromium (Playwright) com microfone falso
  * (arquivo WAV), conectados ao SFU de laboratório (WSL) ou ao LiveKit da hel1,
@@ -65,6 +65,12 @@ const opts = {
   netemClearAtSec: Number(args["netem-clear-at"] ?? 0),
   uplinkLoss: typeof args["uplink-loss"] === "string" ? args["uplink-loss"] : undefined,
   cpuLoad: Number(args["cpu-load"] ?? 0),
+  /**
+   * Fase 4: while talking, A shares a (fake) screen that B watches and/or plays a
+   * video (the Smart TV's load). `--media-load` = both; `--media-load screen|tv`.
+   */
+  mediaLoad: args["media-load"] === true ? "both" : ["screen", "tv", "both"].includes(args["media-load"]) ? args["media-load"] : undefined,
+  labEnv: typeof args["lab-env"] === "string" ? resolve(args["lab-env"]) : undefined,
   page: args.page ?? "http://127.0.0.1:5173/qa/voice-lab/index.html",
   url: typeof args.url === "string" ? args.url : undefined,
   tokensDir: args["tokens-dir"] ? resolve(args["tokens-dir"]) : join(HERE, "out", "tokens"),
@@ -106,7 +112,8 @@ function resolveTokens() {
   const idPub = `qa-pub`;
   const idSub = `qa-sub`;
   if (opts.target === "lab") {
-    const envPath = join(HERE, "lab", ".env");
+    // Another checkout's lab keys (a git worktree has none: .env is not versioned).
+    const envPath = opts.labEnv ?? join(HERE, "lab", ".env");
     if (!existsSync(envPath)) throw new Error("lab/.env ausente: rode lab/up.sh no WSL");
     const env = Object.fromEntries(
       readFileSync(envPath, "utf8")
@@ -147,6 +154,8 @@ async function launch(label, fakeAudio) {
     "--disable-renderer-backgrounding",
     "--disable-backgrounding-occluded-windows",
   ];
+  // --media-load: getDisplayMedia takes the whole (fake) screen without a dialog.
+  if (opts.mediaLoad) browserArgs.push("--auto-select-desktop-capture-source=Entire screen");
   const browser = await chromium.launch({ headless: !opts.headed, args: browserArgs });
   const page = await browser.newPage();
   const consoleLines = [];
@@ -225,11 +234,64 @@ async function main() {
   const B = await launch("B", refPath);
   const timeline = [];
   let firstSnapshot;
+  let mediaLoad;
   try {
     const a = await connect(A, { url: tokens.url, token: tokens.pub.token }, true);
     log(`A conectado: ${a.localIdentity} em ${a.room}`);
+    if (opts.mediaLoad) {
+      // What the media stage adds to a call: a shared screen (encoded and
+      // published by the same Room) and the room's TV decoding a video.
+      const res = await A.page.evaluate(async (mode) => {
+        if (mode === "tv") return "sem tela";
+        try {
+          await window.__lab.room.localParticipant.setScreenShareEnabled(true, { audio: false });
+          return "tela ok";
+        } catch (e) {
+          return `tela falhou: ${String(e?.message ?? e)}`;
+        }
+      }, opts.mediaLoad);
+      const tvRes = await A.page.evaluate((mode) => {
+        if (mode === "screen") return "sem TV";
+        const f = document.createElement("iframe");
+        f.src = "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ?autoplay=1&controls=0&loop=1&playlist=aqz-KE-bpKQ";
+        f.allow = "autoplay; encrypted-media";
+        f.width = "640";
+        f.height = "360";
+        document.body.appendChild(f);
+        return "TV ok";
+      }, opts.mediaLoad);
+      log(`carga de mídia em A (${opts.mediaLoad}): ${res} · ${tvRes}`);
+    }
     const b = await connect(B, { url: tokens.url, token: tokens.sub.token }, opts.bidir);
     log(`B conectado: ${b.localIdentity}`);
+    if (opts.mediaLoad && opts.mediaLoad !== "tv") {
+      // Someone watching the screen: without a subscriber, dynacast pauses the
+      // encoder and the load disappears.
+      const watching = await B.page.evaluate(async () => {
+        const room = window.__lab.room;
+        const deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+          for (const p of room.remoteParticipants.values()) {
+            for (const pub of p.trackPublications.values()) {
+              if (pub.source !== "screen_share") continue;
+              pub.setSubscribed(true);
+              if (!pub.track) continue;
+              const el = pub.track.attach();
+              el.muted = true;
+              el.autoplay = true;
+              el.style.width = "640px";
+              el.style.height = "360px";
+              document.body.appendChild(el);
+              window.__screenWatch = pub.track;
+              return "ok";
+            }
+          }
+          await new Promise((r) => setTimeout(r, 250));
+        }
+        return "a tela de A não chegou em 15 s";
+      });
+      log(`B assistindo à tela de A: ${watching}`);
+    }
 
     await B.page.waitForFunction(() => window.__lab.snapshot().remoteCount >= 1, null, { timeout: 30000 });
     log("B vê A; medindo…");
@@ -269,6 +331,29 @@ async function main() {
       }
     }
 
+    if (opts.mediaLoad) {
+      const screen = await B.page.evaluate(async () => {
+        const tr = window.__screenWatch;
+        if (!tr?.receiver) return null;
+        let out = null;
+        (await tr.receiver.getStats()).forEach((r) => {
+          if (r.type === "inbound-rtp" && r.kind === "video")
+            out = { framesDecoded: r.framesDecoded, kbytes: Math.round(r.bytesReceived / 1024), width: r.frameWidth, height: r.frameHeight };
+        });
+        return out;
+      });
+      const yt = A.page.frames().find((f) => f.url().includes("youtube-nocookie.com/embed"));
+      const tv = yt
+        ? await yt
+            .evaluate(() => {
+              const v = document.querySelector("video");
+              return v ? { currentTimeS: Math.round(v.currentTime * 10) / 10, paused: v.paused } : null;
+            })
+            .catch((e) => ({ error: String(e?.message ?? e) }))
+        : null;
+      mediaLoad = { screenAtB: screen, youtubeAtA: tv };
+      log(`carga de mídia no fim: tela recebida em B ${JSON.stringify(screen)} · YouTube em A ${JSON.stringify(tv)}`);
+    }
     log("parando e coletando áudio…");
     const [audioA, audioB] = await Promise.all([
       A.page.evaluate(() => window.__lab.stop()),
@@ -410,6 +495,7 @@ async function main() {
       wavs,
       analysis,
       stats,
+      mediaLoad,
     };
     writeFileSync(join(outDir, "report.json"), JSON.stringify(report, null, 2));
     writeFileSync(join(outDir, "timeline.json"), JSON.stringify(timeline));
@@ -460,7 +546,7 @@ function renderMarkdown(r) {
     `# Laboratório de voz — ${r.name}`,
     ``,
     `- Início: ${r.startedAt} · alvo: ${r.options.target} · LiveKit: ${r.livekitUrl} · sala: ${r.options.room}`,
-    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad}`,
+    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"}`,
     `- Máquina: ${r.machine.cpuModel} (${r.machine.cpus} núcleos, ${r.machine.totalMemGb} GB) · janelas de 2 s: ${s.windows}`,
     ``,
     `## Caminho`,
