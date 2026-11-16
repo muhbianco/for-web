@@ -46,6 +46,7 @@ function makeCache(): StoatCache {
     DIR: { name: "Diretoria", rank: 1, permissions: { a: 0, d: 0 } },
     VID: { name: "Vídeo", rank: 2, permissions: { a: n(Perm.Video), d: 0 } },
     MUTE: { name: "Ouvinte", rank: 3, permissions: { a: 0, d: n(Perm.Speak) } },
+    MODR: { name: "Moderação", rank: 4, permissions: { a: n(Perm.MuteMembers), d: 0 } },
   };
   cache.apply({
     type: "Ready",
@@ -528,4 +529,94 @@ test("server gone: every grant of that space ends", async () => {
   await w.hub.settle();
   assert.equal(w.leases.leases.size, 0);
   assert.equal(w.hub.grantCount, 0);
+});
+
+// ---- presence of the call (ADR 0008, cenário D) -----------------------------------
+
+const personIn = (rt: SpaceRuntime, viewer: Viewer, room: string, user: string) =>
+  rt.presenceFor(viewer).rooms.find((r) => r.room_id === room)?.people.find((p) => p.user_id === user);
+
+test("D: voice indicators come from LiveKit; a newer hint from the client shows first; LiveKit corrects a liar", async () => {
+  const w = makeWorld();
+  const rt = await space(w);
+  const ana = await enter(rt, ANA, "ana", ["VID"]);
+  const cai = await enter(rt, CAI, "cai");
+  goIn(w, rt, ana, PUB);
+  await w.hub.settle();
+  const g = ana.last("media.grant")!;
+  const roomName = w.leases.leases.get(g.d.identity)!.room_name;
+  const sweeper = new Sweeper({
+    lk: w.lk,
+    leases: w.leases,
+    isCurrentRoom: (name) => w.hub.isCurrentRoom(name),
+    onSnapshot: (rooms, failed) => rt.observeLiveKit(rooms, failed),
+  });
+
+  // Granted, not seen in LiveKit yet: in the room's call, connecting.
+  assert.deepEqual(personIn(rt, cai.viewer, PUB, ANA)?.voice, { connected: false, mic: false, deaf: false, camera: false, screen: false });
+
+  // LiveKit admitted her, microphone open and a screen shared.
+  w.lk.join(roomName, g.d.identity);
+  w.lk.tracks.set(g.d.identity, [
+    { sid: "TR_mic", source: "microphone", muted: false },
+    { sid: "TR_scr", source: "screen_share", muted: false },
+  ]);
+  await sweeper.tick();
+  assert.deepEqual(personIn(rt, cai.viewer, PUB, ANA)?.voice, { connected: true, mic: true, deaf: false, camera: false, screen: true });
+
+  // She mutes and deafens: her hint is newer than LiveKit's last pass.
+  w.clock.now += 200;
+  rt.reportVoice(ana, { connected: true, mic: false, deaf: true, camera: false, screen: true });
+  assert.deepEqual(personIn(rt, cai.viewer, PUB, ANA)?.voice, { connected: true, mic: false, deaf: true, camera: false, screen: true });
+
+  // The next pass still sees the microphone open: LiveKit wins (deafen only exists in the hint).
+  w.clock.now += 200;
+  await sweeper.tick();
+  assert.deepEqual(personIn(rt, cai.viewer, PUB, ANA)?.voice, { connected: true, mic: true, deaf: true, camera: false, screen: true });
+
+  // A hint from someone not in a room, or another session, changes nothing.
+  rt.reportVoice(cai, { connected: true, mic: true, deaf: false, camera: true, screen: true });
+  assert.equal(rt.presenceFor(cai.viewer).outside.find((p) => p.user_id === CAI)?.voice, null);
+
+  // Out of the room: no call, no indicators.
+  goOut(w, rt, ana, PUB);
+  await w.hub.settle();
+  assert.equal(personIn(rt, cai.viewer, PUB, ANA), undefined);
+  assert.equal(rt.presenceFor(cai.viewer).outside.find((p) => p.user_id === ANA)?.voice, null);
+});
+
+test("B/E: only a moderator of the room (MuteMembers) ends someone's screen share; microphone untouched", async () => {
+  const w = makeWorld();
+  const rt = await space(w);
+  const ana = await enter(rt, ANA, "ana", ["VID"]);
+  const bia = await enter(rt, BIA, "bia", ["MODR"]);
+  const cai = await enter(rt, CAI, "cai");
+  for (const s of [ana, bia, cai]) goIn(w, rt, s, PUB);
+  await w.hub.settle();
+  const g = ana.last("media.grant")!;
+  const roomName = w.leases.leases.get(g.d.identity)!.room_name;
+  w.lk.join(roomName, g.d.identity);
+  w.lk.tracks.set(g.d.identity, [
+    { sid: "TR_mic", source: "microphone", muted: false },
+    { sid: "TR_scr", source: "screen_share", muted: false },
+    { sid: "TR_sa", source: "screen_share_audio", muted: false },
+  ]);
+
+  await rt.stopScreen(cai, "c1", ANA);
+  assert.equal(cai.sent.find((e) => e.t === "error" && e.re === "c1")?.d.code, "not_allowed");
+  assert.equal(w.lk.calls.some((c) => c.startsWith("mute:")), false, "nothing muted for a member");
+
+  await rt.stopScreen(bia, "b1", ANA);
+  assert.ok(w.lk.calls.includes(`mute:${roomName}:${g.d.identity}:TR_scr:true`));
+  assert.ok(w.lk.calls.includes(`mute:${roomName}:${g.d.identity}:TR_sa:true`));
+  assert.equal(w.lk.calls.some((c) => c.includes("TR_mic")), false, "the microphone is never touched");
+  assert.equal(ana.last("screen.stopped")?.d.by, BIA);
+  assert.equal(bia.last("screen.stop.ok")?.re, "b1");
+
+  // Nothing left to stop; someone outside the room cannot be targeted.
+  await rt.stopScreen(bia, "b2", ANA);
+  assert.equal(bia.sent.find((e) => e.t === "error" && e.re === "b2")?.d.reason, "no_screen");
+  goOut(w, rt, cai, PUB);
+  await rt.stopScreen(bia, "b3", CAI);
+  assert.equal(bia.sent.find((e) => e.t === "error" && e.re === "b3")?.d.code, "not_found");
 });

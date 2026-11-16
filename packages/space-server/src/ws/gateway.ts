@@ -24,6 +24,8 @@ export interface RuntimeRegistry {
   all(): Iterable<SpaceRuntime>;
   /** Servers where the space is on (for the client's sidebar entry). */
   enabledServers(): string[];
+  /** True when the space is on for every server (SPACE_ENABLED_SERVERS=*). */
+  allEnabled?(): boolean;
 }
 
 export interface GatewayDeps {
@@ -45,6 +47,8 @@ class Session implements SessionPort {
   readonly id = randomUUID();
   viewer!: Viewer;
   runtime: SpaceRuntime | null = null;
+  /** `observe`: watch-only (sidebar presence), no avatar. */
+  mode: "play" | "observe" = "play";
   token = "";
   lastAuthOk = Date.now();
   /** Close code we sent, if we closed it. */
@@ -149,11 +153,16 @@ export class Gateway {
       if (!s.runtime) {
         if (cmd.t !== "hello" || busy) return s.close(Close.Protocol, "hello expected");
         busy = true;
-        void this.hello(s, cmd.id, cmd.d.session_token, cmd.d.server_id).finally(() => {
+        void this.hello(s, cmd.id, cmd.d.session_token, cmd.d.server_id, cmd.d.mode ?? "play").finally(() => {
           busy = false;
           clearTimeout(helloTimer);
         });
         return;
+      }
+      if (s.mode === "observe") {
+        // A watch-only session reads presence; it never acts in the space.
+        if (cmd.t === "ping") return s.send({ v: 1, t: "pong", re: cmd.id, d: { server_ms: Date.now() } });
+        return s.send({ v: 1, t: "error", re: "id" in cmd ? cmd.id : undefined, d: { code: "not_allowed" } });
       }
       switch (cmd.t) {
         case "hello":
@@ -163,10 +172,18 @@ export class Gateway {
         case "presence.idle":
           return s.runtime.setIdle(s, cmd.d.idle);
         case "ping":
-          return s.send({ v: 1, t: "pong", re: cmd.id, d: {} });
+          // The server clock rides on every pong: the TV syncs against it.
+          return s.send({ v: 1, t: "pong", re: cmd.id, d: { server_ms: Date.now() } });
         case "media.session.request":
           if (!s.runtime.requestMedia(s)) s.send({ v: 1, t: "error", re: cmd.id, d: { code: "rate_limited" } });
           return;
+        case "media.state.report":
+          return s.runtime.reportVoice(s, cmd.d);
+        case "screen.stop":
+          return void s.runtime.stopScreen(s, cmd.id, cmd.d.user_id).catch((err) => {
+            this.deps.log.error("screen stop failed", { err: String(err) });
+            s.send({ v: 1, t: "error", re: cmd.id, d: { code: "internal" } });
+          });
         case "decor.place":
           return s.runtime.decorCommand(s, cmd.id, { kind: "place", item: cmd.d });
         case "decor.update":
@@ -185,6 +202,7 @@ export class Gateway {
       clearTimeout(helloTimer);
       this.sessions.delete(s);
       if (!s.runtime) return;
+      if (s.mode === "observe") return s.runtime.unobserve(s);
       // Session ended or membership gone: no reconnect grace, media ends now.
       if (s.closedWith === Close.Unauthenticated || s.closedWith === Close.NotMember) {
         if (s.runtime.sessionOf(s.viewer.user._id) === s) s.runtime.evict(s.viewer.user._id);
@@ -195,7 +213,7 @@ export class Gateway {
     ws.on("error", () => ws.terminate());
   }
 
-  private async hello(s: Session, id: string, token: string, serverId: string) {
+  private async hello(s: Session, id: string, token: string, serverId: string, mode: "play" | "observe") {
     const auth = await this.deps.auth.me(token);
     if (auth.kind === "invalid") return s.close(Close.Unauthenticated, "invalid session");
     if (auth.kind === "unavailable") return s.close(Close.ShuttingDown, "stoat unavailable");
@@ -208,12 +226,23 @@ export class Gateway {
     });
     if (!runtime) return s.close(Close.NotMember, "unknown server");
     if (s.ws.readyState !== s.ws.OPEN) return; // left while we were checking
-    // One session per person per space: the newest wins.
-    const old = runtime.sessionOf(auth.user._id);
-    if (old && old !== s) old.close(Close.Replaced, "opened elsewhere");
     s.viewer = { user: auth.user, member };
     s.token = token;
     s.lastAuthOk = Date.now();
+    if (mode === "observe") {
+      // Watch-only: never replaces the person's map session, never an avatar.
+      s.mode = "observe";
+      s.runtime = runtime;
+      s.send({ v: 1, t: "hello.ok", re: id, d: { user_id: auth.user._id, protocol: 1, mode: "observe" } });
+      runtime.observe(s);
+      return;
+    }
+    // One session per person per space: the newest wins.
+    const old = runtime.sessionOf(auth.user._id);
+    if (old && old !== s) {
+      old.send({ v: 1, t: "session.replaced", d: {} });
+      old.close(Close.Replaced, "opened elsewhere");
+    }
     s.runtime = runtime;
     // A profile store hiccup must not keep anyone out: default look then.
     // In parallel: after a restart, a surviving media lease puts the person
@@ -278,7 +307,21 @@ export class Gateway {
       const user = auth.user;
 
       if (url.pathname === "/v1/config" && req.method === "GET") {
-        return json(200, { protocol: 1, servers: this.deps.runtimes.enabledServers() });
+        // The list of every enabled server is nobody else's business (audit
+        // 16/11/2026): "all" when the space is on everywhere, otherwise only
+        // the servers this person is a member of.
+        // `servers` stays for clients older than `all` (a deploy does not
+        // reload open apps); member lookups are cached (60 s) and bounded.
+        const ids = this.deps.runtimes.enabledServers().slice(0, 200);
+        const mine: string[] = [];
+        for (let i = 0; i < ids.length; i += 8) {
+          const batch = ids.slice(i, i + 8);
+          const res = await Promise.all(batch.map((id) => this.memberOrNull(id, user)));
+          res.forEach((m, k) => {
+            if (m && m !== "unavailable") mine.push(batch[k]!);
+          });
+        }
+        return json(200, { protocol: 1, all: Boolean(this.deps.runtimes.allEnabled?.()), servers: mine });
       }
       if (url.pathname === "/v1/me/profile") {
         if (req.method === "GET") return json(200, await this.deps.profiles.get(user._id));

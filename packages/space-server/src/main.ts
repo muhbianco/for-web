@@ -9,6 +9,7 @@ import { MongoClient } from "mongodb";
 import { jsonLog as log } from "./log.ts";
 import { LiveKitRoomAdmin, LiveKitTokenMinter, RedisLeaseStore } from "./media/adapters.ts";
 import { MediaController } from "./media/controller.ts";
+import type { ParticipantLite } from "./media/ports.ts";
 import { Sweeper } from "./media/sweeper.ts";
 import { MediaHub } from "./space/roomMedia.ts";
 import { SpatialSwitch } from "./space/spatialSwitch.ts";
@@ -33,7 +34,7 @@ function env(name: string, fallback?: string): string {
  * livekit-gate reads, and the sweeper. Without the key the space runs as
  * presence only, as in Phase 2.
  */
-function startMedia() {
+function startMedia(onSnapshot: (rooms: Map<string, ParticipantLite[]>, failed: Set<string>) => void) {
   const key = process.env.LIVEKIT_SPACE_KEY;
   const secret = process.env.LIVEKIT_SPACE_SECRET;
   if (!key || !secret) {
@@ -68,6 +69,7 @@ function startMedia() {
     leases,
     isCurrentRoom: (name) => hub.isCurrentRoom(name),
     onRemoved: (room, identity, reason) => log.info("media swept", { room, identity, reason }),
+    onSnapshot,
   });
   hub.startRenewals();
   sweeper.start();
@@ -101,8 +103,12 @@ async function main() {
   // Only servers switched on for the space (ADR 0006): comma-separated ids,
   // or "*" in the lab. Phase 2 has no Redis key yet.
   const enabledIds = env("SPACE_ENABLED_SERVERS", "").split(",").map((s) => s.trim()).filter(Boolean);
-  const enabled = enabledIds.includes("*") ? () => true : (id: string) => enabledIds.includes(id);
-  const media = startMedia();
+  const everyServer = enabledIds.includes("*");
+  const enabled = everyServer ? () => true : (id: string) => enabledIds.includes(id);
+  // The sweeper's view of LiveKit feeds presence (ADR 0008); the registry
+  // exists only after media starts, hence the late binding.
+  let onSnapshot: Parameters<typeof startMedia>[0] = () => undefined;
+  const media = startMedia((rooms, failed) => onSnapshot(rooms, failed));
   const registry = new Registry({
     cache,
     store: new MongoAssignmentStore(mongo),
@@ -110,8 +116,12 @@ async function main() {
     members,
     log,
     enabled,
+    everyServer,
     media: media ? { hub: media.hub, lk: media.lk } : undefined,
   });
+  onSnapshot = (rooms, failed) => {
+    for (const rt of registry.all()) rt.observeLiveKit(rooms, failed);
+  };
   // Structure (servers, channels, roles) from Stoat's database, read-only:
   // the bot's own view hides private rooms. Bonfire tells when to refresh and
   // brings member changes.

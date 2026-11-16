@@ -54,6 +54,14 @@ const coord = z.number().int().min(-1_000_000).max(1_000_000);
 export const Direction = z.enum(["up", "down", "left", "right"]);
 export type Direction = z.infer<typeof Direction>;
 
+/**
+ * `play` (default) puts the person on the map: avatar, rooms, media.
+ * `observe` only watches who is where (the server sidebar): no avatar, never
+ * counted as "in the space", same authentication and membership check.
+ */
+export const SessionMode = z.enum(["play", "observe"]);
+export type SessionMode = z.infer<typeof SessionMode>;
+
 export const HelloCmd = z.object({
   v: z.literal(PROTOCOL_VERSION),
   t: z.literal("hello"),
@@ -63,6 +71,7 @@ export const HelloCmd = z.object({
     server_id: ulid,
     resume_token: z.string().min(16).max(128).nullable().optional(),
     client: z.enum(["web", "desktop", "android"]),
+    mode: SessionMode.optional(),
   }),
 });
 
@@ -91,6 +100,37 @@ export const MediaRequestCmd = z.object({
   v: z.literal(PROTOCOL_VERSION),
   t: z.literal("media.session.request"),
   id: commandId,
+});
+
+/**
+ * What my own call is doing, for the others' indicators (ADR 0008): sent when
+ * it changes. LiveKit's participant list (read every 5 s) corrects it; deafen
+ * exists only here (a LiveKit token of the space cannot set attributes).
+ */
+export const VoiceReport = z
+  .object({
+    connected: z.boolean(),
+    mic: z.boolean(),
+    deaf: z.boolean(),
+    camera: z.boolean(),
+    screen: z.boolean(),
+  })
+  .strict();
+export type VoiceReport = z.infer<typeof VoiceReport>;
+
+export const MediaStateCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("media.state.report"),
+  id: commandId,
+  d: VoiceReport,
+});
+
+/** A moderator (MuteMembers in the room) ends someone's screen share there. */
+export const ScreenStopCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("screen.stop"),
+  id: commandId,
+  d: z.object({ user_id: ulid }),
 });
 
 // ---- decoration (ADR 0007) -------------------------------------------------
@@ -180,6 +220,8 @@ export const ClientCommand = z.discriminatedUnion("t", [
   IdleCmd,
   PingCmd,
   MediaRequestCmd,
+  MediaStateCmd,
+  ScreenStopCmd,
   DecorPlaceCmd,
   DecorUpdateCmd,
   DecorRemoveCmd,
@@ -312,6 +354,49 @@ export interface AvatarView {
   moving: boolean;
   room: string | null;
   state: "online" | "idle" | "reconnecting";
+}
+
+/**
+ * Presence (ADR 0008). Four different facts, never mixed:
+ * - in the space (an avatar on the map: `state`);
+ * - inside a room (listed under that room);
+ * - in the room's call (`voice` not null; `connected` once LiveKit has them);
+ * - speaking: not here — only the room's own call knows it (LiveKit, client).
+ */
+export interface PresenceVoice {
+  connected: boolean;
+  /** Microphone published and open. */
+  mic: boolean;
+  deaf: boolean;
+  camera: boolean;
+  screen: boolean;
+}
+
+export interface PresencePerson {
+  user_id: string;
+  name: string;
+  state: "online" | "idle" | "reconnecting";
+  /** null: inside the room without its call (connecting failed, paused, elsewhere). */
+  voice: PresenceVoice | null;
+}
+
+export interface PresenceRoom {
+  room_id: string;
+  people: PresencePerson[];
+}
+
+/**
+ * Server → client: who is where, as this viewer may see it (rooms without
+ * ViewChannel are left out entirely). Sent whole when it changes (≤ 4 Hz).
+ */
+export interface PresenceEvent {
+  v: 1;
+  t: "space.presence";
+  d: {
+    rooms: PresenceRoom[];
+    /** On the map, in the halls and corridors (not in any room). */
+    outside: PresencePerson[];
+  };
 }
 
 /** What this person may do to the decoration (server-decided, mirrored for the UI). */

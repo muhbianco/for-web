@@ -23,6 +23,7 @@ export class Registry implements RuntimeRegistry {
   private readonly now: () => number;
   /** Servers where the space is switched on; null = all (tests/lab). */
   private readonly enabled: (serverId: string) => boolean;
+  private readonly everyServer: boolean;
   private readonly media: { hub: MediaHub; lk: LiveKitAdmin } | undefined;
 
   constructor(deps: {
@@ -34,6 +35,8 @@ export class Registry implements RuntimeRegistry {
     log: Log;
     now?: () => number;
     enabled?: (serverId: string) => boolean;
+    /** The switch is "*" (every server, present and future). */
+    everyServer?: boolean;
     /** Room media (Phase 3); without it the space is presence only. */
     media?: { hub: MediaHub; lk: LiveKitAdmin };
   }) {
@@ -46,6 +49,7 @@ export class Registry implements RuntimeRegistry {
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
     this.enabled = deps.enabled ?? (() => true);
+    this.everyServer = deps.everyServer ?? deps.enabled === undefined;
     this.media = deps.media;
     deps.cache.on((change) => {
       switch (change.kind) {
@@ -69,8 +73,9 @@ export class Registry implements RuntimeRegistry {
           // Even with no avatar here: a cached permission must not outlive the
           // role it came from (the person may come back and enter with it).
           rt.invalidatePerms(change.userId);
-          // Also while reconnecting: a removed role must end media during the grace.
-          if (!rt.hasAvatar(change.userId)) return;
+          // Also while reconnecting: a removed role must end media during the
+          // grace. Watch-only sessions follow roles and membership too.
+          if (!rt.hasAvatar(change.userId) && !rt.hasObserver(change.userId)) return;
           void this.members.member(change.serverId, change.userId).then((res) => {
             if (res.kind === "ok") rt.memberChanged(change.userId, res.member);
             else if (res.kind === "not_member") rt.memberChanged(change.userId, null);
@@ -117,6 +122,11 @@ export class Registry implements RuntimeRegistry {
 
   all(): Iterable<SpaceRuntime> {
     return this.live.values();
+  }
+
+  /** True when every server has the space on (SPACE_ENABLED_SERVERS=*). */
+  allEnabled(): boolean {
+    return this.everyServer;
   }
 
   /** Stoat servers known to the bot with the space switched on. */

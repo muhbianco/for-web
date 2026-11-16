@@ -8,14 +8,24 @@ import {
   type ParticipantLite,
   type RoomInfoLite,
   type TokenMinter,
+  type TrackLite,
 } from "./ports.ts";
 
 /** In-memory LiveKit with a call log, for ordering assertions. */
 export class FakeLiveKit implements LiveKitAdmin {
   rooms = new Map<string, Set<string>>();
+  /** Tracks per identity (optional; presence tests set them). */
+  tracks = new Map<string, TrackLite[]>();
   calls: string[] = [];
   failRemove: Error | null = null;
   failEnsure: Error | null = null;
+
+  async mutePublishedTrack(room: string, identity: string, trackSid: string, muted: boolean): Promise<void> {
+    this.calls.push(`mute:${room}:${identity}:${trackSid}:${muted}`);
+    if (!this.rooms.get(room)?.has(identity)) throw new ParticipantNotFound();
+    const list = this.tracks.get(identity) ?? [];
+    this.tracks.set(identity, list.map((t) => (t.sid === trackSid ? { ...t, muted } : t)));
+  }
 
   join(room: string, identity: string) {
     if (!this.rooms.has(room)) this.rooms.set(room, new Set());
@@ -36,7 +46,7 @@ export class FakeLiveKit implements LiveKitAdmin {
   }
 
   async listParticipants(room: string): Promise<ParticipantLite[]> {
-    return [...(this.rooms.get(room) ?? [])].map((identity) => ({ identity }));
+    return [...(this.rooms.get(room) ?? [])].map((identity) => ({ identity, tracks: this.tracks.get(identity) ?? [] }));
   }
 
   async listRooms(): Promise<RoomInfoLite[]> {

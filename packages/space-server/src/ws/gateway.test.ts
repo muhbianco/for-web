@@ -332,11 +332,15 @@ test("flooding gets rate limited (20/s, burst 40), sustained abuse closes 4429",
   assert.ok(["abuse", "drop"].includes(v));
 });
 
-test("config lists the servers with the space on, only for a signed-in person", async () => {
+test("config: signed-in only; lists only the person's own servers (audit 16/11/2026)", async () => {
   assert.equal((await fetch(`http://${base}/v1/config`)).status, 401);
-  const res = await fetch(`http://${base}/v1/config`, { headers: { "x-session-token": "token-out-0000000000" } });
-  assert.equal(res.status, 200);
-  assert.deepEqual(((await res.json()) as { servers: string[] }).servers, [SRV]);
+  const out = await fetch(`http://${base}/v1/config`, { headers: { "x-session-token": "token-out-0000000000" } });
+  assert.equal(out.status, 200);
+  const outBody = (await out.json()) as { servers: string[]; all: boolean };
+  assert.deepEqual(outBody.servers, [], "an outsider learns no server id");
+  assert.equal(outBody.all, true, "the space is on everywhere in this fixture");
+  const mine = await fetch(`http://${base}/v1/config`, { headers: { "x-session-token": "token-ana-0000000000" } });
+  assert.deepEqual(((await mine.json()) as { servers: string[] }).servers, [SRV]);
 });
 
 test("profile: default look, validated patch, onboarding only moves forward; the new look reaches others", async () => {

@@ -53,9 +53,21 @@ export class LiveKitRoomAdmin implements LiveKitAdmin {
 
   async listParticipants(room: string): Promise<ParticipantLite[]> {
     try {
-      return (await this.client.listParticipants(room)).map((p) => ({ identity: p.identity }));
+      return (await this.client.listParticipants(room)).map((p) => ({
+        identity: p.identity,
+        tracks: p.tracks.map((t) => ({ sid: t.sid, source: fromTrackSource(t.source), muted: t.muted })),
+      }));
     } catch (err) {
       if (isNotFound(err)) return [];
+      throw err;
+    }
+  }
+
+  async mutePublishedTrack(room: string, identity: string, trackSid: string, muted: boolean): Promise<void> {
+    try {
+      await this.client.mutePublishedTrack(room, identity, trackSid, muted);
+    } catch (err) {
+      if (isNotFound(err)) throw new ParticipantNotFound();
       throw err;
     }
   }
@@ -73,6 +85,21 @@ export class LiveKitRoomAdmin implements LiveKitAdmin {
     } catch (err) {
       if (!isNotFound(err)) throw err;
     }
+  }
+}
+
+function fromTrackSource(source: TrackSource): MediaSource | "unknown" {
+  switch (source) {
+    case TrackSource.MICROPHONE:
+      return "microphone";
+    case TrackSource.CAMERA:
+      return "camera";
+    case TrackSource.SCREEN_SHARE:
+      return "screen_share";
+    case TrackSource.SCREEN_SHARE_AUDIO:
+      return "screen_share_audio";
+    default:
+      return "unknown";
   }
 }
 

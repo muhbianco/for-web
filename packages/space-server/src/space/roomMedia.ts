@@ -123,9 +123,9 @@ export class MediaHub {
   }
 
   /** Who holds this person's media (tests, metrics). */
-  holderOf(userId: string): { serverId: string; roomId: string; identity: string } | null {
+  holderOf(userId: string): { serverId: string; roomId: string; roomName: string; identity: string } | null {
     const g = this.granted.get(userId);
-    return g ? { serverId: g.space.host.serverId, roomId: g.roomId, identity: g.identity } : null;
+    return g ? { serverId: g.space.host.serverId, roomId: g.roomId, roomName: g.roomName, identity: g.identity } : null;
   }
 
   get grantCount(): number {
@@ -504,6 +504,29 @@ export class RoomMedia {
 
   sync(userId: string, intent: SyncIntent = "refresh") {
     this.hub.sync(this, userId, intent);
+  }
+
+  /** The person's media grant when it is in this space (presence), else null. */
+  holder(userId: string): { roomId: string; roomName: string; identity: string } | null {
+    const h = this.hub.holderOf(userId);
+    return h && h.serverId === this.host.serverId ? h : null;
+  }
+
+  /**
+   * Mutes the person's shared screen (and its audio) in LiveKit. True when a
+   * shared screen was found and muted. Only video/audio of the share: the
+   * microphone and camera are never touched here.
+   */
+  async stopScreen(userId: string): Promise<boolean> {
+    const h = this.holder(userId);
+    if (!h) return false;
+    const participants = await this.lk.listParticipants(h.roomName);
+    const me = participants.find((p) => p.identity === h.identity);
+    const shares = (me?.tracks ?? []).filter(
+      (t) => (t.source === "screen_share" || t.source === "screen_share_audio") && !t.muted,
+    );
+    for (const t of shares) await this.lk.mutePublishedTrack(h.roomName, h.identity, t.sid, true);
+    return shares.length > 0;
   }
 
   request(userId: string): boolean {

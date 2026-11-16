@@ -26,9 +26,13 @@ import {
   type MapIndex,
   type MoveState,
   parseFloorRef,
+  parseManagedRoomName,
   Perm,
   type PermMember,
   type PermServer,
+  type PresenceEvent,
+  type PresencePerson,
+  type PresenceVoice,
   pruneDecor,
   regionAt,
   type RoomView,
@@ -43,6 +47,7 @@ import {
   type TilePos,
   validatePlacement,
   validateSettings,
+  type VoiceReport,
   type WingView,
   type Zone,
   type ZoneIndex,
@@ -50,7 +55,7 @@ import {
 } from "@muchat/space-core";
 
 import type { Log } from "../log.ts";
-import type { LiveKitAdmin } from "../media/ports.ts";
+import type { LiveKitAdmin, ParticipantLite } from "../media/ports.ts";
 import type { StoatCache } from "../stoat/cache.ts";
 import type { StoatMember, StoatServer, StoatTextChannel, StoatUser } from "../stoat/types.ts";
 import { type Assignment, reconcile, toLayoutInput } from "./assignment.ts";
@@ -96,7 +101,24 @@ interface Avatar {
   /** Leaves on the next tick, with no grace (session ended, membership gone). */
   evicted: boolean;
   dirty: boolean;
+  /** What the client last said about its call in this room (presence hint, ADR 0008). */
+  report: (VoiceReport & { at: number }) | null;
 }
+
+/** LiveKit's view of one admitted participant (sweeper, every 5 s). */
+interface SeenInLiveKit {
+  room: string;
+  mic: boolean;
+  camera: boolean;
+  screen: boolean;
+  at: number;
+}
+
+/** Presence is sent at most this often per viewer, and re-checked at least every second. */
+const PRESENCE_MIN_MS = 250;
+const PRESENCE_RECHECK_MS = 1_000;
+/** Watch-only sessions (the sidebar) per person and space. */
+export const MAX_OBSERVERS_PER_USER = 3;
 
 export function toPermServer(s: StoatServer): PermServer {
   return {
@@ -147,6 +169,12 @@ export class SpaceRuntime implements MediaHost {
   readonly media: RoomMedia | null;
   /** After a restart: room to put a returning avatar back in (its lease survived). */
   private readonly resumeAt = new Map<string, string>();
+  /** Watch-only sessions (sidebar presence): no avatar, never "in the space". */
+  private readonly observers = new Set<SessionPort>();
+  private lkSeen = new Map<string, SeenInLiveKit>();
+  private presenceDirty = true;
+  private presenceAt = Number.NEGATIVE_INFINITY;
+  private readonly presenceSent = new WeakMap<SessionPort, string>();
 
   constructor(deps: {
     serverId: string;
@@ -288,6 +316,10 @@ export class SpaceRuntime implements MediaHost {
     const before = a.move.room;
     a.move = { ...a.move, pos: { x: Math.round(pos.x), y: Math.round(pos.y) }, room };
     a.dirty = true;
+    if (before !== room) {
+      a.report = null;
+      this.presenceDirty = true;
+    }
     a.session?.send({ v: 1, t: "avatar.correction", d: { x: a.move.pos.x, y: a.move.pos.y, room, seq: a.move.seq, reason: "moved" } });
     if (before !== room) this.media?.sync(a.userId, "refresh");
   }
@@ -552,7 +584,8 @@ export class SpaceRuntime implements MediaHost {
         })
       : 0n;
     // A timeout masks permissions until it ends: never serve that mask longer.
-    const until = member.timeoutUntil !== null && member.timeoutUntil > now ? member.timeoutUntil : Number.POSITIVE_INFINITY;
+    const timeoutUntil = member.timeoutUntil ?? null;
+    const until = timeoutUntil !== null && timeoutUntil > now ? timeoutUntil : Number.POSITIVE_INFINITY;
     this.permMemo.set(key, { value, until });
     return value;
   }
@@ -582,6 +615,14 @@ export class SpaceRuntime implements MediaHost {
 
   memberChanged(userId: string, member: StoatMember | null) {
     this.invalidatePerms(userId);
+    this.presenceDirty = true;
+    // Watch-only sessions follow the same membership and roles.
+    for (const s of this.observersOf(userId)) {
+      if (!member) {
+        s.close(4403, "not a member");
+        this.observers.delete(s);
+      } else (s.viewer as { member: StoatMember }).member = member;
+    }
     const a = this.avatars.get(userId);
     if (!a) return;
     if (!member) {
@@ -640,7 +681,8 @@ export class SpaceRuntime implements MediaHost {
   roomViews(viewer: Viewer): RoomView[] {
     const occupants = new Map<string, string[]>();
     for (const a of this.avatars.values()) {
-      if (!a.move.room) continue;
+      // Evicted avatars leave on the next tick: never count them.
+      if (!a.move.room || a.evicted) continue;
       const list = occupants.get(a.move.room) ?? [];
       list.push(a.userId);
       occupants.set(a.move.room, list);
@@ -678,6 +720,183 @@ export class SpaceRuntime implements MediaHost {
       nowMs: this.now(),
     });
     return has(p, Perm.ViewChannel);
+  }
+
+  // ---- presence (ADR 0008) ---------------------------------------------------
+
+  /**
+   * The sweeper's pass (every 5 s): who LiveKit admitted in each managed room,
+   * with their tracks. Only rooms of this space are kept; a room that could
+   * not be listed keeps its last known state.
+   */
+  observeLiveKit(rooms: Map<string, ParticipantLite[]>, failed: Set<string>) {
+    const now = this.now();
+    const next = new Map<string, SeenInLiveKit>();
+    for (const [identity, seen] of this.lkSeen) if (failed.has(seen.room)) next.set(identity, seen);
+    for (const [roomName, participants] of rooms) {
+      const parsed = parseManagedRoomName(roomName);
+      if (!parsed || !this.hasRoom(parsed.roomId)) continue;
+      for (const p of participants) {
+        const tracks = p.tracks ?? [];
+        const open = (source: string) => tracks.some((t) => t.source === source && !t.muted);
+        next.set(p.identity, {
+          room: roomName,
+          mic: open("microphone"),
+          camera: open("camera"),
+          screen: open("screen_share"),
+          at: now,
+        });
+      }
+    }
+    this.lkSeen = next;
+    this.presenceDirty = true;
+  }
+
+  /** The client says what its call is doing (sent on change; rate limited by the gateway). */
+  reportVoice(session: SessionPort, report: VoiceReport): void {
+    const a = this.avatars.get(session.viewer.user._id);
+    if (!a || a.session !== session || !a.move.room) return;
+    a.report = { ...report, at: this.now() };
+    this.presenceDirty = true;
+  }
+
+  /**
+   * The person's call in their room, as others see it: null when they are in
+   * the room without its call. LiveKit's last pass wins over an older hint;
+   * a newer hint (a mute just now) shows until the next pass confirms it.
+   */
+  private voiceOf(a: Avatar): PresenceVoice | null {
+    if (!a.move.room || a.evicted) return null;
+    const holder = this.media?.holder(a.userId);
+    if (!holder || holder.roomId !== a.move.room) return null;
+    const lk = this.lkSeen.get(holder.identity);
+    const r = a.report;
+    const hint = r && (!lk || r.at >= lk.at) ? r : null;
+    return {
+      connected: hint ? hint.connected : Boolean(lk),
+      mic: hint ? hint.mic : Boolean(lk?.mic),
+      deaf: r?.deaf ?? false,
+      camera: hint ? hint.camera : Boolean(lk?.camera),
+      screen: hint ? hint.screen : Boolean(lk?.screen),
+    };
+  }
+
+  private personOf(a: Avatar): PresencePerson {
+    return {
+      user_id: a.userId,
+      name: a.name,
+      state: a.session ? (a.idle ? "idle" : "online") : "reconnecting",
+      voice: this.voiceOf(a),
+    };
+  }
+
+  /** Everyone, by room, once per flush; each viewer then gets the rooms they may view. */
+  private buildPresence(): { byRoom: Map<string, PresencePerson[]>; outside: PresencePerson[] } {
+    const byRoom = new Map<string, PresencePerson[]>();
+    const outside: PresencePerson[] = [];
+    for (const a of this.avatars.values()) {
+      if (a.evicted) continue;
+      const p = this.personOf(a);
+      if (!a.move.room) outside.push(p);
+      else {
+        const list = byRoom.get(a.move.room) ?? [];
+        list.push(p);
+        byRoom.set(a.move.room, list);
+      }
+    }
+    const byName = (x: PresencePerson, y: PresencePerson) => x.name.localeCompare(y.name) || x.user_id.localeCompare(y.user_id);
+    for (const list of byRoom.values()) list.sort(byName);
+    outside.sort(byName);
+    return { byRoom, outside };
+  }
+
+  /** Who is where as this viewer may see it (private rooms they cannot view are left out). */
+  presenceFor(viewer: Viewer): PresenceEvent["d"] {
+    return this.presenceFrom(viewer, this.buildPresence());
+  }
+
+  private presenceFrom(
+    viewer: Viewer,
+    built: { byRoom: Map<string, PresencePerson[]>; outside: PresencePerson[] },
+  ): PresenceEvent["d"] {
+    const rooms = [];
+    for (const [roomId, people] of built.byRoom) {
+      if (this.ix.roomsById.has(roomId) && this.canView(viewer, roomId)) rooms.push({ room_id: roomId, people });
+    }
+    rooms.sort((x, y) => x.room_id.localeCompare(y.room_id));
+    return { rooms, outside: built.outside };
+  }
+
+  private sendPresence(session: SessionPort, built = this.buildPresence()) {
+    const d = this.presenceFrom(session.viewer, built);
+    const json = JSON.stringify(d);
+    if (this.presenceSent.get(session) === json) return;
+    this.presenceSent.set(session, json);
+    session.send({ v: 1, t: "space.presence", d });
+  }
+
+  /** At most every 250 ms when something changed, and every second regardless (async media). */
+  private flushPresence() {
+    const now = this.now();
+    const since = now - this.presenceAt;
+    if (since < PRESENCE_MIN_MS) return;
+    if (!this.presenceDirty && since < PRESENCE_RECHECK_MS) return;
+    this.presenceAt = now;
+    this.presenceDirty = false;
+    const built = this.buildPresence();
+    for (const a of this.avatars.values()) if (a.session) this.sendPresence(a.session, built);
+    for (const s of this.observers) this.sendPresence(s, built);
+  }
+
+  /** A watch-only session (the sidebar): presence now and on every change. */
+  observe(session: SessionPort): void {
+    this.invalidatePerms(session.viewer.user._id);
+    const mine = this.observersOf(session.viewer.user._id);
+    // Bounded per person: the oldest gives way.
+    while (mine.length >= MAX_OBSERVERS_PER_USER) {
+      const oldest = mine.shift()!;
+      oldest.close(4001, "too many watchers");
+      this.observers.delete(oldest);
+    }
+    this.observers.add(session);
+    this.sendPresence(session);
+  }
+
+  unobserve(session: SessionPort): void {
+    this.observers.delete(session);
+  }
+
+  hasObserver(userId: string): boolean {
+    return this.observersOf(userId).length > 0;
+  }
+
+  private observersOf(userId: string): SessionPort[] {
+    return [...this.observers].filter((s) => s.viewer.user._id === userId);
+  }
+
+  get observerCount(): number {
+    return this.observers.size;
+  }
+
+  /**
+   * A moderator ends someone's screen share in the room both are in: Stoat's
+   * MuteMembers on that room (the voice moderation permission). LiveKit mutes
+   * the shared tracks and the sharer's app stops sharing; audited in the log.
+   */
+  async stopScreen(session: SessionPort, cmdId: string, targetId: string): Promise<void> {
+    const fail = (code: string, reason?: string) =>
+      session.send({ v: 1, t: "error", re: cmdId, d: { code, ...(reason ? { reason } : {}) } });
+    const a = this.avatars.get(session.viewer.user._id);
+    if (!a || a.session !== session) return;
+    const room = a.move.room;
+    const target = this.avatars.get(targetId);
+    if (!room || !target || target.evicted || target.move.room !== room) return fail("not_found");
+    if (!has(this.perms(session.viewer, room), Perm.MuteMembers)) return fail("not_allowed");
+    const stopped = (await this.media?.stopScreen(targetId).catch(() => false)) ?? false;
+    if (!stopped) return fail("not_found", "no_screen");
+    target.session?.send({ v: 1, t: "screen.stopped", d: { room_id: room, by: a.userId } });
+    session.send({ v: 1, t: "screen.stop.ok", re: cmdId, d: { user_id: targetId } });
+    this.log.info("screen share stopped by moderator", { server: this.serverId, room, actor: a.userId, target: targetId });
   }
 
   // ---- sessions ------------------------------------------------------------
@@ -751,6 +970,7 @@ export class SpaceRuntime implements MediaHost {
         disconnectedAt: null,
         evicted: false,
         dirty: false,
+        report: null,
       };
       this.avatars.set(user._id, a);
     }
@@ -787,6 +1007,8 @@ export class SpaceRuntime implements MediaHost {
       },
     };
     session.send(snapshot as unknown as Record<string, unknown>);
+    this.presenceDirty = true;
+    this.sendPresence(session);
     // A token for media this person already holds here (new tab, reconnect,
     // restart), or the reason they have none.
     this.media?.resume(user._id);
@@ -799,6 +1021,7 @@ export class SpaceRuntime implements MediaHost {
     a.session = null;
     a.disconnectedAt = this.now();
     a.dirty = true;
+    this.presenceDirty = true;
   }
 
   /**
@@ -813,6 +1036,7 @@ export class SpaceRuntime implements MediaHost {
     a.session = null;
     a.disconnectedAt = Number.NEGATIVE_INFINITY;
     a.dirty = true;
+    this.presenceDirty = true;
     this.media?.sync(userId, "refresh");
   }
 
@@ -832,7 +1056,11 @@ export class SpaceRuntime implements MediaHost {
     a.move = out.state;
     a.dirty = true;
     // Walking in or out is the only thing that moves media between rooms.
-    if (a.move.room !== before) this.media?.sync(a.userId, "entry");
+    if (a.move.room !== before) {
+      a.report = null;
+      this.presenceDirty = true;
+      this.media?.sync(a.userId, "entry");
+    }
     if (out.kind === "accepted") {
       a.dir = cmd.dir;
       a.moving = cmd.moving;
@@ -859,6 +1087,7 @@ export class SpaceRuntime implements MediaHost {
     if (!a || a.session !== session || a.idle === idle) return;
     a.idle = idle;
     a.dirty = true;
+    this.presenceDirty = true;
   }
 
   /**
@@ -877,6 +1106,8 @@ export class SpaceRuntime implements MediaHost {
       this.invalidatePerms(id);
       this.media?.sync(id, "refresh"); // no room any more: revoke
     }
+    if (removed.length) this.presenceDirty = true;
+    this.flushPresence();
     const dirty = [...this.avatars.values()].filter((a) => a.dirty);
     if (dirty.length === 0 && removed.length === 0) return;
     for (const viewerAvatar of this.avatars.values()) {
@@ -913,6 +1144,8 @@ export class SpaceRuntime implements MediaHost {
 
   closeAll(code: number, reason: string) {
     for (const a of this.avatars.values()) a.session?.close(code, reason);
+    for (const s of this.observers) s.close(code, reason);
+    this.observers.clear();
   }
 
   /** The space is gone (server deleted, bot removed): every media grant here ends. */
@@ -924,5 +1157,6 @@ export class SpaceRuntime implements MediaHost {
     this.media?.dispose();
     this.avatars.clear();
     this.visibleTo.clear();
+    this.observers.clear();
   }
 }

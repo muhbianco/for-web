@@ -10,8 +10,17 @@ export interface RoomInfoLite {
   numParticipants: number;
 }
 
+/** A published track as LiveKit lists it (presence indicators, moderation). */
+export interface TrackLite {
+  sid: string;
+  source: MediaSource | "unknown";
+  muted: boolean;
+}
+
 export interface ParticipantLite {
   identity: string;
+  /** Published tracks; absent when the adapter does not know them. */
+  tracks?: TrackLite[];
 }
 
 /** Thrown by adapters when LiveKit says the participant is not in the room. */
@@ -32,6 +41,8 @@ export interface LiveKitAdmin {
   listParticipants(room: string): Promise<ParticipantLite[]>;
   listRooms(): Promise<RoomInfoLite[]>;
   deleteRoom(name: string): Promise<void>;
+  /** Server-side mute of one published track (a moderator ending a screen share). */
+  mutePublishedTrack(room: string, identity: string, trackSid: string, muted: boolean): Promise<void>;
 }
 
 export interface LeaseStore {
