@@ -62,6 +62,7 @@ import { type Assignment, reconcile, toLayoutInput } from "./assignment.ts";
 import { type DecorStore, MemoryDecorStore } from "./decorStore.ts";
 import { type MediaHost, type MediaHub, RoomMedia } from "./roomMedia.ts";
 import type { AssignmentStore } from "./store.ts";
+import { MemoryTvStore, type TvCommand, TvHub, type TvHost, type TvStore } from "./tv.ts";
 
 /** How long a disconnected avatar stays (as "reconnecting") before it leaves. */
 export const DISCONNECT_GRACE_MS = 60_000;
@@ -143,7 +144,7 @@ export function toPermMember(m: StoatMember): PermMember {
  * what. Everything runs on the event loop, so per-room decisions are
  * serialized; decoration writes go through one queue per space.
  */
-export class SpaceRuntime implements MediaHost {
+export class SpaceRuntime implements MediaHost, TvHost {
   readonly serverId: string;
   private readonly cache: StoatCache;
   private readonly store: AssignmentStore;
@@ -181,6 +182,8 @@ export class SpaceRuntime implements MediaHost {
     cache: StoatCache;
     store: AssignmentStore;
     decorStore?: DecorStore;
+    /** Smart TV sessions (ADR 0008); in-memory when absent (tests, lab). */
+    tvStore?: TvStore;
     log: Log;
     now?: () => number;
     media?: { hub: MediaHub; lk: LiveKitAdmin };
@@ -194,7 +197,11 @@ export class SpaceRuntime implements MediaHost {
     this.media = deps.media
       ? new RoomMedia({ hub: deps.media.hub, host: this, lk: deps.media.lk, log: deps.log, now: this.now })
       : null;
+    this.tv = new TvHub({ host: this, store: deps.tvStore ?? new MemoryTvStore(), log: deps.log, now: this.now });
   }
+
+  /** The rooms' Smart TVs (ADR 0008). */
+  readonly tv: TvHub;
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -214,6 +221,40 @@ export class SpaceRuntime implements MediaHost {
     await this.reconcileAndBuild();
     await this.loadDecor();
     await this.media?.recoverEpochs();
+    await this.tv.init();
+  }
+
+  // ---- TvHost --------------------------------------------------------------
+
+  roomOf(userId: string): string | null {
+    const a = this.avatars.get(userId);
+    return a && !a.evicted ? a.move.room : null;
+  }
+
+  serverManages(viewer: Viewer): boolean {
+    return has(this.serverPerms(viewer), Perm.ManageServer);
+  }
+
+  sessionsIn(roomId: string): SessionPort[] {
+    const out: SessionPort[] = [];
+    for (const a of this.avatars.values()) if (a.session && !a.evicted && a.move.room === roomId) out.push(a.session);
+    return out;
+  }
+
+  hasTv(roomId: string): boolean {
+    const zone = `room:${roomId}`;
+    return this.decor.items.some((i) => i.zone === zone && itemOf(CATALOG, i.item)?.smartTv === true);
+  }
+
+  cooldownS(): number {
+    return this.decor.settings.tv_cooldown_s ?? 0;
+  }
+
+  /** Gateway entry for `tv.*` (the person's current session only). */
+  tvCommand(session: SessionPort, cmdId: string, cmd: TvCommand): void {
+    const a = this.avatars.get(session.viewer.user._id);
+    if (!a || a.session !== session) return;
+    this.tv.command(session, cmdId, cmd);
   }
 
   private server(): StoatServer {
@@ -305,6 +346,10 @@ export class SpaceRuntime implements MediaHost {
     }
     // Roles or overrides may have changed what a token may publish.
     this.media?.permissionsChanged();
+    // ...and what each person may do with their room's TV.
+    const occupied = new Set<string>();
+    for (const a of this.avatars.values()) if (a.move.room && !a.evicted) occupied.add(a.move.room);
+    if (occupied.size) this.tv.decorChanged(occupied);
   }
 
   private exitPoint(roomId: string) {
@@ -319,6 +364,7 @@ export class SpaceRuntime implements MediaHost {
     if (before !== room) {
       a.report = null;
       this.presenceDirty = true;
+      if (room && a.session) this.tv.entered(a.session, room);
     }
     a.session?.send({ v: 1, t: "avatar.correction", d: { x: a.move.pos.x, y: a.move.pos.y, room, seq: a.move.seq, reason: "moved" } });
     if (before !== room) this.media?.sync(a.userId, "refresh");
@@ -592,6 +638,10 @@ export class SpaceRuntime implements MediaHost {
     if (op.kind === "settings") {
       for (const other of this.avatars.values()) other.session?.send({ v: 1, t: "decor.rights", d: this.decorRights(other.viewer) });
     }
+    // A TV object placed or removed in a room turns that room's TV on or off.
+    const rooms = touched.filter((z) => z.startsWith("room:")).map((z) => z.slice(5));
+    if (rooms.length) this.tv.decorChanged(new Set(rooms));
+    if (op.kind === "settings") this.tv.decorChanged(this.map.rooms.map((r) => r.roomId).filter((id) => this.tv.state(id)));
     if ((op.kind === "place" || op.kind === "update") && itemOf(CATALOG, op.item.item)?.solid) this.unstickAvatars();
   }
 
@@ -1120,6 +1170,8 @@ export class SpaceRuntime implements MediaHost {
     session.send(snapshot as unknown as Record<string, unknown>);
     this.presenceDirty = true;
     this.sendPresence(session);
+    // Back inside a room (reconnect, new tab, restart): its TV where it is now.
+    if (a.move.room) this.tv.entered(session, a.move.room);
     // A token for media this person already holds here (new tab, reconnect,
     // restart), or the reason they have none.
     this.media?.resume(user._id);
@@ -1171,6 +1223,8 @@ export class SpaceRuntime implements MediaHost {
       a.report = null;
       this.presenceDirty = true;
       this.media?.sync(a.userId, "entry");
+      // The room's TV as it is now (the newcomer joins the session in progress).
+      if (a.move.room) this.tv.entered(session, a.move.room);
     }
     if (out.kind === "accepted") {
       a.dir = cmd.dir;
@@ -1219,6 +1273,7 @@ export class SpaceRuntime implements MediaHost {
     }
     if (removed.length) this.presenceDirty = true;
     this.flushPresence();
+    this.tv.tick();
     const dirty = [...this.avatars.values()].filter((a) => a.dirty);
     if (dirty.length === 0 && removed.length === 0) return;
     for (const viewerAvatar of this.avatars.values()) {

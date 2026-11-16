@@ -93,6 +93,9 @@ export function validateConfig(item: DecorItem, config: InteractionConfig | unde
       return config.url === undefined && config.target === undefined;
     case "teleport":
       return config.url === undefined && config.text === undefined;
+    case "tv":
+      // The Smart TV needs no configuration: what it plays is the room's session.
+      return config.url === undefined && config.text === undefined && config.target === undefined;
     default:
       return true;
   }
@@ -115,6 +118,8 @@ export function validatePlacement(
   if (item.layer === "floor") return "not_placeable";
   const zone = ctx.zones.byKey.get(inst.zone);
   if (!zone) return "unknown_zone";
+  // Each room has its own TV; a TV that works outside a room does not exist (ADR 0008).
+  if (item.smartTv && zone.kind !== "room") return "tv_outside_room";
   if (!Number.isInteger(inst.rot) || inst.rot < 0 || inst.rot > 3) return "bad_rotation";
   if (item.rotations === 1 && inst.rot !== 0) return "bad_rotation";
   if (item.rotations === 2 && inst.rot > 1) return "bad_rotation";

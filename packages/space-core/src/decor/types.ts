@@ -33,7 +33,7 @@ export type Rotation = 0 | 1 | 2 | 3;
  * next to the instance and interacts; the server only stores and validates the
  * configuration (and performs `teleport`, which moves the avatar).
  */
-export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport";
+export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv";
 
 export interface InteractionConfig {
   /** Shown as the prompt and dialog title. */
@@ -67,6 +67,8 @@ export interface DecorItem {
   premium?: boolean;
   /** Search tags (PT-BR). */
   tags?: readonly string[];
+  /** The room's Smart TV (ADR 0008): only works inside a room, needs no configuration. */
+  smartTv?: boolean;
 }
 
 export interface DecorInstance {

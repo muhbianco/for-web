@@ -26,6 +26,7 @@ interface Def {
   interaction?: InteractionKind;
   description?: string;
   tags?: readonly string[];
+  smartTv?: boolean;
 }
 
 const defaultLayer: Record<DecorCategory, DecorLayer> = {
@@ -54,6 +55,7 @@ function def(d: Def): DecorItem {
     ...(d.interaction ? { interaction: d.interaction } : {}),
     ...(d.description ? { description: d.description } : {}),
     ...(d.tags ? { tags: d.tags } : {}),
+    ...(d.smartTv ? { smartTv: true } : {}),
   };
 }
 
@@ -105,8 +107,8 @@ const ITEMS: DecorItem[] = [
   def({ id: "desk-laptop", name: "Mesa com notebook", category: "gamer", w: 2, h: 1, rotations: 4, variants: WOOD, interaction: "link", tags: ["notebook", "laptop"] }),
   def({ id: "desk-stream", name: "Bancada de stream", category: "gamer", w: 3, h: 1, rotations: 4, variants: NEON, description: "Monitor, microfone de braço, câmera e ring light.", interaction: "link", tags: ["streaming", "live", "microfone"] }),
   def({ id: "pc-tower", name: "Gabinete", category: "gamer", variants: NEON, tags: ["computador"] }),
-  def({ id: "tv-stand", name: "TV no rack", category: "gamer", w: 2, h: 1, rotations: 4, interaction: "frame", description: "Mostra um vídeo ou página ao interagir.", tags: ["televisor", "televisão"] }),
-  def({ id: "tv-wall", name: "TV de parede", category: "gamer", layer: "wall", w: 2, h: 1, solid: false, interaction: "frame", tags: ["televisor", "televisão"] }),
+  def({ id: "tv-stand", name: "TV no rack", category: "gamer", w: 2, h: 1, rotations: 4, interaction: "tv", smartTv: true, description: "Smart TV da sala: assistam juntos a um vídeo do YouTube. Só funciona dentro de uma sala.", tags: ["televisor", "televisão"] }),
+  def({ id: "tv-wall", name: "TV de parede", category: "gamer", layer: "wall", w: 2, h: 1, solid: false, interaction: "tv", smartTv: true, description: "Smart TV da sala. Só funciona dentro de uma sala.", tags: ["televisor", "televisão"] }),
   def({ id: "console-shelf", name: "Rack de consoles", category: "gamer", variants: ["preto", "branco"], tags: ["videogame", "console"] }),
   def({ id: "arcade", name: "Máquina de arcade", category: "gamer", rotations: 4, variants: ["vermelho", "azul", "roxo", "amarelo"], interaction: "frame", description: "Abre um joguinho (uma página) ao interagir.", tags: ["fliperama", "jogo"] }),
   def({ id: "arcade-double", name: "Arcade duplo", category: "gamer", w: 2, h: 1, rotations: 4, variants: ["preto", "vermelho"], interaction: "frame", tags: ["fliperama", "jogo"] }),
@@ -150,7 +152,7 @@ const ITEMS: DecorItem[] = [
   def({ id: "camera-tripod", name: "Câmera no tripé", category: "equipment", rotations: 4, tags: ["filmagem", "streaming"] }),
   def({ id: "ring-light", name: "Ring light", category: "equipment", tags: ["streaming"] }),
   def({ id: "mixer", name: "Mesa de som", category: "equipment", w: 2, h: 1, rotations: 2, tags: ["áudio", "dj"] }),
-  def({ id: "projector-screen", name: "Tela de projeção", category: "equipment", layer: "wall", w: 3, h: 1, solid: false, interaction: "frame", tags: ["reunião", "apresentação"] }),
+  def({ id: "projector-screen", name: "Tela de projeção", category: "equipment", layer: "wall", w: 3, h: 1, solid: false, interaction: "tv", smartTv: true, description: "Smart TV da sala em tela grande. Só funciona dentro de uma sala.", tags: ["reunião", "apresentação"] }),
   def({ id: "podium", name: "Púlpito", category: "equipment", rotations: 4, variants: WOOD }),
   def({ id: "drum-kit", name: "Bateria", category: "equipment", w: 2, h: 2, tags: ["música"] }),
   def({ id: "guitar-stand", name: "Guitarra no suporte", category: "equipment", variants: ["vermelho", "preto", "sunburst"], tags: ["música"] }),

@@ -10,3 +10,4 @@ export * from "./move/movement.ts";
 export * from "./move/path.ts";
 export * from "./perm/stoat.ts";
 export * from "./protocol/messages.ts";
+export * from "./tv/tv.ts";

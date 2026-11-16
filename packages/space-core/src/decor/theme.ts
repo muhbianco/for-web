@@ -96,7 +96,8 @@ function roomSpecs(room: CompiledRoom, pick: number): Spec[] {
       ? [
           // Duo gamer: two setups facing down, chairs in front, a rug in the middle.
           { item: "poster", x: 0, y: -1, variant: "gamer" },
-          { item: "neon-strip", x: 2, y: -1, variant: neon },
+          // Every room has its TV (ADR 0008).
+          { item: "tv-wall", x: 2, y: -1 },
           { item: "poster", x: 5, y: -1, variant: "espaço" },
           { item: "desk-pc", x: 0, y: 0, rot: 0, variant: neon },
           { item: "desk-pc", x: 5, y: 0, rot: 0, variant: neon },
@@ -110,7 +111,7 @@ function roomSpecs(room: CompiledRoom, pick: number): Spec[] {
       : [
           // Cozy nook: sofa, table, plants, a window.
           { item: "window", x: 1, y: -1, variant: "noite" },
-          { item: "painting", x: 3, y: -1, variant: "abstrato" },
+          { item: "tv-wall", x: 3, y: -1 },
           { item: "window", x: 5, y: -1, variant: "noite" },
           { item: "sofa-2", x: 2, y: 0, rot: 0, variant: fabric },
           { item: "plant-tall", x: 0, y: 0, variant: "vaso-terracota" },

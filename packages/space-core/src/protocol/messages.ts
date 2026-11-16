@@ -4,6 +4,7 @@ import { ID_PATTERN, MAX_TEXT, MAX_TITLE, MAX_URL } from "../decor/placement.ts"
 import { type DecorOp, type DecorSettings, MAX_TV_COOLDOWN_S, type PlacementError } from "../decor/index.ts";
 import { isUlid } from "../media/naming.ts";
 import type { CompiledMap } from "../map/types.ts";
+import { MAX_TV_POS_S, type TvRights, type TvState } from "../tv/tv.ts";
 
 /**
  * WebSocket protocol v1 of the space (docs/espaco §F.8). Commands come from
@@ -133,6 +134,62 @@ export const ScreenStopCmd = z.object({
   d: z.object({ user_id: ulid }),
 });
 
+// ---- Smart TV (ADR 0008) -------------------------------------------------------
+
+const tvPos = z.number().min(0).max(MAX_TV_POS_S);
+/** Every TV command names the room (the person must be inside it) and the rev it saw. */
+const tvBase = { room_id: ulid, base_rev: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER) };
+
+/** Choose what the room's TV shows (replaces the current video: one at a time). */
+export const TvLoadCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("tv.load"),
+  id: commandId,
+  d: z.object({ ...tvBase, app: z.literal("youtube"), ref: z.string().min(1).max(64) }).strict(),
+});
+
+/** Play from `pos_s` (where the controller's player is), pause at `pos_s`, or jump to `pos_s`. */
+export const TvControlCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.enum(["tv.play", "tv.pause", "tv.seek"]),
+  id: commandId,
+  d: z.object({ ...tvBase, pos_s: tvPos }).strict(),
+});
+
+/** Turn the room's TV off (whoever chose the video, or ManageSpaceTvs). */
+export const TvStopCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("tv.stop"),
+  id: commandId,
+  d: z.object(tvBase).strict(),
+});
+
+/** The video reached its end on the controller's player (status → ended). */
+export const TvEndedCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("tv.ended"),
+  id: commandId,
+  d: z.object(tvBase).strict(),
+});
+
+/**
+ * Server → people inside the room: the TV's state (null = off) and what this
+ * recipient may do with it.
+ */
+export interface TvStateEvent {
+  v: 1;
+  t: "tv.state";
+  d: {
+    room_id: string;
+    state: TvState | null;
+    you: TvRights;
+    /** The room's interval between videos (seconds; 0 = none). */
+    cooldown_s: number;
+    /** The room has a Smart TV object (otherwise there is no TV to open). */
+    has_tv: boolean;
+  };
+}
+
 // ---- decoration (ADR 0007) -------------------------------------------------
 
 const zoneKey = z.string().min(1).max(64);
@@ -223,6 +280,10 @@ export const ClientCommand = z.discriminatedUnion("t", [
   MediaRequestCmd,
   MediaStateCmd,
   ScreenStopCmd,
+  TvLoadCmd,
+  TvControlCmd,
+  TvStopCmd,
+  TvEndedCmd,
   DecorPlaceCmd,
   DecorUpdateCmd,
   DecorRemoveCmd,
@@ -308,7 +369,13 @@ export type ErrorCode =
   | "decor_invalid"
   | "conflict"
   | "not_found"
-  | "internal";
+  | "internal"
+  /** TV: the command was based on an older state (someone else acted first). */
+  | "stale_rev"
+  /** TV: the room's interval between videos has not passed (`retry_after_ms`). */
+  | "tv_cooldown"
+  /** TV: no Smart TV object in that room, or not in that room. */
+  | "no_tv";
 
 export interface ErrorEvent {
   v: 1;

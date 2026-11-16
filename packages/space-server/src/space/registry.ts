@@ -6,6 +6,7 @@ import type { RuntimeRegistry } from "../ws/gateway.ts";
 import type { MediaHub } from "./roomMedia.ts";
 import { SpaceRuntime } from "./runtime.ts";
 import type { DecorStore } from "./decorStore.ts";
+import type { TvStore } from "./tv.ts";
 import type { AssignmentStore } from "./store.ts";
 
 /**
@@ -18,6 +19,7 @@ export class Registry implements RuntimeRegistry {
   private readonly cache: StoatCache;
   private readonly store: AssignmentStore;
   private readonly decorStore: DecorStore | undefined;
+  private readonly tvStore: TvStore | undefined;
   private readonly members: StoatMembers & Partial<Pick<MemberCache, "invalidate">>;
   private readonly log: Log;
   private readonly now: () => number;
@@ -31,6 +33,8 @@ export class Registry implements RuntimeRegistry {
     store: AssignmentStore;
     /** Decoration per server (ADR 0007); in-memory when absent (tests, lab). */
     decorStore?: DecorStore;
+    /** Smart TV sessions (ADR 0008); in-memory when absent. */
+    tvStore?: TvStore;
     members: StoatMembers & Partial<Pick<MemberCache, "invalidate">>;
     log: Log;
     now?: () => number;
@@ -45,6 +49,7 @@ export class Registry implements RuntimeRegistry {
     // Without this line every runtime fell back to its in-memory store and the
     // decoration vanished on each restart (found in the 16/11/2026 audit).
     this.decorStore = deps.decorStore;
+    this.tvStore = deps.tvStore;
     this.members = deps.members;
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
@@ -103,6 +108,7 @@ export class Registry implements RuntimeRegistry {
         cache: this.cache,
         store: this.store,
         decorStore: this.decorStore,
+        tvStore: this.tvStore,
         log: this.log,
         now: this.now,
         media: this.media,

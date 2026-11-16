@@ -10,6 +10,7 @@ import type { StoatCache } from "../stoat/cache.ts";
 import type { StoatUser } from "../stoat/types.ts";
 import type { ProfileStore } from "../space/profiles.ts";
 import type { SessionPort, SpaceRuntime, Viewer } from "../space/runtime.ts";
+import type { TvCommand } from "../space/tv.ts";
 import { TokenBucket } from "./ratelimit.ts";
 
 const HELLO_TIMEOUT_MS = 5_000;
@@ -179,6 +180,13 @@ export class Gateway {
           return;
         case "media.state.report":
           return s.runtime.reportVoice(s, cmd.d);
+        case "tv.load":
+        case "tv.play":
+        case "tv.pause":
+        case "tv.seek":
+        case "tv.stop":
+        case "tv.ended":
+          return s.runtime.tvCommand(s, cmd.id, { t: cmd.t, ...cmd.d } as TvCommand);
         case "screen.stop":
           return void s.runtime.stopScreen(s, cmd.id, cmd.d.user_id).catch((err) => {
             this.deps.log.error("screen stop failed", { err: String(err) });

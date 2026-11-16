@@ -17,6 +17,7 @@ import { Registry } from "./space/registry.ts";
 import { MongoProfileStore } from "./space/profiles.ts";
 import { MongoDecorStore } from "./space/decorStore.ts";
 import { MongoAssignmentStore } from "./space/store.ts";
+import { MongoTvStore } from "./space/tv.ts";
 import { MemberCache, StoatApi } from "./stoat/api.ts";
 import { BonfireClient } from "./stoat/bonfire.ts";
 import { StoatCache } from "./stoat/cache.ts";
@@ -113,6 +114,7 @@ async function main() {
     cache,
     store: new MongoAssignmentStore(mongo),
     decorStore: new MongoDecorStore(mongo),
+    tvStore: new MongoTvStore(mongo),
     members,
     log,
     enabled,
