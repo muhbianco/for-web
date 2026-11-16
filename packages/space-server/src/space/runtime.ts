@@ -139,7 +139,8 @@ export class SpaceRuntime implements MediaHost {
   private readonly avatars = new Map<string, Avatar>();
   /** Per viewer: avatar ids that viewer currently has on screen. */
   private readonly visibleTo = new Map<string, Set<string>>();
-  private permMemo = new Map<string, bigint>();
+  /** Channel permissions per viewer and room; an entry lapses when a Stoat timeout ends. */
+  private permMemo = new Map<string, { value: bigint; until: number }>();
   private refreshing: Promise<void> | null = null;
   private refreshAgain = false;
   /** Media of this space (Phase 3); absent in Phase 2 setups and some tests. */
@@ -256,6 +257,11 @@ export class SpaceRuntime implements MediaHost {
       }
     }
     this.unstickAvatars();
+    // Who sees whom may have changed for avatars that did not move (a role or
+    // override gave or took ViewChannel): the next tick recomputes everyone,
+    // sending `gone` for what a viewer may no longer see (privacy) and the
+    // positions of what they now may.
+    for (const a of this.avatars.values()) a.dirty = true;
     for (const a of this.avatars.values()) {
       if (!a.session) continue;
       if (mapChanged) {
@@ -531,19 +537,23 @@ export class SpaceRuntime implements MediaHost {
 
   perms(viewer: Viewer, roomId: string): bigint {
     const key = `${viewer.user._id}\u0000${roomId}`;
+    const now = this.now();
     const hit = this.permMemo.get(key);
-    if (hit !== undefined) return hit;
+    if (hit !== undefined && hit.until > now) return hit.value;
     const channel: StoatTextChannel | undefined = this.cache.channels.get(roomId);
+    const member = toPermMember(viewer.member);
     const value = channel
       ? channelPermissions({
           user: { id: viewer.user._id, privileged: viewer.user.privileged ?? false },
           server: toPermServer(this.server()),
           channel: { defaultPermissions: channel.default_permissions, rolePermissions: channel.role_permissions },
-          member: toPermMember(viewer.member),
-          nowMs: this.now(),
+          member,
+          nowMs: now,
         })
       : 0n;
-    this.permMemo.set(key, value);
+    // A timeout masks permissions until it ends: never serve that mask longer.
+    const until = member.timeoutUntil !== null && member.timeoutUntil > now ? member.timeoutUntil : Number.POSITIVE_INFINITY;
+    this.permMemo.set(key, { value, until });
     return value;
   }
 
@@ -564,8 +574,14 @@ export class SpaceRuntime implements MediaHost {
   }
 
   /** A member's roles or flags changed: recompute what they see and where they may be. */
+  /** Forget what was computed for this person (roles, overrides or membership changed). */
+  invalidatePerms(userId: string) {
+    const prefix = `${userId}\u0000`;
+    for (const k of [...this.permMemo.keys()]) if (k.startsWith(prefix)) this.permMemo.delete(k);
+  }
+
   memberChanged(userId: string, member: StoatMember | null) {
-    for (const k of [...this.permMemo.keys()]) if (k.startsWith(`${userId}\u0000`)) this.permMemo.delete(k);
+    this.invalidatePerms(userId);
     const a = this.avatars.get(userId);
     if (!a) return;
     if (!member) {
@@ -700,6 +716,8 @@ export class SpaceRuntime implements MediaHost {
   join(session: SessionPort, look: AvatarLook = { palette: defaultPalette(session.viewer.user._id) }): void {
     const { user } = session.viewer;
     const name = session.viewer.member.nickname || user.display_name || user.username;
+    // The hello brought a freshly fetched member: nothing cached before applies.
+    this.invalidatePerms(user._id);
     let a = this.avatars.get(user._id);
     if (a && !a.evicted) {
       a.look = look;
@@ -856,6 +874,7 @@ export class SpaceRuntime implements MediaHost {
     }
     for (const id of removed) {
       this.avatars.delete(id);
+      this.invalidatePerms(id);
       this.media?.sync(id, "refresh"); // no room any more: revoke
     }
     const dirty = [...this.avatars.values()].filter((a) => a.dirty);

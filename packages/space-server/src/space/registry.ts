@@ -39,6 +39,9 @@ export class Registry implements RuntimeRegistry {
   }) {
     this.cache = deps.cache;
     this.store = deps.store;
+    // Without this line every runtime fell back to its in-memory store and the
+    // decoration vanished on each restart (found in the 16/11/2026 audit).
+    this.decorStore = deps.decorStore;
     this.members = deps.members;
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
@@ -62,8 +65,12 @@ export class Registry implements RuntimeRegistry {
         case "member": {
           this.members.invalidate?.(change.serverId, change.userId);
           const rt = this.live.get(change.serverId);
+          if (!rt) return;
+          // Even with no avatar here: a cached permission must not outlive the
+          // role it came from (the person may come back and enter with it).
+          rt.invalidatePerms(change.userId);
           // Also while reconnecting: a removed role must end media during the grace.
-          if (!rt?.hasAvatar(change.userId)) return;
+          if (!rt.hasAvatar(change.userId)) return;
           void this.members.member(change.serverId, change.userId).then((res) => {
             if (res.kind === "ok") rt.memberChanged(change.userId, res.member);
             else if (res.kind === "not_member") rt.memberChanged(change.userId, null);
