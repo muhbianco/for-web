@@ -1,4 +1,5 @@
 import { For, Show, splitProps } from "solid-js";
+
 import {
   TrackLoop,
   useEnsureParticipant,
@@ -7,14 +8,19 @@ import {
   useTracks,
 } from "solid-livekit-components";
 
+import { useLingui } from "@lingui/solid/macro";
+import { peopleIn } from "@muchat/space-client/presence";
 import { Track } from "livekit-client";
 import { Channel, VoiceParticipant } from "stoat.js";
-import { cva } from "styled-system/css";
+import { css, cva } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
 import { UserContextMenu } from "@revolt/app";
+import { useClient } from "@revolt/client";
 import { useUser } from "@revolt/markdown/users";
 import { InRoom, useIsDeafened } from "@revolt/rtc";
+import { isSpaceServer } from "@revolt/space/config";
+import { useSpacePresence } from "@revolt/space/presence";
 
 import { Avatar, Ripple, typography } from "../../design";
 import { Row } from "../../layout";
@@ -29,13 +35,69 @@ import { participantUserId } from "@revolt/rtc/identity";
  * Designed for the server sidebar to be below channels
  */
 export function VoiceChannelPreview(props: { channel: Channel }) {
+  // A room of a space server: Stoat's voice states never fill for it (its
+  // call is a room of the space), so the space's presence is the source.
+  const space = () =>
+    !!props.channel.serverId && isSpaceServer(props.channel.serverId);
   return (
     <InRoom
       channelId={props.channel.id}
-      fallback={<VariantPreview channel={props.channel} />}
+      fallback={
+        <Show
+          when={space()}
+          fallback={<VariantPreview channel={props.channel} />}
+        >
+          <VariantSpace channel={props.channel} />
+        </Show>
+      }
     >
       <VariantLive channel={props.channel} />
     </InRoom>
+  );
+}
+
+/**
+ * Use the space's presence as the source of truth (a room of a space server
+ * we are not in): who is inside, who is in its call, muted, deafened, sharing
+ * (ADR 0008). Inside the room without its call shows dimmed.
+ */
+function VariantSpace(props: { channel: Channel }) {
+  const client = useClient();
+  const { t } = useLingui();
+  const presence = useSpacePresence(
+    () => client(),
+    () => props.channel.serverId,
+  );
+  const people = () => peopleIn(presence(), props.channel.id);
+  return (
+    <Show when={people().length}>
+      <Base>
+        <For each={people()}>
+          {(p) => (
+            <CommonUser
+              channel={props.channel}
+              userId={p.user_id}
+              speaking={false}
+              muted={!!p.voice?.connected && !p.voice.mic}
+              deafened={!!p.voice?.deaf}
+              camera={!!p.voice?.camera}
+              screenshare={!!p.voice?.screen}
+              noDrag
+              dimmed={p.state === "reconnecting" || !p.voice?.connected}
+              note={
+                p.state === "reconnecting"
+                  ? t`Reconectando…`
+                  : !p.voice
+                    ? t`Na sala, fora da chamada`
+                    : !p.voice.connected
+                      ? t`Conectando o áudio…`
+                      : undefined
+              }
+            />
+          )}
+        </For>
+      </Base>
+    </Show>
   );
 }
 
@@ -139,6 +201,12 @@ function CommonUser(props: {
   camera: boolean;
   screenshare: boolean;
   isLive?: boolean;
+  /** No dragging to another channel (rooms of the space are entered by walking). */
+  noDrag?: boolean;
+  /** Inside the room but not (yet) in its call, or reconnecting. */
+  dimmed?: boolean;
+  /** Why it is dimmed, for the tooltip and screen readers. */
+  note?: string;
 }) {
   const [iconProps, rest] = splitProps(props, [
     "muted",
@@ -153,14 +221,19 @@ function CommonUser(props: {
   return (
     <div
       class={previewUser({ speaking: rest.speaking })}
+      title={rest.note}
       style={{
-        cursor: drag?.canDragMembers(props.channel) && !user().user?.self
-          ? "grab"
-          : undefined,
+        cursor:
+          !rest.noDrag &&
+          drag?.canDragMembers(props.channel) &&
+          !user().user?.self
+            ? "grab"
+            : undefined,
+        opacity: rest.dimmed ? 0.55 : undefined,
       }}
       onPointerDown={(event) => {
         const member = user().member;
-        if (!member || !drag) return;
+        if (rest.noDrag || !member || !drag) return;
         drag.beginUserDrag(
           event,
           member,
@@ -185,7 +258,12 @@ function CommonUser(props: {
     >
       <Ripple />
       <Avatar size={24} src={user().avatar} fallback={user().username} />{" "}
-      <PreviewUsername>{user().username}</PreviewUsername>
+      <PreviewUsername>
+        {user().username}
+        <Show when={rest.note}>
+          <span class={srOnly}> · {rest.note}</span>
+        </Show>
+      </PreviewUsername>
       <Row gap="sm">
         <VoiceStatefulUserIcons {...iconProps} userId={rest.userId} />
       </Row>
@@ -231,6 +309,15 @@ const previewUser = cva({
       },
     },
   },
+});
+
+const srOnly = css({
+  position: "absolute",
+  width: "1px",
+  height: "1px",
+  overflow: "hidden",
+  clip: "rect(0 0 0 0)",
+  whiteSpace: "nowrap",
 });
 
 const PreviewUsername = styled("span", {

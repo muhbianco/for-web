@@ -11,6 +11,7 @@ import {
   type DoorRule,
   indexMap,
   type MapIndex,
+  type PresenceEvent,
   type RoomView,
   setSolid,
   solidMask,
@@ -63,7 +64,9 @@ export type WorldEvent =
   | { kind: "decor_changed"; op: DecorOp }
   /** We missed a revision: fetch the whole decoration again. */
   | { kind: "decor_stale" }
-  | { kind: "rights_changed" };
+  | { kind: "rights_changed" }
+  /** Who is in which room, in which call, muted or sharing (server presence). */
+  | { kind: "presence_changed" };
 
 /**
  * Client copy of the world: what the server confirmed, plus our own predicted
@@ -84,7 +87,25 @@ export class World {
   /** Revision the server announced last; the fetch brings at least this one. */
   decorRevWanted = 0;
   rights: DecorRights = { can_edit: false, can_manage: false };
+  /** Who is where, from the server (ADR 0008); null until the first presence. */
+  presence: PresenceEvent["d"] | null = null;
+  /** People speaking in our own room's call (LiveKit, given by the app). */
+  speakers: ReadonlySet<string> = new Set();
   private readonly listeners = new Set<(e: WorldEvent) => void>();
+
+  setPresence(p: PresenceEvent["d"]) {
+    this.presence = p;
+    this.emit({ kind: "presence_changed" });
+  }
+
+  /** Voice state of someone as the presence says (null: not in a call we may see). */
+  voiceOf(userId: string) {
+    for (const r of this.presence?.rooms ?? []) {
+      const p = r.people.find((x) => x.user_id === userId);
+      if (p) return p.voice;
+    }
+    return null;
+  }
 
   on(fn: (e: WorldEvent) => void): () => void {
     this.listeners.add(fn);

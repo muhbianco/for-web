@@ -11,7 +11,9 @@ import {
   itemOf,
   type ProfilePatch,
   type ProfileView,
+  regionAt,
   TILE,
+  type VoiceReport,
 } from "@muchat/space-core";
 
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
@@ -61,6 +63,8 @@ export interface SpaceUiState {
   /** Interactive object within reach, if any. */
   prompt: { id: string; label: string } | null;
   interaction: Interaction | null;
+  /** Room under the pointer (map tooltip with who is inside), in px of the map element. */
+  hover: { roomId: string; x: number; y: number } | null;
 }
 
 const KEYS: Record<string, "up" | "down" | "left" | "right"> = {
@@ -96,6 +100,10 @@ export class SpaceView {
   private prompt: Prompt | null = null;
   private decorLoading: Promise<void> | null = null;
   private pointerDownAt: { x: number; y: number; t: number } | null = null;
+  /** Head counts last drawn on the room labels. */
+  private presenceCounts = "";
+  /** Last call state told to the server (sent only on change). */
+  private lastReport = "";
 
   private constructor(opts: SpaceViewOptions) {
     this.opts = opts;
@@ -145,6 +153,7 @@ export class SpaceView {
       zones: [],
       prompt: null,
       interaction: null,
+      hover: null,
     };
   }
 
@@ -181,6 +190,16 @@ export class SpaceView {
           if (!v.world.rights.can_edit && v.editor.state.enabled) v.editor.setEnabled(false);
           v.patch({ rights: v.world.rights });
           break;
+        case "presence_changed": {
+          // Room labels carry the head count: redraw them only when a count moved.
+          const counts = (v.world.presence?.rooms ?? []).map((r) => `${r.room_id}:${r.people.length}`).join(",");
+          if (counts !== v.presenceCounts) {
+            v.presenceCounts = counts;
+            v.renderer.rebuildStatic(v.world);
+          }
+          v.renderer.invalidate();
+          break;
+        }
       }
       v.dirtyUi = true;
     });
@@ -294,7 +313,18 @@ export class SpaceView {
       case "error":
         if (d?.code && (typeof e.re === "string" || d.code === "not_allowed")) this.editor.onError(typeof e.re === "string" ? e.re : undefined, d.code, d.reason);
         return;
+      case "space.presence":
+        this.world.setPresence(d);
+        this.dirtyUi = true;
+        return;
+      case "screen.stopped":
+        // A moderator of the room ended our screen share: stop it here too.
+        this.opts.voice?.stopScreenShare?.();
+        this.patch({ announcement: "Um moderador encerrou o compartilhamento da sua tela." });
+        return;
       case "media.grant":
+        // A new grant is a new call: its state is told afresh.
+        this.lastReport = "";
         return this.media?.onGrant(d);
       case "media.revoked":
         return this.media?.onRevoked(d);
@@ -354,9 +384,18 @@ export class SpaceView {
       }
     };
     const pointerMove = (ev: PointerEvent) => {
-      if (!this.editor.state.enabled) return;
       const p = canvasPoint(ev);
-      this.editor.hover(p.x, p.y);
+      if (this.editor.state.enabled) {
+        this.editor.hover(p.x, p.y);
+        return;
+      }
+      // Hovering a room shows who is inside (tooltip), without walking there.
+      const ix = this.world.ix;
+      const region = ix ? regionAt(ix, p.x, p.y) : null;
+      const roomId = region?.kind === "room" ? region.roomId : null;
+      if (roomId === (this.state.hover?.roomId ?? null)) return;
+      const rect = this.renderer.app.canvas.getBoundingClientRect();
+      this.patch({ hover: roomId ? { roomId, x: ev.clientX - rect.left, y: ev.clientY - rect.top } : null });
     };
     const pointerUp = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
@@ -378,6 +417,7 @@ export class SpaceView {
     };
     const leave = () => {
       if (this.editor.state.enabled) this.editor.hover(-1e9, -1e9);
+      if (this.state.hover) this.patch({ hover: null });
     };
     const visibility = () => {
       // The renderer draws on demand and skips while hidden: repaint on return.
@@ -522,6 +562,41 @@ export class SpaceView {
   setZoom(z: number) {
     this.renderer.setZoom(z);
     this.patch({ zoom: this.renderer.zoom });
+  }
+
+  /** "Ver no mapa": the camera looks at a room for a few seconds (walking ends it). */
+  peekRoom(roomId: string): boolean {
+    const room = this.world.ix?.roomsById.get(roomId);
+    if (!room) return false;
+    this.renderer.peek(room.inside.tx * TILE + TILE / 2, room.inside.ty * TILE + TILE / 2, performance.now());
+    return true;
+  }
+
+  /**
+   * Our call's state for the others' indicators (ADR 0008). Called by the app
+   * whenever it may have changed; only a change reaches the server.
+   */
+  reportVoice(report: VoiceReport) {
+    if (this.state.media.kind === "idle") return;
+    const key = JSON.stringify(report);
+    if (key === this.lastReport) return;
+    this.lastReport = key;
+    this.conn.send({ v: 1, t: "media.state.report", id: this.conn.nextId(), d: report });
+  }
+
+  /** Who is speaking in our room's call right now (LiveKit, from the app). */
+  setSpeakers(userIds: ReadonlySet<string>) {
+    const prev = this.world.speakers;
+    if (prev.size === userIds.size && [...userIds].every((id) => prev.has(id))) return;
+    this.world.speakers = userIds;
+    this.renderer.invalidate();
+  }
+
+  /** A moderator ends someone's screen share in our room (MuteMembers; the server decides). */
+  stopScreenOf(userId: string): string {
+    const id = this.conn.nextId();
+    this.conn.send({ v: 1, t: "screen.stop", id, d: { user_id: userId } });
+    return id;
   }
 
   /** "Usar aqui" after another tab took over. */

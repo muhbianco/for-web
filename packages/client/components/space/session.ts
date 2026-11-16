@@ -1,4 +1,4 @@
-import { createEffect, createRoot, on } from "solid-js";
+import { createEffect, createRoot, on, onCleanup } from "solid-js";
 
 import {
   type MediaGrant,
@@ -7,10 +7,11 @@ import {
   type SpaceViewOptions,
   type VoicePort,
 } from "@muchat/space-client";
-import { Track } from "livekit-client";
+import { type Participant, RoomEvent, Track } from "livekit-client";
 import type { Client } from "stoat.js";
 
 import type { useVoice } from "@revolt/rtc";
+import { participantUserId } from "@revolt/rtc/identity";
 
 type Voice = ReturnType<typeof useVoice>;
 
@@ -34,6 +35,9 @@ export function voicePort(voice: Voice, client: () => Client): VoicePort {
     busyElsewhere: (roomId) => {
       const current = voice.channel();
       return !!current && current.id !== roomId;
+    },
+    stopScreenShare: () => {
+      if (voice.screenshare()) void voice.toggleScreenshare();
     },
   };
 }
@@ -118,6 +122,36 @@ export function openSpace(
           if (fresh && media.kind === "connected" && !voice.focusTrack()) voice.focus(t);
         }
         shared = now;
+      });
+      // Our call's state for the others' indicators (ADR 0008): sent on change
+      // only (SpaceView dedupes), and only for this space's room call.
+      createEffect(() => {
+        const media = view.ui.media;
+        const channelId = voice.channel()?.id;
+        const connected = voice.state() === "CONNECTED";
+        const report = {
+          connected,
+          mic: connected && voice.microphone(),
+          deaf: voice.deafen(),
+          camera: connected && voice.video(),
+          screen: connected && voice.screenshare(),
+        };
+        if (media.kind === "idle" || channelId !== media.roomId) return;
+        view.reportVoice(report);
+      });
+      // Who speaks in our room's call: LiveKit already tells every participant
+      // (read-only; nothing in the call changes). Drawn as a ring on the map.
+      createEffect(() => {
+        const room = voice.room();
+        if (!room) {
+          view.setSpeakers(new Set());
+          return;
+        }
+        const update = (speakers: Participant[]) =>
+          view.setSpeakers(new Set(speakers.map((p) => participantUserId(p.identity))));
+        update(room.activeSpeakers);
+        room.on(RoomEvent.ActiveSpeakersChanged, update);
+        onCleanup(() => room.off(RoomEvent.ActiveSpeakersChanged, update));
       });
       return disposeRoot;
     });

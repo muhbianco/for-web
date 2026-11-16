@@ -75,6 +75,9 @@ export function MediaStage(props: {
   mediaAction: { label: string; run: () => void } | null;
   hasTv: boolean;
   tv?: JSX.Element;
+  /** MuteMembers in this room (Stoat): may end someone else's screen share. */
+  canModerate?: boolean;
+  onStopShare?: (userId: string) => void;
 }) {
   const { t } = useLingui();
   const voice = useVoice();
@@ -200,6 +203,21 @@ export function MediaStage(props: {
                     <Symbol size={14}>stop_screen_share</Symbol>
                     {t`Parar de compartilhar`}
                   </ShareChip>
+                </Show>
+                <Show when={props.canModerate && props.onStopShare}>
+                  <For each={shares().filter((s) => !s.local)}>
+                    {(s) => (
+                      <ShareChip
+                        type="button"
+                        data-stop=""
+                        title={t`Moderação: encerra a tela de ${s.name} nesta sala`}
+                        onClick={() => props.onStopShare?.(s.userId)}
+                      >
+                        <Symbol size={14}>cancel_presentation</Symbol>
+                        {t`Encerrar tela de ${s.name}`}
+                      </ShareChip>
+                    )}
+                  </For>
                 </Show>
               </Presenters>
             )}

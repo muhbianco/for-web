@@ -15,6 +15,8 @@ export interface ConnectionOptions {
   sessionToken: string;
   serverId: string;
   client: "web" | "desktop" | "android";
+  /** `observe`: watch-only (the sidebar's presence), no avatar (ADR 0008). */
+  mode?: "play" | "observe";
   onEvent: (event: Record<string, unknown>) => void;
   onStatus: (status: ConnStatus) => void;
   /** Injected in tests. */
@@ -84,7 +86,12 @@ export class SpaceConnection {
           v: 1,
           t: "hello",
           id: this.nextId(),
-          d: { session_token: this.opts.sessionToken, server_id: this.opts.serverId, client: this.opts.client },
+          d: {
+            session_token: this.opts.sessionToken,
+            server_id: this.opts.serverId,
+            client: this.opts.client,
+            ...(this.opts.mode === "observe" ? { mode: "observe" } : {}),
+          },
         }),
       );
       this.pingTimer = setInterval(() => this.send({ v: 1, t: "ping", id: this.nextId() }), 20_000);
@@ -96,7 +103,8 @@ export class SpaceConnection {
       } catch {
         return;
       }
-      if (event.t === "space.snapshot") {
+      const ready = this.opts.mode === "observe" ? event.t === "hello.ok" : event.t === "space.snapshot";
+      if (ready) {
         this.backoffMs = 1_000;
         this.opts.onStatus("online");
       }

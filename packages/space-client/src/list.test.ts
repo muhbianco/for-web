@@ -4,7 +4,18 @@ import { test } from "node:test";
 import { type ListRoom, type ListWing, shareList, shareZones } from "./list.ts";
 
 function room(roomId: string, occupants: number): ListRoom {
-  return { roomId, title: roomId, here: false, canEnter: true, isPrivate: false, canView: true, occupants, status: `${occupants}` };
+  return {
+    roomId,
+    title: roomId,
+    here: false,
+    canEnter: true,
+    isPrivate: false,
+    canView: true,
+    occupants,
+    status: `${occupants}`,
+    people: [],
+    peopleKey: "[]",
+  };
 }
 
 function wings(a: number, b: number): ListWing[] {

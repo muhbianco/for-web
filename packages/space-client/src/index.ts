@@ -4,6 +4,7 @@ export { type Prompt, VERBS } from "./interact.ts";
 export {
   announceRoomChange,
   buildList,
+  type ListPerson,
   type ListRoom,
   type ListWing,
   locationText,
@@ -15,6 +16,14 @@ export {
 } from "./list.ts";
 export { type MediaGrant, MediaLink, type MediaStatus, type VoicePort } from "./media.ts";
 export { type MoveCommand, Mover } from "./mover.ts";
+export {
+  EMPTY_PRESENCE,
+  peopleIn,
+  peopleInSpace,
+  type Presence,
+  PresenceLink,
+  type PresenceLinkOptions,
+} from "./presence.ts";
 export { type Interaction, SpaceView, type SpaceUiState, type SpaceViewOptions } from "./view.ts";
 export { decodeMap, World } from "./world.ts";
 export { characterSheet, DIRS, FRAMES, palette, PALETTES, SPRITE } from "./render/sprites.ts";

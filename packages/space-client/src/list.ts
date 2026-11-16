@@ -1,4 +1,4 @@
-import { TILE } from "@muchat/space-core";
+import { type PresenceVoice, TILE } from "@muchat/space-core";
 
 import type { World } from "./world.ts";
 
@@ -7,6 +7,15 @@ import type { World } from "./world.ts";
  * the same information as the map, without depending on seeing it. Read-only
  * in Phase 2; "Ir"/"Bater" arrive with doors (Phase 4).
  */
+/** Someone inside a room, as the list and the map's tooltip show them (ADR 0008). */
+export interface ListPerson {
+  userId: string;
+  name: string;
+  state: "online" | "idle" | "reconnecting";
+  /** null: in the room without its call. */
+  voice: PresenceVoice | null;
+}
+
 export interface ListRoom {
   roomId: string;
   title: string;
@@ -17,6 +26,10 @@ export interface ListRoom {
   canView: boolean;
   occupants: number | null;
   status: string;
+  /** Who is inside (server presence); empty when unknown or not visible. */
+  people: ListPerson[];
+  /** Cheap equality for `people` (keeps unchanged rows' DOM). */
+  peopleKey: string;
 }
 
 export interface ListWing {
@@ -51,19 +64,29 @@ export function roomTitle(world: World, roomId: string): string {
 export function buildList(world: World): ListWing[] {
   const map = world.map;
   if (!map) return [];
-  // Live occupancy from the avatars we can see (positions stream in real time;
-  // the server's room list only refreshes on structure changes). For rooms we
-  // may not view, the server sends no avatars inside, so the count stays null.
+  // Occupancy and names come from the server's presence (ADR 0008). Until the
+  // first presence arrives, the avatars we can see give a live count. For
+  // rooms we may not view, the server sends neither, so the count stays null.
   const live = new Map<string, number>();
   const count = (room: string | null) => {
     if (room) live.set(room, (live.get(room) ?? 0) + 1);
   };
   count(world.me?.room ?? null);
   for (const o of world.others.values()) count(o.room);
+  const presence = world.presence;
   const byWing = new Map<number, ListRoom[]>();
   for (const r of map.rooms) {
     const view = world.rooms.get(r.roomId);
-    const occupants = view?.occupants ? (live.get(r.roomId) ?? 0) : null;
+    const inside: ListPerson[] =
+      view?.occupants && presence
+        ? (presence.rooms.find((x) => x.room_id === r.roomId)?.people ?? []).map((p) => ({
+            userId: p.user_id,
+            name: p.name,
+            state: p.state,
+            voice: p.voice,
+          }))
+        : [];
+    const occupants = view?.occupants ? (presence ? inside.length : (live.get(r.roomId) ?? 0)) : null;
     const here = world.me?.room === r.roomId;
     const parts: string[] = [];
     if (here) parts.push("você está aqui");
@@ -79,6 +102,8 @@ export function buildList(world: World): ListWing[] {
       canView: view?.label != null,
       occupants,
       status: parts.join(" · "),
+      people: inside,
+      peopleKey: JSON.stringify(inside),
     };
     const list = byWing.get(r.wingIndex) ?? [];
     list.push(item);
@@ -98,7 +123,8 @@ function sameRoom(a: ListRoom, b: ListRoom): boolean {
     a.isPrivate === b.isPrivate &&
     a.canView === b.canView &&
     a.occupants === b.occupants &&
-    a.status === b.status
+    a.status === b.status &&
+    a.peopleKey === b.peopleKey
   );
 }
 

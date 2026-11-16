@@ -12,6 +12,7 @@ import {
 import { useLingui } from "@lingui/solid/macro";
 import {
   type ConnStatus,
+  type ListPerson,
   type MediaStatus,
   type SpaceUiState,
   type SpaceView,
@@ -200,6 +201,17 @@ function ServerSpace(props: { serverId: string }) {
     return id ? client().channels.get(id) : undefined;
   };
   const stageVisible = () => stageOpen() && roomId() !== null;
+
+  /** Room under the pointer with its list entry (who is inside). */
+  const hoverRoom = () => {
+    const h = ui()?.hover;
+    if (!h || ui()?.editor.enabled) return null;
+    for (const w of ui()?.list ?? []) {
+      const room = w.rooms.find((r) => r.roomId === h.roomId);
+      if (room) return { x: h.x, y: h.y, room };
+    }
+    return null;
+  };
 
   function setStageMode(mode: StageMode) {
     setStageModeSignal(mode);
@@ -549,6 +561,28 @@ function ServerSpace(props: { serverId: string }) {
               )}
             </Match>
           </Switch>
+          <Show when={hoverRoom()}>
+            {(h) => (
+              <Tooltip
+                role="tooltip"
+                style={{ left: `${h().x + 14}px`, top: `${h().y + 14}px` }}
+              >
+                <strong>{h().room.title}</strong>
+                <Show
+                  when={h().room.people.length}
+                  fallback={
+                    <Muted>
+                      {h().room.canView ? t`vazia` : t`sem acesso à lista`}
+                    </Muted>
+                  }
+                >
+                  <For each={h().room.people}>
+                    {(p) => <PersonLine person={p} />}
+                  </For>
+                </Show>
+              </Tooltip>
+            )}
+          </Show>
         </div>
         <Show when={stageVisible()}>
           <div style={{ "grid-area": "stage", display: "flex", "min-height": 0, "min-width": 0 }}>
@@ -567,6 +601,8 @@ function ServerSpace(props: { serverId: string }) {
                   : null
               }
               hasTv={false}
+              canModerate={!!roomChannel()?.havePermission("MuteMembers")}
+              onStopShare={(userId) => view()?.stopScreenOf(userId)}
             />
           </div>
         </Show>
@@ -611,6 +647,26 @@ function ServerSpace(props: { serverId: string }) {
                               <Symbol size={18}>chat</Symbol>
                             </ChatLink>
                           </Show>
+                          <Show when={room.canView && !room.here}>
+                            <PeekButton
+                              type="button"
+                              onClick={() => {
+                                view()?.peekRoom(room.roomId);
+                                host?.focus();
+                              }}
+                              aria-label={t`Ver ${room.title} no mapa`}
+                              title={t`Ver no mapa`}
+                            >
+                              <Symbol size={18}>visibility</Symbol>
+                            </PeekButton>
+                          </Show>
+                          <Show when={room.people.length}>
+                            <People aria-label={t`Quem está em ${room.title}`}>
+                              <For each={room.people}>
+                                {(p) => <PersonLine person={p} />}
+                              </For>
+                            </People>
+                          </Show>
                         </li>
                       )}
                     </For>
@@ -627,6 +683,107 @@ function ServerSpace(props: { serverId: string }) {
     </Page>
   );
 }
+
+/**
+ * Someone inside a room (server presence): in the call or not, and what their
+ * call shows. Icons always come with text for screen readers.
+ */
+function PersonLine(props: { person: ListPerson }) {
+  const { t } = useLingui();
+  const v = () => props.person.voice;
+  const reconnecting = () => props.person.state === "reconnecting";
+  const muted = () => !!v()?.connected && !v()!.mic;
+  return (
+    <PersonRow data-dim={reconnecting() || !v()?.connected ? "" : undefined}>
+      <Dot data-state={reconnecting() ? "reconnecting" : v()?.connected ? "call" : "room"} />
+      <span class={personName}>{props.person.name}</span>
+      <Show when={reconnecting()}>
+        <Symbol size={14} aria-label={t`reconectando`}>sync</Symbol>
+      </Show>
+      <Show when={!reconnecting() && !v()}>
+        <SmallNote>{t`fora da chamada`}</SmallNote>
+      </Show>
+      <Show when={!reconnecting() && v() && !v()!.connected}>
+        <SmallNote>{t`conectando…`}</SmallNote>
+      </Show>
+      <Show when={muted()}>
+        <Symbol size={14} aria-label={t`microfone desligado`}>mic_off</Symbol>
+      </Show>
+      <Show when={v()?.deaf}>
+        <Symbol size={14} aria-label={t`ensurdecido`}>headset_off</Symbol>
+      </Show>
+      <Show when={v()?.camera}>
+        <Symbol size={14} aria-label={t`câmera ligada`}>videocam</Symbol>
+      </Show>
+      <Show when={v()?.screen}>
+        <Symbol size={14} aria-label={t`compartilhando a tela`}>screen_share</Symbol>
+      </Show>
+    </PersonRow>
+  );
+}
+
+const People = styled("ul", {
+  base: {
+    flexBasis: "100%",
+    paddingInlineStart: "10px !important",
+    marginBottom: "4px !important",
+  },
+});
+
+const PersonRow = styled("li", {
+  base: {
+    display: "flex !important",
+    alignItems: "center",
+    gap: "6px !important",
+    fontSize: "0.85em",
+    padding: "1px 4px",
+    color: "var(--md-sys-color-on-surface)",
+    "&[data-dim]": { color: "var(--md-sys-color-on-surface-variant)" },
+  },
+});
+
+const personName = css({
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  minWidth: 0,
+});
+
+const Dot = styled("span", {
+  base: {
+    flexShrink: 0,
+    width: "7px",
+    height: "7px",
+    borderRadius: "50%",
+    background: "var(--md-sys-color-outline)",
+    "&[data-state=call]": { background: "#4ade80" },
+    "&[data-state=reconnecting]": { background: "#facc15" },
+  },
+});
+
+const SmallNote = styled("span", {
+  base: { fontSize: "0.85em", color: "var(--md-sys-color-on-surface-variant)" },
+});
+
+const Tooltip = styled("div", {
+  base: {
+    position: "absolute",
+    zIndex: 3,
+    pointerEvents: "none",
+    minWidth: "160px",
+    maxWidth: "260px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    padding: "8px 10px",
+    borderRadius: "10px",
+    background: "rgba(21, 19, 26, 0.92)",
+    color: "#fff",
+    fontSize: "0.85em",
+    boxShadow: "0 4px 16px rgba(0,0,0,0.35)",
+    "& li": { color: "#fff", listStyle: "none" },
+  },
+});
 
 const Page = styled("div", {
   base: {
@@ -713,6 +870,7 @@ const List = styled("aside", {
     "& li": {
       display: "flex",
       alignItems: "center",
+      flexWrap: "wrap",
       gap: "4px",
       borderRadius: "8px",
     },
@@ -807,6 +965,22 @@ const ChatLink = styled("a", {
     borderRadius: "8px",
     color: "var(--md-sys-color-on-surface-variant)",
     "&:hover": { background: "var(--md-sys-color-surface-container-high)" },
+  },
+});
+
+const PeekButton = styled("button", {
+  base: {
+    display: "grid",
+    placeItems: "center",
+    width: "32px",
+    height: "32px",
+    border: "none",
+    borderRadius: "8px",
+    background: "transparent",
+    color: "var(--md-sys-color-on-surface-variant)",
+    cursor: "pointer",
+    "&:hover": { background: "var(--md-sys-color-surface-container-high)" },
+    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
   },
 });
 

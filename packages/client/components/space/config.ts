@@ -12,12 +12,14 @@ import type { Client } from "stoat.js";
 export const SPACE_PREFIX = "/_muchat/space/v1";
 
 const [servers, setServers] = createSignal<ReadonlySet<string>>(new Set());
+/** The space is on for every server (the service answers `all`, no list). */
+const [allServers, setAllServers] = createSignal(false);
 let pending: Promise<void> | null = null;
 let loadedAt = 0;
 const REFRESH_MS = 10 * 60_000;
 
 export function isSpaceServer(serverId: string): boolean {
-  return servers().has(serverId);
+  return allServers() || servers().has(serverId);
 }
 
 /** Session token of a signed-in person (never of a bot). */
@@ -47,8 +49,14 @@ export function refreshSpaceConfig(client: Client): Promise<void> {
             ) as string[])
           : [];
       setServers(new Set(list));
+      setAllServers(
+        !!body &&
+          typeof body === "object" &&
+          (body as { all?: unknown }).all === true,
+      );
     } catch {
       setServers(new Set<string>());
+      setAllServers(false);
     } finally {
       loadedAt = Date.now();
       pending = null;

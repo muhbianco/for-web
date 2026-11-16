@@ -39,6 +39,61 @@ interface AvatarSprite {
   body: Sprite;
   name: Text;
   frames: Texture[];
+  /** Speaking ring at the feet (our own room's call only). */
+  ring: Graphics;
+  /** Call indicators above the name: muted mic, deafened, sharing a screen. */
+  badge: Graphics;
+  /** What ring and badge show now, to redraw only on change. */
+  indicators: string;
+}
+
+/** What the map shows of someone's call (ADR 0008). */
+export interface AvatarIndicators {
+  muted: boolean;
+  deaf: boolean;
+  screen: boolean;
+  speaking: boolean;
+}
+
+function indicatorsKey(i: AvatarIndicators): string {
+  return `${+i.muted}${+i.deaf}${+i.screen}${+i.speaking}`;
+}
+
+/** Pixel icons, 7×7 each, drawn into `g` left to right and centred on x = 0. */
+function drawBadge(g: Graphics, i: AvatarIndicators, y: number) {
+  g.clear();
+  const icons: Array<"mic" | "deaf" | "screen"> = [];
+  if (i.muted) icons.push("mic");
+  if (i.deaf) icons.push("deaf");
+  if (i.screen) icons.push("screen");
+  if (!icons.length) return;
+  const w = icons.length * 9 + 2;
+  let x = -Math.round(w / 2);
+  g.roundRect(x, y - 1, w, 9, 3).fill({ color: 0x15131a, alpha: 0.8 });
+  x += 2;
+  for (const icon of icons) {
+    if (icon === "mic") {
+      // Microphone with a slash: red.
+      g.rect(x + 2, y, 3, 4).fill({ color: 0xff6b6b });
+      g.rect(x + 1, y + 3, 1, 2).fill({ color: 0xff6b6b });
+      g.rect(x + 5, y + 3, 1, 2).fill({ color: 0xff6b6b });
+      g.rect(x + 3, y + 5, 1, 2).fill({ color: 0xff6b6b });
+      for (let k = 0; k < 7; k++) g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
+    } else if (icon === "deaf") {
+      // Headset with a slash: orange.
+      g.rect(x + 1, y + 1, 5, 1).fill({ color: 0xffa94d });
+      g.rect(x, y + 2, 1, 4).fill({ color: 0xffa94d });
+      g.rect(x + 6, y + 2, 1, 4).fill({ color: 0xffa94d });
+      for (let k = 0; k < 7; k++) g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
+    } else {
+      // Screen: blue frame with a stand.
+      g.rect(x, y, 7, 5).fill({ color: 0x74c0fc });
+      g.rect(x + 1, y + 1, 5, 3).fill({ color: 0x1c3a5e });
+      g.rect(x + 3, y + 5, 1, 1).fill({ color: 0x74c0fc });
+      g.rect(x + 2, y + 6, 3, 1).fill({ color: 0x74c0fc });
+    }
+    x += 9;
+  }
 }
 
 /** What the editor wants drawn over the map this frame. */
@@ -177,6 +232,15 @@ export class Renderer {
     this.dirty = true;
   }
 
+  /** Where the camera looks for a moment instead of at us (world px). */
+  private peekAt: { x: number; y: number; until: number } | null = null;
+
+  /** Looks at a world point for `ms` (or until we walk). */
+  peek(x: number, y: number, nowMs: number, ms = 5_000) {
+    this.peekAt = { x, y, until: nowMs + ms };
+    this.dirty = true;
+  }
+
   /** Screen (CSS px relative to the canvas) → world px. */
   screenToWorld(sx: number, sy: number): { x: number; y: number } {
     return { x: (sx - this.stage.position.x) / this.zoom, y: (sy - this.stage.position.y) / this.zoom };
@@ -238,8 +302,10 @@ export class Renderer {
         this.doors.rect(x + 9, y + 14, 14, 9).fill({ color: 0xe9d7a8 });
       }
       const title = view?.label ? view.label : `🔒 ${roomTitle(world, r.roomId)}`;
+      // How many are inside (server presence), for rooms the viewer may see.
+      const inside = view?.label ? (world.presence?.rooms.find((x) => x.room_id === r.roomId)?.people.length ?? 0) : 0;
       const label = new Text({
-        text: title,
+        text: inside > 0 ? `${title} · ${inside}` : title,
         style: { fontFamily: "system-ui, sans-serif", fontSize: 12, fill: 0xffffff, fontWeight: "700", stroke: { color: 0x15131a, width: 3 } },
         resolution: 3,
       });
@@ -410,10 +476,12 @@ export class Renderer {
       });
       tag.anchor.set(0.5, 1);
       tag.position.set(0, -SPRITE * AVATAR_SCALE - 2);
+      const ring = new Graphics();
+      const badge = new Graphics();
       const root = new Container();
-      root.addChild(body, tag);
+      root.addChild(ring, body, tag, badge);
       this.scene.addChild(root);
-      a = { palette: paletteIndex, root, body, name: tag, frames };
+      a = { palette: paletteIndex, root, body, name: tag, frames, ring, badge, indicators: "" };
       this.avatars.set(userId, a);
       this.dirty = true;
     }
@@ -430,6 +498,29 @@ export class Renderer {
     const tex = a.frames[d * FRAMES + f] ?? a.frames[0]!;
     if (a.body.texture === tex) return;
     a.body.texture = tex;
+    if (visible) this.dirty = true;
+  }
+
+  /** Call indicators of someone, from the server presence and our room's speakers. */
+  private indicatorsOf(world: World, userId: string): AvatarIndicators {
+    const v = world.voiceOf(userId);
+    return {
+      muted: Boolean(v?.connected && !v.mic),
+      deaf: Boolean(v?.deaf),
+      screen: Boolean(v?.screen),
+      speaking: world.speakers.has(userId),
+    };
+  }
+
+  private indicate(a: AvatarSprite, i: AvatarIndicators, visible: boolean) {
+    const key = indicatorsKey(i);
+    if (a.indicators === key) return;
+    a.indicators = key;
+    a.ring.clear();
+    if (i.speaking) {
+      a.ring.ellipse(0, -2, 11, 4).stroke({ color: 0x4ade80, width: 2, alpha: 0.95 });
+    }
+    drawBadge(a.badge, i, -SPRITE * AVATAR_SCALE - 24);
     if (visible) this.dirty = true;
   }
 
@@ -557,13 +648,16 @@ export class Renderer {
   private update(world: World, nowMs: number, dtMs: number) {
     const me = world.me;
     if (!me || !world.map) return;
-    // Camera follows us; smoothing off with reduced motion.
+    // Camera follows us, or looks at a room for a moment ("Ver no mapa");
+    // walking brings it back at once. Smoothing off with reduced motion.
+    if (this.peekAt && (me.moving || nowMs > this.peekAt.until)) this.peekAt = null;
+    const target = this.peekAt ?? me;
     if (!this.cam.ready || this.reducedMotion) {
-      this.cam = { x: me.x, y: me.y, ready: true };
+      this.cam = { x: target.x, y: target.y, ready: true };
     } else {
       const k = Math.min(1, (dtMs / 1000) * 10);
-      this.cam.x += (me.x - this.cam.x) * k;
-      this.cam.y += (me.y - this.cam.y) * k;
+      this.cam.x += (target.x - this.cam.x) * k;
+      this.cam.y += (target.y - this.cam.y) * k;
     }
     if (this.stage.scale.x !== this.zoom) {
       this.stage.scale.set(this.zoom);
@@ -587,13 +681,16 @@ export class Renderer {
 
     const seen = new Set<string>([me.userId]);
     const mine = this.avatarFor(me.userId, me.name, me.palette);
-    this.pose(mine, me.dir, me.moving, nowMs, this.place(mine, me.x, me.y, 1));
+    const mineVisible = this.place(mine, me.x, me.y, 1);
+    this.pose(mine, me.dir, me.moving, nowMs, mineVisible);
+    this.indicate(mine, this.indicatorsOf(world, me.userId), mineVisible);
     for (const r of world.others.values()) {
       seen.add(r.userId);
       const p = world.positionOf(r, nowMs);
       const a = this.avatarFor(r.userId, r.name, r.palette);
       const visible = this.place(a, p.x, p.y, r.state === "reconnecting" ? 0.45 : r.state === "idle" ? 0.75 : 1);
       this.pose(a, r.dir, r.moving, nowMs, visible);
+      this.indicate(a, this.indicatorsOf(world, r.userId), visible);
     }
     for (const [id, a] of this.avatars) {
       if (seen.has(id)) continue;

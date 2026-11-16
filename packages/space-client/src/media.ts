@@ -32,6 +32,8 @@ export interface VoicePort {
   live(): boolean;
   /** True when the app is in a call of another channel (a DM, a group, another room). */
   busyElsewhere(roomId: string): boolean;
+  /** Stops our screen share (a moderator of the room ended it). */
+  stopScreenShare?(): void;
 }
 
 export interface Timers {
