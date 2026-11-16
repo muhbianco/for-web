@@ -88,6 +88,20 @@ class Person {
   rawJoin = (url: string, token: string) => this.ev<{ ok: boolean; status?: number; message?: string }>("rawJoin", url, token);
   rooms = () => this.ev<Array<{ room_id: string; label: string | null; private: boolean; can_enter: boolean }>>("rooms");
   close = () => this.ev<void>("close");
+  // fase 4 (ADR 0008)
+  screen = (on: boolean) => this.ev<{ ok: boolean; message?: string }>("screen", on);
+  screenLive = () => this.ev<boolean>("screenLive");
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  presence = () => this.ev<any>("presence");
+  screenStoppedBy = () => this.ev<string[]>("screenStoppedBy");
+  errors = () => this.ev<Array<Record<string, unknown>>>("errors");
+  send = (t: string, d: Record<string, unknown>) => this.ev<string>("send", t, d);
+  /** Someone's call as this person's presence shows it (null: not in a call they see). */
+  async voiceOf(room: string, userId: string) {
+    const p = await this.presence();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return p?.rooms?.find((r: any) => r.room_id === room)?.people?.find((x: any) => x.user_id === userId)?.voice ?? null;
+  }
 
   /** Walks into (or out of) a room; resolves when the server agrees, -1 on timeout. */
   async walk(roomId: string, into: boolean, timeoutMs = 20_000): Promise<number> {
@@ -130,7 +144,13 @@ async function setRoles(user: string, roles: string[]) {
 async function main() {
   const relay = await startRelay();
   const browser = await chromium.launch({
-    args: ["--use-fake-ui-for-media-stream", "--use-fake-device-for-media-stream", "--autoplay-policy=no-user-gesture-required"],
+    args: [
+      "--use-fake-ui-for-media-stream",
+      "--use-fake-device-for-media-stream",
+      "--autoplay-policy=no-user-gesture-required",
+      // Fase 4: getDisplayMedia picks the whole (fake) screen without a dialog.
+      "--auto-select-desktop-capture-source=Entire screen",
+    ],
   });
   const ready = await waitUntil(async () => {
     try {
@@ -143,6 +163,7 @@ async function main() {
   const { R1, R2, R3, R4 } = LAB.rooms;
 
   if (SCENARIO === "restart") return restart(browser, relay);
+  if (SCENARIO === "fase4") return fase4(browser, relay);
 
   const A = await enter(browser, "A");
   const B = await enter(browser, "B");
@@ -321,6 +342,106 @@ async function restart(browser: Browser, relay: net.Server) {
   });
   await A.close();
   await B.close();
+  await finish(browser, relay);
+}
+
+/**
+ * SCENARIO=fase4 (ADR 0008): compartilhamento de tela pelo LiveKit real,
+ * indicadores de voz vindos da varredura do servidor (participantes e faixas
+ * do LiveKit), moderação de tela e permissão de vídeo. Provas por RTCStats e
+ * pela presença do servidor.
+ */
+async function fase4(browser: Browser, relay: net.Server) {
+  const { R1 } = LAB.rooms;
+  await setRoles(LAB.people.E.id, ["DIR", "MOD"]);
+  await setRoles(LAB.people.C.id, ["NOVID"]);
+  const A = await enter(browser, "A"); // apresenta
+  const B = await enter(browser, "B"); // assiste
+  const C = await enter(browser, "C"); // sem permissão de vídeo
+  const E = await enter(browser, "E"); // moderação
+  for (const p of [A, B, C, E]) await p.walk(R1, true);
+  const conn = await Promise.all([A, B, C, E].map((p) => p.connected(R1, 20_000)));
+  record("F0", "quatro pessoas na mesma sala, na chamada", conn.every((c) => c >= 0), { connected_ms: conn });
+
+  // B1/B2/B6: Ana compartilha; Bia recebe vídeo; o áudio segue.
+  const audio0 = (await B.lk()).audioIn;
+  const shared = await A.screen(true);
+  const sawScreen = await waitUntil(async () => (await B.lk()).videoIn > 0, 20_000, 200);
+  const v0 = (await B.lk()).videoIn;
+  await sleep(3_000);
+  const [v1, audio1] = [(await B.lk()).videoIn, (await B.lk()).audioIn];
+  record("F1", "compartilhar a tela: quem está na sala recebe o vídeo (LiveKit real)", shared.ok && sawScreen >= 0 && v1 > v0, {
+    share: shared,
+    first_video_ms: sawScreen,
+    video_bytes: [v0, v1],
+  });
+  record("F2", "a chamada continua durante a tela: o áudio segue chegando", audio1 > audio0, { audio_bytes: [audio0, audio1] });
+
+  // D: indicadores pelo LiveKit (varredura de 5 s) — tela e microfone aberto.
+  const seenScreen = await waitUntil(async () => {
+    const v = await B.voiceOf(R1, A.id);
+    return Boolean(v?.connected && v.screen && v.mic);
+  }, 12_000, 300);
+  record("F3", "indicadores vindos do LiveKit: Bia vê Ana na chamada, com microfone e tela", seenScreen >= 0, {
+    after_ms: seenScreen,
+    voice: await B.voiceOf(R1, A.id),
+  });
+  // A dica do cliente aparece na hora (o LiveKit confirma na passada seguinte).
+  await A.send("media.state.report", { connected: true, mic: false, deaf: true, camera: false, screen: true });
+  const hint = await waitUntil(async () => {
+    const v = await B.voiceOf(R1, A.id);
+    return v?.mic === false && v.deaf === true;
+  }, 3_000, 100);
+  record("F4", "mudo/ensurdecido relatado pelo app chega a quem está na sala em < 3 s", hint >= 0, { after_ms: hint });
+
+  // B/E: sem a permissão Video do Stoat, o LiveKit não deixa publicar tela.
+  const cGrant = await C.grant();
+  const cShare = await C.screen(true);
+  await sleep(2_000);
+  const cLive = await C.screenLive();
+  record("F5", "sem permissão de vídeo: a concessão não traz tela e a publicação falha", !cShare.ok || !cLive, {
+    share: cShare,
+    live_after_2s: cLive,
+    grant_identity: cGrant?.identity,
+  });
+
+  // E: quem não modera não encerra a tela de ninguém (comando cru).
+  const reB = await B.send("screen.stop", { user_id: A.id });
+  await sleep(800);
+  const bErr = (await B.errors()).find((e) => e.re === reB);
+  record("F6", "membro sem MuteMembers não encerra a tela de outro (servidor recusa)", bErr?.code === "not_allowed" && (await A.screenLive()), { error: bErr });
+
+  // B: moderação encerra; a tela para de chegar e o app de Ana para de compartilhar.
+  await E.send("screen.stop", { user_id: A.id });
+  const told = await waitUntil(async () => (await A.screenStoppedBy()).includes(E.id), 5_000, 100);
+  const notLive = await waitUntil(async () => !(await A.screenLive()), 5_000, 100);
+  await sleep(1_500);
+  const s0 = (await B.lk()).videoIn;
+  await sleep(2_500);
+  const s1 = (await B.lk()).videoIn;
+  record("F7", "moderador encerra a tela: Ana é avisada, para de compartilhar e o vídeo para de chegar", told >= 0 && notLive >= 0 && s1 - s0 < 2_000, {
+    told_ms: told,
+    stopped_ms: notLive,
+    video_bytes_after: [s0, s1],
+  });
+
+  // B5/B8: compartilha de novo e sai da sala: a tela termina com a saída.
+  await A.screen(true);
+  const again = await waitUntil(async () => {
+    const before = (await B.lk()).videoIn;
+    await sleep(600);
+    return (await B.lk()).videoIn > before;
+  }, 15_000, 100);
+  await A.walk(R1, false);
+  const gone = await waitUntil(async () => !hasRemote(await B.lk(), A.id), 10_000, 100);
+  const g0 = (await B.lk()).videoIn;
+  await sleep(2_000);
+  const g1 = (await B.lk()).videoIn;
+  record("F8", "sair da sala encerra a tela para quem ficou", again >= 0 && gone >= 0 && g1 === g0, { again_ms: again, gone_ms: gone, bytes: [g0, g1] });
+
+  for (const p of [A, B, C, E]) await p.close().catch(() => undefined);
+  await setRoles(LAB.people.E.id, ["DIR"]);
+  await setRoles(LAB.people.C.id, []);
   await finish(browser, relay);
 }
 

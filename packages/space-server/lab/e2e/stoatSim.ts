@@ -30,7 +30,12 @@ const server = {
   default_permissions: n(
     Perm.ViewChannel | Perm.ReadMessageHistory | Perm.SendMessage | Perm.Connect | Perm.Speak | Perm.Video | Perm.Listen,
   ),
-  roles: { DIR: { name: "Diretoria", rank: 1, permissions: { a: 0, d: 0 } } },
+  roles: {
+    DIR: { name: "Diretoria", rank: 1, permissions: { a: 0, d: 0 } },
+    // Fase 4: voice moderation (ends someone's screen share) and no video at all.
+    MOD: { name: "Moderação", rank: 2, permissions: { a: n(Perm.MuteMembers), d: 0 } },
+    NOVID: { name: "Sem vídeo", rank: 3, permissions: { a: 0, d: n(Perm.Video) } },
+  },
 };
 
 const voice = (id: string, name: string, maxUsers: number | null, extra: Record<string, unknown> = {}) => ({

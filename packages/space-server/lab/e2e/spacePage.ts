@@ -65,6 +65,18 @@ async function loadMap(url: string) {
   world.setMap(decodeMap((await res.json()) as CompiledMapWire));
 }
 
+/**
+ * The decoration (ADR 0007), as the app loads it: without it the predicted
+ * path walks through furniture the server rightly refuses ("collision"). The
+ * page predates the decoration and never loaded it (found on 16/11/2026).
+ */
+async function loadDecor(url: string) {
+  const res = await fetch(new URL(url, BASE), { headers: { "X-Session-Token": token } });
+  if (!res.ok) throw new Error(`decor ${res.status}`);
+  const state = await res.json();
+  world.setDecor({ ...state, furnished: state.furnished ?? [] });
+}
+
 const mover = new Mover(world, (cmd) => conn?.send(cmd as unknown as Record<string, unknown>));
 setInterval(() => mover.step(66, performance.now()), 66);
 
@@ -75,15 +87,24 @@ world.on((e) => {
 });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
+/** Last events (type + correction reason), for diagnosing a run. */
+const trace: string[] = [];
+
 async function onEvent(e: any) {
   const d = e.d;
   const now = performance.now();
+  trace.push(e.t === "avatar.correction" ? `${e.t}:${d?.reason}@${d?.x},${d?.y}` : e.t === "error" ? `error:${d?.code}:${d?.reason ?? ""}` : String(e.t));
+  if (trace.length > 80) trace.shift();
   switch (e.t) {
     case "space.snapshot":
       if (d.layout.fingerprint !== world.fingerprint) await loadMap(d.layout.url);
       world.applySnapshot(d, now);
+      if (d.decor?.url) await loadDecor(d.decor.url).catch(() => undefined);
       mover.resync();
       snapshotSeen();
+      return;
+    case "decor.changed":
+      if (!world.applyDecorOp(d.rev, d.op)) await loadDecor(world.decorUrl).catch(() => undefined);
       return;
     case "avatar.positions":
       return world.applyPositions(d, now);
@@ -99,8 +120,21 @@ async function onEvent(e: any) {
       return link?.onRevoked(d);
     case "media.unavailable":
       return link?.onUnavailable(d);
+    // Fase 4 (ADR 0008).
+    case "space.presence":
+      return world.setPresence(d);
+    case "screen.stopped":
+      screenStoppedBy.push(d.by);
+      // As the app does: a moderator ended our screen share, stop it here too.
+      return room?.localParticipant.setScreenShareEnabled(false).catch(() => undefined);
+    case "error":
+      errors.push({ re: e.re, ...d });
+      return;
   }
 }
+
+const screenStoppedBy: string[] = [];
+const errors: Array<Record<string, unknown>> = [];
 
 async function bytesIn(kind: "audio" | "video"): Promise<number> {
   let total = 0;
@@ -173,6 +207,34 @@ function walkTile(t: { tx: number; ty: number }): boolean {
   grant: () => lastGrant,
   async camera(on: boolean) {
     if (room) await room.localParticipant.setCameraEnabled(on);
+  },
+  // ---- fase 4 (ADR 0008) ----
+  /** Shares (or stops) a screen through LiveKit, as the app's Voice does. */
+  async screen(on: boolean) {
+    if (!room) return { ok: false, message: "no room" };
+    try {
+      await room.localParticipant.setScreenShareEnabled(on, { audio: false });
+      return { ok: true };
+    } catch (e) {
+      return { ok: false, message: String((e as Error).message ?? e) };
+    }
+  },
+  /** Our screen publication: published and not muted (a moderator mutes it). */
+  screenLive() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const pub = room?.localParticipant.getTrackPublication(LK.Track.Source.ScreenShare) as any;
+    return Boolean(pub && pub.track && !pub.isMuted);
+  },
+  presence: () => world.presence,
+  trace: () => [...trace],
+  me: () => world.me && { x: world.me.x, y: world.me.y, room: world.me.room },
+  screenStoppedBy: () => [...screenStoppedBy],
+  errors: () => [...errors],
+  /** A raw command (what a tampered client could send). */
+  send(t: string, d: Record<string, unknown>) {
+    const id = conn?.nextId() ?? "x";
+    conn?.send({ v: 1, t, id, d });
+    return id;
   },
   /** Raw join with any token (tampered-client tests): the app's flow is not used. */
   async rawJoin(url: string, t: string) {
