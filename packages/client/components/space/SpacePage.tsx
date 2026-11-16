@@ -4,6 +4,7 @@ import {
   Show,
   Switch,
   createEffect,
+  createMemo,
   createSignal,
   on,
   onCleanup,
@@ -184,11 +185,16 @@ function ServerSpace(props: { serverId: string }) {
     host?.focus();
   }
 
-  /** The room the person is in (with or without audio), or null in the halls. */
-  const roomId = () => {
+  /**
+   * The room the person is in (with or without audio), or null in the halls.
+   * A memo: `ui()` changes on every move and presence update, and effects
+   * keyed on the room (`on(roomId, …)`) must run when the room changes, not
+   * on every update — that reset "Parar de ouvir" and the closed TV panel.
+   */
+  const roomId = createMemo(() => {
     const m = ui()?.media;
     return m && m.kind !== "idle" ? m.roomId : null;
-  };
+  });
   /** The app's call is this room's, and it is up. */
   const inRoomCall = () => {
     const id = roomId();
@@ -300,10 +306,13 @@ function ServerSpace(props: { serverId: string }) {
     setTvListen(true);
     openStage("tv");
   }
-  // Using a TV on the map opens it on the stage.
+  // Using a TV on the map opens it on the stage. A memo, so it fires once per
+  // use: with a plain accessor `on` ran on every update of `ui()`, and after
+  // one use the TV reopened itself seconds after being closed (16/11/2026).
+  const tvOpenRequest = createMemo(() => ui()?.tvOpenRequest ?? 0);
   createEffect(
     on(
-      () => ui()?.tvOpenRequest ?? 0,
+      tvOpenRequest,
       (n) => {
         if (n > 0) openStage("tv");
       },
