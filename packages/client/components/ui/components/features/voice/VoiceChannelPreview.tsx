@@ -25,9 +25,9 @@ import { useSpacePresence } from "@revolt/space/presence";
 import { Avatar, Ripple, typography } from "../../design";
 import { Row } from "../../layout";
 
+import { participantUserId } from "@revolt/rtc/identity";
 import { useVoiceMemberDrag } from "./VoiceMemberDrag";
 import { VoiceStatefulUserIcons } from "./VoiceStatefulUserIcons";
-import { participantUserId } from "@revolt/rtc/identity";
 
 /**
  * Render a preview of users (or the active participants) for a given channel
@@ -248,11 +248,7 @@ function CommonUser(props: {
           member: user().member,
         },
         contextMenu: () => (
-          <UserContextMenu
-            user={user().user!}
-            member={user().member}
-            inVoice
-          />
+          <UserContextMenu user={user().user!} member={user().member} inVoice />
         ),
       }}
     >

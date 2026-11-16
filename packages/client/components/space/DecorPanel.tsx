@@ -447,11 +447,7 @@ function SettingsCard(props: {
     ),
   );
   const label = (s: number) =>
-    s === 0
-      ? t`Sem intervalo`
-      : s < 3600
-        ? t`${s / 60} min`
-        : t`1 hora`;
+    s === 0 ? t`Sem intervalo` : s < 3600 ? t`${s / 60} min` : t`1 hora`;
   return (
     <Section>
       <strong>{t`Permissões do Espaço`}</strong>

@@ -25,7 +25,12 @@ const VOLUME_KEY = "muchat.tv.volume";
 function storedVolume(): number {
   try {
     const v = Number(localStorage.getItem(VOLUME_KEY));
-    return Number.isFinite(v) && v >= 0 && v <= 100 && localStorage.getItem(VOLUME_KEY) !== null ? v : 60;
+    return Number.isFinite(v) &&
+      v >= 0 &&
+      v <= 100 &&
+      localStorage.getItem(VOLUME_KEY) !== null
+      ? v
+      : 60;
   } catch {
     return 60;
   }
@@ -83,7 +88,8 @@ export function SmartTv(props: {
   const state = () => props.tv.state;
   const you = () => props.tv.you;
   const canStop = () =>
-    !!state() && (you().manage || (you().control && state()!.started_by === me()));
+    !!state() &&
+    (you().manage || (you().control && state()!.started_by === me()));
 
   onMount(async () => {
     props.view.probeClock();
@@ -97,7 +103,12 @@ export function SmartTv(props: {
           if (s === "playing") setPlayerError(null);
           // One report of the end is enough: whoever made the last change sends it.
           const st = state();
-          if (s === "ended" && st && st.status === "playing" && (st.by === me() || st.started_by === me())) {
+          if (
+            s === "ended" &&
+            st &&
+            st.status === "playing" &&
+            (st.by === me() || st.started_by === me())
+          ) {
             props.view.tvEnded();
           }
         },
@@ -106,7 +117,11 @@ export function SmartTv(props: {
       if (disposed) return p.destroy();
       player = p;
       p.setVolume(volume());
-      sync = new TvSync(p, () => props.view.serverNow(), () => setNeedsGesture(sync?.needsGesture ?? false));
+      sync = new TvSync(
+        p,
+        () => props.view.serverNow(),
+        () => setNeedsGesture(sync?.needsGesture ?? false),
+      );
       sync.apply(state());
       timer = setInterval(() => {
         if (!sync || !player) return;
@@ -116,7 +131,9 @@ export function SmartTv(props: {
       }, 500);
     } catch (err) {
       console.error("[tv] player could not load", err);
-      setFailed(t`Não foi possível carregar o player do YouTube neste aparelho (bloqueado ou sem conexão).`);
+      setFailed(
+        t`Não foi possível carregar o player do YouTube neste aparelho (bloqueado ou sem conexão).`,
+      );
     }
   });
 
@@ -163,7 +180,10 @@ export function SmartTv(props: {
 
   function load() {
     const res = props.view.tvLoad(input());
-    if (res === "invalid") return setNotice(t`Cole um link do YouTube (youtube.com/watch, youtu.be, shorts) ou o ID do vídeo.`);
+    if (res === "invalid")
+      return setNotice(
+        t`Cole um link do YouTube (youtube.com/watch, youtu.be, shorts) ou o ID do vídeo.`,
+      );
     setNotice("");
     setInput("");
   }
@@ -199,7 +219,11 @@ export function SmartTv(props: {
   };
 
   const loading = () =>
-    !!state() && playing() && ready() && !playerError() && (playerState() === "buffering" || playerState() === "unstarted");
+    !!state() &&
+    playing() &&
+    ready() &&
+    !playerError() &&
+    (playerState() === "buffering" || playerState() === "unstarted");
 
   return (
     <Tv aria-label={t`Smart TV da sala`}>
@@ -262,7 +286,11 @@ export function SmartTv(props: {
                   ? t`Controlado por ${s().by_name}`
                   : t`Sala vazia: a TV pausou`}
                 {" · "}
-                {s().status === "ended" ? t`terminou` : s().status === "paused" ? t`pausado` : t`tocando`}
+                {s().status === "ended"
+                  ? t`terminou`
+                  : s().status === "paused"
+                    ? t`pausado`
+                    : t`tocando`}
               </small>
             </>
           )}
@@ -403,7 +431,12 @@ const Screen = styled("div", {
     // A TV: dark bezel, a soft glow when something plays.
     boxShadow: "inset 0 0 0 6px #1b1c22, 0 6px 20px rgba(0,0,0,0.35)",
     "& .tv-host": { position: "absolute", inset: "6px" },
-    "& .tv-host iframe": { width: "100%", height: "100%", border: 0, borderRadius: "8px" },
+    "& .tv-host iframe": {
+      width: "100%",
+      height: "100%",
+      border: 0,
+      borderRadius: "8px",
+    },
   },
 });
 
@@ -459,7 +492,11 @@ const Info = styled("div", {
     display: "flex",
     flexDirection: "column",
     minWidth: 0,
-    "& .title": { overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" },
+    "& .title": {
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+    },
   },
 });
 
@@ -473,7 +510,12 @@ const Controls = styled("div", {
 });
 
 const Time = styled("span", {
-  base: { fontVariantNumeric: "tabular-nums", fontSize: "0.8em", minWidth: "38px", textAlign: "center" },
+  base: {
+    fontVariantNumeric: "tabular-nums",
+    fontSize: "0.8em",
+    minWidth: "38px",
+    textAlign: "center",
+  },
 });
 
 const Range = styled("input", {

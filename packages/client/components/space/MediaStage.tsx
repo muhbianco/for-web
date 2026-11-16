@@ -1,4 +1,4 @@
-import { For, type JSX, Match, Show, Switch, createMemo } from "solid-js";
+import { type JSX, For, Match, Show, Switch, createMemo } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import { Track } from "livekit-client";
@@ -91,7 +91,9 @@ export function MediaStage(props: {
     if (list.length === 0) return null;
     const f = focused();
     const who = f ?? list[list.length - 1]!;
-    return who.local ? t`Você está apresentando` : t`${who.name} está apresentando`;
+    return who.local
+      ? t`Você está apresentando`
+      : t`${who.name} está apresentando`;
   };
 
   return (
@@ -149,7 +151,9 @@ export function MediaStage(props: {
                   : t`Ampliar o palco (F)`,
             },
           }}
-          onPress={() => props.onMode(props.mode === "focus" ? "side" : "focus")}
+          onPress={() =>
+            props.onMode(props.mode === "focus" ? "side" : "focus")
+          }
         >
           <Symbol>
             {props.mode === "focus" ? "close_fullscreen" : "open_in_full"}

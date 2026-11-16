@@ -34,9 +34,9 @@ import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
 import { InteractionDialog } from "./InteractionDialog";
 import {
-  MediaStage,
   type StageMode,
   type StageTab,
+  MediaStage,
   useStageShares,
 } from "./MediaStage";
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
@@ -106,12 +106,12 @@ function ServerSpace(props: { serverId: string }) {
   // Media stage (screens, the room's TV): only in a room, only when opened.
   const [stageOpen, setStageOpen] = createSignal(false);
   const [stageTab, setStageTab] = createSignal<StageTab>("call");
-  const [stageMode, setStageModeSignal] = createSignal<StageMode>(
-    storedStageMode(),
-  );
-  const [invite, setInvite] = createSignal<{ key: string; name: string } | null>(
-    null,
-  );
+  const [stageMode, setStageModeSignal] =
+    createSignal<StageMode>(storedStageMode());
+  const [invite, setInvite] = createSignal<{
+    key: string;
+    name: string;
+  } | null>(null);
   const shares = useStageShares();
   const narrow = useNarrow();
   let host: HTMLDivElement | undefined;
@@ -231,7 +231,8 @@ function ServerSpace(props: { serverId: string }) {
   function closeStage() {
     // Closing on the TV means "not watching this video": it does not reopen by itself.
     const s = ui()?.tv?.state;
-    if (stageTab() === "tv" && s) dismissedVideo = `${s.room_id}:${s.ref}:${s.started_ms}`;
+    if (stageTab() === "tv" && s)
+      dismissedVideo = `${s.room_id}:${s.ref}:${s.started_ms}`;
     setStageOpen(false);
     host?.focus();
   }
@@ -292,6 +293,8 @@ function ServerSpace(props: { serverId: string }) {
     if (key === lastVideo) return;
     lastVideo = key;
     if (!s || s.status !== "playing" || !roomTv()?.you.watch) return;
+    if (s.by_name && s.by !== client().user?.id)
+      setNotice(t`${s.by_name} colocou um vídeo na TV da sala.`);
     if (key === dismissedVideo) return;
     if (!(stageVisible() && stageTab() === "tv")) openStage("tv");
   });
@@ -559,7 +562,7 @@ function ServerSpace(props: { serverId: string }) {
             class={mapCanvas}
             tabIndex={0}
             role="application"
-            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações.`}
+            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações.`}
           />
           <Switch>
             <Match when={failed()}>{(msg) => <Notice>{msg()}</Notice>}</Match>
@@ -623,7 +626,14 @@ function ServerSpace(props: { serverId: string }) {
           </Show>
         </div>
         <Show when={stageVisible()}>
-          <div style={{ "grid-area": "stage", display: "flex", "min-height": 0, "min-width": 0 }}>
+          <div
+            style={{
+              "grid-area": "stage",
+              display: "flex",
+              "min-height": 0,
+              "min-width": 0,
+            }}
+          >
             <MediaStage
               channel={roomChannel()}
               connected={inRoomCall()}
@@ -635,13 +645,20 @@ function ServerSpace(props: { serverId: string }) {
               mediaText={ui() ? mediaText(ui()!.media) : null}
               mediaAction={
                 ui() && mediaAction(ui()!.media)
-                  ? { label: mediaAction(ui()!.media)!, run: () => view()?.retryMedia() }
+                  ? {
+                      label: mediaAction(ui()!.media)!,
+                      run: () => view()?.retryMedia(),
+                    }
                   : null
               }
               hasTv={!!roomTv()?.hasTv}
               tv={
                 <Show when={view() && roomTv()}>
-                  <SmartTv view={view()!} tv={roomTv()!} error={ui()?.tvError ?? null} />
+                  <SmartTv
+                    view={view()!}
+                    tv={roomTv()!}
+                    error={ui()?.tvError ?? null}
+                  />
                 </Show>
               }
               canModerate={!!roomChannel()?.havePermission("MuteMembers")}
@@ -738,10 +755,16 @@ function PersonLine(props: { person: ListPerson }) {
   const muted = () => !!v()?.connected && !v()!.mic;
   return (
     <PersonRow data-dim={reconnecting() || !v()?.connected ? "" : undefined}>
-      <Dot data-state={reconnecting() ? "reconnecting" : v()?.connected ? "call" : "room"} />
+      <Dot
+        data-state={
+          reconnecting() ? "reconnecting" : v()?.connected ? "call" : "room"
+        }
+      />
       <span class={personName}>{props.person.name}</span>
       <Show when={reconnecting()}>
-        <Symbol size={14} aria-label={t`reconectando`}>sync</Symbol>
+        <Symbol size={14} aria-label={t`reconectando`}>
+          sync
+        </Symbol>
       </Show>
       <Show when={!reconnecting() && !v()}>
         <SmallNote>{t`fora da chamada`}</SmallNote>
@@ -750,16 +773,24 @@ function PersonLine(props: { person: ListPerson }) {
         <SmallNote>{t`conectando…`}</SmallNote>
       </Show>
       <Show when={muted()}>
-        <Symbol size={14} aria-label={t`microfone desligado`}>mic_off</Symbol>
+        <Symbol size={14} aria-label={t`microfone desligado`}>
+          mic_off
+        </Symbol>
       </Show>
       <Show when={v()?.deaf}>
-        <Symbol size={14} aria-label={t`ensurdecido`}>headset_off</Symbol>
+        <Symbol size={14} aria-label={t`ensurdecido`}>
+          headset_off
+        </Symbol>
       </Show>
       <Show when={v()?.camera}>
-        <Symbol size={14} aria-label={t`câmera ligada`}>videocam</Symbol>
+        <Symbol size={14} aria-label={t`câmera ligada`}>
+          videocam
+        </Symbol>
       </Show>
       <Show when={v()?.screen}>
-        <Symbol size={14} aria-label={t`compartilhando a tela`}>screen_share</Symbol>
+        <Symbol size={14} aria-label={t`compartilhando a tela`}>
+          screen_share
+        </Symbol>
       </Show>
     </PersonRow>
   );

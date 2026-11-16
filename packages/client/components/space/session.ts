@@ -3,9 +3,9 @@ import { createEffect, createRoot, on, onCleanup } from "solid-js";
 import {
   type MediaGrant,
   type SpaceUiState,
-  SpaceView,
   type SpaceViewOptions,
   type VoicePort,
+  SpaceView,
 } from "@muchat/space-client";
 import { type Participant, RoomEvent, Track } from "livekit-client";
 import type { Client } from "stoat.js";
@@ -25,9 +25,15 @@ export function voicePort(voice: Voice, client: () => Client): VoicePort {
   return {
     async connect(grant: MediaGrant) {
       const c = client();
-      const channel = c.channels.get(grant.room_id) ?? (await c.channels.fetch(grant.room_id));
+      const channel =
+        c.channels.get(grant.room_id) ??
+        (await c.channels.fetch(grant.room_id));
       if (!channel) throw new Error("room channel not found");
-      await voice.connect(channel, { url: grant.url, token: grant.token }, { rethrow: true });
+      await voice.connect(
+        channel,
+        { url: grant.url, token: grant.token },
+        { rethrow: true },
+      );
     },
     disconnect: () => voice.disconnect(),
     identity: () => voice.room()?.localParticipant?.identity || null,
@@ -51,7 +57,9 @@ const sessions = new Map<string, Entry>();
 const opening = new Map<string, Promise<SpaceView>>();
 
 const holds = (s: SpaceUiState) =>
-  s.media.kind === "connected" || s.media.kind === "connecting" || s.media.kind === "unavailable";
+  s.media.kind === "connected" ||
+  s.media.kind === "connecting" ||
+  s.media.kind === "unavailable";
 
 /**
  * Opens (or reattaches) the space of a server. A space stays connected after
@@ -87,7 +95,10 @@ export function openSpace(
 
   const p = (async () => {
     const { voice, stoat, ...viewOpts } = opts;
-    const view = await SpaceView.mount({ ...viewOpts, voice: voicePort(voice, stoat) });
+    const view = await SpaceView.mount({
+      ...viewOpts,
+      voice: voicePort(voice, stoat),
+    });
     const dispose = createRoot((disposeRoot) => {
       // The call changed under the space: hung up in the dock, another call
       // started, or LiveKit dropped. MediaLink decides what that means.
@@ -119,7 +130,8 @@ export function openSpace(
           const key = voice.trackId(t);
           now.add(key);
           const fresh = !shared.has(key) && !t.participant.isLocal;
-          if (fresh && media.kind === "connected" && !voice.focusTrack()) voice.focus(t);
+          if (fresh && media.kind === "connected" && !voice.focusTrack())
+            voice.focus(t);
         }
         shared = now;
       });
@@ -148,7 +160,9 @@ export function openSpace(
           return;
         }
         const update = (speakers: Participant[]) =>
-          view.setSpeakers(new Set(speakers.map((p) => participantUserId(p.identity))));
+          view.setSpeakers(
+            new Set(speakers.map((p) => participantUserId(p.identity))),
+          );
         update(room.activeSpeakers);
         room.on(RoomEvent.ActiveSpeakersChanged, update);
         onCleanup(() => room.off(RoomEvent.ActiveSpeakersChanged, update));
@@ -159,7 +173,8 @@ export function openSpace(
     sessions.set(opts.serverId, entry);
     view.subscribe((s) => {
       // Off the page and no audio to keep: nothing left to stay connected for.
-      if (!view.isAttached && !holds(s)) queueMicrotask(() => closeSpace(opts.serverId, entry));
+      if (!view.isAttached && !holds(s))
+        queueMicrotask(() => closeSpace(opts.serverId, entry));
     });
     return view;
   })();

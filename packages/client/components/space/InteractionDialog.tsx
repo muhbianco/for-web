@@ -49,7 +49,9 @@ export function InteractionDialog(props: {
    */
   const sameOrigin = () => {
     try {
-      return new URL(config().url ?? "", location.href).origin === location.origin;
+      return (
+        new URL(config().url ?? "", location.href).origin === location.origin
+      );
     } catch {
       return false;
     }

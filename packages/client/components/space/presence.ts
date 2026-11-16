@@ -6,7 +6,11 @@ import {
   onCleanup,
 } from "solid-js";
 
-import { EMPTY_PRESENCE, type Presence, PresenceLink } from "@muchat/space-client/presence";
+import {
+  type Presence,
+  EMPTY_PRESENCE,
+  PresenceLink,
+} from "@muchat/space-client/presence";
 import type { Client } from "stoat.js";
 
 import { clientKind, isSpaceServer, sessionToken } from "./config";
