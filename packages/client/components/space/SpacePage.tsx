@@ -8,6 +8,7 @@ import {
   on,
   onCleanup,
   onMount,
+  untrack,
 } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
@@ -229,10 +230,9 @@ function ServerSpace(props: { serverId: string }) {
   }
 
   function closeStage() {
-    // Closing on the TV means "not watching this video": it does not reopen by itself.
-    const s = ui()?.tv?.state;
-    if (stageTab() === "tv" && s)
-      dismissedVideo = `${s.room_id}:${s.ref}:${s.started_ms}`;
+    // Closing the TV's panel is "stop looking", not "stop the TV": the sound
+    // goes on while you are in the room, and new videos no longer reopen it.
+    if (stageTab() === "tv") tvPanelClosedIn = roomId();
     setStageOpen(false);
     host?.focus();
   }
@@ -273,6 +273,33 @@ function ServerSpace(props: { serverId: string }) {
   // ---- Smart TV (ADR 0008) ----
   const roomTv = () => ui()?.tv ?? null;
   const tvPlaying = () => roomTv()?.state?.status === "playing";
+  // The room's TV is like a TV in a real room: closing its panel keeps the
+  // sound while you are in the room (16/11/2026: "fechar a TV, a música
+  // continua"); "Parar de ouvir" silences it for you alone until you open it
+  // again or someone puts on another video.
+  const [tvListen, setTvListen] = createSignal(true);
+  /** The room where this person closed the TV's panel: no auto-reopening there. */
+  let tvPanelClosedIn: string | null = null;
+  createEffect(
+    on(roomId, () => {
+      tvPanelClosedIn = null;
+      setTvListen(true);
+    }),
+  );
+  /** The player lives while it is seen or heard (it reloads if remounted). */
+  const tvMounted = () => {
+    const tv = roomTv();
+    if (!tv?.hasTv) return false;
+    // On screen it always mounts (it also explains a missing permission).
+    if (stageVisible() && stageTab() === "tv") return true;
+    if (!tv.you.watch) return false;
+    const st = tv.state?.status;
+    return tvListen() && (st === "playing" || st === "paused");
+  };
+  function watchTv() {
+    setTvListen(true);
+    openStage("tv");
+  }
   // Using a TV on the map opens it on the stage.
   createEffect(
     on(
@@ -283,9 +310,10 @@ function ServerSpace(props: { serverId: string }) {
       { defer: true },
     ),
   );
-  // Someone puts a video on the room's TV: it plays for everyone in the room,
-  // so the stage opens on it (unless this person closed that video already).
-  let dismissedVideo: string | null = null;
+  // Someone puts a video on the room's TV: it plays (and sounds) for everyone
+  // in the room. Its panel opens only for someone who is not looking at
+  // anything else: not over an open stage (a shared screen, the call), not in
+  // fullscreen, not where this person already closed the TV's panel.
   let lastVideo: string | null = null;
   createEffect(() => {
     const s = roomTv()?.state;
@@ -293,10 +321,16 @@ function ServerSpace(props: { serverId: string }) {
     if (key === lastVideo) return;
     lastVideo = key;
     if (!s || s.status !== "playing" || !roomTv()?.you.watch) return;
+    setTvListen(true);
     if (s.by_name && s.by !== client().user?.id)
       setNotice(t`${s.by_name} colocou um vídeo na TV da sala.`);
-    if (key === dismissedVideo) return;
-    if (!(stageVisible() && stageTab() === "tv")) openStage("tv");
+    const busy = untrack(
+      () =>
+        stageVisible() ||
+        voice.layout() === "fullscreen" ||
+        tvPanelClosedIn === roomId(),
+    );
+    if (!busy) openStage("tv");
   });
 
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
@@ -488,10 +522,23 @@ function ServerSpace(props: { serverId: string }) {
           )}
         </Show>
         <Show when={tvPlaying() && !(stageVisible() && stageTab() === "tv")}>
-          <PromptChip type="button" onClick={() => openStage("tv")}>
+          <PromptChip type="button" onClick={watchTv}>
             <Symbol size={16}>live_tv</Symbol>
-            {t`TV da sala ligada · Assistir`}
+            {tvListen() && tvMounted()
+              ? t`TV tocando · Abrir`
+              : t`TV da sala ligada · Assistir`}
           </PromptChip>
+          <Show when={tvListen() && tvMounted()}>
+            <PromptChip
+              type="button"
+              data-quiet=""
+              onClick={() => setTvListen(false)}
+              title={t`Para o som da TV só para você; a sala continua assistindo`}
+            >
+              <Symbol size={16}>volume_off</Symbol>
+              {t`Parar de ouvir`}
+            </PromptChip>
+          </Show>
         </Show>
         <span style={{ flex: 1 }} />
         <Show when={roomId() !== null}>
@@ -625,16 +672,41 @@ function ServerSpace(props: { serverId: string }) {
             )}
           </Show>
         </div>
-        <Show when={stageVisible()}>
+        {/*
+          The stage stays mounted while you are in a room: closed, it moves
+          off screen (never display: none) so the TV it holds can keep playing
+          without reloading its player.
+        */}
+        <Show when={roomId() !== null}>
           <div
-            style={{
-              "grid-area": "stage",
-              display: "flex",
-              "min-height": 0,
-              "min-width": 0,
-            }}
+            aria-hidden={stageVisible() ? undefined : "true"}
+            inert={!stageVisible()}
+            style={
+              stageVisible()
+                ? {
+                    "grid-area": "stage",
+                    display: "flex",
+                    "min-height": 0,
+                    "min-width": 0,
+                  }
+                : {
+                    position: "fixed",
+                    left: "-10000px",
+                    top: 0,
+                    width: "480px",
+                    height: "360px",
+                    display: "flex",
+                    "pointer-events": "none",
+                  }
+            }
           >
             <MediaStage
+              visible={stageVisible()}
+              tvMounted={tvMounted()}
+              onStopListening={() => {
+                setTvListen(false);
+                closeStage();
+              }}
               channel={roomChannel()}
               connected={inRoomCall()}
               tab={stageTab()}
@@ -662,6 +734,7 @@ function ServerSpace(props: { serverId: string }) {
                 </Show>
               }
               canModerate={!!roomChannel()?.havePermission("MuteMembers")}
+              layoutKey={`${stageMode()}:${panel() ?? ""}:${narrow()}`}
               onStopShare={(userId) => view()?.stopScreenOf(userId)}
             />
           </div>

@@ -6,6 +6,7 @@ import {
   createContext,
   createEffect,
   createSignal,
+  on,
   onCleanup,
   onMount,
   useContext,
@@ -35,6 +36,11 @@ type Info = {
   drawer?: SlideState;
   /** The mount's parent is a stage: the card fills it (the space's media stage). */
   fill?: boolean;
+  /**
+   * The page shows the call itself (the space's stage on the TV): no card
+   * floats over it.
+   */
+  inline?: boolean;
 };
 
 const PAD = 16,
@@ -108,6 +114,14 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
     if (!ref) return;
     const sty = ref.style;
     resetEvents();
+
+    if (inf?.inline) {
+      sty.transform = "translate(-10000px, 0)";
+      sty.width = "";
+      sty.height = "";
+      setMode();
+      return;
+    }
 
     //Set mode based on state
     if (voice.layout() === "fullscreen") {
@@ -189,6 +203,7 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
           fullscreen={voice.layout() === "fullscreen"}
         >
           <Switch>
+            <Match when={info()?.inline}>{null}</Match>
             <Match when={mode() && inCall()}>
               <VoiceCallCardPiP />
             </Match>
@@ -253,6 +268,13 @@ const Float = styled("div", {
 export function VoiceChannelCallCardMount(props: {
   channel: Channel;
   fill?: boolean;
+  /**
+   * Changes when the page moves the mount without resizing it (the space's
+   * stage changing columns): the card is measured again on the next frame.
+   */
+  layoutKey?: string;
+  /** The page shows the call inline: park the floating card (see Info.inline). */
+  inline?: boolean;
 }) {
   const voice = useVoice();
   const state = useState();
@@ -269,12 +291,20 @@ export function VoiceChannelCallCardMount(props: {
             parentRect: ref!.parentElement!.getBoundingClientRect(),
             drawer: state.appDrawer()?.state,
             fill: props.fill,
+            inline: props.inline,
           }
         : undefined,
     );
   }
 
   createEffect(updateInfo);
+  createEffect(
+    on(
+      () => props.layoutKey,
+      () => requestAnimationFrame(() => ref?.isConnected && updateInfo()),
+      { defer: true },
+    ),
+  );
 
   onMount(() => {
     const target = ref?.parentElement;

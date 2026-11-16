@@ -1621,7 +1621,15 @@ msgid "Desktop"
 msgstr ""
 
 #: components/space/SmartTv.tsx
-msgid "Desligar a TV"
+msgid "Desliga a TV da sala para todos que estão nela"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+#~ msgid "Desligar a TV"
+#~ msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Desligar para todos"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -2028,9 +2036,21 @@ msgstr ""
 msgid "Fans, street, other people talking."
 msgstr ""
 
+#: components/space/MediaStage.tsx
+msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
+msgstr ""
+
 #: components/space/InteractionDialog.tsx
 msgid "Fechar"
 msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Fechar a TV (Esc): o som continua enquanto você estiver na sala"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+#~ msgid "Fechar a TV (Esc): para só para você; a sala continua assistindo"
+#~ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Fechar o editor"
@@ -3232,8 +3252,17 @@ msgstr ""
 msgid "Palco de mídia"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Para o som da TV só para você; a sala continua assistindo"
+msgstr ""
+
 #: components/space/MediaStage.tsx
 msgid "Parar de compartilhar"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+#: components/space/SpacePage.tsx
+msgid "Parar de ouvir"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -3761,6 +3790,10 @@ msgstr "Roller"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "Roles with No Overrides"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Sair da tela cheia"
 msgstr ""
 
 #: components/space/SmartTv.tsx
@@ -4296,6 +4329,10 @@ msgstr ""
 msgid "Tela"
 msgstr ""
 
+#: components/space/MediaStage.tsx
+msgid "Tela cheia"
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 #: components/space/MediaStage.tsx
 msgid "Telas"
@@ -4609,6 +4646,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "TV da sala ligada · Assistir"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "TV tocando · Abrir"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx

@@ -1621,8 +1621,16 @@ msgid "Desktop"
 msgstr "Desktop"
 
 #: components/space/SmartTv.tsx
-msgid "Desligar a TV"
-msgstr "Desligar a TV"
+msgid "Desliga a TV da sala para todos que estão nela"
+msgstr "Desliga a TV da sala para todos que estão nela"
+
+#: components/space/SmartTv.tsx
+#~ msgid "Desligar a TV"
+#~ msgstr "Desligar a TV"
+
+#: components/space/SmartTv.tsx
+msgid "Desligar para todos"
+msgstr "Desligar para todos"
 
 #: components/space/DecorPanel.tsx
 msgid "Desmarcar"
@@ -2028,9 +2036,21 @@ msgstr "Fale um pouco para medir"
 msgid "Fans, street, other people talking."
 msgstr "Fans, street, other people talking."
 
+#: components/space/MediaStage.tsx
+msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
+msgstr "Fecha a TV e para o som só para você; a sala continua assistindo"
+
 #: components/space/InteractionDialog.tsx
 msgid "Fechar"
 msgstr "Fechar"
+
+#: components/space/MediaStage.tsx
+msgid "Fechar a TV (Esc): o som continua enquanto você estiver na sala"
+msgstr "Fechar a TV (Esc): o som continua enquanto você estiver na sala"
+
+#: components/space/MediaStage.tsx
+#~ msgid "Fechar a TV (Esc): para só para você; a sala continua assistindo"
+#~ msgstr "Fechar a TV (Esc): para só para você; a sala continua assistindo"
 
 #: components/space/DecorPanel.tsx
 msgid "Fechar o editor"
@@ -3232,9 +3252,18 @@ msgstr "Palco da sala: telas compartilhadas e a chamada (P)"
 msgid "Palco de mídia"
 msgstr "Palco de mídia"
 
+#: components/space/SpacePage.tsx
+msgid "Para o som da TV só para você; a sala continua assistindo"
+msgstr "Para o som da TV só para você; a sala continua assistindo"
+
 #: components/space/MediaStage.tsx
 msgid "Parar de compartilhar"
 msgstr "Parar de compartilhar"
+
+#: components/space/MediaStage.tsx
+#: components/space/SpacePage.tsx
+msgid "Parar de ouvir"
+msgstr "Parar de ouvir"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Parar o vídeo de outra pessoa e trocar antes do intervalo mínimo em qualquer sala"
@@ -3762,6 +3791,10 @@ msgstr "Roles"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "Roles with No Overrides"
 msgstr "Roles with No Overrides"
+
+#: components/space/MediaStage.tsx
+msgid "Sair da tela cheia"
+msgstr "Sair da tela cheia"
 
 #: components/space/SmartTv.tsx
 msgid "Sala vazia: a TV pausou"
@@ -4296,6 +4329,10 @@ msgstr "System message channels"
 msgid "Tela"
 msgstr "Tela"
 
+#: components/space/MediaStage.tsx
+msgid "Tela cheia"
+msgstr "Tela cheia"
+
 #: components/modal/modals/ScreenSharePicker.tsx
 #: components/space/MediaStage.tsx
 msgid "Telas"
@@ -4610,6 +4647,10 @@ msgstr "Turn off to keep seeing /tts messages without hearing them."
 #: components/space/SpacePage.tsx
 msgid "TV da sala ligada · Assistir"
 msgstr "TV da sala ligada · Assistir"
+
+#: components/space/SpacePage.tsx
+msgid "TV tocando · Abrir"
+msgstr "TV tocando · Abrir"
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."

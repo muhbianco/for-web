@@ -362,14 +362,14 @@ export function SmartTv(props: {
             }}
           />
           <Show when={canStop()}>
-            <IconButton
-              size="sm"
-              variant="tonal"
-              onPress={() => props.view.tvStop()}
-              aria-label={t`Desligar a TV`}
+            <StopAll
+              type="button"
+              onClick={() => props.view.tvStop()}
+              title={t`Desliga a TV da sala para todos que estão nela`}
             >
-              <Symbol>power_settings_new</Symbol>
-            </IconButton>
+              <Symbol size={16}>power_settings_new</Symbol>
+              {t`Desligar para todos`}
+            </StopAll>
           </Show>
         </Controls>
       </Show>
@@ -506,6 +506,24 @@ const Controls = styled("div", {
     alignItems: "center",
     gap: "6px",
     flexWrap: "wrap",
+  },
+});
+
+const StopAll = styled("button", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "4px 10px",
+    border: "none",
+    borderRadius: "999px",
+    background: "var(--md-sys-color-error-container)",
+    color: "var(--md-sys-color-on-error-container)",
+    font: "inherit",
+    fontSize: "0.85em",
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
   },
 });
 

@@ -1,4 +1,14 @@
-import { type JSX, For, Match, Show, Switch, createMemo } from "solid-js";
+import {
+  type JSX,
+  For,
+  Match,
+  Show,
+  Switch,
+  createMemo,
+  createSignal,
+  onCleanup,
+  onMount,
+} from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import { Track } from "livekit-client";
@@ -11,6 +21,7 @@ import { useVoice } from "@revolt/rtc";
 import { participantUserId } from "@revolt/rtc/identity";
 import { IconButton } from "@revolt/ui";
 import { VoiceChannelCallCardMount } from "@revolt/ui/components/features/voice/callCard/VoiceCallCard";
+import { VoiceCallCardPiP } from "@revolt/ui/components/features/voice/callCard/VoiceCallCardPiP";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 export type StageTab = "call" | "tv";
@@ -70,6 +81,15 @@ export function MediaStage(props: {
   mode: StageMode;
   onMode: (mode: StageMode) => void;
   onClose: () => void;
+  /** Shown on screen; when false the stage is parked off screen (TV still heard). */
+  visible: boolean;
+  /**
+   * The TV's player is alive: seen here (stage open on the TV) or heard with
+   * the panel closed. Decided by the page, which knows "Parar de ouvir".
+   */
+  tvMounted: boolean;
+  /** "Parar de ouvir": close the TV and silence it for this person. */
+  onStopListening?: () => void;
   /** Room audio problem as text and its action ("Tentar de novo"), when not connected. */
   mediaText: string | null;
   mediaAction: { label: string; run: () => void } | null;
@@ -78,6 +98,11 @@ export function MediaStage(props: {
   /** MuteMembers in this room (Stoat): may end someone else's screen share. */
   canModerate?: boolean;
   onStopShare?: (userId: string) => void;
+  /**
+   * Changes whenever the page layout moves the stage (mode, side panel,
+   * narrow screen): the call card is positioned over the stage and follows it.
+   */
+  layoutKey?: string;
 }) {
   const { t } = useLingui();
   const voice = useVoice();
@@ -86,6 +111,29 @@ export function MediaStage(props: {
     const f = voice.focusTrack();
     return f ? shares().find((s) => s.key === voice.trackId(f)) : undefined;
   };
+  // Fullscreen: the call uses the call card's own fullscreen (Stoat); the TV
+  // takes the whole TV panel (picture and controls) to fullscreen.
+  let tvBody: HTMLDivElement | undefined;
+  const [tvFullscreen, setTvFullscreen] = createSignal(false);
+  onMount(() => {
+    const sync = () =>
+      setTvFullscreen(!!tvBody && document.fullscreenElement === tvBody);
+    document.addEventListener("fullscreenchange", sync);
+    onCleanup(() => document.removeEventListener("fullscreenchange", sync));
+  });
+  const fullscreenOn = () =>
+    props.tab === "tv" ? tvFullscreen() : voice.layout() === "fullscreen";
+  const canFullscreen = () =>
+    props.tab === "tv" ? props.hasTv : props.connected && !!props.channel;
+  function toggleFullscreen() {
+    if (props.tab === "tv") {
+      if (document.fullscreenElement) void document.exitFullscreen();
+      else void tvBody?.requestFullscreen().catch(() => undefined);
+    } else {
+      voice.toggleLayout("fullscreen");
+    }
+  }
+
   const presenter = () => {
     const list = shares();
     if (list.length === 0) return null;
@@ -136,6 +184,22 @@ export function MediaStage(props: {
           </Show>
         </Tabs>
         <span style={{ flex: 1 }} />
+        <Show when={canFullscreen()}>
+          <IconButton
+            size="sm"
+            variant="standard"
+            aria-label={fullscreenOn() ? t`Sair da tela cheia` : t`Tela cheia`}
+            use:floating={{
+              tooltip: {
+                placement: "bottom",
+                content: fullscreenOn() ? t`Sair da tela cheia` : t`Tela cheia`,
+              },
+            }}
+            onPress={toggleFullscreen}
+          >
+            <Symbol>{fullscreenOn() ? "fullscreen_exit" : "fullscreen"}</Symbol>
+          </IconButton>
+        </Show>
         <IconButton
           size="sm"
           variant="standard"
@@ -166,7 +230,10 @@ export function MediaStage(props: {
           use:floating={{
             tooltip: {
               placement: "bottom",
-              content: t`Fechar o palco (Esc): a chamada segue no card flutuante`,
+              content:
+                props.tab === "tv"
+                  ? t`Fechar a TV (Esc): o som continua enquanto você estiver na sala`
+                  : t`Fechar o palco (Esc): a chamada segue no card flutuante`,
             },
           }}
           onPress={props.onClose}
@@ -175,11 +242,51 @@ export function MediaStage(props: {
         </IconButton>
       </Head>
 
+      {/*
+        The TV's player stays mounted while it is heard, hidden when another
+        tab is in front: remounting it would reload the video.
+      */}
+      <Show when={props.hasTv && props.tvMounted}>
+        <Body
+          ref={tvBody}
+          data-tv=""
+          style={props.tab === "tv" ? undefined : PARKED}
+        >
+          {props.tv}
+          {/*
+            The call, compact, under the TV: the floating card would cover
+            the stage's own buttons (close, fullscreen) and the picture.
+          */}
+          <Show
+            when={
+              props.visible &&
+              props.tab === "tv" &&
+              props.connected &&
+              props.channel
+            }
+          >
+            <CallBox>
+              <VoiceCallCardPiP />
+              <VoiceChannelCallCardMount channel={props.channel!} inline />
+            </CallBox>
+          </Show>
+          <Show when={props.onStopListening && props.tvMounted}>
+            <QuietRow>
+              <ShareChip
+                type="button"
+                onClick={() => props.onStopListening?.()}
+                title={t`Fecha a TV e para o som só para você; a sala continua assistindo`}
+              >
+                <Symbol size={14}>volume_off</Symbol>
+                {t`Parar de ouvir`}
+              </ShareChip>
+            </QuietRow>
+          </Show>
+        </Body>
+      </Show>
       <Switch>
-        <Match when={props.tab === "tv" && props.hasTv}>
-          <Body>{props.tv}</Body>
-        </Match>
-        <Match when={props.connected && props.channel}>
+        <Match when={props.tab === "tv" && props.hasTv}>{null}</Match>
+        <Match when={props.visible && props.connected && props.channel}>
           <Show when={presenter()}>
             {(text) => (
               <Presenters>
@@ -228,7 +335,11 @@ export function MediaStage(props: {
           </Show>
           {/* The call card is positioned over this element (fill). */}
           <Body data-call="">
-            <VoiceChannelCallCardMount channel={props.channel!} fill />
+            <VoiceChannelCallCardMount
+              channel={props.channel!}
+              fill
+              layoutKey={props.layoutKey}
+            />
           </Body>
         </Match>
         <Match when={true}>
@@ -252,6 +363,9 @@ export function MediaStage(props: {
 const Stage = styled("section", {
   base: {
     position: "relative",
+    // Fills its grid area: without it the stage shrank to its content and
+    // left the rest of the column black (16/11/2026).
+    flex: 1,
     display: "flex",
     flexDirection: "column",
     minWidth: 0,
@@ -353,6 +467,40 @@ const Body = styled("div", {
     minHeight: 0,
     display: "flex",
     flexDirection: "column",
+    "&[data-tv]:fullscreen": {
+      background: "var(--md-sys-color-surface-container-lowest)",
+      padding: "var(--gap-md)",
+    },
+  },
+});
+
+/** Off screen but alive (display: none would risk pausing the player). */
+const PARKED = {
+  position: "absolute",
+  left: "-10000px",
+  top: 0,
+  width: "480px",
+  height: "360px",
+  "pointer-events": "none",
+} as const;
+
+const CallBox = styled("div", {
+  base: {
+    // The compact card places its status badge absolutely: keep it here.
+    position: "relative",
+    flex: "none",
+    alignSelf: "flex-end",
+    width: "min(320px, 100%)",
+    height: "150px",
+    margin: "0 var(--gap-md) var(--gap-sm)",
+  },
+});
+
+const QuietRow = styled("div", {
+  base: {
+    display: "flex",
+    justifyContent: "flex-end",
+    padding: "0 var(--gap-md) var(--gap-sm)",
   },
 });
 
