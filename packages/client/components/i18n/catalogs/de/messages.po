@@ -72,10 +72,30 @@ msgstr "{0} hat die Kanalbeschreibung geändert"
 msgid "{0} changed the channel icon"
 msgstr "{0} hat das Kanal-Icon geändert"
 
+#. placeholder {0}: s.by_name
+#: components/space/SpacePage.tsx
+msgid "{0} colocou um vídeo na TV da sala."
+msgstr ""
+
+#. placeholder {0}: s.name
+#: components/space/SpacePage.tsx
+msgid "{0} começou a compartilhar a tela."
+msgstr ""
+
 #. placeholder {0}: instance.globalLimits.server_emoji - props.server.emojis.length
 #: components/app/interface/settings/server/emojis/EmojiList.tsx
 msgid "{0} emoji slots remaining"
 msgstr "{0} Emoji-Slots übrig"
+
+#. placeholder {0}: who.name
+#: components/space/MediaStage.tsx
+msgid "{0} está apresentando"
+msgstr ""
+
+#. placeholder {0}: inv().name
+#: components/space/SpacePage.tsx
+msgid "{0} está apresentando · Assistir"
+msgstr ""
 
 #. placeholder {0}: rejectedFiles.length
 #: src/interface/channels/text/Composition.tsx
@@ -102,6 +122,16 @@ msgstr "{0} ist gegangen"
 #: components/client/NotificationsWorker.tsx
 msgid "{0} made {1} the new group owner"
 msgstr "{0} hat {1} zum neuen Gruppeninhaber gemacht"
+
+#. placeholder {0}: s / 60
+#: components/space/DecorPanel.tsx
+msgid "{0} min"
+msgstr ""
+
+#. placeholder {0}: here()
+#: components/space/SpaceSidebarEntry.tsx
+msgid "{0} pessoas no Espaço"
+msgstr ""
 
 #. placeholder {0}: (message.systemMessage as MessagePinnedSystemMessage).by?.username
 #: components/client/NotificationsWorker.tsx
@@ -260,6 +290,10 @@ msgstr "<0/> hat den Gruppennamen zu <1>{0}</1> geändert"
 msgid "<0>Be careful!</0><1/>This is not the same as the link that was displayed:"
 msgstr "<0>Vorsicht!</0><1/>Das ist nicht der gleiche Link, der angezeigt wurde:"
 
+#: components/space/DecorPanel.tsx
+msgid "1 hora"
+msgstr ""
+
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "1 person reacted"
 msgstr "Eine Person hat reagiert"
@@ -283,6 +317,14 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A reprodução neste computador está engasgando"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "A TV está desligada."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "A TV não aceitou o comando."
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -315,6 +357,14 @@ msgstr ""
 
 #: components/space/InteractionDialog.tsx
 msgid "Abrir"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Abrir links, notas, imagens e portais desta sala e assistir à Smart TV dela"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs das salas"
 msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
@@ -380,6 +430,10 @@ msgstr "Erweitert"
 msgid "aguardando a primeira janela"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Alguém está apresentando"
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Algumas salas têm a porta fechada para você. A lista de salas ao lado mostra tudo em texto, se preferir não usar o mapa."
 msgstr ""
@@ -428,6 +482,14 @@ msgstr "Immer nach Qualität der Bildschirmübertragung fragen"
 #: components/app/interface/settings/user/Language.tsx
 msgid "American (MM/DD/YYYY)"
 msgstr "Amerikanisch (MM/TT/JJJJ)"
+
+#: components/space/MediaStage.tsx
+msgid "Ampliar o palco"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Ampliar o palco (F)"
+msgstr ""
 
 #: components/modal/modals/Error2.tsx
 msgid "An error occurred."
@@ -540,6 +602,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Automatic gain control"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Avançar 10 segundos"
 msgstr ""
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
@@ -702,6 +768,10 @@ msgstr "Umgeht den langsamen Modus in Kanälen"
 msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 msgstr ""
 
+#: components/space/DecorPanel.tsx
+msgid "Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo antes de trocar o vídeo (quem gerencia a TV pode trocar antes)."
+msgstr ""
+
 #: components/app/menus/UserContextMenu.tsx
 #: components/ui/components/features/profiles/ProfileActions.tsx
 msgid "Call"
@@ -713,6 +783,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Câmera"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "câmera ligada"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -788,11 +862,19 @@ msgid "Cannot edit this message."
 msgstr "Diese Nachricht kann nicht bearbeitet werden."
 
 #: components/space/DecorPanel.tsx
-msgid "Cargos escolhidos"
+#~ msgid "Cargos escolhidos"
+#~ msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Carregando…"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Categorias"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Chamada"
 msgstr ""
 
 #: components/modal/modals/EditBotUsername.tsx
@@ -958,6 +1040,10 @@ msgstr ""
 msgid "Clique num ambiente para trocar o piso dele."
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "Clique para assistir com som"
+msgstr ""
+
 #: components/modal/modals/AddFriend.tsx
 #: components/modal/modals/AddMembersToGroup.tsx
 #: components/modal/modals/Changelog.tsx
@@ -1003,6 +1089,14 @@ msgstr "Code"
 msgid "Codec"
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "Cole um link do YouTube (youtube.com/watch, youtu.be, shorts) ou o ID do vídeo."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Cole um link do YouTube ou o ID do vídeo"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Collapse call window"
 msgstr ""
@@ -1010,6 +1104,14 @@ msgstr ""
 #. placeholder {0}: item().name
 #: components/space/DecorPanel.tsx
 msgid "Colocando: {0}"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Colocar, mover, girar e remover objetos e trocar o piso desta sala"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas salas que não disserem o contrário)"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -1022,6 +1124,10 @@ msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Como andar"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "compartilhando a tela"
 msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
@@ -1038,6 +1144,18 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Conectando áudio…"
+msgstr ""
+
+#: components/ui/components/features/voice/VoiceChannelPreview.tsx
+msgid "Conectando o áudio…"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "conectando…"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Configurar objetos"
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -1106,6 +1224,15 @@ msgstr "Weiter zur App"
 #: components/app/interface/settings/user/Language.tsx
 msgid "Contribute a language"
 msgstr "Zur Übersetzung beitragen"
+
+#. placeholder {0}: s().by_name
+#: components/space/SmartTv.tsx
+msgid "Controlado por {0}"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Controlar a Smart TV"
+msgstr ""
 
 #: src/interface/navigation/channels/HomeSidebar.tsx
 msgid "Conversations"
@@ -1372,6 +1499,10 @@ msgstr ""
 msgid "Decorar"
 msgstr ""
 
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Decorar o Espaço"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "DeepFilterNet (recommended)"
 msgstr ""
@@ -1392,6 +1523,14 @@ msgstr ""
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Default"
 msgstr "Standard"
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Definir o que os objetos interativos desta sala mostram (link, nota, imagem, página, portal)"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Definir o que os objetos interativos mostram (link, nota, imagem, página, portal)"
+msgstr ""
 
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Degraded Performance"
@@ -1480,6 +1619,10 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Desktop"
 msgstr "Desktop"
+
+#: components/space/SmartTv.tsx
+msgid "Desligar a TV"
+msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Desmarcar"
@@ -1679,6 +1822,11 @@ msgstr "Push-Benachrichtigungen aktivieren"
 msgid "Enable transparency glass/blur effects (slow on older machines)"
 msgstr "Transparente Glas-/Unschärfeeffekte aktivieren (langsamer auf älteren Geräten)"
 
+#. placeholder {0}: s.name
+#: components/space/MediaStage.tsx
+msgid "Encerrar tela de {0}"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 #: components/ui/components/features/voice/VoiceDock.tsx
 msgid "End call"
@@ -1703,6 +1851,10 @@ msgstr "Verbessert"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Enhanced (RNNoise)"
 msgstr "Verbessert (RNNoise)"
+
+#: components/space/SpacePage.tsx
+msgid "ensurdecido"
+msgstr ""
 
 #: components/modal/modals/RenameSession.tsx
 msgid "Enter a new name for this session"
@@ -1751,6 +1903,10 @@ msgstr ""
 msgid "Entre na sua conta para usar o espaço."
 msgstr ""
 
+#: components/space/MediaStage.tsx
+msgid "Entre numa sala para ver a chamada."
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Enviado."
 msgstr ""
@@ -1767,6 +1923,14 @@ msgstr ""
 msgid "Escolha um ambiente"
 msgstr ""
 
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Escolher o vídeo, dar play, pausar e avançar na TV das salas"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Escolher o vídeo, dar play, pausar e avançar na TV desta sala"
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Escolher personagem"
 msgstr ""
@@ -1775,9 +1939,22 @@ msgstr ""
 msgid "Esconder lista de salas"
 msgstr ""
 
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/space/SpacePage.tsx
 #: components/space/SpaceSidebarEntry.tsx
 msgid "Espaço"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Esse link não é de um vídeo do YouTube."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Esta sala não tem uma TV."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Esta sala tem um intervalo entre vídeos: tente de novo em {minutes} min."
 msgstr ""
 
 #: components/space/InteractionDialog.tsx
@@ -1789,7 +1966,11 @@ msgid "Este objeto ainda não foi configurado."
 msgstr ""
 
 #: components/space/DecorPanel.tsx
-msgid "Este servidor ainda não tem cargos."
+#~ msgid "Este servidor ainda não tem cargos."
+#~ msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Este vídeo não pode ser assistido aqui: o dono não permite fora do YouTube, ou ele não existe mais."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -1855,6 +2036,14 @@ msgstr ""
 msgid "Fechar o editor"
 msgstr ""
 
+#: components/space/MediaStage.tsx
+msgid "Fechar o palco"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Fechar o palco (Esc): a chamada segue no card flutuante"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Feedback"
@@ -1897,6 +2086,10 @@ msgstr "Für 3 Stunden"
 msgid "For 8 hours"
 msgstr "Für 8 Stunden"
 
+#: components/space/SpacePage.tsx
+msgid "fora da chamada"
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "FPS"
 msgstr ""
@@ -1933,6 +2126,10 @@ msgstr "Wiederherstellungscodes erzeugen"
 #: components/modal/modals/CreateInvite.tsx
 msgid "Generating invite…"
 msgstr "Einladung wird erstellt…"
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Gerenciar a Smart TV"
+msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Get a new set of recovery codes"
@@ -2162,6 +2359,10 @@ msgstr "Einladungen"
 msgid "Ir para {0}"
 msgstr ""
 
+#: src/interface/channels/ChannelHeader.tsx
+msgid "Ir para a sala no Espaço"
+msgstr ""
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "irrelevant joke badge 1"
 msgstr "Irrelevanter Witz-Abzeichen 1"
@@ -2306,6 +2507,10 @@ msgstr ""
 msgid "Libera 30 dias de VIP."
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "Ligar a TV"
+msgstr ""
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Light"
@@ -2325,6 +2530,14 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Link (abre em nova aba)"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Link de vídeo inválido."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Link ou ID do vídeo do YouTube"
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -2426,7 +2639,11 @@ msgid "Manage Webhooks"
 msgstr "Webhooks verwalten"
 
 #: components/space/SpacePage.tsx
-msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações."
+#~ msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações."
+#~ msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
 msgstr ""
 
 #: components/modal/modals/ChannelToggleMature.tsx
@@ -2569,6 +2786,10 @@ msgstr "Nachrichten"
 msgid "MFA setup canceled."
 msgstr "MFA-Einrichtung abgebrochen."
 
+#: components/space/SpacePage.tsx
+msgid "microfone desligado"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Microphone channels"
 msgstr ""
@@ -2592,6 +2813,11 @@ msgstr "In Taskleiste minimieren"
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "Fehlende Berechtigung"
+
+#. placeholder {0}: s.name
+#: components/space/MediaStage.tsx
+msgid "Moderação: encerra a tela de {0} nesta sala"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Moderate ({rounded} dBFS)"
@@ -2627,6 +2853,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Muchat will start in the system tray."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Muitas trocas de vídeo seguidas; espere um pouco."
 msgstr ""
 
 #: components/i18n/errors.tsx
@@ -2690,6 +2920,10 @@ msgstr "Mein Account"
 msgid "My Bots"
 msgstr "Meine Bots"
 
+#: components/ui/components/features/voice/VoiceChannelPreview.tsx
+msgid "Na sala, fora da chamada"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Nada encontrado."
 msgstr ""
@@ -2725,6 +2959,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Não foi possível carregar o player do YouTube neste aparelho (bloqueado ou sem conexão)."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -2832,8 +3070,25 @@ msgstr ""
 msgid "O Muchat virou um espaço"
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "O navegador não conseguiu tocar este vídeo."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "O navegador só toca vídeo com som depois de um clique."
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
+msgstr ""
+
+#. placeholder {0}: playerError()
+#: components/space/SmartTv.tsx
+msgid "O YouTube não conseguiu tocar este vídeo (erro {0})."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "O YouTube recusou o player (configuração de origem)."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -2944,6 +3199,10 @@ msgstr "Andere"
 msgid "Output Volume"
 msgstr "Ausgabelautstärke"
 
+#: components/space/SmartTv.tsx
+msgid "Outra pessoa mexeu na TV ao mesmo tempo; a TV mostra o que ficou valendo."
+msgstr ""
+
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Overview"
@@ -2955,6 +3214,34 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Pacotes por segundo"
+msgstr ""
+
+#: components/space/InteractionDialog.tsx
+msgid "Páginas do próprio Muchat não podem ser mostradas dentro de um objeto."
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Palco"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Palco da sala: telas compartilhadas e a chamada (P)"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Palco de mídia"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Parar de compartilhar"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Parar o vídeo de outra pessoa e trocar antes do intervalo mínimo em qualquer sala"
+msgstr ""
+
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Parar o vídeo de outra pessoa e trocar antes do intervalo mínimo nesta sala"
 msgstr ""
 
 #: components/app/interface/settings/server/bans/ListBans.tsx
@@ -2974,6 +3261,14 @@ msgstr "Passwort"
 #: components/modal/modals/EditPassword.tsx
 msgid "Password changed successfully."
 msgstr "Passwort erfolgreich geändert."
+
+#: components/space/SmartTv.tsx
+msgid "pausado"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Pausar para todos"
+msgstr ""
 
 #: src/interface/Friends.tsx
 msgid "Pending"
@@ -2997,6 +3292,10 @@ msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
 msgid "Permissions available without any role"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Permissões do Espaço"
 msgstr ""
 
 #. placeholder {0}: i + 1
@@ -3070,6 +3369,10 @@ msgstr "Bitte wähle eine Methode zur Authentifizierung deiner Anfrage."
 msgid "Please select a reason"
 msgstr "Wähle bitte einen Grund aus"
 
+#: components/space/SmartTv.tsx
+msgid "Posição do vídeo"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Powered by RNNoise. Light on CPU."
 msgstr ""
@@ -3129,12 +3432,25 @@ msgid "Quality"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
-msgid "Quem gerencia o servidor sempre pode."
+msgid "Quem decora, configura objetos e controla a TV agora é definido nos cargos do servidor (grupo \"Espaço\") e, para cada sala, nas permissões do canal dela. Quem gerencia o servidor sempre pode decorar."
+msgstr ""
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Quem está em {0}"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
-msgid "Quem pode decorar"
+#~ msgid "Quem gerencia o servidor sempre pode."
+#~ msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Quem pode controlar a TV escolhe um vídeo."
 msgstr ""
+
+#: components/space/DecorPanel.tsx
+#~ msgid "Quem pode decorar"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Quiet ({rounded} dBFS)"
@@ -3208,6 +3524,14 @@ msgstr "Erhalte Benachrichtigungen während der Tab offen ist."
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive push notifications while the app is closed."
 msgstr "Erhalte Pushbenachrichtigungen während die App geschlossen ist."
+
+#: components/space/SpacePage.tsx
+msgid "reconectando"
+msgstr ""
+
+#: components/ui/components/features/voice/VoiceChannelPreview.tsx
+msgid "Reconectando…"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Reconexões"
@@ -3384,6 +3708,14 @@ msgstr "Token zurücksetzen"
 msgid "Responsibly disclosed security issues"
 msgstr "Sicherheitslücken verantwortungsvoll gemeldet"
 
+#: components/space/MediaStage.tsx
+msgid "Restaurar o mapa"
+msgstr ""
+
+#: components/space/MediaStage.tsx
+msgid "Restaurar o mapa (F)"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Restore call window"
@@ -3431,13 +3763,17 @@ msgstr "Rollen"
 msgid "Roles with No Overrides"
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "Sala vazia: a TV pausou"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Salvar"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
-msgid "Salvar permissões"
-msgstr ""
+#~ msgid "Salvar permissões"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Sample rate"
@@ -3529,7 +3865,19 @@ msgid "Select your language"
 msgstr "Wähle Deine Sprache"
 
 #: components/space/SpacePage.tsx
+msgid "sem acesso à lista"
+msgstr ""
+
+#: components/space/SpacePage.tsx
 msgid "Sem conexão com o espaço — tentando de novo"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Sem intervalo"
+msgstr ""
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+msgid "Sem permissão para compartilhar a tela aqui"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -3679,6 +4027,10 @@ msgstr ""
 msgid "Seu microfone processado está saindo com silêncio"
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "Seu volume da TV (só para você)"
+msgstr ""
+
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Several people are typing…"
 msgstr "Mehrere Personen schreiben…"
@@ -3741,9 +4093,25 @@ msgstr ""
 msgid "Slowmode off"
 msgstr ""
 
-#: components/space/DecorPanel.tsx
-msgid "Só administradores"
+#: components/space/MediaStage.tsx
+msgid "Smart TV"
 msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Smart TV · YouTube"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Smart TV da sala"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Smart TV: intervalo entre vídeos"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+#~ msgid "Só administradores"
+#~ msgstr ""
 
 #: components/space/InteractionDialog.tsx
 msgid "Só páginas https podem ser mostradas aqui."
@@ -3871,6 +4239,10 @@ msgstr ""
 msgid "Sua conexão de subida está com problema"
 msgstr ""
 
+#: components/space/MediaStage.tsx
+msgid "Sua tela"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Submit feature suggestion"
 msgstr "Funktionsvorschlag einreichen"
@@ -3925,6 +4297,7 @@ msgid "Tela"
 msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
+#: components/space/MediaStage.tsx
 msgid "Telas"
 msgstr ""
 
@@ -3946,6 +4319,10 @@ msgstr "Mitglieder mit niedrigerem Rang temporär von Interaktionen ausschließe
 
 #: components/space/SpacePage.tsx
 msgid "Tentar de novo"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "terminou"
 msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
@@ -4174,13 +4551,21 @@ msgstr "Mitglieder Timeouten"
 msgid "Título (aparece no aviso)"
 msgstr ""
 
+#: components/space/SmartTv.tsx
+msgid "tocando"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Tocar para todos"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Todo mês"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
-msgid "Todo mundo"
-msgstr ""
+#~ msgid "Todo mundo"
+#~ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Todos"
@@ -4210,6 +4595,10 @@ msgstr ""
 msgid "Trending GIFs"
 msgstr "Beliebte GIFs"
 
+#: components/space/SmartTv.tsx
+msgid "Trocar vídeo"
+msgstr ""
+
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Troubleshooting"
 msgstr "Fehlerbehebung"
@@ -4218,8 +4607,17 @@ msgstr "Fehlerbehebung"
 msgid "Turn off to keep seeing /tts messages without hearing them."
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "TV da sala ligada · Assistir"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
+msgstr ""
+
+#. placeholder {0}: Math.round(props.tv.cooldownS / 60)
+#: components/space/SmartTv.tsx
+msgid "Um vídeo por vez; intervalo de {0} min entre vídeos nesta sala."
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -4320,6 +4718,10 @@ msgstr ""
 msgid "Usar aqui"
 msgstr ""
 
+#: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
+msgid "Usar objetos e assistir à TV"
+msgstr ""
+
 #: components/modal/modals/JoinServer.tsx
 msgid "Use a code or invite link"
 msgstr "Nutze einen Code oder Einladungslink"
@@ -4407,6 +4809,19 @@ msgstr ""
 msgid "Valor"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "vazia"
+msgstr ""
+
+#. placeholder {0}: room.title
+#: components/space/SpacePage.tsx
+msgid "Ver {0} no mapa"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Ver no mapa"
+msgstr ""
+
 #: src/interface/navigation/channels/ServerSidebar.tsx
 msgid "Verified"
 msgstr "Verifiziert"
@@ -4426,6 +4841,14 @@ msgstr "Video"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Vídeo"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Vídeo do YouTube"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Vídeo indisponível: foi removido ou é privado."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -4473,12 +4896,28 @@ msgstr ""
 msgid "Você é apoiador."
 msgstr ""
 
+#: components/space/MediaStage.tsx
+msgid "Você está apresentando"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Você está fora do áudio da sala"
 msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Você não é membro deste servidor"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Você não tem permissão para assistir à TV desta sala."
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Você não tem permissão para controlar a TV desta sala."
+msgstr ""
+
+#: components/space/InteractionDialog.tsx
+msgid "Você não tem permissão para usar este objeto aqui."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -4509,6 +4948,10 @@ msgstr ""
 #: components/space/AudioCheck.tsx
 #: components/space/Onboarding.tsx
 msgid "Voltar"
+msgstr ""
+
+#: components/space/SmartTv.tsx
+msgid "Voltar 10 segundos"
 msgstr ""
 
 #: components/space/SpacePage.tsx
