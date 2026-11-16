@@ -90,6 +90,22 @@
           <div id="interaction" class="muted"></div>
           <button type="button" id="close-interaction" hidden>Fechar interação</button>
         </div>
+        <section id="tv" hidden>
+          <h2>Smart TV da sala</h2>
+          <div id="tv-screen" style="position: relative; height: 180px; background: #000; border-radius: 8px; overflow: hidden"></div>
+          <div class="row">
+            <input id="tv-input" placeholder="Link ou ID do YouTube" />
+            <button type="button" id="tv-load">Ligar/Trocar</button>
+          </div>
+          <div class="row">
+            <button type="button" id="tv-play">▶</button>
+            <button type="button" id="tv-pause">⏸</button>
+            <button type="button" id="tv-back">−10 s</button>
+            <button type="button" id="tv-fwd">+10 s</button>
+            <button type="button" id="tv-stop">Desligar</button>
+          </div>
+          <div id="tv-info" class="muted"></div>
+        </section>
         <div id="list"></div>
         <p class="help">Dev: entre como <a href="?as=ana">Ana</a> (dona), <a href="?as=bia">Bia</a> (diretoria) ou <a href="?as=caio">Caio</a>. Abra duas abas para ver uma pessoa andando na outra.</p>
       </aside>

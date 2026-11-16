@@ -13,6 +13,7 @@ import {
   type MapIndex,
   type PresenceEvent,
   type RoomView,
+  type TvState,
   setSolid,
   solidMask,
   type WingView,
@@ -66,7 +67,9 @@ export type WorldEvent =
   | { kind: "decor_stale" }
   | { kind: "rights_changed" }
   /** Who is in which room, in which call, muted or sharing (server presence). */
-  | { kind: "presence_changed" };
+  | { kind: "presence_changed" }
+  /** The TV of our room changed (ADR 0008). */
+  | { kind: "tv_changed" };
 
 /**
  * Client copy of the world: what the server confirmed, plus our own predicted
@@ -96,6 +99,20 @@ export class World {
   setPresence(p: PresenceEvent["d"]) {
     this.presence = p;
     this.emit({ kind: "presence_changed" });
+  }
+
+  /** TV of the rooms we were inside (full state); other rooms come from presence. */
+  readonly tvStates = new Map<string, TvState | null>();
+
+  setTv(roomId: string, state: TvState | null) {
+    this.tvStates.set(roomId, state);
+    this.emit({ kind: "tv_changed" });
+  }
+
+  /** The room's TV is playing (drawn lit on the map). */
+  tvOn(roomId: string): boolean {
+    if (this.me?.room === roomId && this.tvStates.has(roomId)) return this.tvStates.get(roomId)?.status === "playing";
+    return this.presence?.rooms.find((r) => r.room_id === roomId)?.tv === "playing";
   }
 
   /** Voice state of someone as the presence says (null: not in a call we may see). */

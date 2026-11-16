@@ -1,6 +1,6 @@
 import { CATALOG, CATEGORY_LABELS, type DecorItem, floorRef, itemOf, parseFloorRef, searchCatalog } from "@muchat/space-core";
 
-import { type ConnStatus, floorSwatch, type MediaStatus, SpaceView, thumbnail, type VoicePort, wingHeading } from "../src/index.ts";
+import { type ConnStatus, floorSwatch, type MediaStatus, SpaceView, thumbnail, TvSync, type VoicePort, wingHeading, YouTubePlayer } from "../src/index.ts";
 
 // Must match packages/space-server/src/dev.ts.
 const DEV_SERVER_ID = "01JDEV0SRV0000000000000000";
@@ -198,3 +198,40 @@ view.subscribe((s) => {
     }),
   );
 });
+
+// ---- Smart TV (dev; the app's panel uses the same TvSync + YouTubePlayer) ------------
+
+let tvPlayer: YouTubePlayer | null = null;
+let tvSync: TvSync | null = null;
+const tvErrors: number[] = [];
+const tvEl = $("tv");
+async function ensureTv() {
+  if (tvPlayer) return;
+  tvPlayer = await YouTubePlayer.create($("tv-screen"), {
+    onError: (code) => tvErrors.push(code),
+    onState: (s) => tvSync?.playerState(s),
+  });
+  tvPlayer.setVolume(0); // tests and dev: muted (local volume only)
+  tvSync = new TvSync(tvPlayer, () => view.serverNow());
+  tvSync.apply(view.ui.tv?.state ?? null);
+}
+view.subscribe((s) => {
+  tvEl.hidden = !s.tv?.hasTv;
+  if (s.tv?.hasTv) void ensureTv().then(() => tvSync?.apply(s.tv?.state ?? null));
+  else tvSync?.apply(null);
+  $("tv-info").textContent = s.tv
+    ? `${s.tv.state ? `${s.tv.state.status} ${s.tv.state.ref} rev ${s.tv.state.rev} por ${s.tv.state.by_name}` : "desligada"} · controla: ${s.tv.you.control} · gerencia: ${s.tv.you.manage}${s.tvError ? ` · erro: ${s.tvError.code}` : ""}`
+    : "";
+});
+$("tv-load").onclick = () => view.tvLoad(($("tv-input") as HTMLInputElement).value);
+$("tv-play").onclick = () => view.tvPlay(tvSync?.position() ?? 0);
+$("tv-pause").onclick = () => view.tvPause(tvPlayer?.time() ?? 0);
+$("tv-back").onclick = () => view.tvSeek(Math.max(0, (tvSync?.position() ?? 0) - 10));
+$("tv-fwd").onclick = () => view.tvSeek((tvSync?.position() ?? 0) + 10);
+$("tv-stop").onclick = () => view.tvStop();
+$("tv").addEventListener("keydown", (e) => e.stopPropagation());
+(window as unknown as Record<string, unknown>).__tv = {
+  player: () => tvPlayer,
+  sync: () => tvSync,
+  errors: tvErrors,
+};

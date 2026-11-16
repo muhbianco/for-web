@@ -451,6 +451,8 @@ export interface PresencePerson {
 export interface PresenceRoom {
   room_id: string;
   people: PresencePerson[];
+  /** The room's Smart TV, when on (the map lights it up). */
+  tv?: TvState["status"] | null;
 }
 
 /**

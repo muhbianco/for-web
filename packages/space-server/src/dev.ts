@@ -23,7 +23,10 @@ import { Gateway } from "./ws/gateway.ts";
 
 export const DEV_SERVER_ID = "01JDEV0SRV0000000000000000";
 const n = (b: bigint) => Number(b);
-const DEFAULT = Perm.ViewChannel | Perm.ReadMessageHistory | Perm.SendMessage | Perm.Connect | Perm.Speak | Perm.Video | Perm.Listen;
+// A migrated server (ADR 0008): everyone uses objects and controls the TV.
+const DEFAULT =
+  Perm.ViewChannel | Perm.ReadMessageHistory | Perm.SendMessage | Perm.Connect | Perm.Speak | Perm.Video | Perm.Listen |
+  Perm.InteractSpaceObjects | Perm.ControlSpaceTv;
 
 const ids = (i: number) => `01JDEVCH${String(i).padStart(18, "0")}`;
 const vc = (i: number, name: string, max: number, extra: Partial<StoatTextChannel> = {}): StoatTextChannel => ({
@@ -37,7 +40,8 @@ const vc = (i: number, name: string, max: number, extra: Partial<StoatTextChanne
 
 const channels: StoatTextChannel[] = [
   vc(1, "Bate-papo", 10),
-  vc(2, "Café", 4),
+  // In the Café nobody without a role controls the TV (tests a room override).
+  vc(2, "Café", 4, { default_permissions: { a: 0, d: n(Perm.ControlSpaceTv) } }),
   vc(3, "Duo", 2),
   vc(4, "Squad", 8),
   vc(5, "Torneio", 25),

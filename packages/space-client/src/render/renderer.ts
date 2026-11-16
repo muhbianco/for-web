@@ -134,6 +134,11 @@ export class Renderer {
   private readonly scene = new Container();
   private readonly ceiling = new Container();
   private readonly labels = new Container();
+  /** Lit screens of rooms whose TV is playing (ADR 0008). */
+  private readonly tvGlow = new Graphics();
+  private tvKey = "";
+  /** Something that decides which TVs are lit changed (TV state, presence, decoration). */
+  tvDirty = true;
   private readonly overlayGfx = new Graphics();
   private readonly ghost = new Sprite();
   private readonly promptBox = new Container();
@@ -201,7 +206,7 @@ export class Renderer {
     this.ghost.visible = false;
     this.promptBox.addChild(this.promptBg, this.promptText);
     this.promptBox.visible = false;
-    this.stage.addChild(this.floor, this.doors, this.rugs, this.scene, this.ceiling, this.labels, this.overlayGfx, this.ghost, this.promptBox);
+    this.stage.addChild(this.floor, this.doors, this.rugs, this.scene, this.tvGlow, this.ceiling, this.labels, this.overlayGfx, this.ghost, this.promptBox);
     this.app.stage.addChild(this.stage);
   }
 
@@ -700,6 +705,41 @@ export class Renderer {
     }
     this.drawOverlay();
     this.drawPrompt();
+    if (this.tvDirty) this.drawTvGlow(world);
+  }
+
+  /**
+   * A TV whose room is watching something gets a lit screen: a bright panel
+   * and a play mark over the set (no animation: the map stays drawn on demand).
+   */
+  private drawTvGlow(world: World) {
+    this.tvDirty = false;
+    const zones = world.zones;
+    const lit: Array<{ id: string; rect: TileRect; wall: boolean }> = [];
+    for (const inst of world.decor?.items ?? []) {
+      const item = itemOf(CATALOG, inst.item);
+      const zone = zones?.byKey.get(inst.zone);
+      if (!item?.smartTv || zone?.kind !== "room" || !zone.roomId || !world.tvOn(zone.roomId)) continue;
+      lit.push({ id: inst.id, rect: instanceRect(zone, item, inst), wall: item.layer === "wall" });
+    }
+    const key = lit.map((l) => l.id).join(",");
+    if (key === this.tvKey) return;
+    this.tvKey = key;
+    this.dirty = true;
+    const g = this.tvGlow;
+    g.clear();
+    for (const { rect, wall } of lit) {
+      const w = (rect.x1 - rect.x0 + 1) * TILE;
+      // Wall sets fill their wall tile; a set on a rack shows its screen above the footprint.
+      const x = rect.x0 * TILE + 4;
+      const y = wall ? rect.y0 * TILE + 6 : rect.y0 * TILE - TILE * 0.55;
+      const h = wall ? TILE - 14 : TILE * 0.5;
+      g.rect(x, y, w - 8, h).fill({ color: 0x7dd3fc, alpha: 0.55 });
+      g.rect(x, y, w - 8, h).stroke({ color: 0xe0f2fe, width: 1, alpha: 0.9 });
+      const cx = x + (w - 8) / 2;
+      const cy = y + h / 2;
+      g.poly([cx - 3, cy - 4, cx - 3, cy + 4, cx + 4, cy]).fill({ color: 0xffffff, alpha: 0.95 });
+    }
   }
 
   /**

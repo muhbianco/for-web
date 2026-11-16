@@ -23,6 +23,7 @@ export const VERBS: Record<InteractionKind, string> = {
   picture: "Ver",
   frame: "Abrir",
   teleport: "Entrar",
+  tv: "Abrir Smart TV",
 };
 
 /** The closest interactive instance within one tile of us, if any. */
@@ -38,6 +39,8 @@ export function nearestInteractive(world: World): Prompt | null {
     if (!item?.interaction) continue;
     const zone = zones.byKey.get(inst.zone);
     if (!zone) continue;
+    // A TV only works inside a room (ADR 0008); one elsewhere is decoration.
+    if (item.smartTv && zone.kind !== "room") continue;
     const r = instanceRect(zone, item, inst);
     const dx = Math.max(r.x0 - tx, 0, tx - r.x1);
     const dy = Math.max(r.y0 - ty, 0, ty - r.y1);

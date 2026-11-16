@@ -250,6 +250,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return this.decor.settings.tv_cooldown_s ?? 0;
   }
 
+  /** A TV turned on, off, paused: presence (lit TVs on the map) goes out again. */
+  tvChanged(): void {
+    this.presenceDirty = true;
+  }
+
   /** Gateway entry for `tv.*` (the person's current session only). */
   tvCommand(session: SessionPort, cmdId: string, cmd: TvCommand): void {
     const a = this.avatars.get(session.viewer.user._id);
@@ -982,7 +987,9 @@ export class SpaceRuntime implements MediaHost, TvHost {
   ): PresenceEvent["d"] {
     const rooms = [];
     for (const [roomId, people] of built.byRoom) {
-      if (this.ix.roomsById.has(roomId) && this.canView(viewer, roomId)) rooms.push({ room_id: roomId, people });
+      if (this.ix.roomsById.has(roomId) && this.canView(viewer, roomId)) {
+        rooms.push({ room_id: roomId, people, tv: this.tv.state(roomId)?.status ?? null });
+      }
     }
     rooms.sort((x, y) => x.room_id.localeCompare(y.room_id));
     return { rooms, outside: built.outside };

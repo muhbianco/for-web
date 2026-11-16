@@ -29,3 +29,6 @@ export { decodeMap, World } from "./world.ts";
 export { characterSheet, DIRS, FRAMES, palette, PALETTES, SPRITE } from "./render/sprites.ts";
 export { spriteFor, thumbnail } from "./render/atlas.ts";
 export { floorSwatch } from "./render/floors.ts";
+export { type PlayerEvents, type PlayerState, type TvPlayer, YouTubePlayer, loadYouTubeApi } from "./tv/player.ts";
+export { TvSync } from "./tv/sync.ts";
+export type { RoomTv } from "./view.ts";

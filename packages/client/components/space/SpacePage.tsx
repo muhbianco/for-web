@@ -5,6 +5,7 @@ import {
   Switch,
   createEffect,
   createSignal,
+  on,
   onCleanup,
   onMount,
 } from "solid-js";
@@ -40,6 +41,7 @@ import {
 } from "./MediaStage";
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
+import { SmartTv } from "./SmartTv";
 
 const STAGE_MODE_KEY = "muchat.space.stageMode";
 
@@ -227,6 +229,9 @@ function ServerSpace(props: { serverId: string }) {
   }
 
   function closeStage() {
+    // Closing on the TV means "not watching this video": it does not reopen by itself.
+    const s = ui()?.tv?.state;
+    if (stageTab() === "tv" && s) dismissedVideo = `${s.room_id}:${s.ref}:${s.started_ms}`;
     setStageOpen(false);
     host?.focus();
   }
@@ -262,6 +267,33 @@ function ServerSpace(props: { serverId: string }) {
   // Leaving the room closes the stage; it never holds space in the halls.
   createEffect(() => {
     if (roomId() === null && stageOpen()) setStageOpen(false);
+  });
+
+  // ---- Smart TV (ADR 0008) ----
+  const roomTv = () => ui()?.tv ?? null;
+  const tvPlaying = () => roomTv()?.state?.status === "playing";
+  // Using a TV on the map opens it on the stage.
+  createEffect(
+    on(
+      () => ui()?.tvOpenRequest ?? 0,
+      (n) => {
+        if (n > 0) openStage("tv");
+      },
+      { defer: true },
+    ),
+  );
+  // Someone puts a video on the room's TV: it plays for everyone in the room,
+  // so the stage opens on it (unless this person closed that video already).
+  let dismissedVideo: string | null = null;
+  let lastVideo: string | null = null;
+  createEffect(() => {
+    const s = roomTv()?.state;
+    const key = s ? `${s.room_id}:${s.ref}:${s.started_ms}` : null;
+    if (key === lastVideo) return;
+    lastVideo = key;
+    if (!s || s.status !== "playing" || !roomTv()?.you.watch) return;
+    if (key === dismissedVideo) return;
+    if (!(stageVisible() && stageTab() === "tv")) openStage("tv");
   });
 
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
@@ -452,6 +484,12 @@ function ServerSpace(props: { serverId: string }) {
             </PromptChip>
           )}
         </Show>
+        <Show when={tvPlaying() && !(stageVisible() && stageTab() === "tv")}>
+          <PromptChip type="button" onClick={() => openStage("tv")}>
+            <Symbol size={16}>live_tv</Symbol>
+            {t`TV da sala ligada · Assistir`}
+          </PromptChip>
+        </Show>
         <span style={{ flex: 1 }} />
         <Show when={roomId() !== null}>
           <Button
@@ -600,7 +638,12 @@ function ServerSpace(props: { serverId: string }) {
                   ? { label: mediaAction(ui()!.media)!, run: () => view()?.retryMedia() }
                   : null
               }
-              hasTv={false}
+              hasTv={!!roomTv()?.hasTv}
+              tv={
+                <Show when={view() && roomTv()}>
+                  <SmartTv view={view()!} tv={roomTv()!} error={ui()?.tvError ?? null} />
+                </Show>
+              }
               canModerate={!!roomChannel()?.havePermission("MuteMembers")}
               onStopShare={(userId) => view()?.stopScreenOf(userId)}
             />

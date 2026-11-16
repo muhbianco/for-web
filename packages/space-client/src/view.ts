@@ -11,10 +11,17 @@ import {
   itemOf,
   type ProfilePatch,
   type ProfileView,
+  ClockOffset,
+  MAX_TV_POS_S,
   regionAt,
   TILE,
+  type TvRights,
+  type TvState,
   type VoiceReport,
+  youtube,
 } from "@muchat/space-core";
+
+const clampPos = (s: number) => Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
 
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { Editor, type EditorState } from "./editor.ts";
@@ -65,6 +72,21 @@ export interface SpaceUiState {
   interaction: Interaction | null;
   /** Room under the pointer (map tooltip with who is inside), in px of the map element. */
   hover: { roomId: string; x: number; y: number } | null;
+  /** The Smart TV of the room we are in (ADR 0008); null outside rooms. */
+  tv: RoomTv | null;
+  /** Last refusal of a TV command (shown by the TV panel). */
+  tvError: { code: string; retryAfterMs?: number; at: number } | null;
+  /** Bumped when someone uses a TV object on the map (the app opens the TV). */
+  tvOpenRequest: number;
+}
+
+/** The room's TV as this person may see and use it. */
+export interface RoomTv {
+  roomId: string;
+  state: TvState | null;
+  you: TvRights;
+  cooldownS: number;
+  hasTv: boolean;
 }
 
 const KEYS: Record<string, "up" | "down" | "left" | "right"> = {
@@ -119,6 +141,7 @@ export class SpaceView {
         this.patch({ status });
       },
       onEvent: (e) => void this.onEvent(e),
+      onClock: (sent, received, serverMs) => this.clock.add(sent, received, serverMs),
     });
     this.media = opts.voice
       ? new MediaLink({
@@ -154,7 +177,72 @@ export class SpaceView {
       prompt: null,
       interaction: null,
       hover: null,
+      tv: null,
+      tvError: null,
+      tvOpenRequest: 0,
     };
+  }
+
+  // ---- Smart TV (ADR 0008) -----------------------------------------------------
+
+  private readonly clock = new ClockOffset();
+  /** TV per room, as the server last told us (only rooms we were inside). */
+  private readonly tvRooms = new Map<string, RoomTv>();
+  /** Ids of TV commands in flight, so their errors go to the TV, not the editor. */
+  private readonly tvCommands = new Set<string>();
+
+  /** Server time (ms) as this client estimates it; the TV positions run on it. */
+  serverNow(): number {
+    return this.clock.ready ? this.clock.serverNow(Date.now()) : Date.now();
+  }
+
+  private syncTv() {
+    const room = this.world.me?.room ?? null;
+    const tv = room ? (this.tvRooms.get(room) ?? null) : null;
+    if (tv !== this.state.tv) this.patch({ tv });
+  }
+
+  private tvSend(t: string, d: Record<string, unknown>): boolean {
+    const tv = this.state.tv;
+    if (!tv) return false;
+    const id = this.conn.nextId();
+    this.tvCommands.add(id);
+    if (this.tvCommands.size > 64) this.tvCommands.delete(this.tvCommands.values().next().value!);
+    this.conn.send({ v: 1, t, id, d: { room_id: tv.roomId, base_rev: tv.state?.rev ?? 0, ...d } });
+    return true;
+  }
+
+  /** Puts a video on the room's TV from a link or id typed by the person. */
+  tvLoad(input: string): "ok" | "invalid" | "no_tv" {
+    const ref = youtube.parse(input);
+    if (!ref) return "invalid";
+    return this.tvSend("tv.load", { app: "youtube", ref }) ? "ok" : "no_tv";
+  }
+
+  tvPlay(posS: number) {
+    this.tvSend("tv.play", { pos_s: clampPos(posS) });
+  }
+
+  tvPause(posS: number) {
+    this.tvSend("tv.pause", { pos_s: clampPos(posS) });
+  }
+
+  tvSeek(posS: number) {
+    this.tvSend("tv.seek", { pos_s: clampPos(posS) });
+  }
+
+  tvStop() {
+    this.tvSend("tv.stop", {});
+  }
+
+  /** The controller's player reached the end of the video. */
+  tvEnded() {
+    this.tvSend("tv.ended", {});
+  }
+
+  /** Measures the server's clock now (the TV panel opened). */
+  probeClock() {
+    this.conn.probeClock();
   }
 
   static async mount(opts: SpaceViewOptions): Promise<SpaceView> {
@@ -167,6 +255,7 @@ export class SpaceView {
         case "room_changed":
           if (e.local) v.media?.roomChanged(e.to);
           v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
+          v.syncTv();
           break;
         case "corrected":
           v.mover.resync();
@@ -180,6 +269,7 @@ export class SpaceView {
         case "decor_changed":
           if (e.op.kind === "reset") v.renderer.rebuildDecor(v.world);
           else v.renderer.applyDecorOp(v.world, e.op);
+          v.renderer.tvDirty = true;
           v.patch({ decorRev: v.world.decor?.rev ?? 0, settings: v.world.decor?.settings ?? null });
           v.updatePrompt();
           break;
@@ -190,7 +280,12 @@ export class SpaceView {
           if (!v.world.rights.can_edit && v.editor.state.enabled) v.editor.setEnabled(false);
           v.patch({ rights: v.world.rights });
           break;
+        case "tv_changed":
+          v.renderer.tvDirty = true;
+          v.renderer.invalidate();
+          break;
         case "presence_changed": {
+          v.renderer.tvDirty = true;
           // Room labels carry the head count: redraw them only when a count moved.
           const counts = (v.world.presence?.rooms ?? []).map((r) => `${r.room_id}:${r.people.length}`).join(",");
           if (counts !== v.presenceCounts) {
@@ -311,12 +406,24 @@ export class SpaceView {
         this.world.setRights(d);
         return;
       case "error":
+        if (typeof e.re === "string" && this.tvCommands.delete(e.re)) {
+          this.patch({ tvError: { code: d?.code ?? "internal", retryAfterMs: d?.retry_after_ms, at: Date.now() } });
+          return;
+        }
         if (d?.code && (typeof e.re === "string" || d.code === "not_allowed")) this.editor.onError(typeof e.re === "string" ? e.re : undefined, d.code, d.reason);
         return;
       case "space.presence":
         this.world.setPresence(d);
         this.dirtyUi = true;
         return;
+      case "tv.state": {
+        const tv: RoomTv = { roomId: d.room_id, state: d.state ?? null, you: d.you, cooldownS: d.cooldown_s ?? 0, hasTv: d.has_tv !== false };
+        this.tvRooms.set(d.room_id, tv);
+        this.world.setTv(d.room_id, tv.state);
+        if (!this.clock.ready && tv.state) this.conn.probeClock();
+        this.syncTv();
+        return;
+      }
       case "screen.stopped":
         // A moderator of the room ended our screen share: stop it here too.
         this.opts.voice?.stopScreenShare?.();
@@ -509,6 +616,11 @@ export class SpaceView {
     if (!p) return;
     if (p.item.interaction === "teleport") {
       this.conn.send({ v: 1, t: "avatar.teleport", id: this.conn.nextId(), d: { id: p.inst.id } });
+      return;
+    }
+    if (p.item.interaction === "tv") {
+      // The room's Smart TV: the app opens it on the media stage.
+      this.patch({ tvOpenRequest: this.state.tvOpenRequest + 1 });
       return;
     }
     this.patch({ interaction: { inst: p.inst, item: p.item, config: p.inst.config ?? {} } });

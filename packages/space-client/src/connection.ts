@@ -19,6 +19,8 @@ export interface ConnectionOptions {
   mode?: "play" | "observe";
   onEvent: (event: Record<string, unknown>) => void;
   onStatus: (status: ConnStatus) => void;
+  /** Each pong: when the ping left, when the pong came (local ms) and the server's clock (TV sync). */
+  onClock?: (sentMs: number, receivedMs: number, serverMs: number) => void;
   /** Injected in tests. */
   socketFactory?: (url: string) => WebSocket;
 }
@@ -74,6 +76,21 @@ export class SpaceConnection {
     return `c${++this.ids}`;
   }
 
+  private readonly pingSent = new Map<string, number>();
+
+  /** A ping whose pong measures the server's clock. */
+  ping() {
+    const id = this.nextId();
+    this.pingSent.set(id, Date.now());
+    if (this.pingSent.size > 32) this.pingSent.delete(this.pingSent.keys().next().value!);
+    this.send({ v: 1, t: "ping", id });
+  }
+
+  /** A few pings in a row (the TV wants the clock right away). */
+  probeClock(count = 5, gapMs = 120) {
+    for (let i = 0; i < count; i++) setTimeout(() => this.ping(), i * gapMs);
+  }
+
   private open(status: ConnStatus) {
     this.opts.onStatus(status);
     const url = new URL("/_muchat/space/v1/ws", this.opts.baseUrl);
@@ -94,7 +111,7 @@ export class SpaceConnection {
           },
         }),
       );
-      this.pingTimer = setInterval(() => this.send({ v: 1, t: "ping", id: this.nextId() }), 20_000);
+      this.pingTimer = setInterval(() => this.ping(), 20_000);
     };
     ws.onmessage = (msg) => {
       let event: Record<string, unknown>;
@@ -102,6 +119,12 @@ export class SpaceConnection {
         event = JSON.parse(String(msg.data));
       } catch {
         return;
+      }
+      if (event.t === "pong" && typeof event.re === "string") {
+        const sent = this.pingSent.get(event.re);
+        this.pingSent.delete(event.re);
+        const serverMs = (event.d as { server_ms?: unknown } | undefined)?.server_ms;
+        if (sent !== undefined && typeof serverMs === "number") this.opts.onClock?.(sent, Date.now(), serverMs);
       }
       const ready = this.opts.mode === "observe" ? event.t === "hello.ok" : event.t === "space.snapshot";
       if (ready) {

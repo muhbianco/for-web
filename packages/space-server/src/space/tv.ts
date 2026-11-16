@@ -87,6 +87,8 @@ export interface TvHost {
   /** Seconds between two videos in a room (0 = off). */
   cooldownS(): number;
   displayName(userId: string): string;
+  /** The TV of some room changed (presence carries whether it is on). */
+  tvChanged(): void;
 }
 
 export type TvCommand =
@@ -157,6 +159,7 @@ export class TvHub {
   }
 
   private broadcast(roomId: string) {
+    this.host.tvChanged();
     for (const s of this.host.sessionsIn(roomId)) this.sendTo(s, roomId);
   }
 

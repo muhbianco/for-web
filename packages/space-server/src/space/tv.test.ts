@@ -123,6 +123,7 @@ test("A: every room has its own TV; choosing a video reaches everyone in that ro
   const { rt } = await world();
   assert.equal(rt.hasTv(PUB), true, "the theme gives the M room a TV");
   assert.equal(rt.hasTv(DUO), true, "and the S room one on the wall");
+  for (const r of rt.map.rooms) assert.ok(rt.hasTv(r.roomId), `room ${r.roomId} (${r.size}) has its TV`);
   const ana = enter(rt, ANA, "Ana");
   const bia = enter(rt, BIA, "Bia");
   const cai = enter(rt, CAI, "Caio");

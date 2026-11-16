@@ -1,6 +1,6 @@
 import type { MapIndex } from "../map/grid.ts";
 import type { CompiledMap, CompiledRoom } from "../map/types.ts";
-import { type Catalog, CATALOG } from "./catalog.ts";
+import { type Catalog, CATALOG, itemOf } from "./catalog.ts";
 import { type PlacementContext, validatePlacement } from "./placement.ts";
 import { type DecorInstance, type DecorState, emptyDecor, type InteractionConfig, type Rotation } from "./types.ts";
 import { roomZoneKey, wingZoneKey, type ZoneIndex, zonesOf } from "./zones.ts";
@@ -275,8 +275,33 @@ export function furnish(ix: MapIndex, state: DecorState, opts: ThemeOptions = {}
     const key = roomZoneKey(r.roomId);
     if (!wants(key)) continue;
     place(key, roomSpecs(r, hash(r.roomId)));
+    ensureTv(key, r);
   }
   return next;
+
+  /**
+   * Every room has its own TV (ADR 0008). When the room's look left it without
+   * one (a door in the back wall, another item in the way), a wall set goes on
+   * the first free stretch of the back wall, or a set on a rack on the first
+   * free floor spot. Deterministic, like the rest of the theme.
+   */
+  function ensureTv(key: string, room: CompiledRoom) {
+    const zone = zones.byKey.get(key);
+    if (!zone) return;
+    if (items.some((i) => i.zone === key && itemOf(catalog, i.item)?.smartTv)) return;
+    const w = room.interior.x1 - room.interior.x0 + 1;
+    const h = room.interior.y1 - room.interior.y0 + 1;
+    const tries: DecorInstance[] = [];
+    const id = `t-${hash(key).toString(36)}-tv`;
+    for (let x = 0; x + 1 < w; x++) tries.push({ id, item: "tv-wall", zone: key, x, y: -1, rot: 0 });
+    for (let y = h - 1; y >= 0; y--) for (let x = 0; x + 1 < w; x++) tries.push({ id, item: "tv-stand", zone: key, x, y, rot: 2 });
+    for (const inst of tries) {
+      if (validatePlacement(ctx(), inst) !== null) continue;
+      items.push(inst);
+      next = { ...next, items: [...items] };
+      return;
+    }
+  }
 }
 
 /** Fresh default state for a map (rev 0: nothing stored yet). */
