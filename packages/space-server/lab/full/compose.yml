@@ -1,0 +1,58 @@
+# Laboratório completo do Muchat (fase 4): Stoat de verdade (imagens oficiais v0.15.5),
+# LiveKit e as dependências, para navegar no app real com contas de teste.
+# Nada aqui fala com a produção. Arquivos gerados por setup.sh (gitignored):
+# Revolt.toml, livekit.yaml, .keys. Roteiro em README.md.
+#
+#   sh setup.sh && docker compose up -d
+#
+# O app (vite) e o servidor do Espaço rodam no Windows; o vite encaminha
+# /api, /ws, /livekit e /_muchat/space para cá (vite.config.ts).
+
+name: muchat-full-lab
+
+services:
+  database:
+    image: mongo:8.2
+    ports: ["27018:27017"]
+    mem_limit: 768m
+
+  redis:
+    image: valkey/valkey:9-alpine
+    ports: ["16379:6379"]
+
+  rabbit:
+    image: rabbitmq:4
+    environment:
+      RABBITMQ_DEFAULT_USER: rabbituser
+      RABBITMQ_DEFAULT_PASS: rabbitpass
+    mem_limit: 512m
+
+  api:
+    image: ghcr.io/stoatchat/api:v0.15.5
+    volumes:
+      - ./Revolt.toml:/Revolt.toml:ro
+    ports: ["14702:14702"]
+    depends_on: [database, redis, rabbit]
+    restart: on-failure
+
+  events:
+    image: ghcr.io/stoatchat/events:v0.15.5
+    volumes:
+      - ./Revolt.toml:/Revolt.toml:ro
+    ports: ["14703:14703"]
+    depends_on: [database, redis]
+    restart: on-failure
+
+  livekit:
+    image: ghcr.io/stoatchat/livekit-server:v1.9.14
+    command: ["--config", "/etc/livekit.yaml"]
+    environment:
+      LIVEKIT_KEYS: "${LAB_LIVEKIT_KEY}: ${LAB_LIVEKIT_SECRET}"
+    volumes:
+      - ./livekit.yaml:/etc/livekit.yaml:ro
+    ports:
+      - "17880:7880"
+      - "17881:17881"
+      - "17882:17882/udp"
+    cpus: 1.5
+    mem_limit: 1g

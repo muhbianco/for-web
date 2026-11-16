@@ -1,0 +1,6 @@
+.keys
+.env
+.wsl-ip
+Revolt.toml
+livekit.yaml
+state.local.json
