@@ -351,8 +351,9 @@ export class Gateway {
       const runtime = await this.deps.runtimes.get(serverId).catch(() => null);
       if (!runtime) return json(404, { error: "not_found" });
       if (what === "decor") {
-        // Every member sees the same decoration; it changes, so no caching.
-        return json(200, runtime.decorWire);
+        // Filtered per person (ADR 0008): nothing from rooms they cannot view,
+        // no configuration of objects they may not use. Changes: no caching.
+        return json(200, runtime.decorWireFor({ user, member }));
       }
       if (runtime.layoutFingerprint !== fingerprint) return json(404, { error: "stale_layout" });
       // Same geometry for every member; the wire map carries no room or wing

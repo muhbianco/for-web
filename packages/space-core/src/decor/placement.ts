@@ -2,7 +2,15 @@ import { Tile } from "../map/constants.ts";
 import { cellIndex, type MapIndex, tileAt } from "../map/grid.ts";
 import type { CompiledMap, TilePos, TileRect } from "../map/types.ts";
 import { type Catalog, itemOf } from "./catalog.ts";
-import type { DecorInstance, DecorItem, DecorSettings, DecorState, InteractionConfig, Rotation } from "./types.ts";
+import {
+  type DecorInstance,
+  type DecorItem,
+  type DecorSettings,
+  type DecorState,
+  type InteractionConfig,
+  MAX_TV_COOLDOWN_S,
+  type Rotation,
+} from "./types.ts";
 import { type Zone, type ZoneIndex } from "./zones.ts";
 
 /** Bounded document: one server's decoration never grows past this. */
@@ -25,7 +33,11 @@ export type PlacementError =
   | "blocks_door"
   | "blocks_path"
   | "too_many"
-  | "bad_config";
+  | "bad_config"
+  /** The person may not decorate this zone (Stoat DecorateSpace, ADR 0008). Client-side hint only. */
+  | "no_permission"
+  /** A Smart TV only works inside a room (ADR 0008). */
+  | "tv_outside_room";
 
 /** Footprint (tiles) of an item at a rotation: odd quarter turns transpose it. */
 export function footprint(item: DecorItem, rot: Rotation): { w: number; h: number } {
@@ -247,6 +259,10 @@ export function validateSettings(s: unknown): s is DecorSettings {
   const o = s as Record<string, unknown>;
   if (!["admins", "roles", "everyone"].includes(String(o.editors))) return false;
   if (!Array.isArray(o.roles) || o.roles.length > 50) return false;
+  if (o.tv_cooldown_s !== undefined) {
+    const v = o.tv_cooldown_s;
+    if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > MAX_TV_COOLDOWN_S) return false;
+  }
   return o.roles.every((r) => typeof r === "string" && r.length > 0 && r.length <= 64);
 }
 
@@ -279,6 +295,14 @@ export function applyDecorOp(
       return { ...state, rev, floors };
     }
     case "settings":
-      return { ...state, rev, settings: { editors: op.settings.editors, roles: [...op.settings.roles] } };
+      return {
+        ...state,
+        rev,
+        settings: {
+          editors: op.settings.editors,
+          roles: [...op.settings.roles],
+          ...(op.settings.tv_cooldown_s !== undefined ? { tv_cooldown_s: op.settings.tv_cooldown_s } : {}),
+        },
+      };
   }
 }

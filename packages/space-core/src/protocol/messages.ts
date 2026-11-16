@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { ID_PATTERN, MAX_TEXT, MAX_TITLE, MAX_URL } from "../decor/placement.ts";
-import type { DecorOp, DecorSettings, PlacementError } from "../decor/index.ts";
+import { type DecorOp, type DecorSettings, MAX_TV_COOLDOWN_S, type PlacementError } from "../decor/index.ts";
 import { isUlid } from "../media/naming.ts";
 import type { CompiledMap } from "../map/types.ts";
 
@@ -166,6 +166,7 @@ export const DecorSettingsSchema = z
   .object({
     editors: z.enum(["admins", "roles", "everyone"]),
     roles: z.array(z.string().min(1).max(64)).max(50),
+    tv_cooldown_s: z.number().int().min(0).max(MAX_TV_COOLDOWN_S).optional(),
   })
   .strict();
 
@@ -401,9 +402,18 @@ export interface PresenceEvent {
 
 /** What this person may do to the decoration (server-decided, mirrored for the UI). */
 export interface DecorRights {
+  /** May decorate somewhere (halls or at least one room). */
   can_edit: boolean;
-  /** ManageServer: may change who edits. */
+  /** ManageServer: the space's settings (TV interval). */
   can_manage: boolean;
+  /**
+   * ADR 0008, where (Stoat DecorateSpace / ConfigureSpaceObjects): the common
+   * areas use the server's permissions, each room its channel's.
+   */
+  edit_common?: boolean;
+  edit_rooms?: string[];
+  configure_common?: boolean;
+  configure_rooms?: string[];
 }
 
 export interface SnapshotEvent {

@@ -21,6 +21,16 @@ export const Perm = {
   DeafenMembers: 1n << 34n,
   MoveMembers: 1n << 35n,
   Listen: 1n << 36n,
+  /**
+   * Muchat Espaço (ADR 0008), Stoat bits patched by muchat/patches/stoat-voice
+   * (after SendVoiceAlert = 41). Per channel (room) like any other permission;
+   * the halls and corridors use the server's.
+   */
+  DecorateSpace: 1n << 42n,
+  ConfigureSpaceObjects: 1n << 43n,
+  ManageSpaceTvs: 1n << 44n,
+  ControlSpaceTv: 1n << 45n,
+  InteractSpaceObjects: 1n << 46n,
   GrantAllSafe: 0x000f_ffff_ffff_ffffn,
 } as const;
 

@@ -391,19 +391,100 @@ export class SpaceRuntime implements MediaHost {
     throw new Error("decor write conflict");
   }
 
-  /** What this person may do to the decoration: ManageServer, or the space's own setting. */
-  decorRights(viewer: Viewer): DecorRights {
-    const sp = serverPermissions({
+  // ---- permissions of the space (ADR 0008) ---------------------------------
+
+  /** Stoat server permissions of a viewer (timeouts masked like Stoat does). */
+  private serverPerms(viewer: Viewer): bigint {
+    return serverPermissions({
       user: { id: viewer.user._id, privileged: viewer.user.privileged ?? false },
       server: toPermServer(this.server()),
       member: toPermMember(viewer.member),
       nowMs: this.now(),
     });
-    const manage = has(sp, Perm.ManageServer);
-    const s = this.decor.settings;
-    const roles = viewer.member.roles ?? [];
-    const edit = manage || s.editors === "everyone" || (s.editors === "roles" && roles.some((r) => s.roles.includes(r)));
-    return { can_edit: edit, can_manage: manage };
+  }
+
+  /**
+   * Permissions that apply to a zone of the map: a room is its Stoat channel
+   * (overrides included, nothing without ViewChannel); the hall, the spine and
+   * the wing corridors use the server's permissions.
+   */
+  private zonePerms(viewer: Viewer, zoneKey: string): bigint {
+    const zone = this.zones.byKey.get(zoneKey);
+    if (zone?.kind === "room") return zone.roomId ? this.perms(viewer, zone.roomId) : 0n;
+    return this.serverPerms(viewer);
+  }
+
+  /** The zone is on this viewer's map (rooms need ViewChannel). */
+  private seesZone(viewer: Viewer, zoneKey: string): boolean {
+    const zone = this.zones.byKey.get(zoneKey);
+    if (zone?.kind !== "room") return true;
+    return zone.roomId ? this.canView(viewer, zone.roomId) : false;
+  }
+
+  /** Place, move, rotate, edit and remove objects in the zone (ManageServer also does). */
+  canDecorate(viewer: Viewer, zoneKey: string): boolean {
+    return has(this.serverPerms(viewer), Perm.ManageServer) || has(this.zonePerms(viewer, zoneKey), Perm.DecorateSpace);
+  }
+
+  /** Configure what interactive objects do in the zone. */
+  canConfigure(viewer: Viewer, zoneKey: string): boolean {
+    return has(this.serverPerms(viewer), Perm.ManageServer) || has(this.zonePerms(viewer, zoneKey), Perm.ConfigureSpaceObjects);
+  }
+
+  /** Use interactive objects of the zone (open, teleport, watch the TV). */
+  canInteract(viewer: Viewer, zoneKey: string): boolean {
+    return has(this.zonePerms(viewer, zoneKey), Perm.InteractSpaceObjects) || this.canConfigure(viewer, zoneKey);
+  }
+
+  /** What this person may do to the decoration, and where (mirrored for the editor). */
+  decorRights(viewer: Viewer): DecorRights {
+    const manage = has(this.serverPerms(viewer), Perm.ManageServer);
+    const editCommon = this.canDecorate(viewer, "hall");
+    const configureCommon = this.canConfigure(viewer, "hall");
+    const editRooms: string[] = [];
+    const configureRooms: string[] = [];
+    for (const r of this.map.rooms) {
+      const key = `room:${r.roomId}`;
+      if (this.canDecorate(viewer, key)) editRooms.push(r.roomId);
+      if (this.canConfigure(viewer, key)) configureRooms.push(r.roomId);
+    }
+    return {
+      can_edit: editCommon || editRooms.length > 0,
+      can_manage: manage,
+      edit_common: editCommon,
+      edit_rooms: editRooms,
+      configure_common: configureCommon,
+      configure_rooms: configureRooms,
+    };
+  }
+
+  /** An instance as this viewer may receive it: no configuration when they may not use it. */
+  private instanceFor(viewer: Viewer, inst: DecorInstance): DecorInstance {
+    if (!inst.config || this.canInteract(viewer, inst.zone)) return inst;
+    const { config: _hidden, ...rest } = inst;
+    return { ...rest, locked: true };
+  }
+
+  /**
+   * The decoration as this viewer may read it (GET /decor): items and floors
+   * of rooms they cannot view are left out (a private room's notes, links and
+   * furniture never leave the server), configurations they may not use too.
+   */
+  decorWireFor(viewer: Viewer): string {
+    const { rev, floors, items, settings } = this.decor;
+    return JSON.stringify({
+      rev,
+      floors: Object.fromEntries(Object.entries(floors).filter(([zone]) => this.seesZone(viewer, zone))),
+      items: items.filter((i) => this.seesZone(viewer, i.zone)).map((i) => this.instanceFor(viewer, i)),
+      settings,
+    });
+  }
+
+  /** `decor.changed` for one recipient: a change they may not see is a reset (refetch, filtered). */
+  private opFor(viewer: Viewer, op: DecorOp, zones: string[]): DecorOp {
+    if (!zones.every((z) => this.seesZone(viewer, z))) return { kind: "reset" };
+    if (op.kind === "place" || op.kind === "update") return { ...op, item: this.instanceFor(viewer, op.item) };
+    return op;
   }
 
   /** Gateway entry: one change, validated and persisted, then told to everyone. Serialized per space. */
@@ -422,34 +503,58 @@ export class SpaceRuntime implements MediaHost {
     if (!a || a.session !== session) return;
     const fail = (code: string, reason?: string) =>
       session.send({ v: 1, t: "error", re: cmdId, d: { code, ...(reason ? { reason } : {}) } });
-    const rights = this.decorRights(session.viewer);
-    if (cmd.kind === "settings" ? !rights.can_manage : !rights.can_edit) return fail("not_allowed");
+    const viewer = session.viewer;
+    if (cmd.kind === "settings" && !has(this.serverPerms(viewer), Perm.ManageServer)) return fail("not_allowed");
 
     const ctx = { ix: this.ix, zones: this.zones, catalog: CATALOG, state: this.decor };
     let op: DecorOp;
+    /** Zones the change touches: who may not see one of them gets a reset. */
+    let touched: string[] = [];
     switch (cmd.kind) {
       case "place": {
-        const err = validatePlacement(ctx, cmd.item);
+        // Permission per zone (ADR 0008): a room is its channel, the halls the server.
+        if (!this.canDecorate(viewer, cmd.item.zone)) return fail("not_allowed");
+        if (cmd.item.config && !this.canConfigure(viewer, cmd.item.zone)) return fail("not_allowed", "configure");
+        const { locked: _l, ...item } = cmd.item as DecorInstance;
+        const err = validatePlacement(ctx, item);
         if (err) return fail("decor_invalid", err);
-        op = { kind: "place", item: cmd.item };
+        op = { kind: "place", item };
+        touched = [item.zone];
         break;
       }
       case "update": {
         const cur = this.decor.items.find((i) => i.id === cmd.item.id);
         if (!cur) return fail("not_found");
         if (cur.item !== cmd.item.item) return fail("decor_invalid", "unknown_item");
-        const err = validatePlacement(ctx, cmd.item, cmd.item.id);
+        // Moving between zones needs the permission in both.
+        if (!this.canDecorate(viewer, cur.zone) || !this.canDecorate(viewer, cmd.item.zone)) return fail("not_allowed");
+        const { locked: _l, ...sent } = cmd.item as DecorInstance;
+        let item = sent;
+        if (!this.canConfigure(viewer, cmd.item.zone)) {
+          // Someone who may not configure moves or turns the object: its
+          // configuration stays as it is (they may not even have received it).
+          if (sent.config && JSON.stringify(sent.config) !== JSON.stringify(cur.config)) return fail("not_allowed", "configure");
+          item = { ...sent, ...(cur.config ? { config: cur.config } : {}) };
+          if (!cur.config) delete (item as { config?: unknown }).config;
+        }
+        const err = validatePlacement(ctx, item, item.id);
         if (err) return fail("decor_invalid", err);
-        op = { kind: "update", item: cmd.item };
+        op = { kind: "update", item };
+        touched = [cur.zone, item.zone];
         break;
       }
       case "remove": {
-        if (!this.decor.items.some((i) => i.id === cmd.id)) return fail("not_found");
+        const cur = this.decor.items.find((i) => i.id === cmd.id);
+        if (!cur) return fail("not_found");
+        if (!this.canDecorate(viewer, cur.zone)) return fail("not_allowed");
         op = { kind: "remove", id: cmd.id };
+        touched = [cur.zone];
         break;
       }
       case "floor": {
         if (!this.zones.byKey.has(cmd.zone)) return fail("decor_invalid", "unknown_zone");
+        if (!this.canDecorate(viewer, cmd.zone)) return fail("not_allowed");
+        touched = [cmd.zone];
         if (cmd.floor !== null) {
           const { item, variant } = parseFloorRef(cmd.floor);
           const it = itemOf(CATALOG, item);
@@ -476,9 +581,14 @@ export class SpaceRuntime implements MediaHost {
       return fail("conflict");
     }
     this.setDecor(next);
-    // Everyone gets the change; the issuer also gets `re`, to pair it with the command (undo stack).
-    const event = { v: 1, t: "decor.changed", d: { rev: next.rev, op, by: userId } };
-    for (const other of this.avatars.values()) other.session?.send(other.session === session ? { ...event, re: cmdId } : event);
+    // Everyone gets the change as they may see it (a room they cannot view:
+    // a reset, refetched filtered); the issuer also gets `re` (undo stack).
+    for (const other of this.avatars.values()) {
+      const s = other.session;
+      if (!s) continue;
+      const event = { v: 1, t: "decor.changed", d: { rev: next.rev, op: this.opFor(s.viewer, op, touched), by: userId } };
+      s.send(s === session ? { ...event, re: cmdId } : event);
+    }
     if (op.kind === "settings") {
       for (const other of this.avatars.values()) other.session?.send({ v: 1, t: "decor.rights", d: this.decorRights(other.viewer) });
     }
@@ -537,6 +647,7 @@ export class SpaceRuntime implements MediaHost {
     const item = inst ? itemOf(CATALOG, inst.item) : undefined;
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
     if (!inst || !item || !zone || item.interaction !== "teleport") return fail("not_found");
+    if (!this.canInteract(session.viewer, inst.zone)) return fail("not_allowed");
     const rect = instanceRect(zone, item, inst);
     const tx = Math.floor(a.move.pos.x / this.map.tileSize);
     const ty = Math.floor(a.move.pos.y / this.map.tileSize);

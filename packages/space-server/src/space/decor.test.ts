@@ -17,7 +17,10 @@ const ANA = "01JANA00000000000000000000"; // owner
 const BIA = "01JB1A00000000000000000000"; // role MOD
 const CAI = "01JCA100000000000000000000"; // plain member
 const n = (b: bigint) => Number(b);
-const DEFAULT = Perm.ViewChannel | Perm.ReadMessageHistory | Perm.SendMessage | Perm.Connect | Perm.Speak | Perm.Listen;
+// A migrated server (ADR 0008): @everyone may use objects and control the TV.
+const DEFAULT =
+  Perm.ViewChannel | Perm.ReadMessageHistory | Perm.SendMessage | Perm.Connect | Perm.Speak | Perm.Listen |
+  Perm.InteractSpaceObjects | Perm.ControlSpaceTv;
 
 function makeCache(): StoatCache {
   const cache = new StoatCache();
@@ -30,12 +33,25 @@ function makeCache(): StoatCache {
         name: "Piloto",
         channels: [PUB, DUO],
         default_permissions: n(DEFAULT),
-        roles: { MOD: { name: "Moderação", rank: 1, permissions: { a: 0, d: 0 } } },
+        roles: {
+          MOD: { name: "Moderação", rank: 1, permissions: { a: 0, d: 0 } },
+          // Decorates everywhere except where a room says otherwise.
+          DEC: { name: "Decoração", rank: 2, permissions: { a: n(Perm.DecorateSpace), d: 0 } },
+          CFG: { name: "Configura", rank: 3, permissions: { a: n(Perm.DecorateSpace | Perm.ConfigureSpaceObjects), d: 0 } },
+        },
       },
     ],
     channels: [
       { channel_type: "TextChannel", _id: PUB, server: SRV, name: "Sala Aberta", voice: { max_users: 8 } },
-      { channel_type: "TextChannel", _id: DUO, server: SRV, name: "Duo", voice: { max_users: 2 } },
+      {
+        channel_type: "TextChannel",
+        _id: DUO,
+        server: SRV,
+        name: "Duo",
+        voice: { max_users: 2 },
+        // The Duo room takes decorating away from DEC (a channel override).
+        role_permissions: { DEC: { a: 0, d: n(Perm.DecorateSpace) } },
+      },
     ],
   });
   return cache;
@@ -120,29 +136,67 @@ test("init furnishes the theme once and persists it; a second process reads the 
   const snap = ana.last("space.snapshot")!.d as { decor: { rev: number; url: string }; you: { decor: { can_edit: boolean; can_manage: boolean } } };
   assert.equal(snap.decor.rev, 1);
   assert.equal(snap.decor.url, `/_muchat/space/v1/spaces/${SRV}/decor`);
-  assert.deepEqual(snap.you.decor, { can_edit: true, can_manage: true });
+  assert.equal(snap.you.decor.can_edit, true);
+  assert.equal(snap.you.decor.can_manage, true);
   const wire = JSON.parse(rt.decorWire) as Record<string, unknown>;
   assert.deepEqual(Object.keys(wire).sort(), ["floors", "items", "rev", "settings"]);
 });
 
-test("rights: owner edits and manages; plain members do not; a role setting opens editing to that role", async () => {
+test("E: decorating follows Stoat's DecorateSpace per zone (room override wins); the old setting grants nothing", async () => {
   const { rt } = await space();
   const ana = enter(rt, ANA, "Ana");
-  const bia = enter(rt, BIA, "Bia", ["MOD"]);
+  const bia = enter(rt, BIA, "Bia", ["DEC"]);
   const cai = enter(rt, CAI, "Cai");
-  assert.deepEqual(rt.decorRights(bia.viewer), { can_edit: false, can_manage: false });
+  const r = (v: Viewer) => rt.decorRights(v);
+  assert.equal(r(cai.viewer).can_edit, false, "a plain member does not decorate");
+  assert.equal(r(bia.viewer).edit_common, true);
+  assert.deepEqual(r(bia.viewer).edit_rooms, [PUB], "everywhere but Duo, whose override denies it");
+  assert.equal(r(ana.viewer).can_manage, true);
+  for (const i of rt.decorState.items.filter((i) => i.zone === roomZoneKey(PUB))) {
+    await run(rt, ana, `rm-${i.id}`, { kind: "remove", id: i.id });
+  }
+
+  // Attempts are refused in the server, not only hidden in the app.
   await run(rt, cai, "c1", { kind: "place", item: inst("cai-1", "plant-small", "hall", 0, 0) });
   assert.deepEqual(cai.errorsFor("c1"), [{ code: "not_allowed" }]);
-  await run(rt, bia, "b1", { kind: "settings", settings: { editors: "roles", roles: ["MOD"] } });
-  assert.deepEqual(bia.errorsFor("b1"), [{ code: "not_allowed" }]);
-  await run(rt, ana, "a1", { kind: "settings", settings: { editors: "roles", roles: ["MOD"] } });
+  await run(rt, bia, "b1", { kind: "place", item: inst("bia-1", "plant-small", roomZoneKey(DUO), 1, 1) });
+  assert.deepEqual(bia.errorsFor("b1"), [{ code: "not_allowed" }], "denied inside Duo");
+  await run(rt, bia, "b2", { kind: "place", item: inst("bia-2", "plant-small", roomZoneKey(PUB), 1, 1) });
+  assert.equal(bia.errorsFor("b2").length, 0, "allowed in the public room");
+  await run(rt, bia, "b3", { kind: "floor", zone: roomZoneKey(DUO), floor: null });
+  assert.deepEqual(bia.errorsFor("b3"), [{ code: "not_allowed" }]);
+
+  // The old "who decorates" setting is still stored but grants nothing; only ManageServer changes settings.
+  await run(rt, bia, "b4", { kind: "settings", settings: { editors: "everyone", roles: [] } });
+  assert.deepEqual(bia.errorsFor("b4"), [{ code: "not_allowed" }]);
+  await run(rt, ana, "a1", { kind: "settings", settings: { editors: "everyone", roles: [], tv_cooldown_s: 300 } });
   assert.equal(ana.errorsFor("a1").length, 0);
-  assert.deepEqual(rt.decorRights(bia.viewer), { can_edit: true, can_manage: false });
-  assert.deepEqual(rt.decorRights(cai.viewer), { can_edit: false, can_manage: false });
-  assert.deepEqual(bia.last("decor.rights")!.d, { can_edit: true, can_manage: false });
-  assert.deepEqual((cai.last("decor.changed")!.d as { op: unknown }).op, { kind: "settings", settings: { editors: "roles", roles: ["MOD"] } });
-  await run(rt, ana, "a2", { kind: "settings", settings: { editors: "everyone", roles: [] } });
-  assert.deepEqual(rt.decorRights(cai.viewer), { can_edit: true, can_manage: false });
+  assert.equal(rt.decorState.settings.tv_cooldown_s, 300);
+  assert.equal(r(cai.viewer).can_edit, false, "'everyone' in the old setting does not open decorating");
+});
+
+test("E: configuring objects needs ConfigureSpaceObjects; moving one keeps its configuration for who may not configure", async () => {
+  const { rt } = await space();
+  const ana = enter(rt, ANA, "Ana");
+  const bia = enter(rt, BIA, "Bia", ["DEC"]);
+  const dan = enter(rt, "01JDAN00000000000000000000", "Dan", ["CFG"]);
+  const zone = roomZoneKey(PUB);
+  for (const i of rt.decorState.items.filter((i) => i.zone === zone)) await run(rt, ana, `rm-${i.id}`, { kind: "remove", id: i.id });
+  const note = inst("note-1", "info-totem", zone, 1, 1, { config: { title: "Avisos", text: "reunião às 10" } });
+  await run(rt, bia, "b1", { kind: "place", item: note });
+  assert.deepEqual(bia.errorsFor("b1"), [{ code: "not_allowed", reason: "configure" }]);
+  await run(rt, dan, "d1", { kind: "place", item: note });
+  assert.equal(dan.errorsFor("d1").length, 0, dan.errorsFor("d1").map((e) => e.reason).join());
+  // Bia moves it without the configuration (she may not change it): it stays.
+  const { config: _c, ...bare } = note;
+  await run(rt, bia, "b2", { kind: "update", item: { ...bare, x: 4 } });
+  assert.equal(bia.errorsFor("b2").length, 0, bia.errorsFor("b2").map((e) => e.reason).join());
+  const now = rt.decorState.items.find((i) => i.id === "note-1")!;
+  assert.equal(now.x, 4);
+  assert.deepEqual(now.config, { title: "Avisos", text: "reunião às 10" });
+  // But she cannot rewrite it.
+  await run(rt, bia, "b3", { kind: "update", item: { ...note, x: 4, config: { text: "mudei" } } });
+  assert.deepEqual(bia.errorsFor("b3"), [{ code: "not_allowed", reason: "configure" }]);
 });
 
 test("place, update and remove: validated, persisted with a new revision, told to everyone", async () => {

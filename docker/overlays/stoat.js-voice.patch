@@ -48,7 +48,7 @@ index 7e33585d..4a99cde1 100644
     * Ban this member from the server
     * @param options Ban options
 diff --git a/src/events/v1.ts b/src/events/v1.ts
-index bfc71828..1a81e62a 100644
+index 868a472f..57971a48 100644
 --- a/src/events/v1.ts
 +++ b/src/events/v1.ts
 @@ -204,6 +204,22 @@ type ServerMessage =
@@ -74,7 +74,7 @@ index bfc71828..1a81e62a 100644
      }
    | {
        type: "UserSlowmodes";
-@@ -996,7 +1012,7 @@ export async function handleEvent(
+@@ -1000,7 +1016,7 @@ export async function handleEvent(
            event.state.id,
            new VoiceParticipant(client, event.state),
          );
@@ -83,7 +83,7 @@ index bfc71828..1a81e62a 100644
        }
        break;
      }
-@@ -1004,12 +1020,26 @@ export async function handleEvent(
+@@ -1008,12 +1024,26 @@ export async function handleEvent(
        const channel = client.channels.getOrPartial(event.id);
        if (channel) {
          channel.voiceParticipants.delete(event.user);
@@ -112,7 +112,7 @@ index bfc71828..1a81e62a 100644
        break;
      }
      case "UserVoiceStateUpdate": {
-@@ -1021,7 +1051,29 @@ export async function handleEvent(
+@@ -1025,7 +1055,29 @@ export async function handleEvent(
        break;
      }
      case "UserMoveVoiceChannel": {
@@ -144,10 +144,10 @@ index bfc71828..1a81e62a 100644
      }
      case "UserSlowmodes": {
 diff --git a/src/permissions/definitions.ts b/src/permissions/definitions.ts
-index ebd917e9..c50c3779 100644
+index ebd917e9..7a1872d2 100644
 --- a/src/permissions/definitions.ts
 +++ b/src/permissions/definitions.ts
-@@ -83,8 +83,10 @@ export const Permission = {
+@@ -83,8 +83,20 @@ export const Permission = {
    DeafenMembers: 2n ** 34n,
    /// Move members between voice channels
    MoveMembers: 2n ** 35n,
@@ -156,15 +156,33 @@ index ebd917e9..c50c3779 100644
    Listen: 2n ** 36n,
 +  /// Send a short sound alert to a member in a voice channel
 +  SendVoiceAlert: 2n ** 41n,
++  /// Muchat Espaço: place, move, rotate, edit and remove objects of the space
++  DecorateSpace: 2n ** 42n,
++  /// Muchat Espaço: configure what interactive objects do
++  ConfigureSpaceObjects: 2n ** 43n,
++  /// Muchat Espaço: manage the room TV (stop someone else's session, skip the interval)
++  ManageSpaceTvs: 2n ** 44n,
++  /// Muchat Espaço: control the room's Smart TV
++  ControlSpaceTv: 2n ** 45n,
++  /// Muchat Espaço: use interactive objects and watch the room's TV
++  InteractSpaceObjects: 2n ** 46n,
  
    // * Mention permissions
    /// Mention @everyone or @online
-@@ -96,7 +98,7 @@ export const Permission = {
+@@ -96,7 +108,7 @@ export const Permission = {
    ViewAuditLogs: 2n ** 40n,
  
    // * Misc. permissions
 -  // % Bits 41 to 52: free area
-+  // % Bits 42 to 52: free area
++  // % Bits 47 to 52: free area
    // % Bits 53 to 64: do not use
  
    // * Grant all permissions
+@@ -153,4 +165,6 @@ export const DEFAULT_PERMISSION_SERVER =
+   DEFAULT_PERMISSION +
+   Permission.React +
+   Permission.ChangeNickname +
+-  Permission.ChangeAvatar;
++  Permission.ChangeAvatar +
++  Permission.ControlSpaceTv +
++  Permission.InteractSpaceObjects;

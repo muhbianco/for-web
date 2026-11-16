@@ -80,13 +80,27 @@ export interface DecorInstance {
   rot: Rotation;
   variant?: string;
   config?: InteractionConfig;
+  /**
+   * Server → client only: the configuration exists but this viewer may not
+   * use the object (Stoat InteractSpaceObjects), so it was left out.
+   */
+  locked?: boolean;
 }
 
 export interface DecorSettings {
-  /** Who may decorate besides whoever has ManageServer. */
+  /**
+   * Deprecated by ADR 0008: who decorates is Stoat's DecorateSpace permission
+   * (roles and channel overrides). Kept so stored documents and older apps
+   * still parse; the server no longer reads it.
+   */
   editors: "admins" | "roles" | "everyone";
   roles: string[];
+  /** Smart TV: minimum seconds between two different videos in a room ("um por vez"); 0 = off. */
+  tv_cooldown_s?: number;
 }
+
+/** Longest TV interval a server may set (one day). */
+export const MAX_TV_COOLDOWN_S = 86_400;
 
 export interface DecorState {
   /** Monotonic revision; every accepted change bumps it. */

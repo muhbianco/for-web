@@ -423,101 +423,74 @@ function SelectedCard(props: {
   );
 }
 
-/** Who may decorate (ManageServer only). */
+/** Smart TV interval choices ("um por vez" plus an optional minimum between videos). */
+const TV_INTERVALS = [0, 60, 300, 900, 1800, 3600] as const;
+
+/**
+ * Space settings (ManageServer only). Who decorates, configures objects or
+ * controls the TV is no longer here: they are Stoat permissions of roles and
+ * rooms (ADR 0008), so this card says where to find them.
+ */
 function SettingsCard(props: {
   view: SpaceView;
   settings: DecorSettings;
   roles: Array<{ id: string; name: string }>;
 }) {
   const { t } = useLingui();
-  const [editors, setEditors] = createSignal<DecorSettings["editors"]>(
-    props.settings.editors,
+  const [cooldown, setCooldown] = createSignal<number>(
+    props.settings.tv_cooldown_s ?? 0,
   );
-  const [roles, setRoles] = createSignal<string[]>([...props.settings.roles]);
   createEffect(
     on(
-      () => JSON.stringify(props.settings),
-      () => {
-        setEditors(props.settings.editors);
-        setRoles([...props.settings.roles]);
-      },
+      () => props.settings.tv_cooldown_s ?? 0,
+      (v) => setCooldown(v),
     ),
   );
-  const dirty = () =>
-    editors() !== props.settings.editors ||
-    JSON.stringify([...roles()].sort()) !==
-      JSON.stringify([...props.settings.roles].sort());
+  const label = (s: number) =>
+    s === 0
+      ? t`Sem intervalo`
+      : s < 3600
+        ? t`${s / 60} min`
+        : t`1 hora`;
   return (
     <Section>
-      <strong>{t`Quem pode decorar`}</strong>
-      <Muted>{t`Quem gerencia o servidor sempre pode.`}</Muted>
+      <strong>{t`Permissões do Espaço`}</strong>
+      <Muted>
+        {t`Quem decora, configura objetos e controla a TV agora é definido nos cargos do servidor (grupo "Espaço") e, para cada sala, nas permissões do canal dela. Quem gerencia o servidor sempre pode decorar.`}
+      </Muted>
+      <strong>{t`Smart TV: intervalo entre vídeos`}</strong>
+      <Muted>
+        {t`Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo antes de trocar o vídeo (quem gerencia a TV pode trocar antes).`}
+      </Muted>
       <RadioRow>
-        <label>
-          <input
-            type="radio"
-            name="decor-editors"
-            checked={editors() === "admins"}
-            onChange={() => setEditors("admins")}
-          />{" "}
-          {t`Só administradores`}
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="decor-editors"
-            checked={editors() === "roles"}
-            onChange={() => setEditors("roles")}
-          />{" "}
-          {t`Cargos escolhidos`}
-        </label>
-        <label>
-          <input
-            type="radio"
-            name="decor-editors"
-            checked={editors() === "everyone"}
-            onChange={() => setEditors("everyone")}
-          />{" "}
-          {t`Todo mundo`}
-        </label>
+        <For each={TV_INTERVALS}>
+          {(s) => (
+            <label>
+              <input
+                type="radio"
+                name="tv-cooldown"
+                checked={cooldown() === s}
+                onChange={() => setCooldown(s)}
+              />{" "}
+              {label(s)}
+            </label>
+          )}
+        </For>
       </RadioRow>
-      <Show when={editors() === "roles"}>
-        <RadioRow>
-          <For each={props.roles}>
-            {(r) => (
-              <label>
-                <input
-                  type="checkbox"
-                  checked={roles().includes(r.id)}
-                  onChange={(e) =>
-                    setRoles(
-                      e.currentTarget.checked
-                        ? [...roles(), r.id]
-                        : roles().filter((x) => x !== r.id),
-                    )
-                  }
-                />{" "}
-                {r.name}
-              </label>
-            )}
-          </For>
-          <Show when={props.roles.length === 0}>
-            <Muted>{t`Este servidor ainda não tem cargos.`}</Muted>
-          </Show>
-        </RadioRow>
-      </Show>
       <Row>
         <Button
           variant="filled"
           size="xs"
-          isDisabled={!dirty()}
+          isDisabled={cooldown() === (props.settings.tv_cooldown_s ?? 0)}
           onPress={() =>
             props.view.editor.setSettings({
-              editors: editors(),
-              roles: editors() === "roles" ? roles() : [],
+              editors: props.settings.editors,
+              roles: [...props.settings.roles],
+              tv_cooldown_s: cooldown(),
             })
           }
         >
-          {t`Salvar permissões`}
+          {t`Salvar`}
         </Button>
       </Row>
     </Section>

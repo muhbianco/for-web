@@ -72,6 +72,8 @@ export const PLACEMENT_MESSAGES: Record<PlacementError, string> = {
   blocks_path: "Fecharia o caminho até uma sala.",
   too_many: "O servidor chegou ao limite de itens.",
   bad_config: "Configuração inválida.",
+  no_permission: "Você não pode decorar aqui (permissão \"Decorar o Espaço\" do cargo ou da sala).",
+  tv_outside_room: "A Smart TV só funciona dentro de uma sala.",
 };
 
 export const ERROR_MESSAGES: Record<string, string> = {
@@ -114,8 +116,32 @@ export class Editor {
 
   constructor(world: World, send: (cmd: Record<string, unknown>) => string, changed: () => void) {
     this.world = world;
-    this.send = send;
+    // `locked` only comes from the server (an object whose configuration this
+    // person may not see, ADR 0008); the command schema is strict, so it
+    // never goes back. Without the configuration the server keeps the stored one.
+    this.send = (cmd) => {
+      const d = cmd.d as Record<string, unknown> | undefined;
+      if ((cmd.t === "decor.place" || cmd.t === "decor.update") && d && "locked" in d) {
+        const { locked: _locked, ...rest } = d;
+        return send({ ...cmd, d: rest });
+      }
+      return send(cmd);
+    };
     this.changed = changed;
+  }
+
+  /** May decorate this zone (rights per zone from the server; older servers: everywhere). */
+  mayDecorate(zoneKey: string): boolean {
+    const r = this.world.rights;
+    if (zoneKey.startsWith("room:")) return r.edit_rooms ? r.edit_rooms.includes(zoneKey.slice(5)) : r.can_edit;
+    return r.edit_common ?? r.can_edit;
+  }
+
+  /** May configure interactive objects in this zone. */
+  mayConfigure(zoneKey: string): boolean {
+    const r = this.world.rights;
+    if (zoneKey.startsWith("room:")) return r.configure_rooms ? r.configure_rooms.includes(zoneKey.slice(5)) : r.can_edit;
+    return r.configure_common ?? r.can_edit;
   }
 
   private patch(p: Partial<EditorState>) {
@@ -304,6 +330,7 @@ export class Editor {
     if (t.kind === "floor") {
       const zone = this.zoneUnder(tile);
       if (!zone) return this.patch({ message: PLACEMENT_MESSAGES.unknown_zone });
+      if (!this.mayDecorate(zone.key)) return this.patch({ message: PLACEMENT_MESSAGES.no_permission });
       const cur = this.world.decor?.floors[zone.key] ?? null;
       if (cur === t.floor) return;
       const id = this.send({ v: 1, t: "decor.floor", d: { zone: zone.key, floor: t.floor } });
@@ -349,7 +376,12 @@ export class Editor {
 
   onError(re: string | undefined, code: string, reason?: string) {
     if (re) this.pending.delete(re);
-    const text = reason && reason in PLACEMENT_MESSAGES ? PLACEMENT_MESSAGES[reason as PlacementError] : (ERROR_MESSAGES[code] ?? ERROR_MESSAGES.internal!);
+    const text =
+      reason === "configure"
+        ? "Você não pode configurar objetos aqui (permissão \"Configurar objetos\")."
+        : reason && reason in PLACEMENT_MESSAGES
+          ? PLACEMENT_MESSAGES[reason as PlacementError]
+          : (ERROR_MESSAGES[code] ?? ERROR_MESSAGES.internal!);
     this.patch({ message: text });
   }
 
@@ -448,7 +480,9 @@ export class Editor {
       ...(variant ? { variant } : {}),
     };
     if (!variant) delete (inst as { variant?: string }).variant;
-    const error = validatePlacement({ ix, zones, catalog: CATALOG, state: decor }, inst, base?.id);
+    // The server decides; this only says it before the click (ADR 0008).
+    const allowed = this.mayDecorate(zone.key) && (!base || this.mayDecorate(base.zone));
+    const error = allowed ? validatePlacement({ ix, zones, catalog: CATALOG, state: decor }, inst, base?.id) : "no_permission";
     return { inst, item, rect: instanceRect(zone, item, inst), error };
   }
 }

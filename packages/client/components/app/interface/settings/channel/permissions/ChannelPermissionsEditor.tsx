@@ -464,6 +464,54 @@ export function ChannelPermissionsEditor(props: Props) {
         Any: t`Mention specific roles`,
       },
     },
+    // Muchat Espaço (ADR 0008). In a room (channel) they override the
+    // server's like any other permission; halls and corridors use the server's.
+    {
+      heading: t`Espaço`,
+      key: "InteractSpaceObjects",
+      value: 2n ** 46n,
+      title: t`Usar objetos e assistir à TV`,
+      description: {
+        TextChannel: t`Abrir links, notas, imagens e portais desta sala e assistir à Smart TV dela`,
+        Server: t`Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs das salas`,
+      },
+    },
+    {
+      key: "ControlSpaceTv",
+      value: 2n ** 45n,
+      title: t`Controlar a Smart TV`,
+      description: {
+        TextChannel: t`Escolher o vídeo, dar play, pausar e avançar na TV desta sala`,
+        Server: t`Escolher o vídeo, dar play, pausar e avançar na TV das salas`,
+      },
+    },
+    {
+      key: "ManageSpaceTvs",
+      value: 2n ** 44n,
+      title: t`Gerenciar a Smart TV`,
+      description: {
+        TextChannel: t`Parar o vídeo de outra pessoa e trocar antes do intervalo mínimo nesta sala`,
+        Server: t`Parar o vídeo de outra pessoa e trocar antes do intervalo mínimo em qualquer sala`,
+      },
+    },
+    {
+      key: "DecorateSpace",
+      value: 2n ** 42n,
+      title: t`Decorar o Espaço`,
+      description: {
+        TextChannel: t`Colocar, mover, girar e remover objetos e trocar o piso desta sala`,
+        Server: t`Colocar, mover, girar e remover objetos no hall e nos corredores (e nas salas que não disserem o contrário)`,
+      },
+    },
+    {
+      key: "ConfigureSpaceObjects",
+      value: 2n ** 43n,
+      title: t`Configurar objetos`,
+      description: {
+        TextChannel: t`Definir o que os objetos interativos desta sala mostram (link, nota, imagem, página, portal)`,
+        Server: t`Definir o que os objetos interativos mostram (link, nota, imagem, página, portal)`,
+      },
+    },
   ];
 
   /**

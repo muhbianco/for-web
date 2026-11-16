@@ -42,6 +42,18 @@ export function InteractionDialog(props: {
     }
   };
   const secure = () => (config().url ?? "").startsWith("https://");
+  /**
+   * A page of the app's own origin (an upload under /autumn, a route) would
+   * run with `allow-same-origin` as the app itself and reach the session:
+   * never embedded (audit 16/11/2026). Other origins only get their own.
+   */
+  const sameOrigin = () => {
+    try {
+      return new URL(config().url ?? "", location.href).origin === location.origin;
+    } catch {
+      return false;
+    }
+  };
 
   return (
     <Backdrop
@@ -58,12 +70,17 @@ export function InteractionDialog(props: {
         <Show
           when={configured()}
           fallback={
-            <>
+            <Show
+              when={!props.interaction.inst.locked}
+              fallback={
+                <p>{t`Você não tem permissão para usar este objeto aqui.`}</p>
+              }
+            >
               <p>{t`Este objeto ainda não foi configurado.`}</p>
               <Show when={props.canEdit}>
                 <Muted>{t`Abra o modo Decorar, selecione o objeto e preencha o que ele mostra.`}</Muted>
               </Show>
-            </>
+            </Show>
           }
         >
           <Switch>
@@ -85,9 +102,13 @@ export function InteractionDialog(props: {
             </Match>
             <Match when={kind() === "frame"}>
               <Show
-                when={secure()}
+                when={secure() && !sameOrigin()}
                 fallback={
-                  <p>{t`Só páginas https podem ser mostradas aqui.`}</p>
+                  <p>
+                    {sameOrigin()
+                      ? t`Páginas do próprio Muchat não podem ser mostradas dentro de um objeto.`
+                      : t`Só páginas https podem ser mostradas aqui.`}
+                  </p>
                 }
               >
                 <Frame
