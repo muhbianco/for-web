@@ -8,6 +8,8 @@
  */
 import { findPath, MAX_SPEED, MOVE_SEND_HZ, Perm, TILE, tileCenter } from "@muchat/space-core";
 
+import { GameService } from "./game/service.ts";
+import { MemoryGameStore } from "./game/store.ts";
 import { jsonLog } from "./log.ts";
 import { startLoopDelayLog } from "./loopDelay.ts";
 import { MediaController } from "./media/controller.ts";
@@ -104,13 +106,22 @@ const members = {
 const devLk = new FakeLiveKit();
 const devMedia = new MediaController({ lk: devLk, leases: new FakeLeases(), minter: new FakeMinter(), publicUrl: "wss://dev.invalid/livekit" });
 const hub = new MediaHub({ media: devMedia, log: jsonLog });
-const registry = new Registry({ cache, store: new MemoryAssignmentStore(), members, log: jsonLog, media: { hub, lk: devLk } });
+const registry = new Registry({
+  cache,
+  store: new MemoryAssignmentStore(),
+  members,
+  log: jsonLog,
+  media: { hub, lk: devLk },
+  // Refúgio (ADR 0009) ligado no servidor de dev, em memória.
+  gameAvailable: () => true,
+});
 const gateway = new Gateway({
   auth,
   members,
   cache,
   runtimes: registry,
   profiles: new MemoryProfileStore(),
+  game: new GameService({ store: new MemoryGameStore(), log: jsonLog }),
   allowedOrigins: ["http://localhost:5180", "http://127.0.0.1:5180"],
   log: jsonLog,
 });

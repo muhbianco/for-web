@@ -6,6 +6,9 @@
 import { Redis } from "ioredis";
 import { MongoClient } from "mongodb";
 
+import { GameService } from "./game/service.ts";
+import { MongoGameStore } from "./game/store.ts";
+import { gameSwitch } from "./game/switch.ts";
 import { jsonLog as log } from "./log.ts";
 import { startLoopDelayLog } from "./loopDelay.ts";
 import { LiveKitRoomAdmin, LiveKitTokenMinter, RedisLeaseStore } from "./media/adapters.ts";
@@ -107,6 +110,10 @@ async function main() {
   const enabledIds = env("SPACE_ENABLED_SERVERS", "").split(",").map((s) => s.trim()).filter(Boolean);
   const everyServer = enabledIds.includes("*");
   const enabled = everyServer ? () => true : (id: string) => enabledIds.includes(id);
+  // Refúgio (ADR 0009): off everywhere unless listed. Read straight from the
+  // environment: env() throws when a variable is missing, and this process
+  // grants the rooms' voice.
+  const game = gameSwitch(process.env.SPACE_GAME_SERVERS);
   // The sweeper's view of LiveKit feeds presence (ADR 0008); the registry
   // exists only after media starts, hence the late binding.
   let onSnapshot: Parameters<typeof startMedia>[0] = () => undefined;
@@ -120,6 +127,7 @@ async function main() {
     log,
     enabled,
     everyServer,
+    gameAvailable: game.available,
     media: media ? { hub: media.hub, lk: media.lk } : undefined,
   });
   onSnapshot = (rooms, failed) => {
@@ -176,6 +184,7 @@ async function main() {
     cache,
     runtimes: registry,
     profiles: new MongoProfileStore(mongo),
+    game: new GameService({ store: new MongoGameStore(mongo), log }),
     allowedOrigins: env("SPACE_ALLOWED_ORIGINS", "https://chat.muhbianco.com.br").split(",").map((s) => s.trim()),
     log,
     ready: (): Record<string, boolean> =>
@@ -184,7 +193,7 @@ async function main() {
   bonfire.start();
   const port = Number(env("SPACE_PORT", "8095"));
   await gateway.listen(port);
-  log.info("space server listening", { port, enabled_servers: enabledIds.length, media: Boolean(media) });
+  log.info("space server listening", { port, enabled_servers: enabledIds.length, media: Boolean(media), game_servers: game.count });
   // ADR 0009, decision 10: the yardstick for anything new in this process.
   const stopLoopDelay = startLoopDelayLog(log);
 

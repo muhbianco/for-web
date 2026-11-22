@@ -99,6 +99,12 @@ export interface DecorSettings {
   roles: string[];
   /** Smart TV: minimum seconds between two different videos in a room ("um por vez"); 0 = off. */
   tv_cooldown_s?: number;
+  /**
+   * Refúgio, the space's game (ADR 0009): the server owner may turn it off
+   * here once the operator switched it on (SPACE_GAME_SERVERS). Absent = on.
+   * A save that leaves it out keeps the stored value (older apps).
+   */
+  game?: "on" | "off";
 }
 
 /** Longest TV interval a server may set (one day). */

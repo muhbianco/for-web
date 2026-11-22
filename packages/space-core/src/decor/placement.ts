@@ -268,6 +268,7 @@ export function validateSettings(s: unknown): s is DecorSettings {
     const v = o.tv_cooldown_s;
     if (typeof v !== "number" || !Number.isInteger(v) || v < 0 || v > MAX_TV_COOLDOWN_S) return false;
   }
+  if (o.game !== undefined && o.game !== "on" && o.game !== "off") return false;
   return o.roles.every((r) => typeof r === "string" && r.length > 0 && r.length <= 64);
 }
 
@@ -307,6 +308,7 @@ export function applyDecorOp(
           editors: op.settings.editors,
           roles: [...op.settings.roles],
           ...(op.settings.tv_cooldown_s !== undefined ? { tv_cooldown_s: op.settings.tv_cooldown_s } : {}),
+          ...(op.settings.game !== undefined ? { game: op.settings.game } : {}),
         },
       };
   }

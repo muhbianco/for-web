@@ -10,6 +10,7 @@ import { join, relative } from "node:path";
  */
 export const GAME_DIRS = [
   "packages/space-core/src/game",
+  "packages/space-server/src/game",
   "packages/space-client/src/game",
   "packages/client/components/space/game",
 ];

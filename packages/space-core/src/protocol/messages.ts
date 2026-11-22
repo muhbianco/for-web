@@ -224,6 +224,7 @@ export const DecorSettingsSchema = z
     editors: z.enum(["admins", "roles", "everyone"]),
     roles: z.array(z.string().min(1).max(64)).max(50),
     tv_cooldown_s: z.number().int().min(0).max(MAX_TV_COOLDOWN_S).optional(),
+    game: z.enum(["on", "off"]).optional(),
   })
   .strict();
 
@@ -375,7 +376,13 @@ export type ErrorCode =
   /** TV: the room's interval between videos has not passed (`retry_after_ms`). */
   | "tv_cooldown"
   /** TV: no Smart TV object in that room, or not in that room. */
-  | "no_tv";
+  | "no_tv"
+  /** Game (ADR 0009): off on this server (operator or owner). */
+  | "game_disabled"
+  /** Game: the hero is still fighting (`retry_after_ms`). */
+  | "game_busy"
+  /** Game: the command does not apply to this hero (`reason`). */
+  | "game_invalid";
 
 export interface ErrorEvent {
   v: 1;
@@ -507,6 +514,11 @@ export interface SnapshotEvent {
     rooms: RoomView[];
     wings: WingView[];
     avatars: AvatarView[];
+    /**
+     * Refúgio (ADR 0009). `available`: the operator switched it on for this
+     * server; `enabled`: this viewer may play now (owner setting, InteractSpaceObjects).
+     */
+    game?: { available: boolean; enabled: boolean };
   };
 }
 

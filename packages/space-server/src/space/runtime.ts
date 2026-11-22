@@ -187,8 +187,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
     log: Log;
     now?: () => number;
     media?: { hub: MediaHub; lk: LiveKitAdmin };
+    /** The operator switched Refúgio on for this server (ADR 0009); off when absent. */
+    gameAvailable?: boolean;
   }) {
     this.serverId = deps.serverId;
+    this.gameAvailable = deps.gameAvailable ?? false;
     this.cache = deps.cache;
     this.store = deps.store;
     this.decorStore = deps.decorStore ?? new MemoryDecorStore();
@@ -202,6 +205,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
 
   /** The rooms' Smart TVs (ADR 0008). */
   readonly tv: TvHub;
+  /** Operator switch for Refúgio on this server (ADR 0009). */
+  readonly gameAvailable: boolean;
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -233,6 +238,16 @@ export class SpaceRuntime implements MediaHost, TvHost {
 
   serverManages(viewer: Viewer): boolean {
     return has(this.serverPerms(viewer), Perm.ManageServer);
+  }
+
+  /**
+   * Refúgio (ADR 0009, decisão 7): operador (SPACE_GAME_SERVERS), depois o dono
+   * do servidor (`settings.game`), depois a pessoa (InteractSpaceObjects no
+   * servidor, que o timeout tira).
+   */
+  gameAccess(viewer: Viewer): "ok" | "disabled" | "not_allowed" {
+    if (!this.gameAvailable || this.decor.settings.game === "off") return "disabled";
+    return has(this.serverPerms(viewer), Perm.InteractSpaceObjects) ? "ok" : "not_allowed";
   }
 
   sessionsIn(roomId: string): SessionPort[] {
@@ -617,7 +632,9 @@ export class SpaceRuntime implements MediaHost, TvHost {
       }
       case "settings": {
         if (!validateSettings(cmd.settings)) return fail("decor_invalid", "bad_config");
-        op = { kind: "settings", settings: cmd.settings };
+        // An app that does not know Refúgio's switch leaves it out: keep the stored one (ADR 0009).
+        const game = cmd.settings.game ?? this.decor.settings.game;
+        op = { kind: "settings", settings: game ? { ...cmd.settings, game } : cmd.settings };
         break;
       }
     }
@@ -1172,6 +1189,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
         rooms: this.roomViews(session.viewer),
         wings: this.wingViews(session.viewer),
         avatars,
+        game: { available: this.gameAvailable, enabled: this.gameAccess(session.viewer) === "ok" },
       },
     };
     session.send(snapshot as unknown as Record<string, unknown>);

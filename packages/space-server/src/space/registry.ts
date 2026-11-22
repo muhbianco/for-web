@@ -27,6 +27,8 @@ export class Registry implements RuntimeRegistry {
   private readonly enabled: (serverId: string) => boolean;
   private readonly everyServer: boolean;
   private readonly media: { hub: MediaHub; lk: LiveKitAdmin } | undefined;
+  /** Operator switch for Refúgio (ADR 0009); off everywhere when absent. */
+  private readonly gameAvailable: (serverId: string) => boolean;
 
   constructor(deps: {
     cache: StoatCache;
@@ -43,6 +45,8 @@ export class Registry implements RuntimeRegistry {
     everyServer?: boolean;
     /** Room media (Phase 3); without it the space is presence only. */
     media?: { hub: MediaHub; lk: LiveKitAdmin };
+    /** SPACE_GAME_SERVERS (ADR 0009): servers where Refúgio may be played. */
+    gameAvailable?: (serverId: string) => boolean;
   }) {
     this.cache = deps.cache;
     this.store = deps.store;
@@ -56,6 +60,7 @@ export class Registry implements RuntimeRegistry {
     this.enabled = deps.enabled ?? (() => true);
     this.everyServer = deps.everyServer ?? deps.enabled === undefined;
     this.media = deps.media;
+    this.gameAvailable = deps.gameAvailable ?? (() => false);
     deps.cache.on((change) => {
       switch (change.kind) {
         case "structure": {
@@ -112,6 +117,7 @@ export class Registry implements RuntimeRegistry {
         log: this.log,
         now: this.now,
         media: this.media,
+        gameAvailable: this.gameAvailable(serverId),
       });
       p = rt.init().then(() => {
         this.live.set(serverId, rt);
