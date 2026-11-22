@@ -42,6 +42,11 @@ msgstr "dddd [saat] LT"
 msgid "(changes are being saved…)"
 msgstr "(değişiklikler kaydediliyor…)"
 
+#. placeholder {0}: s().unlock
+#: components/space/game/GamePanel.tsx
+msgid "(nível {0})"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "(recebendo)"
 msgstr ""
@@ -55,6 +60,12 @@ msgstr "{0, plural, one {# engellenen mesaj} other {# engellenen mesajlar}}"
 #: components/ui/components/utils/files/FileDropAnywhereCollector.tsx
 msgid "{0, plural, one {Drop a file} other {Drop # files}}"
 msgstr "{0, plural, one {Bir Dosya Bırak} other {Dosya # Bırak}}"
+
+#. placeholder {0}: L().skill[h().training.skill]
+#. placeholder {1}: h().skills[h().training.skill].l
+#: components/space/game/GamePanel.tsx
+msgid "{0} {1}"
+msgstr ""
 
 #. placeholder {0}: users() .slice(0, -1) .map((user) => user!.username) .join(", ")
 #. placeholder {1}: users().slice(-1)[0]!.username
@@ -80,6 +91,16 @@ msgstr ""
 #. placeholder {0}: s.name
 #: components/space/SpacePage.tsx
 msgid "{0} começou a compartilhar a tela."
+msgstr ""
+
+#. placeholder {0}: s().mp
+#: components/space/game/GamePanel.tsx
+msgid "{0} de mana"
+msgstr ""
+
+#. placeholder {0}: lobbyPrice(it).toLocaleString()
+#: components/space/game/GamePanel.tsx
+msgid "{0} de ouro"
 msgstr ""
 
 #. placeholder {0}: instance.globalLimits.server_emoji - props.server.emojis.length
@@ -142,6 +163,11 @@ msgstr "{0} bir mesajı sabitledi"
 #: components/client/NotificationsWorker.tsx
 msgid "{0} renamed the channel"
 msgstr "{0} kanalın adını değiştirdi"
+
+#. placeholder {0}: have()
+#: components/space/game/GamePanel.tsx
+msgid "{0} seus"
+msgstr ""
 
 #. placeholder {0}: (message.systemMessage as MessagePinnedSystemMessage).by?.username
 #: components/client/NotificationsWorker.tsx
@@ -225,6 +251,12 @@ msgstr "{usernames} tepki verdi"
 msgid "+ e − mudam o zoom. Esc cancela o caminho."
 msgstr ""
 
+#. placeholder {0}: pendingTries()
+#. placeholder {1}: h().training.cap_ms / 3_600_000
+#: components/space/game/GamePanel.tsx
+msgid "+{0} tentativas acumuladas; o boneco junta até {1} h."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "+{gain} dB (medindo a sua fala)"
 msgstr ""
@@ -232,6 +264,22 @@ msgstr ""
 #. placeholder {0}: Math.round(speech)
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "+{gain} dB (sua fala em {0} dBFS)"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "+10% de crítico"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "+12% de vida máxima"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "+15% de velocidade"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "+20% de dano"
 msgstr ""
 
 #: components/ui/components/features/messaging/elements/SystemMessage.tsx
@@ -315,6 +363,10 @@ msgstr "12 saat"
 msgid "24 hours"
 msgstr "24 saat"
 
+#: components/space/game/GamePanel.tsx
+msgid "A cada ação, o herói usa a primeira magia pronta da lista; sem nenhuma, ataca."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A chamada está saudável"
 msgstr ""
@@ -322,6 +374,24 @@ msgstr ""
 #. placeholder {0}: v.who
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A conexão de {0} está instável"
+msgstr ""
+
+#. placeholder {0}: Math.ceil((retryMs ?? 0) / 1000)
+#: components/space/game/labels.ts
+msgid "A luta ainda está acontecendo. Mais {0} s."
+msgstr ""
+
+#. placeholder {0}: Math.ceil(busyMs() / 1000)
+#: components/space/game/GamePanel.tsx
+msgid "A luta ainda passa: {0} s."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "A mochila está cheia."
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "A primeira expedição é a iniciação: curta, para conhecer o caminho."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -340,8 +410,16 @@ msgstr ""
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Abandonar (conta como derrota)"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Aberto em outra aba"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Abismo {abyss}"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -360,10 +438,15 @@ msgstr "Sesli aramalarda konuşabilme"
 msgid "Abra o modo Decorar, selecione o objeto e preencha o que ele mostra."
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Abrindo o Refúgio…"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abrindo…"
 msgstr ""
 
+#: components/space/game/labels.ts
 #: components/space/InteractionDialog.tsx
 msgid "Abrir"
 msgstr ""
@@ -435,8 +518,21 @@ msgstr "Yönetici Paneli"
 msgid "Advanced"
 msgstr "Gelişmiş"
 
+#. placeholder {0}: RULES.sharpenPct
+#: components/space/game/GamePanel.tsx
+msgid "Afiar: +{0}% de dano"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "aguardando a primeira janela"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Ajudar"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Algo deu errado. Tente de novo."
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -445,6 +541,10 @@ msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Algumas salas têm a porta fechada para você. A lista de salas ao lado mostra tudo em texto, se preferir não usar o mapa."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Aljava"
 msgstr ""
 
 #: src/interface/Friends.tsx
@@ -485,6 +585,10 @@ msgstr ""
 msgid "Already friends with this user."
 msgstr "Bu kullanıcı ile zaten arkadaşsınız."
 
+#: components/space/game/labels.ts
+msgid "Altar rachado: dar 15% da vida em troca de uma bênção?"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/ScreenShareOptions.tsx
 msgid "Always Ask for Screen Share Quality"
 msgstr "Her Zaman Ekran Paylaşımı Kalitesini Sor"
@@ -501,6 +605,10 @@ msgstr ""
 msgid "Ampliar o palco (F)"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Amuleto"
+msgstr ""
+
 #: components/modal/modals/Error2.tsx
 msgid "An error occurred."
 msgstr "Bir hata oluştu."
@@ -509,6 +617,14 @@ msgstr "Bir hata oluştu."
 #: components/i18n/errors.tsx
 msgid "An internal error occurred. ({0})"
 msgstr "Dahili bir hata oluştu. ({0})"
+
+#: components/space/game/labels.ts
+msgid "Andarilho ferido pede {price} de ouro: +10% de vida máxima."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Anel"
+msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Aplicativos"
@@ -530,6 +646,10 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
 msgstr "Görünüm"
+
+#: components/space/game/labels.ts
+msgid "Arco"
+msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
 msgid "Are you sure you want to clear your sessions?"
@@ -557,6 +677,23 @@ msgstr "{0} Kişisini {1} kaldırmak istediğinize eminmisin?"
 msgid "Are you sure you want to unpin this message?"
 msgstr "Bu mesajın sabitlemesini kaldırmak istediğinize emin misiniz?"
 
+#: components/space/game/labels.ts
+msgid "Arma"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Armadura"
+msgstr ""
+
+#. placeholder {0}: it.armor
+#: components/space/game/labels.ts
+msgid "armadura {0}"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Arqueiro"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Assign lower-ranked roles to lower-ranking members"
 msgstr "Daha düşük yetkideki rolleri, düşük yetkileri olan üyelere verebilme"
@@ -567,6 +704,24 @@ msgstr "Rolleri Atayabilme"
 
 #: components/space/DecorPanel.tsx
 msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
+msgstr ""
+
+#. placeholder {0}: h().combat.atk
+#. placeholder {1}: h().combat.armor
+#. placeholder {2}: (h().combat.critBp / 100).toFixed(1)
+#. placeholder {3}: (h().combat.dodgeBp / 100).toFixed(1)
+#. placeholder {4}: (h().combat.blockBp / 100).toFixed(1)
+#: components/space/game/GamePanel.tsx
+msgid "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "ataque atinge mais um"
+msgstr ""
+
+#. placeholder {0}: it.atk
+#: components/space/game/labels.ts
+msgid "ATQ {0}"
 msgstr ""
 
 #: components/space/Onboarding.tsx
@@ -614,6 +769,10 @@ msgstr ""
 msgid "Automatic gain control"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Avançado"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Avançar 10 segundos"
 msgstr ""
@@ -621,6 +780,11 @@ msgstr ""
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 msgid "Avatar"
 msgstr "Profil Resmi"
+
+#: components/space/game/GamePanel.tsx
+#: components/space/SpacePage.tsx
+msgid "Aventura"
+msgstr ""
 
 #: components/app/interface/settings/user/_AccountCard.tsx
 #: components/auth/src/flows/FlowCheck.tsx
@@ -692,8 +856,21 @@ msgstr "Afiş"
 msgid "Bans"
 msgstr "Yasaklananlar"
 
+#: components/space/game/labels.ts
+msgid "Baú suspeito: 60% de chance de item, 40% de emboscada."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Being sent"
+msgstr ""
+
+#. placeholder {0}: shop().boonPrice
+#: components/space/game/GamePanel.tsx
+msgid "Bênção ({0})"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Bênçãos ativas nesta expedição."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -712,9 +889,32 @@ msgstr "Engellendi"
 msgid "Blocked User"
 msgstr "Engellenen Kullanıcı"
 
+#. placeholder {0}: it.blockBp / 100
+#: components/space/game/labels.ts
+msgid "bloqueio {0}%"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Bola de fogo"
+msgstr ""
+
+#. placeholder {0}: L().dummy[d().tier]
+#. placeholder {1}: d().cost.toLocaleString()
+#: components/space/game/GamePanel.tsx
+msgid "Boneco {0} ({1})"
+msgstr ""
+
 #: components/app/interface/channels/text/Message.tsx
 msgid "Bot"
 msgstr "Bot‎"
+
+#: components/space/game/labels.ts
+msgid "Botas"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Brado"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Browser"
@@ -774,12 +974,24 @@ msgstr "Yavaş modu atlamak"
 msgid "Bypasses slowmode in channels"
 msgstr "Kanallardaki yavaş modu atla"
 
+#: components/space/game/GamePanel.tsx
+msgid "Cabelo"
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo antes de trocar o vídeo (quem gerencia a TV pode trocar antes)."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Cajado"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Calças"
 msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
@@ -860,6 +1072,7 @@ msgid "Cancel your discover request and remove it from the review queue"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
+#: components/space/game/GamePanel.tsx
 msgid "Cancelar"
 msgstr ""
 
@@ -881,6 +1094,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Categorias"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Cavaleiro"
 msgstr ""
 
 #: components/space/MediaStage.tsx
@@ -1002,6 +1219,10 @@ msgstr ""
 msgid "Check your mail!"
 msgstr "Posta kutunu kontrol et!"
 
+#: components/space/game/labels.ts
+msgid "Chefe"
+msgstr ""
+
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Choose a username"
 msgstr "Bir kullanıcı adı seç"
@@ -1012,6 +1233,14 @@ msgstr "Kullanıcı adı seç"
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Chromium:"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Chuva de flechas"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Classe"
 msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
@@ -1107,13 +1336,26 @@ msgstr ""
 msgid "Cole um link do YouTube ou o ID do vídeo"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Coletar"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Collapse call window"
+msgstr ""
+
+#. placeholder {0}: lobbyItemOf(p().item)?.name ?? p().item
+#: components/space/game/GamePanel.tsx
+msgid "Colocando {0}: clique no quarto."
 msgstr ""
 
 #. placeholder {0}: item().name
 #: components/space/DecorPanel.tsx
 msgid "Colocando: {0}"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Colocar"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -1122,6 +1364,14 @@ msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas salas que não disserem o contrário)"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Combate"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Começar a iniciação"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -1142,6 +1392,14 @@ msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Compartilhar tela"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Comprar"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "comum"
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -1327,6 +1585,10 @@ msgstr "Kullanıcı ID'sini kopyala"
 msgid "Copy webhook URL"
 msgstr "Webhook URL'sini kopyala"
 
+#: components/space/game/labels.ts
+msgid "Corrente"
+msgstr ""
+
 #: components/i18n/errors.tsx
 msgid "Could not find what you requested."
 msgstr "İstediğiniz şey bulunamadı."
@@ -1438,6 +1700,37 @@ msgstr "Webhook Oluştur"
 msgid "Created <0/>"
 msgstr "Oluşturuldu <0/>"
 
+#. placeholder {0}: L().cls[newCls()].name
+#: components/space/game/GamePanel.tsx
+msgid "Criar {0}"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Crie o seu herói"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Crie o seu herói primeiro."
+msgstr ""
+
+#. placeholder {0}: (it.critBp / 100).toFixed(1)
+#: components/space/game/labels.ts
+msgid "crítico +{0}%"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Cura abaixo de (%)"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Cura e controle; começa com uma magia de dano e uma de cura."
+msgstr ""
+
+#. placeholder {0}: RULES.restHealPct
+#: components/space/game/GamePanel.tsx
+msgid "Curar {0}% da vida"
+msgstr ""
+
 #: components/modal/modals/EditEmail.tsx
 #: components/modal/modals/EditPassword.tsx
 #: components/modal/modals/EditUsername.tsx
@@ -1463,6 +1756,10 @@ msgstr "Kişiye özel çerçeve"
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Customisation"
 msgstr "Özelleştirme"
+
+#: components/space/game/labels.ts
+msgid "Dano constante à distância; esquiva os golpes com facilidade."
+msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
@@ -1547,6 +1844,10 @@ msgstr ""
 msgid "Degraded Performance"
 msgstr "Performans Düşüşü"
 
+#: components/space/game/GamePanel.tsx
+msgid "Degrau"
+msgstr ""
+
 #: components/modal/modals/DeleteBot.tsx
 #: components/modal/modals/DeleteCategory.tsx
 #: components/modal/modals/DeleteChannel.tsx
@@ -1614,6 +1915,11 @@ msgstr "Rolü Sil"
 msgid "Delete Server"
 msgstr "Sunucuyu Sil"
 
+#: components/space/game/GamePanel.tsx
+#: components/space/game/labels.ts
+msgid "Descanso"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Desconectado"
 msgstr ""
@@ -1647,12 +1953,24 @@ msgstr ""
 msgid "Desmarcar"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Detalhe"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Devagar: muitos comandos seguidos."
+msgstr ""
+
 #: components/app/interface/settings/user/bots/MyBots.tsx
 msgid "Developer Documentation"
 msgstr "Geliştirici Dokümantasyonu"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Diagnóstico da chamada"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Difícil"
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -1681,6 +1999,10 @@ msgstr "Bağlantı kesildi"
 msgid "Discover"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Disparo triplo"
+msgstr ""
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Display & Text"
 msgstr "Metin & Görüntüleme"
@@ -1692,6 +2014,10 @@ msgstr "Görünen Ad"
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Display users with this role separately in the member list"
 msgstr "Bu role sahip kişiler üye listesinde ayrı göster"
+
+#: components/space/game/labels.ts
+msgid "Distância"
+msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Do Not Disturb"
@@ -1729,6 +2055,10 @@ msgstr "Bitti"
 msgid "Drugs or illegal goods"
 msgstr "Uyuşturucu veya yasadışı ürün"
 
+#: components/space/game/labels.ts
+msgid "Druida"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Duplicar"
 msgstr ""
@@ -1743,6 +2073,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Echo cancellation"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Eco arcano"
 msgstr ""
 
 #. placeholder {0}: props.member.displayName
@@ -1802,6 +2136,18 @@ msgstr "Düzenlendi"
 #: components/modal/modals/PolicyChange.tsx
 msgid "Effective <0/> (<1/>)"
 msgstr "Şu tarihten itibaren geçerli <0/> (<1/>)"
+
+#: components/space/game/labels.ts
+msgid "Égide"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Elite"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Elmo"
+msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
 #: components/auth/src/flows/Form.tsx
@@ -1935,8 +2281,20 @@ msgstr ""
 msgid "Envio do microfone"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "épico"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Equilibrado (recomendado)"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Equipado"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Equipar"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -1955,6 +2313,18 @@ msgstr ""
 msgid "Escolha um ambiente"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Escolha um item e clique no quarto, acima, para colocar."
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Escolha uma bênção"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Escolha uma opção antes de seguir."
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Escolher o vídeo, dar play, pausar e avançar na TV das salas"
 msgstr ""
@@ -1971,14 +2341,62 @@ msgstr ""
 msgid "Esconder lista de salas"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Escudo"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "escudo de 15% da vida em cada luta"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/space/SpacePage.tsx
 #: components/space/SpaceSidebarEntry.tsx
 msgid "Espaço"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Espada"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Espinheiro"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Espírito protetor"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Esporos"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Esqueleto lanceiro"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "esquiva"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Esse caminho não está ao alcance."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Esse degrau ainda está trancado: vença o chefe do anterior."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Esse item não é da sua classe."
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Esse link não é de um vídeo do YouTube."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Esse lugar é do herói ou do boneco."
 msgstr ""
 
 #: components/space/SmartTv.tsx
@@ -2005,6 +2423,10 @@ msgstr ""
 msgid "Este vídeo não pode ser assistido aqui: o dono não permite fora do YouTube, ou ele não existe mais."
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Evento"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Eventos de reconstrução"
 msgstr ""
@@ -2015,6 +2437,18 @@ msgstr ""
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Everyone"
 msgstr "Herkes"
+
+#: components/space/game/GamePanel.tsx
+msgid "Expedição"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Experiência"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Explosão"
+msgstr ""
 
 #: components/modal/modals/LinkWarning.tsx
 msgid "External links can be dangerous!"
@@ -2088,15 +2522,36 @@ msgstr ""
 msgid "Fechar o palco (Esc): a chamada segue no card flutuante"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Fechar o Refúgio"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Feedback"
 msgstr "Geri Bildirim"
 
+#: components/space/game/labels.ts
+msgid "Feiticeiro"
+msgstr ""
+
+#. placeholder {0}: RULES.minStartHpPct
+#: components/space/game/GamePanel.tsx
+msgid "Ferido: a vida volta sozinha em alguns minutos (precisa de {0}%)."
+msgstr ""
+
 #. placeholder {0}: humanFileSize(local.maxSize)
 #: components/ui/components/utils/Form2.tsx
 msgid "File must be smaller than {0}"
 msgstr "Dosya {0} küçük olmalıdır"
+
+#: components/space/game/labels.ts
+msgid "Flecha luminosa"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Foco"
+msgstr ""
 
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -2104,6 +2559,14 @@ msgstr "Dosya {0} küçük olmalıdır"
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Focus"
 msgstr "Odaklanmış"
+
+#. placeholder {0}: h().combat.attrs.for
+#. placeholder {1}: h().combat.attrs.des
+#. placeholder {2}: h().combat.attrs.int
+#. placeholder {3}: h().combat.attrs.vit
+#: components/space/game/GamePanel.tsx
+msgid "FOR {0} · DES {1} · INT {2} · VIT {3}"
+msgstr ""
 
 #: components/app/menus/ServerContextMenu.tsx
 #: components/app/menus/shared/NotificationContextMenu.tsx
@@ -2159,6 +2622,18 @@ msgstr "itibaren "
 msgid "Fruit Salad"
 msgstr "Meyve Salatası"
 
+#: components/space/game/labels.ts
+msgid "Fungo cuspidor"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Fúria"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Fúria da mata"
+msgstr ""
+
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "Generate a new token if it gets lost or compromised"
 msgstr "Kaybolması veya başkasının eline geçmesi durumunda yeni bir token oluştur"
@@ -2196,6 +2671,7 @@ msgid "GIFs are now powered by Gifbox"
 msgstr "Gif'ler artık Giftbox tarafından sağlanıyor"
 
 #: components/space/DecorPanel.tsx
+#: components/space/game/GamePanel.tsx
 msgid "Girar"
 msgstr ""
 
@@ -2226,6 +2702,10 @@ msgstr "Kullanıcı adını düzenlemek için hesap ayarlarına git"
 msgid "Go to the Stoat Lounge"
 msgstr "Stoat Resmi Sunucusuna Gidin"
 
+#: components/space/game/labels.ts
+msgid "Golpe pesado"
+msgstr ""
+
 #: components/modal/modals/Onboarding.tsx
 msgid "Good"
 msgstr "İyi"
@@ -2247,6 +2727,10 @@ msgstr "{0} yetki verildi ve {1} izin engellendi"
 #: components/modal/modals/CreateGroup.tsx
 msgid "Group Name"
 msgstr "Grup Adı"
+
+#: components/space/game/GamePanel.tsx
+msgid "Guardar"
+msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Guidelines"
@@ -2280,6 +2764,10 @@ msgstr "Stoat'ın çevirilmesinde yardımcı oldu"
 #: components/modal/modals/CreateInvite.tsx
 msgid "Here is your new invite code: <0>{0}</0>"
 msgstr "İşte yeni davet kodun: <0>{0}</0>"
+
+#: components/space/game/GamePanel.tsx
+msgid "Herói"
+msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Hide Others"
@@ -2345,6 +2833,14 @@ msgstr "Bu arada, Android için tasarlanmış daha hızlı ve sorunsuz bir deney
 msgid "Incoming call"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "incomum"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Iniciação"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Input Volume"
 msgstr "Giriş Sesi"
@@ -2360,6 +2856,10 @@ msgstr ""
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Interface Font"
 msgstr "Arayüz Fontu"
+
+#: components/space/game/labels.ts
+msgid "Investida"
+msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Invisible"
@@ -2418,6 +2918,18 @@ msgstr "alakasız mizah rozeti 2"
 #: components/app/interface/settings/user/Language.tsx
 msgid "ISO Standard (YYYY-MM-DD)"
 msgstr "ISO Standartı (YYYY-AA-GG)"
+
+#: components/space/game/labels.ts
+msgid "Item indisponível."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Item não encontrado."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Já tem algo nesse lugar."
+msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Janela"
@@ -2494,6 +3006,10 @@ msgstr "Üyeyi At"
 msgid "Kick Members"
 msgstr "Üyeleri At"
 
+#: components/space/game/labels.ts
+msgid "Lâmina larga"
+msgstr ""
+
 #: components/app/interface/settings/user/Sync.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Language"
@@ -2539,6 +3055,14 @@ msgstr "Gruptan ayrıl"
 msgid "Leave server"
 msgstr "Sunucudan ayrıl"
 
+#: components/space/game/labels.ts
+msgid "lendário"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Lendário"
+msgstr ""
+
 #: components/app/interface/settings/user/Native.tsx
 msgid "Let Muchat use its own custom titlebar."
 msgstr ""
@@ -2566,6 +3090,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "limitada por"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Linha de frente: muita vida, armadura e escudo; parte do dano volta como vida."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -2626,6 +3154,15 @@ msgstr "Giriş Yap"
 msgid "Logs you out of all sessions except this device."
 msgstr "Bu cihaz hariç tüm oturumlarınızı kapatır."
 
+#: components/space/game/GamePanel.tsx
+#: components/space/game/labels.ts
+msgid "Loja"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Loja de decoração"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Loud ({rounded} dBFS)"
 msgstr ""
@@ -2642,6 +3179,47 @@ msgstr ""
 msgid "Lowercase letters, numbers and underscores only."
 msgstr "Sadece küçük harfler, rakamlar ve alt çizgiler."
 
+#: components/space/game/GamePanel.tsx
+msgid "Luta contra {foes}: derrota."
+msgstr ""
+
+#. placeholder {0}: (d.result.durationMs / 1000).toFixed(1)
+#: components/space/game/GamePanel.tsx
+msgid "Luta contra {foes}: vitória em {0} s."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Maça"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Machado"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Madeira"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Magia"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Magia de outra classe."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Magias de fogo e energia em área; frágil, mas a mana amortece o dano."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "magias podem repetir"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Mágico"
+msgstr ""
+
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Major Outage"
 msgstr "Kritik Kesinti"
@@ -2649,6 +3227,15 @@ msgstr "Kritik Kesinti"
 #: components/modal/modals/ReportContent.tsx
 msgid "Malware or phishing"
 msgstr "Kötü niyetli yazılım veya kimlik bilgisi hırsızlığı"
+
+#: components/space/game/GamePanel.tsx
+msgid "Mana"
+msgstr ""
+
+#. placeholder {0}: it.mp
+#: components/space/game/labels.ts
+msgid "mana +{0}"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Manage Channel"
@@ -2682,12 +3269,20 @@ msgstr "Sunucuyu Yönetebilme"
 msgid "Manage Webhooks"
 msgstr "Webhookları Yönetebilme"
 
+#: components/space/game/labels.ts
+msgid "Mão secundária"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 #~ msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações."
 #~ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Marca da presa"
 msgstr ""
 
 #: components/modal/modals/ChannelToggleMature.tsx
@@ -2716,6 +3311,10 @@ msgstr "Bu kanalı yetişkin olarak işaretlemek istediğinize emin misiniz?"
 msgid "Masquerade"
 msgstr "Kılık değiştirme"
 
+#: components/space/game/labels.ts
+msgid "Matriarca do Musgo"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "max {maxMs} ms"
 msgstr ""
@@ -2742,6 +3341,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Medium (home office)"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "melhor"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -2830,6 +3433,10 @@ msgstr "Mesaj başka bir platformda gönderildi"
 msgid "Messaging"
 msgstr "Mesajlaşma"
 
+#: components/space/game/labels.ts
+msgid "Meteoro"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "MFA setup canceled."
 msgstr "Çok faktörlü kimlik doğrulama (MFA) kurulumu iptal edildi."
@@ -2870,6 +3477,20 @@ msgstr "Simge Durumuna Küçült"
 msgid "Missing permission"
 msgstr "Kayıp İzinler"
 
+#: components/space/game/labels.ts
+msgid "mítico"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Mochila"
+msgstr ""
+
+#. placeholder {0}: h().bag.length
+#. placeholder {1}: h().bag_max
+#: components/space/game/GamePanel.tsx
+msgid "Mochila ({0}/{1})"
+msgstr ""
+
 #. placeholder {0}: s.name
 #: components/space/MediaStage.tsx
 msgid "Moderação: encerra a tela de {0} nesta sala"
@@ -2903,6 +3524,10 @@ msgstr "Üyeleri Taşıyabilme"
 msgid "Move members between voice channels"
 msgstr "Üyeleri sesli sohbetler arasında taşıyabilme"
 
+#: components/space/game/GamePanel.tsx
+msgid "Mover"
+msgstr ""
+
 #: components/app/interface/settings/user/Native.tsx
 msgid "Muchat for Desktop"
 msgstr ""
@@ -2918,6 +3543,10 @@ msgstr ""
 #: components/i18n/errors.tsx
 msgid "Multi-factor authentication is already enabled for this account."
 msgstr "Çok aşamalı kimlik doğrulama bu hesapta çoktan aktifleştirildi."
+
+#: components/space/game/labels.ts
+msgid "Muralha"
+msgstr ""
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/app/menus/UserContextMenu.tsx
@@ -2976,6 +3605,10 @@ msgstr "Hesabım"
 msgid "My Bots"
 msgstr "Botlarım"
 
+#: components/space/game/GamePanel.tsx
+msgid "na entrada"
+msgstr ""
+
 #: components/ui/components/features/voice/VoiceChannelPreview.tsx
 msgid "Na sala, fora da chamada"
 msgstr ""
@@ -2996,6 +3629,10 @@ msgstr ""
 #: components/modal/modals/RenameSession.tsx
 msgid "Name"
 msgstr "İsim"
+
+#: components/space/game/labels.ts
+msgid "Não cabe aí."
+msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui abrir o checkout. Tente de novo em instantes."
@@ -3021,6 +3658,10 @@ msgstr ""
 msgid "Não foi possível carregar o player do YouTube neste aparelho (bloqueado ou sem conexão)."
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Não foi possível fazer isso agora."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Natural"
 msgstr ""
@@ -3031,6 +3672,10 @@ msgstr ""
 
 #: components/space/AudioCheck.tsx
 msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Nenhuma expedição em andamento."
 msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
@@ -3067,6 +3712,16 @@ msgstr "Sunucuda Yeni"
 msgid "Nickname"
 msgstr "Kullanıcı Adı"
 
+#. placeholder {0}: h().level
+#. placeholder {0}: props.item.ilvl
+#: components/space/game/GamePanel.tsx
+msgid "nível {0}"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Nível insuficiente para esse item."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Nivela o volume da sua voz para todos ouvirem você na mesma altura, mesmo com microfone baixo. Com DeepFilterNet ou RNNoise o nivelamento é feito antes do supressor, sem aumentar o ruído acima do limite."
 msgstr ""
@@ -3082,6 +3737,11 @@ msgstr "Hiç GİF bulunamadı"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "No permissions set yet"
 msgstr "Henüz bir izin ayarlanmadı"
+
+#. placeholder {0}: h().lobby.length
+#: components/space/game/GamePanel.tsx
+msgid "No quarto ({0})"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "No role overrides have been configured."
@@ -3109,6 +3769,7 @@ msgid "normal"
 msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
+#: components/space/game/labels.ts
 msgid "Normal"
 msgstr "Normal"
 
@@ -3126,8 +3787,16 @@ msgstr "Bu platformu kullanmak için gereken yaşta değil"
 msgid "Notifications"
 msgstr "Bildirimler"
 
+#: components/space/game/GamePanel.tsx
+msgid "O boneco chegou ao limite: colete para não perder treino."
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R$ 20 libera 30 dias de tela em 1080p e 60 fps, câmera em 1080p e áudio melhor. Apoios seguidos somam os prazos."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "O herói está ferido: espere a vida voltar a 30%."
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -3154,6 +3823,14 @@ msgstr ""
 msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "O Refúgio está desligado neste servidor."
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão \"Aventura\". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo"
 msgstr ""
@@ -3169,6 +3846,10 @@ msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "O YouTube recusou o player (configuração de origem)."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Oferecer"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -3201,6 +3882,10 @@ msgstr "Tamam"
 msgid "Oldest"
 msgstr "En Eski"
 
+#: components/space/game/labels.ts
+msgid "Olho aguçado"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 #: components/ui/components/features/messaging/composition/MessageReplyPreview.tsx
 msgid "On"
@@ -3213,6 +3898,10 @@ msgstr "Açık"
 #: components/modal/modals/DeleteServer.tsx
 msgid "Once it's deleted, there's no going back."
 msgstr "Bir kez silindikten sonra geri dönüşü olmayacaktır."
+
+#: components/space/game/labels.ts
+msgid "Onda gélida"
+msgstr ""
 
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "One of the first 1000 users!"
@@ -3271,9 +3960,24 @@ msgstr "Sunucu ayarlarını aç"
 msgid "Open settings"
 msgstr "Ayarları aç"
 
+#: components/space/game/labels.ts
+msgid "Ossário"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Other"
 msgstr "Diğer"
+
+#. placeholder {0}: h().gold.toLocaleString()
+#. placeholder {1}: h().potions
+#. placeholder {2}: RULES.maxPotions
+#: components/space/game/GamePanel.tsx
+msgid "Ouro {0} · poções {1}/{2}"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Ouro insuficiente."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Output Volume"
@@ -3316,6 +4020,10 @@ msgstr ""
 msgid "Para o som da TV só para você; a sala continua assistindo"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Para onde?"
+msgstr ""
+
 #: components/space/MediaStage.tsx
 msgid "Parar de compartilhar"
 msgstr ""
@@ -3341,6 +4049,10 @@ msgstr "Kullanıcıyı Affet"
 msgid "Partial Outage"
 msgstr "Kısmi Kesinti"
 
+#: components/space/game/GamePanel.tsx
+msgid "Partir"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 #: components/auth/src/flows/Form.tsx
 #: components/modal/modals/MFAFlow.tsx
@@ -3363,6 +4075,10 @@ msgstr ""
 msgid "Pausar para todos"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Pele"
+msgstr ""
+
 #: src/interface/Friends.tsx
 msgid "Pending"
 msgstr "Beklemede"
@@ -3381,6 +4097,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Perfil de voz"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Perfurante"
 msgstr ""
 
 #: components/app/interface/settings/ChannelSettings.tsx
@@ -3410,6 +4130,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Personalizado"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Pesadelo"
 msgstr ""
 
 #: components/auth/src/flows/FlowLogin.tsx
@@ -3474,12 +4198,27 @@ msgstr "Lütfen isteğinizi doğrulamak için bir yöntem seçin."
 msgid "Please select a reason"
 msgstr "Lütfen bir sebep seçin"
 
+#. placeholder {0}: p()
+#. placeholder {0}: shop().potionPrice
+#: components/space/game/GamePanel.tsx
+msgid "Poção ({0})"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Poção abaixo de (%)"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Posição do vídeo"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Powered by RNNoise. Light on CPU."
+msgstr ""
+
+#. placeholder {0}: Math.max(1, props.item.ilvl - 2)
+#: components/space/game/GamePanel.tsx
+msgid "Precisa do nível {0}."
 msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
@@ -3533,12 +4272,20 @@ msgstr "Girilen e-mail veya şifre yanlış."
 msgid "Pular"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Pular animação"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Qualidade"
 msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Quality"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Quarto"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -3569,6 +4316,18 @@ msgstr ""
 #: components/modal/modals/ReportContent.tsx
 msgid "Raid or spam attack"
 msgstr "Baskın veya spam saldırısı"
+
+#: components/space/game/labels.ts
+msgid "Raio"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "raro"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Rato-de-cripta"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/app/menus/MessageContextMenu.tsx
@@ -3659,6 +4418,14 @@ msgstr "Kurtarma Kodu"
 msgid "Recovery Codes"
 msgstr "Kurtarma Kodları"
 
+#: components/space/game/GamePanel.tsx
+msgid "Recusar"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Redemoinho"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Redução forte de ruído"
 msgstr ""
@@ -3669,6 +4436,26 @@ msgstr "Sadeleştirilmiş"
 
 #: components/space/DecorPanel.tsx
 msgid "Refazer"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Reforçado"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Refúgio"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Refúgio (jogo)"
+msgstr ""
+
+#: components/space/DecorPanel.tsx
+msgid "Refúgio ligado neste servidor"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "regenera vida na luta"
 msgstr ""
 
 #: components/auth/src/flows/FlowCreate.tsx
@@ -3839,6 +4626,10 @@ msgstr ""
 msgid "Restore call window"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Retirar-se com a bolsa inteira"
+msgstr ""
+
 #: components/app/menus/DraftMessageContextMenu.tsx
 msgid "Retry sending"
 msgstr "Tekrar göndermeyi dene"
@@ -3854,6 +4645,10 @@ msgstr "İntikam içerikli veya reşit olmayan bireyleri içeren pornografi"
 #: components/modal/modals/PolicyChange.tsx
 msgid "Review policy changes"
 msgstr "Politika değişikliklerini gözden geçir"
+
+#: components/space/game/labels.ts
+msgid "Ritmo"
+msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Role Colour"
@@ -3881,8 +4676,18 @@ msgstr "Roller"
 msgid "Roles with No Overrides"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Roupa"
+msgstr ""
+
 #: components/space/MediaStage.tsx
 msgid "Sair da tela cheia"
+msgstr ""
+
+#. placeholder {0}: run().row + 1
+#. placeholder {1}: run().map.length
+#: components/space/game/GamePanel.tsx
+msgid "sala {0} de {1}"
 msgstr ""
 
 #: components/space/SmartTv.tsx
@@ -3896,6 +4701,10 @@ msgstr ""
 #: components/space/DecorPanel.tsx
 #~ msgid "Salvar permissões"
 #~ msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Salvar tática"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Sample rate"
@@ -3958,6 +4767,22 @@ msgstr "Grup ara..."
 msgid "Search for users..."
 msgstr "Kullanıcı ara..."
 
+#: components/space/game/GamePanel.tsx
+msgid "Seções do Refúgio"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Seguir"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Seiva"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Seiva viva"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Selecionado"
 msgstr ""
@@ -3992,6 +4817,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Sem conexão com o espaço — tentando de novo"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Sem espaço para isso."
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -4208,6 +5037,14 @@ msgstr "Sessiz"
 msgid "sinal"
 msgstr ""
 
+#: components/space/game/GamePanel.tsx
+msgid "Skill treinada"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Skills"
+msgstr ""
+
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode Immune"
 msgstr "Yavaş mod bağışıklığı"
@@ -4239,6 +5076,10 @@ msgstr ""
 #: components/space/DecorPanel.tsx
 #~ msgid "Só administradores"
 #~ msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Só dá para se retirar num descanso."
+msgstr ""
 
 #: components/space/InteractionDialog.tsx
 msgid "Só páginas https podem ser mostradas aqui."
@@ -4370,6 +5211,11 @@ msgstr ""
 msgid "Sua tela"
 msgstr ""
 
+#. placeholder {0}: props.labels.spell[id] ?? id
+#: components/space/game/GamePanel.tsx
+msgid "Subir {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Submit feature suggestion"
 msgstr "Özellik tavsiyesi gönder"
@@ -4418,6 +5264,10 @@ msgstr "Sistem"
 msgid "System message channels"
 msgstr "Sistem mesajı kanalları"
 
+#: components/space/game/GamePanel.tsx
+msgid "Tática"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Tela"
@@ -4452,6 +5302,10 @@ msgstr "Alt yetkideki üyelerin etkileşmesini geçici olarak önle"
 msgid "Tentar de novo"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Termine a expedição primeiro."
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "terminou"
 msgstr ""
@@ -4459,6 +5313,10 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Terms"
 msgstr "Koşullar"
+
+#: components/space/game/labels.ts
+msgid "Tesouro"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Test voice"
@@ -4678,6 +5536,10 @@ msgstr ""
 msgid "Timeout Members"
 msgstr "Üyeleri Zaman Aşımına Uğratabilme"
 
+#: components/space/game/GamePanel.tsx
+msgid "Tirar"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Título (aparece no aviso)"
 msgstr ""
@@ -4722,6 +5584,11 @@ msgstr "Geleneksel (GG/AA/YYYY)"
 msgid "Travamentos"
 msgstr ""
 
+#. placeholder {0}: L().dummy[h().training.tier]
+#: components/space/game/GamePanel.tsx
+msgid "Treino no boneco ({0})"
+msgstr ""
+
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Trending GIFs"
 msgstr "Popüler GIF'ler"
@@ -4748,6 +5615,30 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Type /tts followed by a message in a voice channel's chat and everyone connected to it hears it, spoken by their own device."
+msgstr ""
+
+#. placeholder {0}: lr().xp
+#. placeholder {1}: lr().gold
+#: components/space/game/GamePanel.tsx
+msgid "Última: derrota. Ficaram {0} de experiência e {1} de ouro."
+msgstr ""
+
+#. placeholder {0}: lr().xp
+#. placeholder {1}: lr().gold
+#. placeholder {2}: lr().items
+#: components/space/game/GamePanel.tsx
+msgid "Última: retirada, +{0} de experiência, +{1} de ouro, {2} itens."
+msgstr ""
+
+#. placeholder {0}: lr().xp
+#. placeholder {1}: lr().gold
+#. placeholder {2}: lr().items
+#: components/space/game/GamePanel.tsx
+msgid "Última: vitória, +{0} de experiência, +{1} de ouro, {2} itens."
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Um herói por conta: ele é o mesmo em todo servidor com o Refúgio ligado."
 msgstr ""
 
 #. placeholder {0}: Math.round(props.tv.cooldownS / 60)
@@ -4944,8 +5835,34 @@ msgstr ""
 msgid "Valor"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Varinha"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "vazia"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Vazia. Os itens das expedições chegam aqui."
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "vazio"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Velocidade"
+msgstr ""
+
+#. placeholder {0}: it.speedPct
+#: components/space/game/labels.ts
+msgid "velocidade +{0}%"
+msgstr ""
+
+#. placeholder {0}: sellValue(props.item)
+#: components/space/game/GamePanel.tsx
+msgid "Vender ({0})"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -4973,6 +5890,24 @@ msgstr "Hesabınız doğrulanıyor…"
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Version:"
 msgstr "Sürüm:"
+
+#: components/space/game/GamePanel.tsx
+msgid "Vida"
+msgstr ""
+
+#. placeholder {0}: run().hp
+#. placeholder {1}: run().max_hp
+#. placeholder {2}: run().potions
+#. placeholder {3}: run().bag_gold
+#. placeholder {4}: run().bag_items.length
+#: components/space/game/GamePanel.tsx
+msgid "Vida {0}/{1} · poções {2} · bolsa: {3} de ouro e {4} itens"
+msgstr ""
+
+#. placeholder {0}: it.hp
+#: components/space/game/labels.ts
+msgid "vida +{0}"
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Video"
@@ -5018,6 +5953,14 @@ msgstr "Durum sayfasını görüntüle"
 msgid "Viewing older messages"
 msgstr "Eski mesajları görüntülüyorsun"
 
+#: components/space/game/labels.ts
+msgid "Vigor"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Visual ainda não conquistado."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Você (enviando)"
 msgstr ""
@@ -5047,8 +5990,16 @@ msgstr ""
 msgid "Você está fora do áudio da sala"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "Você já tem um herói."
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Você não é membro deste servidor"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Você não tem mais desse item para colocar."
 msgstr ""
 
 #: components/space/SmartTv.tsx
@@ -5057,6 +6008,10 @@ msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "Você não tem permissão para controlar a TV desta sala."
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "Você não tem permissão para jogar aqui."
 msgstr ""
 
 #: components/space/InteractionDialog.tsx
