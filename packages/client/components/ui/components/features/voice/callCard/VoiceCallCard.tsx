@@ -156,9 +156,17 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
   const channel = () => info()?.channel;
 
   function setFloat(float: FloatType) {
+    // The right and bottom corners leave the room a page asked for (see
+    // setFloatingInset); 0 when nobody asked, the card's place since always.
     const sty = ref!.style,
-      x = float[1] === "l" ? PAD_X : `calc(100vw - var(--flt-w) - ${PAD_X})`,
-      y = float[0] === "t" ? PAD_Y : `calc(100vh - var(--flt-h) - ${PAD_Y})`;
+      x =
+        float[1] === "l"
+          ? PAD_X
+          : `max(${PAD_X}, calc(100vw - var(--flt-w) - ${PAD_X} - var(--flt-inset-right, 0px)))`,
+      y =
+        float[0] === "t"
+          ? PAD_Y
+          : `max(${PAD_Y}, calc(100vh - var(--flt-h) - ${PAD_Y} - var(--flt-inset-bottom, 0px)))`;
     sty.transform = `translate(${x}, ${y})`;
     sty.width = "";
     sty.height = "";
@@ -260,6 +268,28 @@ const Float = styled("div", {
     },
   ],
 });
+
+/**
+ * Room a page keeps for itself at the window's right and bottom edges (the
+ * Espaço's side panel), in px: the card in a right or bottom corner stays
+ * clear of it. Set as CSS variables on #floating, so a card already in a
+ * corner slides over as soon as the page changes them; `null` gives the room
+ * back. Pages that never call this keep the card where it always was.
+ */
+export function setFloatingInset(
+  inset: { right: number; bottom: number } | null,
+) {
+  const el = document.getElementById("floating");
+  if (!el) return;
+  const vars: Array<[string, number | undefined]> = [
+    ["--flt-inset-right", inset?.right],
+    ["--flt-inset-bottom", inset?.bottom],
+  ];
+  for (const [name, px] of vars) {
+    if (px && px > 0) el.style.setProperty(name, `${Math.round(px)}px`);
+    else el.style.removeProperty(name);
+  }
+}
 
 /**
  * 'Marker' to send position information for mounting the floating call card.

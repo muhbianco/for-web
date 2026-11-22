@@ -27,15 +27,19 @@ import { type ProfileView, ONBOARDING_VERSION } from "@muchat/space-core";
 import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
+import { createResizeObserver } from "@solid-primitives/resize-observer";
+
 import { useClient } from "@revolt/client";
 import { useLocation, useParams } from "@revolt/routing";
 import { useVoice } from "@revolt/rtc";
 import { Button, IconButton } from "@revolt/ui";
+import { setFloatingInset } from "@revolt/ui/components/features/voice/callCard/VoiceCallCard";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
 import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
+import { floatingInset } from "./floatingInset";
 import { InteractionDialog } from "./InteractionDialog";
 import {
   type StageMode,
@@ -372,17 +376,23 @@ function ServerSpace(props: { serverId: string }) {
     if (!busy) openStage("tv");
   });
 
+  /** Width of the side column (wide screens); 0 with no panel open. */
+  const sideWidth = () =>
+    panel() === "rooms"
+      ? 280
+      : panel() === "decor"
+        ? 340
+        : panel() === "game"
+          ? 424
+          : 0;
+  /** Share of the page height the panel row takes (narrow screens), in %. */
+  const panelRowPct = () =>
+    !panel() ? 0 : panel() === "decor" || panel() === "game" ? 55 : 40;
+
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
   const gridStyle = () => {
     const st = stageVisible() ? stageMode() : null;
-    const side =
-      panel() === "rooms"
-        ? "280px"
-        : panel() === "decor"
-          ? "340px"
-          : panel() === "game"
-            ? "424px"
-            : null;
+    const side = sideWidth() ? `${sideWidth()}px` : null;
     if (narrow()) {
       const areas: string[] = [];
       const rows: string[] = [];
@@ -394,7 +404,7 @@ function ServerSpace(props: { serverId: string }) {
       rows.push(st === "focus" ? "30%" : "minmax(0, 1fr)");
       if (side) {
         areas.push('"panel"');
-        rows.push(panel() === "decor" || panel() === "game" ? "55%" : "40%");
+        rows.push(`${panelRowPct()}%`);
       }
       return {
         "grid-template-columns": "minmax(0, 1fr)",
@@ -425,6 +435,43 @@ function ServerSpace(props: { serverId: string }) {
       "grid-template-areas": `"${areas.join(" ")}"`,
     };
   };
+
+  // The floating call card (a call's card in a corner) stays clear of the side
+  // panel: it used to sit on the room list and on the top of the Refúgio's
+  // scene, and took the clicks meant for them.
+  let body: HTMLDivElement | undefined;
+  const [bodyBox, setBodyBox] = createSignal<{
+    right: number;
+    bottom: number;
+    height: number;
+  }>();
+  const measureBody = () => {
+    if (!body?.isConnected) return;
+    const r = body.getBoundingClientRect();
+    setBodyBox({ right: r.right, bottom: r.bottom, height: r.height });
+  };
+  onMount(() => {
+    if (body) createResizeObserver(body, measureBody);
+    window.addEventListener("resize", measureBody);
+  });
+  createEffect(() => {
+    const grid = bodyBox();
+    setFloatingInset(
+      grid
+        ? floatingInset({
+            narrow: narrow(),
+            sideWidthPx: sideWidth(),
+            panelRowPct: panelRowPct(),
+            grid,
+            viewport: { width: innerWidth, height: innerHeight },
+          })
+        : null,
+    );
+  });
+  onCleanup(() => {
+    window.removeEventListener("resize", measureBody);
+    setFloatingInset(null);
+  });
 
   /** Page shortcuts that the map does not use (it takes WASD, arrows, E, +, −). */
   function pageKey(e: KeyboardEvent) {
@@ -649,7 +696,7 @@ function ServerSpace(props: { serverId: string }) {
           <Symbol>list</Symbol>
         </IconButton>
       </Bar>
-      <Body style={gridStyle()}>
+      <Body ref={body} style={gridStyle()}>
         {/*
           Two siblings, never one: the map canvas is appended by PixiJS to a
           native element with no JSX children, so Solid never rewrites it.
