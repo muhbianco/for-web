@@ -6,7 +6,8 @@
   "license": "AGPL-3.0-only",
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./game": "./src/game/index.ts"
   },
   "scripts": {
     "test": "node --test \"src/**/*.test.ts\"",
