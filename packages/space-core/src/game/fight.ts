@@ -60,7 +60,11 @@ export interface FightResult {
   events: number;
 }
 
-/** Quem age na luta: −1 é o herói, i ≥ 0 é o inimigo i (os chamados entram no fim da lista). */
+/**
+ * Quem age na luta: −1 é o herói, i ≥ 0 é o inimigo i (os chamados entram no fim
+ * da lista). Toda mudança de vida tem evento (golpe, efeito contínuo, cura,
+ * poção), então a reprise do app chega à mesma vida final do servidor.
+ */
 export type FightEvent =
   | { t: number; k: "hit"; by: number; to: number; dmg: number; crit: boolean; spell?: string }
   | { t: number; k: "miss"; by: number; to: number }
@@ -202,7 +206,11 @@ export function fight(input: FightInput, onEvent?: (e: FightEvent) => void): Fig
     const d = Math.max(1, Math.floor(c / 100));
     u.hp -= d;
     emit({ t, k: "hit", by: -1, to: units.indexOf(u), dmg: d, crit, ...(spell ? { spell } : {}) });
-    if (cls.passive === "sangue_de_ferro" && el === "fisico") hp = Math.min(maxHp, hp + Math.floor(d / 10));
+    if (cls.passive === "sangue_de_ferro" && el === "fisico" && hp > 0) {
+      const before = hp;
+      hp = Math.min(maxHp, hp + Math.floor(d / 10));
+      if (hp > before) emit({ t, k: "heal", v: hp - before });
+    }
     kill(u);
   };
 
@@ -247,7 +255,10 @@ export function fight(input: FightInput, onEvent?: (e: FightEvent) => void): Fig
 
     if (t === nextTick) {
       nextTick += RULES.tickMs;
-      if (poison.until > t) hp -= poison.dps;
+      if (poison.until > t) {
+        hp -= poison.dps;
+        emit({ t, k: "dot", to: -1, dmg: poison.dps });
+      }
       for (const u of live) {
         u.dots = u.dots.filter((d) => d.until > t);
         for (const d of u.dots) {
@@ -258,13 +269,17 @@ export function fight(input: FightInput, onEvent?: (e: FightEvent) => void): Fig
         }
       }
       mp10 = Math.min(maxMp10, mp10 + hc.mpRegen10);
-      if (boons.regenPerMille > 0 && hp > 0) hp = Math.min(maxHp, hp + Math.max(1, Math.floor((maxHp * boons.regenPerMille) / 1000)));
+      if (boons.regenPerMille > 0 && hp > 0) {
+        const before = hp;
+        hp = Math.min(maxHp, hp + Math.max(1, Math.floor((maxHp * boons.regenPerMille) / 1000)));
+        if (hp > before) emit({ t, k: "heal", v: hp - before });
+      }
       if (potions > 0 && potionCd <= t && hp > 0 && hp * 100 < maxHp * potionAt) {
-        const v = Math.floor((maxHp * RULES.potionPct) / 100);
-        hp = Math.min(maxHp, hp + v);
+        const before = hp;
+        hp = Math.min(maxHp, hp + Math.floor((maxHp * RULES.potionPct) / 100));
         potions--;
         potionCd = t + RULES.potionCdMs;
-        emit({ t, k: "potion", v });
+        emit({ t, k: "potion", v: hp - before });
       }
       continue;
     }

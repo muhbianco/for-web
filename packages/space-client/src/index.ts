@@ -24,7 +24,7 @@ export {
   PresenceLink,
   type PresenceLinkOptions,
 } from "./presence.ts";
-export { type Interaction, SpaceView, type SpaceUiState, type SpaceViewOptions } from "./view.ts";
+export { type GameWireEvent, type Interaction, SpaceView, type SpaceUiState, type SpaceViewOptions } from "./view.ts";
 export { decodeMap, World } from "./world.ts";
 export { characterSheet, DIRS, FRAMES, palette, PALETTES, SPRITE } from "./render/sprites.ts";
 export { spriteFor, thumbnail } from "./render/atlas.ts";

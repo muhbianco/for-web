@@ -7,7 +7,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./presence": "./src/presence.ts"
+    "./presence": "./src/presence.ts",
+    "./game": "./src/game/index.ts"
   },
   "scripts": {
     "test": "node --test \"src/**/*.test.ts\"",

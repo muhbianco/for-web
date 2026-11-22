@@ -78,7 +78,15 @@ export interface SpaceUiState {
   tvError: { code: string; retryAfterMs?: number; at: number } | null;
   /** Bumped when someone uses a TV object on the map (the app opens the TV). */
   tvOpenRequest: number;
+  /**
+   * Refúgio (ADR 0009), from the snapshot: `available` = the operator switched
+   * it on for this server; `enabled` = this person may play now. null = unknown.
+   */
+  game: { available: boolean; enabled: boolean } | null;
 }
+
+/** What the game panel receives: its own events, and errors of its own commands. */
+export type GameWireEvent = { t: "game.state" | "game.fight" | "error"; re?: string; d: Record<string, unknown> };
 
 /** The room's TV as this person may see and use it. */
 export interface RoomTv {
@@ -180,7 +188,43 @@ export class SpaceView {
       tv: null,
       tvError: null,
       tvOpenRequest: 0,
+      game: null,
     };
+  }
+
+  // ---- Refúgio (ADR 0009) -------------------------------------------------------
+
+  private readonly gameListeners = new Set<(e: GameWireEvent) => void>();
+  /** Ids of game commands in flight, so their errors go to the game, not the editor. */
+  private readonly gameCommands = new Set<string>();
+
+  /**
+   * Sends a game command over the map's own connection (never a second one: a
+   * second "play" session would replace this one, 4001). Returns its id; the
+   * answers (`game.state`, `game.fight`, `error`) carry it as `re`.
+   */
+  gameSend(t: string, d?: Record<string, unknown>): string {
+    const id = this.conn.nextId();
+    this.gameCommands.add(id);
+    if (this.gameCommands.size > 64) this.gameCommands.delete(this.gameCommands.values().next().value!);
+    this.conn.send({ v: 1, t, id, ...(d === undefined ? {} : { d }) });
+    return id;
+  }
+
+  /** Listens to the game's events; returns the unsubscribe. The map's UI state is not touched. */
+  onGame(listener: (e: GameWireEvent) => void): () => void {
+    this.gameListeners.add(listener);
+    return () => this.gameListeners.delete(listener);
+  }
+
+  private emitGame(e: GameWireEvent) {
+    for (const l of [...this.gameListeners]) {
+      try {
+        l(e);
+      } catch (err) {
+        console.error("game listener failed", err);
+      }
+    }
   }
 
   // ---- Smart TV (ADR 0008) -----------------------------------------------------
@@ -382,7 +426,12 @@ export class SpaceView {
         this.mover.resync();
         this.renderer.rebuildStatic(this.world);
         if (!this.world.decor || this.world.decor.rev !== d.decor?.rev) await this.loadDecor().catch(() => undefined);
-        this.patch({ rights: this.world.rights, settings: this.world.decor?.settings ?? null, decorRev: this.world.decor?.rev ?? 0 });
+        this.patch({
+          rights: this.world.rights,
+          settings: this.world.decor?.settings ?? null,
+          decorRev: this.world.decor?.rev ?? 0,
+          game: d.game ? { available: d.game.available === true, enabled: d.game.enabled === true } : null,
+        });
         this.dirtyUi = true;
         return;
       }
@@ -405,7 +454,16 @@ export class SpaceView {
       case "decor.rights":
         this.world.setRights(d);
         return;
+      case "game.state":
+      case "game.fight":
+        if (typeof e.re === "string") this.gameCommands.delete(e.re);
+        this.emitGame({ t: e.t, re: typeof e.re === "string" ? e.re : undefined, d });
+        return;
       case "error":
+        if (typeof e.re === "string" && this.gameCommands.delete(e.re)) {
+          this.emitGame({ t: "error", re: e.re, d: d ?? {} });
+          return;
+        }
         if (typeof e.re === "string" && this.tvCommands.delete(e.re)) {
           this.patch({ tvError: { code: d?.code ?? "internal", retryAfterMs: d?.retry_after_ms, at: Date.now() } });
           return;
