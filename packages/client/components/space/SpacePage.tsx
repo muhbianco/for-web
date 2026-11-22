@@ -2,10 +2,12 @@ import {
   For,
   Match,
   Show,
+  Suspense,
   Switch,
   createEffect,
   createMemo,
   createSignal,
+  lazy,
   on,
   onCleanup,
   onMount,
@@ -44,6 +46,12 @@ import {
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
 import { SmartTv } from "./SmartTv";
+
+/**
+ * Refúgio, o jogo do Espaço (ADR 0009): chunk próprio, carregado só quando o
+ * painel abre (quem não joga não baixa nada além do botão).
+ */
+const GamePanel = lazy(() => import("./game/GamePanel"));
 
 const STAGE_MODE_KEY = "muchat.space.stageMode";
 
@@ -102,7 +110,9 @@ function ServerSpace(props: { serverId: string }) {
   const [view, setView] = createSignal<SpaceView | null>(null);
   const [profile, setProfile] = createSignal<ProfileView | null>(null);
   const [failed, setFailed] = createSignal<string | null>(null);
-  const [panel, setPanel] = createSignal<"rooms" | "decor" | null>("rooms");
+  const [panel, setPanel] = createSignal<"rooms" | "decor" | "game" | null>(
+    "rooms",
+  );
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
   // Media stage (screens, the room's TV): only in a room, only when opened.
@@ -174,6 +184,26 @@ function ServerSpace(props: { serverId: string }) {
       v.walkToRoom(roomId) ? "" : t`Não dá para chegar nessa sala daqui.`,
     );
     host?.focus();
+  }
+
+  /**
+   * The game's button: the operator switched it on for this server and the
+   * owner did not turn it off (the settings change live; the snapshot does not).
+   * Without InteractSpaceObjects the panel says so when it opens.
+   */
+  const gameOn = createMemo(
+    () => !!ui()?.game?.available && ui()?.settings?.game !== "off",
+  );
+  createEffect(
+    on(gameOn, (v) => {
+      if (!v && untrack(panel) === "game") setPanel("rooms");
+    }),
+  );
+
+  function openGame(on: boolean) {
+    if (panel() === "decor") view()?.setEditing(false);
+    setPanel(on ? "game" : "rooms");
+    if (!on) host?.focus();
   }
 
   function openDecor(on: boolean) {
@@ -346,7 +376,13 @@ function ServerSpace(props: { serverId: string }) {
   const gridStyle = () => {
     const st = stageVisible() ? stageMode() : null;
     const side =
-      panel() === "rooms" ? "280px" : panel() === "decor" ? "340px" : null;
+      panel() === "rooms"
+        ? "280px"
+        : panel() === "decor"
+          ? "340px"
+          : panel() === "game"
+            ? "400px"
+            : null;
     if (narrow()) {
       const areas: string[] = [];
       const rows: string[] = [];
@@ -358,7 +394,7 @@ function ServerSpace(props: { serverId: string }) {
       rows.push(st === "focus" ? "30%" : "minmax(0, 1fr)");
       if (side) {
         areas.push('"panel"');
-        rows.push(panel() === "decor" ? "50%" : "40%");
+        rows.push(panel() === "decor" || panel() === "game" ? "55%" : "40%");
       }
       return {
         "grid-template-columns": "minmax(0, 1fr)",
@@ -568,6 +604,15 @@ function ServerSpace(props: { serverId: string }) {
             </Show>
           </Button>
         </Show>
+        <Show when={gameOn()}>
+          <Button
+            variant={panel() === "game" ? "filled" : "tonal"}
+            onPress={() => openGame(panel() !== "game")}
+            aria-pressed={panel() === "game"}
+          >
+            <Symbol size={18}>swords</Symbol> {t`Aventura`}
+          </Button>
+        </Show>
         <Show when={ui()?.rights.can_edit}>
           <Button
             variant={panel() === "decor" ? "filled" : "tonal"}
@@ -747,6 +792,13 @@ function ServerSpace(props: { serverId: string }) {
               onStopShare={(userId) => view()?.stopScreenOf(userId)}
             />
           </div>
+        </Show>
+        <Show when={panel() === "game" && view()}>
+          {(v) => (
+            <Suspense>
+              <GamePanel view={v()} onClose={() => openGame(false)} />
+            </Suspense>
+          )}
         </Show>
         <Show when={panel() === "decor" && view() && ui()}>
           <DecorPanel

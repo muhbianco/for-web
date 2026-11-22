@@ -224,6 +224,7 @@ export function DecorPanel(props: {
             view={props.view}
             settings={settings()}
             roles={props.roles}
+            gameAvailable={props.ui.game?.available ?? false}
           />
         )}
       </Show>
@@ -435,6 +436,8 @@ function SettingsCard(props: {
   view: SpaceView;
   settings: DecorSettings;
   roles: Array<{ id: string; name: string }>;
+  /** The operator switched Refúgio on for this server (ADR 0009). */
+  gameAvailable: boolean;
 }) {
   const { t } = useLingui();
   const [cooldown, setCooldown] = createSignal<number>(
@@ -489,6 +492,29 @@ function SettingsCard(props: {
           {t`Salvar`}
         </Button>
       </Row>
+      <Show when={props.gameAvailable}>
+        <strong>{t`Refúgio (jogo)`}</strong>
+        <Muted>
+          {t`O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão "Aventura". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados.`}
+        </Muted>
+        <label>
+          <input
+            type="checkbox"
+            checked={props.settings.game !== "off"}
+            onChange={(e) =>
+              props.view.editor.setSettings({
+                editors: props.settings.editors,
+                roles: [...props.settings.roles],
+                ...(props.settings.tv_cooldown_s !== undefined
+                  ? { tv_cooldown_s: props.settings.tv_cooldown_s }
+                  : {}),
+                game: e.currentTarget.checked ? "on" : "off",
+              })
+            }
+          />{" "}
+          {t`Refúgio ligado neste servidor`}
+        </label>
+      </Show>
     </Section>
   );
 }
