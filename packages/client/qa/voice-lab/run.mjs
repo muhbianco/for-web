@@ -70,6 +70,13 @@ const opts = {
    * video (the Smart TV's load). `--media-load` = both; `--media-load screen|tv`.
    */
   mediaLoad: args["media-load"] === true ? "both" : ["screen", "tv", "both"].includes(args["media-load"]) ? args["media-load"] : undefined,
+  /**
+   * Refúgio (ADR 0009, E6): A runs the game's real scene, one boss fight after
+   * another at 1× (continuous 30 fps animation), in the same page that talks.
+   */
+  gameLoad: !!args["game-load"],
+  /** Runs (and the Chromiums it starts) at BelowNormal, so the lab doesn't take the machine. */
+  belowNormal: !!args["below-normal"],
   labEnv: typeof args["lab-env"] === "string" ? resolve(args["lab-env"]) : undefined,
   page: args.page ?? "http://127.0.0.1:5173/qa/voice-lab/index.html",
   url: typeof args.url === "string" ? args.url : undefined,
@@ -80,6 +87,14 @@ const opts = {
   recordRaw: !!args["record-raw"],
   out: args.out ? resolve(args.out) : undefined,
 };
+
+if (opts.belowNormal) {
+  try {
+    os.setPriority(0, os.constants.priority.PRIORITY_BELOW_NORMAL);
+  } catch {
+    /* sem permissão: segue */
+  }
+}
 
 const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
 const outDir = opts.out ?? join(HERE, "out", `${stamp}-${opts.name}`);
@@ -235,6 +250,7 @@ async function main() {
   const timeline = [];
   let firstSnapshot;
   let mediaLoad;
+  let gameLoad;
   try {
     const a = await connect(A, { url: tokens.url, token: tokens.pub.token }, true);
     log(`A conectado: ${a.localIdentity} em ${a.room}`);
@@ -261,6 +277,14 @@ async function main() {
         return "TV ok";
       }, opts.mediaLoad);
       log(`carga de mídia em A (${opts.mediaLoad}): ${res} · ${tvRes}`);
+    }
+    if (opts.gameLoad) {
+      const res = await A.page
+        .evaluate(async () =>
+          (await import("/qa/voice-lab/gameLoad.ts")).startGameLoad(),
+        )
+        .catch((e) => `jogo falhou: ${String(e?.message ?? e)}`);
+      log(`carga do jogo em A: ${res}`);
     }
     const b = await connect(B, { url: tokens.url, token: tokens.sub.token }, opts.bidir);
     log(`B conectado: ${b.localIdentity}`);
@@ -353,6 +377,12 @@ async function main() {
         : null;
       mediaLoad = { screenAtB: screen, youtubeAtA: tv };
       log(`carga de mídia no fim: tela recebida em B ${JSON.stringify(screen)} · YouTube em A ${JSON.stringify(tv)}`);
+    }
+    if (opts.gameLoad) {
+      gameLoad = await A.page
+        .evaluate(() => window.__gameLoad?.stats() ?? null)
+        .catch(() => null);
+      log(`carga do jogo no fim: ${JSON.stringify(gameLoad)}`);
     }
     log("parando e coletando áudio…");
     const [audioA, audioB] = await Promise.all([
@@ -496,6 +526,7 @@ async function main() {
       analysis,
       stats,
       mediaLoad,
+      gameLoad,
     };
     writeFileSync(join(outDir, "report.json"), JSON.stringify(report, null, 2));
     writeFileSync(join(outDir, "timeline.json"), JSON.stringify(timeline));
@@ -546,7 +577,7 @@ function renderMarkdown(r) {
     `# Laboratório de voz — ${r.name}`,
     ``,
     `- Início: ${r.startedAt} · alvo: ${r.options.target} · LiveKit: ${r.livekitUrl} · sala: ${r.options.room}`,
-    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"}`,
+    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} game-load=${r.options.gameLoad ? `on (${r.gameLoad?.fights ?? "?"} lutas, ${r.gameLoad?.fps ?? "?"} fps)` : "—"}`,
     `- Máquina: ${r.machine.cpuModel} (${r.machine.cpus} núcleos, ${r.machine.totalMemGb} GB) · janelas de 2 s: ${s.windows}`,
     ``,
     `## Caminho`,

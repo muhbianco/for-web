@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global console, process */
+/* global console, process, URL */
 /**
  * Piloto do laboratório completo: Ana, Bia e Caio no app de verdade
  * (http://localhost:5173, packages/space-server/lab/full), cada um no seu
@@ -65,6 +65,8 @@ const browser = await chromium.launch({
 
 /** @type {Record<string, import("@playwright/test").Page>} */
 const pages = {};
+/** Hosts of the /auth/ calls the guard below stopped (see login()). */
+const blockedAuth = [];
 const logs = {};
 
 async function login(name) {
@@ -76,6 +78,16 @@ async function login(name) {
     colorScheme: "dark",
   });
   if (initScript) await ctx.addInitScript({ path: resolve(initScript) });
+  // The test passwords must never leave the lab: a build made without the lab's
+  // VITE_API_URL talks to the public Stoat (api.stoat.chat) and would send them
+  // there (it happened on 22/11/2026). Any /auth/ call to a non-local host is
+  // aborted before it goes out.
+  await ctx.route("**/auth/**", (route) => {
+    const host = new URL(route.request().url()).hostname;
+    if (host === "localhost" || host === "127.0.0.1") return route.continue();
+    blockedAuth.push(host);
+    return route.abort("blockedbyclient");
+  });
   const page = await ctx.newPage();
   logs[name] = [];
   page.on("console", (m) => {
@@ -108,9 +120,17 @@ async function login(name) {
   await email.fill(u.email);
   await page.locator('input[type="password"]').first().fill(u.password);
   await page.locator('input[type="password"]').first().press("Enter");
-  await page.waitForURL((url) => !url.pathname.startsWith("/login"), {
-    timeout: 60_000,
-  });
+  await page
+    .waitForURL((url) => !url.pathname.startsWith("/login"), {
+      timeout: 60_000,
+    })
+    .catch((e) => {
+      if (blockedAuth.length)
+        throw new Error(
+          `${name}: o app chamou ${blockedAuth[0]} em vez do laboratório (build sem VITE_API_URL do laboratório?); o login foi bloqueado antes de sair`,
+        );
+      throw e;
+    });
   pages[name] = page;
   console.log(`${name}: dentro (${page.url()})`);
 }
