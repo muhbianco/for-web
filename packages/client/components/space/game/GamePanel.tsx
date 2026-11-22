@@ -149,7 +149,7 @@ export default function GamePanel(props: {
     const foes = d.input.foes.map((f) => l.enemy[f]).join(", ");
     setLastFight(
       d.result.won
-        ? t`Luta contra ${foes}: vitória em ${(d.result.durationMs / 1000).toFixed(1)} s.`
+        ? t`Luta contra ${foes}: vitória em ${(d.result.durationMs / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} s.`
         : t`Luta contra ${foes}: derrota.`,
     );
     if (!scene) return;
@@ -445,16 +445,17 @@ export default function GamePanel(props: {
         <Match when={hero()}>
           {(h) => (
             <>
+              {/* Na expedição, a vida, a mana e as poções são as dela, não as do Refúgio. */}
               <Vitals>
                 <Bar
-                  label={t`Vida`}
-                  value={h().hp}
-                  max={h().max_hp}
+                  label={h().run ? t`Vida na expedição` : t`Vida`}
+                  value={h().run?.hp ?? h().hp}
+                  max={h().run?.max_hp ?? h().max_hp}
                   color="#4dd26a"
                 />
                 <Bar
-                  label={t`Mana`}
-                  value={h().mp}
+                  label={h().run ? t`Mana na expedição` : t`Mana`}
+                  value={h().run?.mp ?? h().mp}
                   max={h().max_mp}
                   color="#4a8cff"
                 />
@@ -465,7 +466,7 @@ export default function GamePanel(props: {
                   color="#ffb020"
                 />
                 <Muted>
-                  {t`Ouro ${h().gold.toLocaleString()} · poções ${h().potions}/${RULES.maxPotions}`}
+                  {t`Ouro ${h().gold.toLocaleString()} · poções ${h().run?.potions ?? h().potions}/${RULES.maxPotions}`}
                 </Muted>
               </Vitals>
 
@@ -813,7 +814,7 @@ export default function GamePanel(props: {
                     <strong>{L().cls[h().cls].name}</strong>
                     <Muted>{L().cls[h().cls].blurb}</Muted>
                     <Muted>
-                      {t`Ataque ${h().combat.atk} · armadura ${h().combat.armor} · crítico ${(h().combat.critBp / 100).toFixed(1)}% · esquiva ${(h().combat.dodgeBp / 100).toFixed(1)}% · bloqueio ${(h().combat.blockBp / 100).toFixed(1)}%`}
+                      {t`Ataque ${h().combat.atk} · armadura ${h().combat.armor} · crítico ${(h().combat.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}% · esquiva ${(h().combat.dodgeBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}% · bloqueio ${(h().combat.blockBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`}
                     </Muted>
                     <Muted>
                       {t`FOR ${h().combat.attrs.for} · DES ${h().combat.attrs.des} · INT ${h().combat.attrs.int} · VIT ${h().combat.attrs.vit}`}
@@ -1268,7 +1269,8 @@ const Head = styled("div", {
 });
 
 const sceneBox = css({
-  height: "248px",
+  // 12 × 8 tiles de 16 px a 2× = 384 × 256: a coluna de 424 px menos o padding cabe 2×.
+  height: "264px",
   flex: "none",
   borderRadius: "10px",
   overflow: "hidden",

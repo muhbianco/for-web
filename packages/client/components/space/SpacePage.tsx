@@ -381,7 +381,7 @@ function ServerSpace(props: { serverId: string }) {
         : panel() === "decor"
           ? "340px"
           : panel() === "game"
-            ? "400px"
+            ? "424px"
             : null;
     if (narrow()) {
       const areas: string[] = [];

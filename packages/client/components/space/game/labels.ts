@@ -74,6 +74,26 @@ export function gameLabels() {
     lendario: t`lendário`,
     mitico: t`mítico`,
   };
+  /** A raridade concordando com o nome do item ("Armadura rara", "Botas épicas"). */
+  const rarityAgree: Record<"m" | "f" | "fp", Record<Rarity, string>> = {
+    m: rarity,
+    f: {
+      comum: t`comum`,
+      incomum: t`incomum`,
+      raro: t`rara`,
+      epico: t`épica`,
+      lendario: t`lendária`,
+      mitico: t`mítica`,
+    },
+    fp: {
+      comum: t`comuns`,
+      incomum: t`incomuns`,
+      raro: t`raras`,
+      epico: t`épicas`,
+      lendario: t`lendárias`,
+      mitico: t`míticas`,
+    },
+  };
   const degree = (d: Degree, abyss = 1): string =>
     ({
       normal: t`Normal`,
@@ -185,8 +205,10 @@ export function gameLabels() {
   };
 
   /** Nome curto de um item: tipo (ou espaço) e raridade. */
-  const itemName = (it: Item): string =>
-    `${(it.type && type[it.type]) || slot[it.slot]} ${rarity[it.rarity]}`;
+  const itemName = (it: Item): string => {
+    const key = it.type ?? it.slot;
+    return `${(it.type && type[it.type]) || slot[it.slot]} ${rarityAgree[GENDER[key] ?? "m"][it.rarity]}`;
+  };
 
   /** Os números do item, numa linha. */
   const itemStats = (it: Item): string => {
@@ -196,7 +218,10 @@ export function gameLabels() {
     if (it.blockBp) parts.push(t`bloqueio ${it.blockBp / 100}%`);
     for (const [k, v] of Object.entries(it.attrs))
       if (v) parts.push(`${k.toUpperCase()} +${v}`);
-    if (it.critBp) parts.push(t`crítico +${(it.critBp / 100).toFixed(1)}%`);
+    if (it.critBp)
+      parts.push(
+        t`crítico +${(it.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })}%`,
+      );
     if (it.speedPct) parts.push(t`velocidade +${it.speedPct}%`);
     if (it.hp) parts.push(t`vida +${it.hp}`);
     if (it.mp) parts.push(t`mana +${it.mp}`);
@@ -232,4 +257,25 @@ export const RARITY_COLOR: Record<Rarity, string> = {
   epico: "#b062ff",
   lendario: "#ffb020",
   mitico: "#ff4d6d",
+};
+
+/** Gênero (e número) do nome de cada item, para a raridade concordar. */
+const GENDER: Record<string, "m" | "f" | "fp"> = {
+  elmo: "m",
+  armadura: "f",
+  calcas: "fp",
+  botas: "fp",
+  secundaria: "f",
+  arma: "f",
+  anel: "m",
+  amuleto: "m",
+  espada: "f",
+  machado: "m",
+  maca: "f",
+  arco: "m",
+  varinha: "f",
+  cajado: "m",
+  escudo: "m",
+  aljava: "f",
+  foco: "m",
 };
