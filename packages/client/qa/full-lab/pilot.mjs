@@ -40,12 +40,21 @@ const STATE = JSON.parse(
   readFileSync(resolve("../space-server/lab/full/state.local.json"), "utf8"),
 );
 const names = opt("users", "ana,bia,caio").split(",");
+// --fake-audio <wav>: the fake mic plays this file (e.g. the voice lab's PT-BR
+// reference) instead of Chromium's beep, which DeepFilter removes as noise.
+const fakeAudio = opt("fake-audio", undefined);
+// --init-script <js>: runs in every page before the app (test hooks that must
+// see the first getUserMedia / RTCPeerConnection, e.g. the voice plan check).
+const initScript = opt("init-script", undefined);
 
 const browser = await chromium.launch({
   headless: !args.includes("--headed"),
   args: [
     "--use-fake-device-for-media-stream",
     "--use-fake-ui-for-media-stream",
+    ...(fakeAudio
+      ? [`--use-file-for-fake-audio-capture=${resolve(fakeAudio)}`]
+      : []),
     "--auto-select-desktop-capture-source=Entire screen",
     "--autoplay-policy=no-user-gesture-required",
     "--disable-background-timer-throttling",
@@ -66,6 +75,7 @@ async function login(name) {
     locale: "pt-BR",
     colorScheme: "dark",
   });
+  if (initScript) await ctx.addInitScript({ path: resolve(initScript) });
   const page = await ctx.newPage();
   logs[name] = [];
   page.on("console", (m) => {
