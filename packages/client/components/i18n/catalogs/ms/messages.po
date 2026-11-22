@@ -225,6 +225,15 @@ msgstr ""
 msgid "+ e − mudam o zoom. Esc cancela o caminho."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "+{gain} dB (medindo a sua fala)"
+msgstr ""
+
+#. placeholder {0}: Math.round(speech)
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "+{gain} dB (sua fala em {0} dBFS)"
+msgstr ""
+
 #: components/ui/components/features/messaging/elements/SystemMessage.tsx
 msgid "<0/> has been added by <1/>"
 msgstr ""
@@ -719,8 +728,8 @@ msgid "Browser noise suppression"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
-msgid "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
-msgstr ""
+#~ msgid "Browser volume levelling. Ignored while DeepFilterNet or RNNoise is active, since it would boost the residual noise."
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Buffer"
@@ -1919,6 +1928,18 @@ msgstr ""
 msgid "Enviado."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Envio do microfone"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Equilibrado (recomendado)"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
+msgstr ""
+
 #: components/space/AudioCheck.tsx
 msgid "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
 msgstr ""
@@ -2730,6 +2751,10 @@ msgstr "Ahli"
 msgid "Members can send one message every {0}."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Menos processamento e mais qualidade de áudio. Para lugares silenciosos e bons microfones."
+msgstr ""
+
 #: components/app/menus/UserContextMenu.tsx
 msgid "Mention"
 msgstr "Sebut"
@@ -2806,8 +2831,16 @@ msgstr ""
 msgid "MFA setup canceled."
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "microfone desconectado"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "microfone desligado"
+msgstr ""
+
+#: components/ui/components/features/voice/VoiceDock.tsx
+msgid "Microfone silenciado pelo sistema"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -2986,6 +3019,10 @@ msgid "Não foi possível carregar o player do YouTube neste aparelho (bloqueado
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Natural"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
 msgstr ""
 
@@ -3027,6 +3064,14 @@ msgstr ""
 msgid "Nickname"
 msgstr "Nama samaran"
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Nivela o volume da sua voz para todos ouvirem você na mesma altura, mesmo com microfone baixo. Com DeepFilterNet ou RNNoise o nivelamento é feito antes do supressor, sem aumentar o ruído acima do limite."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Nivelamento de volume"
+msgstr ""
+
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "No GIFs found"
 msgstr ""
@@ -3055,6 +3100,10 @@ msgstr ""
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "None"
 msgstr "Tiada"
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "normal"
+msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Normal"
@@ -3100,6 +3149,14 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
+msgstr ""
+
+#: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
+msgid "O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo"
+msgstr ""
+
+#: components/ui/components/features/voice/VoiceDock.tsx
+msgid "O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo. Confira o botão de mudo do headset e o microfone nas configurações de som do sistema."
 msgstr ""
 
 #. placeholder {0}: playerError()
@@ -3295,6 +3352,10 @@ msgstr ""
 msgid "pausado"
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "pausado (sem envio)"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Pausar para todos"
 msgstr ""
@@ -3309,6 +3370,14 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Perda do seu áudio"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Perfil"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Perfil de voz"
 msgstr ""
 
 #: components/app/interface/settings/ChannelSettings.tsx
@@ -3334,6 +3403,10 @@ msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Personagens"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Personalizado"
 msgstr ""
 
 #: components/auth/src/flows/FlowLogin.tsx
@@ -3420,6 +3493,11 @@ msgstr ""
 
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Private chat."
+msgstr ""
+
+#. placeholder {0}: current.audioContextState
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "processamento parado ({0})"
 msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
@@ -3578,6 +3656,10 @@ msgstr "Kod pemulihan"
 msgid "Recovery Codes"
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Redução forte de ruído"
+msgstr ""
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Reduced"
 msgstr ""
@@ -3637,6 +3719,10 @@ msgstr ""
 #: components/app/menus/UserContextMenu.tsx
 #: components/modal/modals/RemoveMember.tsx
 msgid "Remove Member"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Remove o ruído conforme o ambiente e nivela o volume da sua voz."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -4100,6 +4186,10 @@ msgstr ""
 
 #: components/auth/src/flows/FlowHome.tsx
 msgid "Sign Up"
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "silenciado pelo sistema"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -4854,6 +4944,10 @@ msgstr ""
 msgid "vazia"
 msgstr ""
 
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Ventilador, rua, gente conversando perto. Remove mais ruído, com a voz um pouco menos natural."
+msgstr ""
+
 #. placeholder {0}: room.title
 #: components/space/SpacePage.tsx
 msgid "Ver {0} no mapa"
@@ -4926,6 +5020,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Você ainda não é apoiador."
+msgstr ""
+
+#: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
+msgid "Você ajustou as opções abaixo à mão."
 msgstr ""
 
 #. placeholder {0}: vipUntilLabel()
