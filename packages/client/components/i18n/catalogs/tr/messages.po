@@ -708,9 +708,9 @@ msgstr ""
 
 #. placeholder {0}: h().combat.atk
 #. placeholder {1}: h().combat.armor
-#. placeholder {2}: (h().combat.critBp / 100).toFixed(1)
-#. placeholder {3}: (h().combat.dodgeBp / 100).toFixed(1)
-#. placeholder {4}: (h().combat.blockBp / 100).toFixed(1)
+#. placeholder {2}: (h().combat.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
+#. placeholder {3}: (h().combat.dodgeBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
+#. placeholder {4}: (h().combat.blockBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/GamePanel.tsx
 msgid "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
 msgstr ""
@@ -1402,6 +1402,10 @@ msgstr ""
 msgid "comum"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "comuns"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Conectado"
 msgstr ""
@@ -1713,7 +1717,7 @@ msgstr ""
 msgid "Crie o seu herói primeiro."
 msgstr ""
 
-#. placeholder {0}: (it.critBp / 100).toFixed(1)
+#. placeholder {0}: (it.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/labels.ts
 msgid "crítico +{0}%"
 msgstr ""
@@ -2282,6 +2286,14 @@ msgid "Envio do microfone"
 msgstr ""
 
 #: components/space/game/labels.ts
+msgid "épica"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "épicas"
+msgstr ""
+
+#: components/space/game/labels.ts
 msgid "épico"
 msgstr ""
 
@@ -2837,6 +2849,10 @@ msgstr ""
 msgid "incomum"
 msgstr ""
 
+#: components/space/game/labels.ts
+msgid "incomuns"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 msgid "Iniciação"
 msgstr ""
@@ -3056,6 +3072,14 @@ msgid "Leave server"
 msgstr "Sunucudan ayrıl"
 
 #: components/space/game/labels.ts
+msgid "lendária"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "lendárias"
+msgstr ""
+
+#: components/space/game/labels.ts
 msgid "lendário"
 msgstr ""
 
@@ -3183,7 +3207,7 @@ msgstr "Sadece küçük harfler, rakamlar ve alt çizgiler."
 msgid "Luta contra {foes}: derrota."
 msgstr ""
 
-#. placeholder {0}: (d.result.durationMs / 1000).toFixed(1)
+#. placeholder {0}: (d.result.durationMs / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/GamePanel.tsx
 msgid "Luta contra {foes}: vitória em {0} s."
 msgstr ""
@@ -3235,6 +3259,10 @@ msgstr ""
 #. placeholder {0}: it.mp
 #: components/space/game/labels.ts
 msgid "mana +{0}"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Mana na expedição"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -3476,6 +3504,14 @@ msgstr "Simge Durumuna Küçült"
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "Kayıp İzinler"
+
+#: components/space/game/labels.ts
+msgid "mítica"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "míticas"
+msgstr ""
 
 #: components/space/game/labels.ts
 msgid "mítico"
@@ -3969,7 +4005,7 @@ msgid "Other"
 msgstr "Diğer"
 
 #. placeholder {0}: h().gold.toLocaleString()
-#. placeholder {1}: h().potions
+#. placeholder {1}: h().run?.potions ?? h().potions
 #. placeholder {2}: RULES.maxPotions
 #: components/space/game/GamePanel.tsx
 msgid "Ouro {0} · poções {1}/{2}"
@@ -4319,6 +4355,14 @@ msgstr "Baskın veya spam saldırısı"
 
 #: components/space/game/labels.ts
 msgid "Raio"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "rara"
+msgstr ""
+
+#: components/space/game/labels.ts
+msgid "raras"
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -5907,6 +5951,10 @@ msgstr ""
 #. placeholder {0}: it.hp
 #: components/space/game/labels.ts
 msgid "vida +{0}"
+msgstr ""
+
+#: components/space/game/GamePanel.tsx
+msgid "Vida na expedição"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx

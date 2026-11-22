@@ -707,9 +707,9 @@ msgstr "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · a
 
 #. placeholder {0}: h().combat.atk
 #. placeholder {1}: h().combat.armor
-#. placeholder {2}: (h().combat.critBp / 100).toFixed(1)
-#. placeholder {3}: (h().combat.dodgeBp / 100).toFixed(1)
-#. placeholder {4}: (h().combat.blockBp / 100).toFixed(1)
+#. placeholder {2}: (h().combat.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
+#. placeholder {3}: (h().combat.dodgeBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
+#. placeholder {4}: (h().combat.blockBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/GamePanel.tsx
 msgid "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
 msgstr "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
@@ -1401,6 +1401,10 @@ msgstr "Comprar"
 msgid "comum"
 msgstr "comum"
 
+#: components/space/game/labels.ts
+msgid "comuns"
+msgstr "comuns"
+
 #: components/space/SpacePage.tsx
 msgid "Conectado"
 msgstr "Conectado"
@@ -1712,7 +1716,7 @@ msgstr "Crie o seu herói"
 msgid "Crie o seu herói primeiro."
 msgstr "Crie o seu herói primeiro."
 
-#. placeholder {0}: (it.critBp / 100).toFixed(1)
+#. placeholder {0}: (it.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/labels.ts
 msgid "crítico +{0}%"
 msgstr "crítico +{0}%"
@@ -2279,6 +2283,14 @@ msgid "Envio do microfone"
 msgstr "Envio do microfone"
 
 #: components/space/game/labels.ts
+msgid "épica"
+msgstr "épica"
+
+#: components/space/game/labels.ts
+msgid "épicas"
+msgstr "épicas"
+
+#: components/space/game/labels.ts
 msgid "épico"
 msgstr "épico"
 
@@ -2834,6 +2846,10 @@ msgstr "Incoming call"
 msgid "incomum"
 msgstr "incomum"
 
+#: components/space/game/labels.ts
+msgid "incomuns"
+msgstr "incomuns"
+
 #: components/space/game/GamePanel.tsx
 msgid "Iniciação"
 msgstr "Iniciação"
@@ -3053,6 +3069,14 @@ msgid "Leave server"
 msgstr "Leave server"
 
 #: components/space/game/labels.ts
+msgid "lendária"
+msgstr "lendária"
+
+#: components/space/game/labels.ts
+msgid "lendárias"
+msgstr "lendárias"
+
+#: components/space/game/labels.ts
 msgid "lendário"
 msgstr "lendário"
 
@@ -3180,7 +3204,7 @@ msgstr "Lowercase letters, numbers and underscores only."
 msgid "Luta contra {foes}: derrota."
 msgstr "Luta contra {foes}: derrota."
 
-#. placeholder {0}: (d.result.durationMs / 1000).toFixed(1)
+#. placeholder {0}: (d.result.durationMs / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/GamePanel.tsx
 msgid "Luta contra {foes}: vitória em {0} s."
 msgstr "Luta contra {foes}: vitória em {0} s."
@@ -3233,6 +3257,10 @@ msgstr "Mana"
 #: components/space/game/labels.ts
 msgid "mana +{0}"
 msgstr "mana +{0}"
+
+#: components/space/game/GamePanel.tsx
+msgid "Mana na expedição"
+msgstr "Mana na expedição"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Manage Channel"
@@ -3473,6 +3501,14 @@ msgstr "Minimise to Tray"
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "Missing permission"
+
+#: components/space/game/labels.ts
+msgid "mítica"
+msgstr "mítica"
+
+#: components/space/game/labels.ts
+msgid "míticas"
+msgstr "míticas"
 
 #: components/space/game/labels.ts
 msgid "mítico"
@@ -3966,7 +4002,7 @@ msgid "Other"
 msgstr "Other"
 
 #. placeholder {0}: h().gold.toLocaleString()
-#. placeholder {1}: h().potions
+#. placeholder {1}: h().run?.potions ?? h().potions
 #. placeholder {2}: RULES.maxPotions
 #: components/space/game/GamePanel.tsx
 msgid "Ouro {0} · poções {1}/{2}"
@@ -4317,6 +4353,14 @@ msgstr "Raid or spam attack"
 #: components/space/game/labels.ts
 msgid "Raio"
 msgstr "Raio"
+
+#: components/space/game/labels.ts
+msgid "rara"
+msgstr "rara"
+
+#: components/space/game/labels.ts
+msgid "raras"
+msgstr "raras"
 
 #: components/space/game/labels.ts
 msgid "raro"
@@ -5904,6 +5948,10 @@ msgstr "Vida {0}/{1} · poções {2} · bolsa: {3} de ouro e {4} itens"
 #: components/space/game/labels.ts
 msgid "vida +{0}"
 msgstr "vida +{0}"
+
+#: components/space/game/GamePanel.tsx
+msgid "Vida na expedição"
+msgstr "Vida na expedição"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Video"
