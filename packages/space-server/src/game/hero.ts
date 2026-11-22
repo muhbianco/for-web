@@ -1,21 +1,38 @@
+import { createHmac } from "node:crypto";
+
 import {
+  addXp,
   CLASSES,
   type ClassId,
   currentVitals,
   DEFAULT_TACTICS,
+  type Degree,
+  degreeRank,
+  degreeUnlocked,
   dummyOf,
   DUMMIES,
   equipError,
+  type FightRecord,
   type GameLook,
   type GameOffer,
   type HeroCore,
   heroCombat,
   type HeroView,
   type Item,
+  type LastRunView,
   baseItem,
+  maxHpWithBoons,
+  pauseTraining,
+  reachableLanes,
+  resumeTraining,
   Rng,
   RULES,
+  type RunChoice,
+  type RunState,
+  type RunView,
+  type SeedSource,
   sellValue,
+  settleRun,
   settleTraining,
   shortId,
   type SkillId,
@@ -23,6 +40,8 @@ import {
   skillTriesToNext,
   type Slot,
   SPELL_BY_ID,
+  startRun,
+  stepRun,
   type Tactics,
   trainSkill,
   type Training,
@@ -62,7 +81,33 @@ export interface HeroDoc {
   stats: { runs: number; wins: number; deaths: number; kills: number; best_abyss: number };
   servers_seen: string[];
   /** Expedição em andamento (E3). */
-  run: null;
+  run: RunDoc | null;
+  /** Até quando os comandos de expedição esperam: a última luta ainda passa (até 4×). */
+  busy_until: number;
+  last_run: LastRunView | null;
+}
+
+/** A expedição guardada. `key` é a chave secreta (128 bits): nunca sai num evento. */
+export interface RunDoc {
+  state: RunState;
+  key: string;
+  started_at: number;
+  /** A última luta, para o app reanimar depois de reconectar. */
+  last_fight: FightRecord | null;
+}
+
+/**
+ * Semente de cada ação da expedição: HMAC-SHA256(chave, seq) cortado em 32 bits
+ * (ADR 0009, decisão 4). A semente revelada de uma luta não leva às próximas.
+ */
+export function hmacSeeds(keyHex: string): SeedSource {
+  const key = Buffer.from(keyHex, "hex");
+  return (seq) => {
+    const b = Buffer.alloc(8);
+    b.writeUInt32LE(seq >>> 0, 0);
+    b.writeUInt32LE(Math.floor(seq / 2 ** 32) >>> 0, 4);
+    return createHmac("sha256", key).update(b).digest().readUInt32LE(0);
+  };
 }
 
 export const HERO_VERSION = 1;
@@ -117,6 +162,8 @@ export function newHeroDoc(userId: string, cls: ClassId, look: GameLook, now: nu
     stats: { runs: 0, wins: 0, deaths: 0, kills: 0, best_abyss: 0 },
     servers_seen: [serverId],
     run: null,
+    busy_until: 0,
+    last_run: null,
   };
 }
 
@@ -180,12 +227,41 @@ export function heroView(d: HeroDoc, now: number): HeroView {
     stats: { runs: d.stats.runs, wins: d.stats.wins, deaths: d.stats.deaths, kills: d.stats.kills },
     cosmetics: d.cosmetics,
     combat: hc,
+    run: d.run ? runView(d, d.run, hc) : null,
+    last_run: d.last_run,
+  };
+}
+
+function runView(d: HeroDoc, r: RunDoc, hc: ReturnType<typeof heroCombat>): RunView {
+  const s = r.state;
+  return {
+    degree: s.degree,
+    abyss: s.abyss,
+    initiation: s.initiation,
+    map: s.map,
+    row: s.row,
+    lane: s.lane,
+    hp: s.hp,
+    mp: s.mp,
+    max_hp: maxHpWithBoons(hc, s.boons),
+    potions: s.potions,
+    boons: s.boons,
+    bag_gold: s.bagGold,
+    bag_items: s.bagItems,
+    xp: s.xp,
+    kills: s.kills,
+    offer: s.offer,
+    fights: s.fights,
+    combat_ms: s.combatMs,
+    lanes: reachableLanes(s),
+    busy_until: d.busy_until,
+    started_at: r.started_at,
   };
 }
 
 // ---- comandos do Refúgio (no documento já assentado; muda o documento) -------
 
-export type Outcome = { ok: true } | { ok: false; reason: string };
+export type Outcome = { ok: true; fight?: FightRecord } | { ok: false; reason: string };
 const ok: Outcome = { ok: true };
 const no = (reason: string): Outcome => ({ ok: false, reason });
 
@@ -275,6 +351,103 @@ export function applyTactics(d: HeroDoc, t: Tactics): Outcome {
   for (const id of order) if (SPELL_BY_ID.get(id)?.cls !== d.cls) return no("spell");
   d.tactics = { order, potionAt: t.potionAt, healAt: t.healAt };
   return ok;
+}
+
+// ---- expedição (E3) ------------------------------------------------------------
+
+/**
+ * Começa uma expedição: a primeira de todo herói é a iniciação. O boneco para,
+ * as poções vão para a expedição, e a vida e a mana são as de agora.
+ */
+export function applyRunStart(d: HeroDoc, degree: Degree, abyss: number, now: number, key: string): Outcome {
+  if (d.run) return no("on_run");
+  const initiation = !d.initiation_done;
+  if (!initiation && !degreeUnlocked(d.best, degree, abyss)) return no("locked");
+  freezeVitals(d, now);
+  const hc = heroCombat(heroCore(d));
+  if (d.vitals.hp * 100 < hc.maxHp * RULES.minStartHpPct) return no("hurt");
+  const paused = pauseTraining(d.training, now);
+  d.training = paused.training;
+  if (paused.tries > 0) d.skills[d.training.skill] = trainSkill(d.cls, d.training.skill, d.skills[d.training.skill], paused.tries);
+  const state = startRun({ degree, abyss, initiation, hp: d.vitals.hp, mp: d.vitals.mp, potions: d.potions }, hmacSeeds(key));
+  d.potions = 0;
+  d.run = { state, key, started_at: now, last_fight: null };
+  return ok;
+}
+
+/** Um passo (entrar numa sala, resolver a oferta). Uma luta marca `busy_until`; o fim da expedição assenta. */
+export function applyRunStep(d: HeroDoc, choice: RunChoice, now: number): Outcome {
+  const run = d.run;
+  if (!run) return no("no_run");
+  const r = stepRun(run.state, heroCombat(heroCore(d)), d.tactics, choice, hmacSeeds(run.key));
+  if (!r.ok) return no(r.error);
+  run.state = r.state;
+  if (r.fight) {
+    run.last_fight = r.fight;
+    d.busy_until = now + Math.ceil(r.fight.result.durationMs / RULES.replaySpeedMax);
+  }
+  if (r.state.end) finishRun(d, now);
+  return r.fight ? { ok: true, fight: r.fight } : ok;
+}
+
+export function applyRunRetreat(d: HeroDoc, now: number): Outcome {
+  const offer = d.run?.state.offer;
+  if (!d.run) return no("no_run");
+  if (offer?.kind !== "descanso" || !offer.retreat) return no("no_retreat");
+  return applyRunStep(d, { t: "choose", option: 2 }, now);
+}
+
+/** Abandonar conta como morte (GDD §7.5): guarda a experiência e metade do ouro. */
+export function applyRunAbandon(d: HeroDoc, now: number): Outcome {
+  if (!d.run) return no("no_run");
+  finishRun(d, now);
+  return ok;
+}
+
+/** O que fica com o herói quando a expedição acaba (vitória, retirada, morte ou abandono). */
+export function finishRun(d: HeroDoc, now: number) {
+  const run = d.run;
+  if (!run) return;
+  const s = run.state;
+  const reward = settleRun(s);
+  const lv = addXp(d.level, d.xp, reward.xp);
+  d.level = lv.level;
+  d.xp = lv.xp;
+  for (const sk of SKILL_IDS) {
+    const n = reward.tries[sk];
+    if (n) d.skills[sk] = trainSkill(d.cls, sk, d.skills[sk], n);
+  }
+  d.gold += reward.gold;
+  for (const it of reward.items) {
+    if (d.bag.length < BAG_MAX) d.bag.push(it);
+    else if (d.pending.length < PENDING_MAX) d.pending.push(it);
+    else d.gold += sellValue(it);
+  }
+  d.potions = Math.min(RULES.maxPotions, reward.potions);
+  const hc = heroCombat(heroCore(d));
+  d.vitals = { hp: Math.min(hc.maxHp, Math.max(1, reward.hp)), mp: Math.min(hc.maxMp, reward.mp), at: now };
+  d.training = resumeTraining(d.training, now);
+  d.stats.runs++;
+  d.stats.kills += reward.kills;
+  if (reward.end === "vitoria") d.stats.wins++;
+  if (reward.end === "morte") d.stats.deaths++;
+  if (reward.end === "vitoria" && s.initiation) d.initiation_done = true;
+  if (reward.end === "vitoria" && !s.initiation) {
+    d.best = Math.max(d.best, degreeRank(s.degree, s.abyss));
+    if (s.degree === "abismo") d.stats.best_abyss = Math.max(d.stats.best_abyss, s.abyss);
+  }
+  d.last_run = {
+    end: reward.end,
+    degree: s.degree,
+    abyss: s.abyss,
+    initiation: s.initiation,
+    xp: reward.xp,
+    gold: reward.gold,
+    items: reward.items.length,
+    kills: reward.kills,
+    at: now,
+  };
+  d.run = null;
 }
 
 function clampVitals(d: HeroDoc) {

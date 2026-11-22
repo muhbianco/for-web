@@ -1,9 +1,11 @@
 import { z } from "zod";
 
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../protocol/messages.ts";
-import { CLASS_IDS, type ClassId, type SkillId, SKILL_IDS, SLOTS, type Slot } from "./data.ts";
-import { MAX_TACTIC_SPELLS, type Tactics } from "./fight.ts";
+import { type Boons, CLASS_IDS, type ClassId, type Degree, DEGREES, MAX_ABYSS, type SkillId, SKILL_IDS, SLOTS, type Slot } from "./data.ts";
+import { type FightInput, type FightResult, MAX_TACTIC_SPELLS, type Tactics } from "./fight.ts";
 import type { Item } from "./items.ts";
+import type { RunMap } from "./map.ts";
+import type { Offer, RunEnd } from "./run.ts";
 import type { HeroCombat } from "./stats.ts";
 
 /**
@@ -65,6 +67,17 @@ export const GameTacticsCmd = z.object({
     .strict(),
 });
 
+/** Expedição (E3): começar, entrar numa sala, resolver a oferta (−1 = recusar/sair), retirar-se, abandonar. */
+export const GameRunStartCmd = z.object({
+  ...env,
+  t: z.literal("game.run.start"),
+  d: z.object({ degree: z.enum(DEGREES as [Degree, ...Degree[]]), abyss: z.number().int().min(1).max(MAX_ABYSS).optional() }).strict(),
+});
+export const GameRunGoCmd = z.object({ ...env, t: z.literal("game.run.go"), d: z.object({ lane: z.number().int().min(0).max(2) }).strict() });
+export const GameRunChooseCmd = z.object({ ...env, t: z.literal("game.run.choose"), d: z.object({ option: z.number().int().min(-1).max(2) }).strict() });
+export const GameRunRetreatCmd = z.object({ ...env, t: z.literal("game.run.retreat"), d: z.object({}).strict().optional() });
+export const GameRunAbandonCmd = z.object({ ...env, t: z.literal("game.run.abandon"), d: z.object({}).strict().optional() });
+
 export const GameCommand = z.discriminatedUnion("t", [
   GameOpenCmd,
   GameCreateCmd,
@@ -75,6 +88,11 @@ export const GameCommand = z.discriminatedUnion("t", [
   GameSellCmd,
   GameBuyCmd,
   GameTacticsCmd,
+  GameRunStartCmd,
+  GameRunGoCmd,
+  GameRunChooseCmd,
+  GameRunRetreatCmd,
+  GameRunAbandonCmd,
 ]);
 export type GameCommand = z.infer<typeof GameCommand>;
 
@@ -111,6 +129,46 @@ export interface SkillView {
   next: number;
 }
 
+/** A expedição como o app vê: o estado inteiro (não tem segredo) mais o que a tela precisa. */
+export interface RunView {
+  degree: Degree;
+  abyss: number;
+  initiation: boolean;
+  map: RunMap;
+  row: number;
+  lane: number;
+  hp: number;
+  mp: number;
+  max_hp: number;
+  potions: number;
+  boons: Boons;
+  bag_gold: number;
+  bag_items: Item[];
+  xp: number;
+  kills: number;
+  offer: Offer | null;
+  fights: number;
+  combat_ms: number;
+  /** Trilhas que o próximo `game.run.go` aceita. */
+  lanes: number[];
+  /** Antes disto o próximo passo responde game_busy: a luta ainda passa (até 4×). */
+  busy_until: number;
+  started_at: number;
+}
+
+/** Resumo da última expedição, para a tela de volta ao Refúgio. */
+export interface LastRunView {
+  end: RunEnd;
+  degree: Degree;
+  abyss: number;
+  initiation: boolean;
+  xp: number;
+  gold: number;
+  items: number;
+  kills: number;
+  at: number;
+}
+
 /** O herói como o app vê (a chave da expedição nunca vem aqui). */
 export interface HeroView {
   cls: ClassId;
@@ -139,6 +197,16 @@ export interface HeroView {
   stats: { runs: number; wins: number; deaths: number; kills: number };
   cosmetics: string[];
   combat: HeroCombat;
+  run: RunView | null;
+  last_run: LastRunView | null;
+}
+
+/** A luta de uma sala, já gravada: o app roda `fight(input)` para animar (o resultado que vale é este). */
+export interface GameFightEvent {
+  v: 1;
+  t: "game.fight";
+  re?: string;
+  d: { input: FightInput; result: FightResult; busy_until: number };
 }
 
 export interface GameStateEvent {

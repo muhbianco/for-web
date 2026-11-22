@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { type GameCommand, type GameStateEvent, tacticsFromWire } from "@muchat/space-core/game";
+import { type GameCommand, type GameFightEvent, type GameStateEvent, tacticsFromWire } from "@muchat/space-core/game";
 
 import type { Log } from "../log.ts";
 import type { SessionPort, Viewer } from "../space/runtime.ts";
@@ -9,6 +9,10 @@ import {
   applyBuy,
   applyEquip,
   applyLook,
+  applyRunAbandon,
+  applyRunRetreat,
+  applyRunStart,
+  applyRunStep,
   applySell,
   applyTactics,
   applyTrain,
@@ -31,6 +35,9 @@ export interface GameHost {
   gameAccess(viewer: Viewer): "ok" | "disabled" | "not_allowed";
 }
 
+/** Comandos da expedição que esperam a luta terminar de passar. */
+const RUN_STEPS = new Set<GameCommand["t"]>(["game.run.start", "game.run.go", "game.run.choose", "game.run.retreat"]);
+
 /** Comandos de jogo por pessoa (além do balde de 20/s da conexão). */
 export const GAME_RATE = { rate: 4, burst: 8 };
 /** Quantos `id` de comando por pessoa ficam para reconhecer um reenvio. */
@@ -46,6 +53,7 @@ export class GameService {
   private readonly log: Log;
   private readonly now: () => number;
   private readonly random: () => number;
+  private readonly newKey: () => string;
   private readonly cacheMax: number;
   /** Heróis recentes, do menos para o mais recente (LRU pela ordem do Map). */
   private readonly cache = new Map<string, HeroDoc>();
@@ -53,11 +61,20 @@ export class GameService {
   private readonly buckets = new Map<string, TokenBucket>();
   private readonly recent = new Map<string, string[]>();
 
-  constructor(deps: { store: GameStore; log: Log; now?: () => number; random?: () => number; cacheMax?: number }) {
+  constructor(deps: {
+    store: GameStore;
+    log: Log;
+    now?: () => number;
+    random?: () => number;
+    /** Chave da expedição (hex, 128 bits); só testes trocam. */
+    newKey?: () => string;
+    cacheMax?: number;
+  }) {
     this.store = deps.store;
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
     this.random = deps.random ?? (() => randomBytes(4).readUInt32LE(0));
+    this.newKey = deps.newKey ?? (() => randomBytes(16).toString("hex"));
     this.cacheMax = deps.cacheMax ?? 500;
   }
 
@@ -93,8 +110,13 @@ export class GameService {
     const userId = session.viewer.user._id;
     const now = this.now();
     const sendState = (doc: HeroDoc | null) => session.send(this.state(doc, now, cmd.id) as unknown as Record<string, unknown>);
-    const fail = (code: string, reason?: string) =>
-      session.send({ v: 1, t: "error", re: cmd.id, d: { code, ...(reason ? { reason } : {}) } });
+    const fail = (code: string, reason?: string, retryAfterMs?: number) =>
+      session.send({
+        v: 1,
+        t: "error",
+        re: cmd.id,
+        d: { code, ...(reason ? { reason } : {}), ...(retryAfterMs !== undefined ? { retry_after_ms: retryAfterMs } : {}) },
+      });
 
     // Reenvio de um comando já aplicado (reconexão): devolve o estado, não age de novo.
     if (cmd.t !== "game.open" && this.recent.get(userId)?.includes(cmd.id)) return sendState(await this.load(userId));
@@ -113,6 +135,8 @@ export class GameService {
     for (let attempt = 0; attempt < 2; attempt++) {
       const cur = await this.load(userId, attempt > 0);
       if (!cur) return cmd.t === "game.open" ? sendState(null) : fail("game_invalid", "no_hero");
+      // A luta ainda passa: o passo seguinte da expedição espera (até 4×, ADR 0009 decisão 3).
+      if (RUN_STEPS.has(cmd.t) && now < cur.busy_until) return fail("game_busy", undefined, cur.busy_until - now);
       const next = structuredClone(cur);
       const tries = settleHero(next, now);
       const seen = next.servers_seen.length;
@@ -132,6 +156,11 @@ export class GameService {
       }
       if (await this.store.save(next, cur.rev)) {
         this.remember(next, cmd.id);
+        // A luta vai antes do estado: o app anima e depois mostra o resultado.
+        if (out.fight) {
+          const fight: GameFightEvent = { v: 1, t: "game.fight", re: cmd.id, d: { input: out.fight.input, result: out.fight.result, busy_until: next.busy_until } };
+          session.send(fight as unknown as Record<string, unknown>);
+        }
         return sendState(next);
       }
       // Outro processo gravou antes (redeploy sobreposto): relê e tenta mais uma vez.
@@ -160,6 +189,16 @@ export class GameService {
         return applyBuy(d, cmd.d.offer, cmd.d.qty);
       case "game.tactics":
         return applyTactics(d, tacticsFromWire(cmd.d));
+      case "game.run.start":
+        return applyRunStart(d, cmd.d.degree, cmd.d.abyss ?? 1, now, this.newKey());
+      case "game.run.go":
+        return applyRunStep(d, { t: "go", lane: cmd.d.lane }, now);
+      case "game.run.choose":
+        return applyRunStep(d, { t: "choose", option: cmd.d.option }, now);
+      case "game.run.retreat":
+        return applyRunRetreat(d, now);
+      case "game.run.abandon":
+        return applyRunAbandon(d, now);
     }
   }
 

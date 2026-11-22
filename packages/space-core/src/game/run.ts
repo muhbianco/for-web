@@ -119,6 +119,22 @@ export function startRun(o: RunStart, seeds: SeedSource): RunState {
   };
 }
 
+/**
+ * Posição do degrau na escada: Normal 1, Difícil 2, Pesadelo 3, Abismo N 3 + N.
+ * O herói guarda o maior degrau vencido (`best`, 0 = nenhum).
+ */
+export function degreeRank(degree: Degree, abyss: number): number {
+  if (degree === "normal") return 1;
+  if (degree === "dificil") return 2;
+  if (degree === "pesadelo") return 3;
+  return 3 + Math.min(MAX_ABYSS, Math.max(1, Math.floor(abyss)));
+}
+
+/** O degrau está liberado: o Normal sempre; os outros, vencido o anterior. */
+export function degreeUnlocked(best: number, degree: Degree, abyss: number): boolean {
+  return degreeRank(degree, abyss) <= Math.max(1, best + 1);
+}
+
 /** Trilhas que o próximo `go` aceita. */
 export function reachableLanes(s: RunState): number[] {
   if (s.end) return [];

@@ -201,3 +201,20 @@ test("ws: a dona desliga o jogo nas configurações, e salvar sem o campo (app a
   ana.ws.close();
   bia.ws.close();
 });
+
+test("ws: expedição pela WS, com a luta chegando antes do estado e sem a chave", async () => {
+  const bia = await join("token-bia-0000000000");
+  const made = await bia.ask("game.create", { cls: "cavaleiro", look: LOOK });
+  assert.equal(made.d.hero.cls, "cavaleiro");
+  const start = await bia.ask("game.run.start", { degree: "normal" });
+  assert.equal(start.d.hero.run.initiation, true);
+  bia.send({ v: 1, t: "game.run.go", id: "go-1", d: { lane: 0 } });
+  const state = await bia.wait((m) => m.re === "go-1" && m.t === "game.state");
+  const order = bia.msgs.filter((m) => m.re === "go-1").map((m) => m.t);
+  assert.deepEqual(order, ["game.fight", "game.state"]);
+  assert.equal(state.d.hero.run.row, 0);
+  const key = heroes.docs.get(BIA)!.run!.key;
+  assert.match(key, /^[0-9a-f]{32}$/);
+  for (const m of bia.msgs) assert.ok(!JSON.stringify(m).includes(key));
+  bia.ws.close();
+});

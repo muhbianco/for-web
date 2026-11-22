@@ -343,6 +343,8 @@ export const RULES = {
   restHealPct: 35,
   sharpenPct: 8,
   retreatFromRow: 5,
+  /** A expedição só começa com pelo menos esta vida (%): morrer custa esperar a regeneração. */
+  minStartHpPct: 30,
   bagItemsMax: 20,
   maxLevel: 200,
   maxSkill: 120,
