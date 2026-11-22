@@ -1,5 +1,6 @@
 import { createHmac } from "node:crypto";
 
+import type { Rotation } from "@muchat/space-core";
 import {
   addXp,
   CLASSES,
@@ -20,6 +21,13 @@ import {
   type HeroView,
   type Item,
   type LastRunView,
+  LOBBY,
+  type LobbyItem,
+  lobbyItemOf,
+  lobbyPlacementError,
+  lobbyPrice,
+  placedCount,
+  STARTER_LOBBY,
   baseItem,
   maxHpWithBoons,
   pauseTraining,
@@ -85,6 +93,9 @@ export interface HeroDoc {
   /** Até quando os comandos de expedição esperam: a última luta ainda passa (até 4×). */
   busy_until: number;
   last_run: LastRunView | null;
+  /** O quarto do Refúgio (≤ 60 itens) e quantos de cada item o herói tem (≤ 200 tipos). */
+  lobby: LobbyItem[];
+  decor_owned: Record<string, number>;
 }
 
 /** A expedição guardada. `key` é a chave secreta (128 bits): nunca sai num evento. */
@@ -135,6 +146,7 @@ export function newHeroDoc(userId: string, cls: ClassId, look: GameLook, now: nu
   const skills = Object.fromEntries(SKILL_IDS.map((s) => [s, { l: 1, p: 0 }])) as HeroDoc["skills"];
   const gear: HeroDoc["gear"] = { arma: kit("arma"), armadura: kit("armadura"), elmo: kit("elmo"), botas: kit("botas") };
   const max = heroCombat({ cls, level: 1, skills, gear });
+  const lobby: LobbyItem[] = STARTER_LOBBY.items.map((it) => ({ ...it, id: shortId(rng) }));
   return {
     _id: userId,
     v: HERO_VERSION,
@@ -164,6 +176,8 @@ export function newHeroDoc(userId: string, cls: ClassId, look: GameLook, now: nu
     run: null,
     busy_until: 0,
     last_run: null,
+    lobby,
+    decor_owned: { ...STARTER_LOBBY.owned },
   };
 }
 
@@ -229,6 +243,8 @@ export function heroView(d: HeroDoc, now: number): HeroView {
     combat: hc,
     run: d.run ? runView(d, d.run, hc) : null,
     last_run: d.last_run,
+    lobby: d.lobby,
+    decor_owned: d.decor_owned,
   };
 }
 
@@ -326,8 +342,20 @@ export function applySell(d: HeroDoc, ids: string[]): Outcome {
   return ok;
 }
 
-export function applyBuy(d: HeroDoc, offer: GameOffer, qty: number): Outcome {
+export function applyBuy(d: HeroDoc, offer: GameOffer, qty: number, itemId?: string): Outcome {
   if (d.run) return no("on_run");
+  if (offer === "decor") {
+    const item = itemId ? lobbyItemOf(itemId) : undefined;
+    if (!item) return no("unknown_item");
+    const have = d.decor_owned[item.id] ?? 0;
+    if (have + qty > LOBBY.maxPerItem) return no("full");
+    if (have === 0 && Object.keys(d.decor_owned).length >= LOBBY.maxKinds) return no("full");
+    const cost = lobbyPrice(item) * qty;
+    if (d.gold < cost) return no("no_gold");
+    d.gold -= cost;
+    d.decor_owned[item.id] = have + qty;
+    return ok;
+  }
   if (offer === "potion") {
     if (d.potions + qty > RULES.maxPotions) return no("full");
     const cost = potionPrice(d.level) * qty;
@@ -453,6 +481,47 @@ export function finishRun(d: HeroDoc, now: number) {
     at: now,
   };
   d.run = null;
+}
+
+// ---- decoração do Refúgio (E4b) --------------------------------------------------
+
+export interface LobbyProposal {
+  item: string;
+  x: number;
+  y: number;
+  rot: Rotation;
+  variant?: string;
+}
+
+/** Coloca um item que o herói tem e que ainda não está todo no quarto. O id vem do servidor. */
+export function applyLobbyPlace(d: HeroDoc, p: LobbyProposal, newId: () => string): Outcome {
+  if (d.lobby.length >= LOBBY.maxItems) return no("full");
+  if (placedCount(d.lobby, p.item) >= (d.decor_owned[p.item] ?? 0)) return no("not_owned");
+  const err = lobbyPlacementError(d.lobby, p);
+  if (err) return no(err);
+  let id = newId();
+  for (let i = 0; i < 8 && d.lobby.some((x) => x.id === id); i++) id = newId();
+  d.lobby.push({ id, item: p.item, x: p.x, y: p.y, rot: p.rot, ...(p.variant ? { variant: p.variant } : {}) });
+  return ok;
+}
+
+export function applyLobbyMove(d: HeroDoc, id: string, p: Omit<LobbyProposal, "item">): Outcome {
+  const i = d.lobby.findIndex((x) => x.id === id);
+  if (i < 0) return no("not_found");
+  const cur = d.lobby[i]!;
+  const next = { item: cur.item, x: p.x, y: p.y, rot: p.rot, ...(p.variant ?? cur.variant ? { variant: p.variant ?? cur.variant } : {}) };
+  const err = lobbyPlacementError(d.lobby, next, id);
+  if (err) return no(err);
+  d.lobby[i] = { id, ...next };
+  return ok;
+}
+
+/** Tira do quarto (o item continua do herói, para colocar de novo). */
+export function applyLobbyRemove(d: HeroDoc, id: string): Outcome {
+  const i = d.lobby.findIndex((x) => x.id === id);
+  if (i < 0) return no("not_found");
+  d.lobby.splice(i, 1);
+  return ok;
 }
 
 function clampVitals(d: HeroDoc) {

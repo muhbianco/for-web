@@ -20,6 +20,10 @@ test("protocolo: comandos do jogo válidos passam", () => {
     { v: 1, t: "game.unequip", id: "a", d: { slot: "secundaria" } },
     { v: 1, t: "game.sell", id: "a", d: { items: ["AB12CD34", "ZZ99XX00"] } },
     { v: 1, t: "game.buy", id: "a", d: { offer: "dummy", qty: 1 } },
+    { v: 1, t: "game.buy", id: "a", d: { offer: "decor", qty: 2, item: "rug-round" } },
+    { v: 1, t: "game.lobby.place", id: "a", d: { item: "chair", x: 3, y: 4, rot: 0, variant: "escuro" } },
+    { v: 1, t: "game.lobby.move", id: "a", d: { id: "AB12CD34", x: 0, y: 7, rot: 1 } },
+    { v: 1, t: "game.lobby.remove", id: "a", d: { id: "AB12CD34" } },
     { v: 1, t: "game.tactics", id: "a", d: { order: ["seiva"], potion_at: 35, heal_at: 60 } },
   ];
   for (const c of ok) {
@@ -39,6 +43,12 @@ test("protocolo: comandos do jogo inválidos são recusados", () => {
     { v: 1, t: "game.sell", id: "a", d: { items: ["../../x"] } },
     { v: 1, t: "game.buy", id: "a", d: { offer: "espada", qty: 1 } },
     { v: 1, t: "game.buy", id: "a", d: { offer: "potion", qty: 0 } },
+    { v: 1, t: "game.buy", id: "a", d: { offer: "decor", qty: 1 } },
+    { v: 1, t: "game.buy", id: "a", d: { offer: "potion", qty: 1, item: "chair" } },
+    { v: 1, t: "game.buy", id: "a", d: { offer: "decor", qty: 1, item: "../../x" } },
+    { v: 1, t: "game.lobby.place", id: "a", d: { item: "chair", x: 99, y: 4, rot: 0 } },
+    { v: 1, t: "game.lobby.place", id: "a", d: { item: "chair", x: 1, y: 4, rot: 4 } },
+    { v: 1, t: "game.lobby.place", id: "a", d: { id: "X", item: "chair", x: 1, y: 4, rot: 0 } },
     { v: 1, t: "game.tactics", id: "a", d: { order: [], potion_at: 5, heal_at: 60 } },
     { v: 1, t: "game.tactics", id: "a", d: { order: ["a", "b", "c", "d", "e", "f", "g"], potion_at: 30, heal_at: 60 } },
     { v: 1, t: "game.voar", id: "a" },

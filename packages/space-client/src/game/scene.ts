@@ -1,8 +1,10 @@
-import type { FightEvent, FightInput, FightResult, GameLook, WeaponType } from "@muchat/space-core/game";
+import type { Rotation } from "@muchat/space-core";
+import { type FightEvent, type FightInput, type FightResult, type GameLook, LOBBY, type LobbyItem, lobbyItemOf, type WeaponType } from "@muchat/space-core/game";
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 
+import { spriteFor, textureFor } from "../render/atlas.ts";
 import { RENDERER_DESTROY } from "../render/renderer.ts";
-import { dummyCanvas, ENEMY_SIZE, enemyCanvas, heroCanvas, lobbyCanvas, ruinsCanvas, SCENE_H, SCENE_W } from "./art.ts";
+import { dummyCanvas, ENEMY_SIZE, enemyCanvas, heroCanvas, lobbyCanvas, ruinsCanvas, SCENE_H, SCENE_W, TILE } from "./art.ts";
 import { buildTimeline, frameAt, type Frame, type ReplaySpeed, type Timeline } from "./replay.ts";
 
 /**
@@ -31,7 +33,15 @@ export interface LobbyLook {
   weapon: WeaponType;
   /** Nível do boneco (0 a 4). */
   tier: number;
+  /** A decoração do quarto (itens do catálogo do Espaço). */
+  items?: readonly LobbyItem[];
 }
+
+/** Onde o boneco e o herói ficam no quarto (os mesmos tiles reservados das regras). */
+const DUMMY_TILE = LOBBY.reserved[0]!;
+const HERO_TILE = LOBBY.reserved[1]!;
+/** Os sprites do catálogo são desenhados a 32 px por tile; o quarto usa 16. */
+const DECOR_SCALE = TILE / 32;
 
 const DEFAULT_LOOK: LobbyLook = { look: { skin: 1, hair: 1, outfit: 0, trim: 0, cosmetic: null }, weapon: "espada", tier: 0 };
 
@@ -74,6 +84,8 @@ export class GameScene {
   private destroyed = false;
   private lobby: LobbyLook = DEFAULT_LOOK;
   private play: Playback | null = null;
+  /** Prévia de onde um item vai cair (o editor do painel). */
+  private readonly ghost = new Sprite();
   /** Sem tremida, sem número subindo, sem piscada (preferência do sistema). */
   reducedMotion = false;
   /** Textos que a cena desenha; o app passa os traduzidos (Lingui). */
@@ -114,7 +126,10 @@ export class GameScene {
     this.app.canvas.style.display = "block";
     host.appendChild(this.app.canvas);
     this.host = host;
-    this.root.addChild(this.bg, this.actors, this.fx);
+    this.ghost.visible = false;
+    this.ghost.alpha = 0.65;
+    this.ghost.scale.set(DECOR_SCALE);
+    this.root.addChild(this.bg, this.actors, this.ghost, this.fx);
     this.app.stage.addChild(this.root);
     for (let i = 0; i < FLOATERS; i++) {
       const t = new Text({ text: "", style: { fontFamily: "system-ui, sans-serif", fontSize: 8, fill: 0xffffff, fontWeight: "700" }, resolution: 4 });
@@ -167,7 +182,9 @@ export class GameScene {
   }
 
   private clearActors() {
+    // Só os nós: as texturas são do cache da cena (owned) ou do atlas compartilhado.
     for (const c of this.actors.removeChildren()) c.destroy({ children: true });
+    this.ghost.visible = false;
     for (const f of this.floaters) f.visible = false;
   }
 
@@ -175,16 +192,82 @@ export class GameScene {
   showLobby(l: LobbyLook) {
     if (this.destroyed) return;
     this.finishPlay();
-    this.lobby = { look: { ...l.look }, weapon: l.weapon, tier: l.tier };
+    this.lobby = { look: { ...l.look }, weapon: l.weapon, tier: l.tier, items: l.items ?? [] };
     this.clearActors();
     this.bg.texture = this.texture("lobby", lobbyCanvas);
+    // Camadas: tapetes, depois móveis/boneco/herói por profundidade, parede, teto.
+    const rugs = new Container();
+    const floor = new Container();
+    floor.sortableChildren = true;
+    const wall = new Container();
+    const ceiling = new Container();
+    for (const li of this.lobby.items ?? []) {
+      const item = lobbyItemOf(li.item);
+      if (!item) continue;
+      const sp = this.decorSprite(li.item, li.rot, li.variant, li.x, li.y);
+      if (!sp) continue;
+      if (item.layer === "rug") rugs.addChild(sp);
+      else if (item.layer === "wall") wall.addChild(sp);
+      else if (item.layer === "ceiling") ceiling.addChild(sp);
+      else {
+        sp.zIndex = (li.y + spriteFor(item, li.rot, li.variant).h) * TILE;
+        floor.addChild(sp);
+      }
+    }
     const dummy = new Sprite(this.texture(`dummy|${l.tier}`, () => dummyCanvas(l.tier)));
     dummy.anchor.set(0.5, 1);
-    dummy.position.set(150, 96);
+    dummy.position.set(DUMMY_TILE.x * TILE + TILE / 2, (DUMMY_TILE.y + 1) * TILE);
+    dummy.zIndex = dummy.y;
     const hero = new Sprite(this.heroTexture(this.lobby));
     hero.anchor.set(0.5, 1);
-    hero.position.set(96, 100);
-    this.actors.addChild(dummy, hero);
+    hero.position.set(HERO_TILE.x * TILE + TILE / 2, (HERO_TILE.y + 1) * TILE);
+    hero.zIndex = hero.y;
+    floor.addChild(dummy, hero);
+    this.actors.addChild(rugs, floor, wall, ceiling);
+    this.requestRender();
+  }
+
+  /**
+   * Sprite de um item do catálogo no quarto. A textura é do atlas, compartilhada
+   * com o mapa: a cena nunca a destrói (fica fora de `owned`).
+   */
+  private decorSprite(itemId: string, rot: Rotation, variant: string | undefined, x: number, y: number): Sprite | null {
+    const item = lobbyItemOf(itemId);
+    if (!item) return null;
+    const info = spriteFor(item, rot, variant);
+    const sp = new Sprite(textureFor(item, rot, variant));
+    sp.scale.set(DECOR_SCALE);
+    sp.position.set(x * TILE, (y - info.tall) * TILE);
+    return sp;
+  }
+
+  /** O tile do quarto sob um ponto da tela (coordenadas do cliente), ou null fora do quarto. */
+  tileAt(clientX: number, clientY: number): { x: number; y: number } | null {
+    const r = this.app.canvas.getBoundingClientRect();
+    const s = this.root.scale.x || 1;
+    const lx = (clientX - r.left - this.root.position.x) / s;
+    const ly = (clientY - r.top - this.root.position.y) / s;
+    const x = Math.floor(lx / TILE);
+    const y = Math.floor(ly / TILE);
+    return x >= 0 && y >= 0 && x < LOBBY.w && y < LOBBY.h ? { x, y } : null;
+  }
+
+  /** Mostra (ou esconde, com null) a prévia de um item: vermelha quando não cabe ali. */
+  setGhost(g: { item: string; rot: Rotation; variant?: string; x: number; y: number; ok: boolean } | null) {
+    if (!g || this.play) {
+      if (this.ghost.visible) {
+        this.ghost.visible = false;
+        this.requestRender();
+      }
+      return;
+    }
+    const item = lobbyItemOf(g.item);
+    if (!item) return;
+    const info = spriteFor(item, g.rot, g.variant);
+    this.ghost.texture = textureFor(item, g.rot, g.variant);
+    this.ghost.position.set(g.x * TILE, (g.y - info.tall) * TILE);
+    this.ghost.tint = g.ok ? 0xffffff : 0xff6a6a;
+    this.ghost.visible = true;
     this.requestRender();
   }
 

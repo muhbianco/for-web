@@ -197,7 +197,7 @@ export function dummyCanvas(tier: number): HTMLCanvasElement {
   return c;
 }
 
-/** O quarto do Refúgio: piso de tábuas, parede com janela e prateleira, tapete. */
+/** O quarto do Refúgio vazio: parede com rodapé e piso de tábuas. Os móveis são a decoração do herói. */
 export function lobbyCanvas(): HTMLCanvasElement {
   const { c, ctx } = canvas(SCENE_W, SCENE_H);
   px(ctx, 0, 0, SCENE_W, 3 * TILE, "#3b3346");
@@ -207,21 +207,6 @@ export function lobbyCanvas(): HTMLCanvasElement {
     px(ctx, 0, y, SCENE_W, 4, y % 8 === 0 ? "#8a5a34" : "#7f5230");
     for (let x = (y / 4) % 3 === 0 ? 0 : 12; x < SCENE_W; x += 24) px(ctx, x, y, 1, 4, "#5e3c22");
   }
-  // Janela com o céu da noite.
-  px(ctx, 24, 10, 28, 22, "#6a4a2e");
-  px(ctx, 26, 12, 24, 18, "#1b2a52");
-  px(ctx, 37, 12, 2, 18, "#6a4a2e");
-  px(ctx, 26, 20, 24, 2, "#6a4a2e");
-  px(ctx, 30, 14, 1, 1, "#f1f1f4");
-  px(ctx, 44, 25, 1, 1, "#f1f1f4");
-  // Prateleira com livros e um troféu.
-  px(ctx, 120, 20, 40, 3, "#6a4a2e");
-  for (const [x, h, col] of [[122, 9, "#d2473f"], [126, 8, "#3f6fd6"], [130, 10, "#3faa6a"], [134, 7, "#8457d8"]] as const) px(ctx, x, 20 - h, 3, h, col);
-  px(ctx, 148, 13, 6, 7, "#e6b422");
-  // Tapete.
-  px(ctx, 56, 84, 80, 30, "#7a2f3a");
-  px(ctx, 60, 88, 72, 22, "#9c3f4a");
-  px(ctx, 64, 92, 64, 14, "#7a2f3a");
   return c;
 }
 

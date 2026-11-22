@@ -4,6 +4,7 @@ import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../protocol/messages.ts";
 import { type Boons, CLASS_IDS, type ClassId, type Degree, DEGREES, MAX_ABYSS, type SkillId, SKILL_IDS, SLOTS, type Slot } from "./data.ts";
 import { type FightInput, type FightResult, MAX_TACTIC_SPELLS, type Tactics } from "./fight.ts";
 import type { Item } from "./items.ts";
+import type { LobbyItem } from "./lobby.ts";
 import type { RunMap } from "./map.ts";
 import type { Offer, RunEnd } from "./run.ts";
 import type { HeroCombat } from "./stats.ts";
@@ -51,14 +52,34 @@ export const GameUnequipCmd = z.object({
   d: z.object({ slot: z.enum(SLOTS as [Slot, ...Slot[]]) }).strict(),
 });
 export const GameSellCmd = z.object({ ...env, t: z.literal("game.sell"), d: z.object({ items: z.array(itemId).min(1).max(20) }).strict() });
-/** Ofertas do Refúgio no MVP: poção e o próximo boneco. A decoração entra com a cena (E4). */
-export const GAME_OFFERS = ["potion", "dummy"] as const;
+/** Ofertas do Refúgio: poção, o próximo boneco e itens de decoração (`item` = id do catálogo). */
+export const GAME_OFFERS = ["potion", "dummy", "decor"] as const;
 export type GameOffer = (typeof GAME_OFFERS)[number];
+const catalogId = z.string().min(1).max(64).regex(/^[a-z0-9-]+$/);
 export const GameBuyCmd = z.object({
   ...env,
   t: z.literal("game.buy"),
-  d: z.object({ offer: z.enum(GAME_OFFERS), qty: z.number().int().min(1).max(10) }).strict(),
+  d: z
+    .object({ offer: z.enum(GAME_OFFERS), qty: z.number().int().min(1).max(10), item: catalogId.optional() })
+    .strict()
+    .refine((d) => (d.offer === "decor") === (d.item !== undefined), "item só (e sempre) com decor"),
 });
+
+/** Decoração do Refúgio: o servidor dá o id ao colocar; mover e tirar usam esse id. */
+const tile = z.number().int().min(0).max(15);
+const rot = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3)]);
+const variant = z.string().min(1).max(40);
+export const GameLobbyPlaceCmd = z.object({
+  ...env,
+  t: z.literal("game.lobby.place"),
+  d: z.object({ item: catalogId, x: tile, y: tile, rot, variant: variant.optional() }).strict(),
+});
+export const GameLobbyMoveCmd = z.object({
+  ...env,
+  t: z.literal("game.lobby.move"),
+  d: z.object({ id: itemId, x: tile, y: tile, rot, variant: variant.optional() }).strict(),
+});
+export const GameLobbyRemoveCmd = z.object({ ...env, t: z.literal("game.lobby.remove"), d: z.object({ id: itemId }).strict() });
 export const GameTacticsCmd = z.object({
   ...env,
   t: z.literal("game.tactics"),
@@ -88,6 +109,9 @@ export const GameCommand = z.discriminatedUnion("t", [
   GameSellCmd,
   GameBuyCmd,
   GameTacticsCmd,
+  GameLobbyPlaceCmd,
+  GameLobbyMoveCmd,
+  GameLobbyRemoveCmd,
   GameRunStartCmd,
   GameRunGoCmd,
   GameRunChooseCmd,
@@ -199,6 +223,9 @@ export interface HeroView {
   combat: HeroCombat;
   run: RunView | null;
   last_run: LastRunView | null;
+  /** O quarto: itens colocados e quantos de cada item o herói tem. */
+  lobby: LobbyItem[];
+  decor_owned: Record<string, number>;
 }
 
 /** A luta de uma sala, já gravada: o app roda `fight(input)` para animar (o resultado que vale é este). */

@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 
-import { type GameCommand, type GameFightEvent, type GameStateEvent, tacticsFromWire } from "@muchat/space-core/game";
+import { type GameCommand, type GameFightEvent, type GameStateEvent, Rng, shortId, tacticsFromWire } from "@muchat/space-core/game";
 
 import type { Log } from "../log.ts";
 import type { SessionPort, Viewer } from "../space/runtime.ts";
@@ -8,6 +8,9 @@ import { TokenBucket } from "../ws/ratelimit.ts";
 import {
   applyBuy,
   applyEquip,
+  applyLobbyMove,
+  applyLobbyPlace,
+  applyLobbyRemove,
   applyLook,
   applyRunAbandon,
   applyRunRetreat,
@@ -186,7 +189,13 @@ export class GameService {
       case "game.sell":
         return applySell(d, cmd.d.items);
       case "game.buy":
-        return applyBuy(d, cmd.d.offer, cmd.d.qty);
+        return applyBuy(d, cmd.d.offer, cmd.d.qty, cmd.d.item);
+      case "game.lobby.place":
+        return applyLobbyPlace(d, cmd.d, () => shortId(new Rng(this.random())));
+      case "game.lobby.move":
+        return applyLobbyMove(d, cmd.d.id, cmd.d);
+      case "game.lobby.remove":
+        return applyLobbyRemove(d, cmd.d.id);
       case "game.tactics":
         return applyTactics(d, tacticsFromWire(cmd.d));
       case "game.run.start":

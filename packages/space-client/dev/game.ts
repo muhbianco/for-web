@@ -2,7 +2,18 @@
 // mesma página, cada um com a sua Application do Pixi, contra o servidor de dev
 // (packages/space-server/src/dev.ts). Nunca vai para produção.
 //   http://127.0.0.1:5180/game.html?as=ana        (?stress=20 abre e fecha a cena 20× ao carregar)
-import type { FightInput, FightResult, HeroView, RunView } from "@muchat/space-core/game";
+import type { Rotation } from "@muchat/space-core";
+import {
+  type FightInput,
+  type FightResult,
+  type HeroView,
+  lobbyCatalog,
+  lobbyItemOf,
+  lobbyPlacementError,
+  lobbyPrice,
+  placedCount,
+  type RunView,
+} from "@muchat/space-core/game";
 
 import { SpaceView } from "../src/index.ts";
 import { GameScene, type LobbyLook, type ReplaySpeed } from "../src/game/index.ts";
@@ -35,7 +46,72 @@ const log = (line: string, err = false) => {
   while ($("log").childElementCount > 60) $("log").lastElementChild!.remove();
 };
 
-const lobbyOf = (h: HeroView): LobbyLook => ({ look: h.look, weapon: h.combat.weapon, tier: h.training.tier });
+const lobbyOf = (h: HeroView): LobbyLook => ({ look: h.look, weapon: h.combat.weapon, tier: h.training.tier, items: h.lobby });
+
+// ---- decoração do Refúgio (E4b) ----
+let placing: string | null = null;
+let rot: Rotation = 0;
+function renderDecor() {
+  const h = hero;
+  $("placed").replaceChildren();
+  $("shop").replaceChildren();
+  if (!h) return;
+  $("placing").textContent = placing ? `Colocando: ${lobbyItemOf(placing)?.name ?? placing} (giro ${rot}). Clique no quarto.` : "Escolha um item e clique no quarto.";
+  for (const li of h.lobby) {
+    const b = document.createElement("button");
+    b.textContent = `tirar ${lobbyItemOf(li.item)?.name ?? li.item}`;
+    b.onclick = () => view.gameSend("game.lobby.remove", { id: li.id });
+    $("placed").append(b);
+  }
+  for (const it of lobbyCatalog()) {
+    const have = h.decor_owned[it.id] ?? 0;
+    const free = have - placedCount(h.lobby, it.id);
+    const wrap = document.createElement("span");
+    const buy = document.createElement("button");
+    buy.textContent = `${it.name} — ${lobbyPrice(it)}`;
+    buy.disabled = h.gold < lobbyPrice(it) || !!h.run;
+    buy.onclick = () => view.gameSend("game.buy", { offer: "decor", qty: 1, item: it.id });
+    wrap.append(buy);
+    if (free > 0) {
+      const put = document.createElement("button");
+      put.textContent = `colocar (${free})`;
+      put.onclick = () => {
+        placing = it.id;
+        rot = 0;
+        renderDecor();
+      };
+      wrap.append(put);
+    }
+    $("shop").append(wrap);
+  }
+}
+const sceneHost = $("scene");
+sceneHost.addEventListener("pointermove", (ev) => {
+  if (!placing || !hero || hero.run) return scene.setGhost(null);
+  const t = scene.tileAt(ev.clientX, ev.clientY);
+  if (!t) return scene.setGhost(null);
+  const ok = lobbyPlacementError(hero.lobby, { item: placing, x: t.x, y: t.y, rot }) === null;
+  scene.setGhost({ item: placing, rot, x: t.x, y: t.y, ok });
+});
+sceneHost.addEventListener("pointerleave", () => scene.setGhost(null));
+sceneHost.addEventListener("click", (ev) => {
+  if (!placing) return;
+  const t = scene.tileAt(ev.clientX, ev.clientY);
+  if (!t) return;
+  view.gameSend("game.lobby.place", { item: placing, x: t.x, y: t.y, rot });
+  placing = null;
+  scene.setGhost(null);
+});
+$("cancelPlace").onclick = () => {
+  placing = null;
+  scene.setGhost(null);
+  renderDecor();
+};
+$("rotate").onclick = () => {
+  const it = placing ? lobbyItemOf(placing) : undefined;
+  if (it) rot = ((rot + 1) % it.rotations) as Rotation;
+  renderDecor();
+};
 
 function render() {
   const h = hero;
@@ -64,6 +140,7 @@ function render() {
     }
   }
   renderRun(h?.run ?? null);
+  renderDecor();
 }
 
 function renderRun(run: RunView | null) {

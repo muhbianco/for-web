@@ -4,6 +4,7 @@
 export * from "./data.ts";
 export * from "./fight.ts";
 export * from "./items.ts";
+export * from "./lobby.ts";
 export * from "./map.ts";
 export * from "./protocol.ts";
 export * from "./rng.ts";
