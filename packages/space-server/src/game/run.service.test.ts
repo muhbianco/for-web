@@ -86,6 +86,9 @@ test("expedição: a iniciação vai de ponta a ponta e libera o Normal de verda
   assert.equal(hero.initiation_done, true);
   assert.equal(hero.best, 0, "a iniciação não libera o Difícil");
   assert.ok(hero.level >= 2, `nível ${hero.level}`);
+  // Venceu: volta inteiro, já com o máximo do nível novo.
+  assert.equal(hero.hp, hero.max_hp);
+  assert.equal(hero.mp, hero.max_mp);
   assert.ok(hero.skills.espada.l > 1);
   assert.equal(hero.stats.runs, 1);
   assert.equal(hero.stats.wins, 1);
@@ -242,6 +245,7 @@ test("expedição: retirada só no descanso permitido, e guarda a bolsa inteira"
   const out = await p.ask(r3.svc, "game.run.retreat");
   const hero = out.state.d.hero;
   assert.equal(hero.last_run.end, "retirada");
+  assert.equal(hero.hp, hero.max_hp, "retirar-se também devolve a vida cheia");
   assert.equal(hero.gold, 77);
   assert.equal(hero.bag.length, 1);
   assert.equal(hero.initiation_done, false, "retirar-se da iniciação não conta como vencer");
@@ -257,6 +261,7 @@ test("expedição: robô joga 1.000 expedições sem erro, o documento fica no l
   let maxBytes = 0;
   const ends = { vitoria: 0, morte: 0, retirada: 0 } as Record<string, number>;
   const timed = async (p: Player, t: GameCommand["t"], d?: unknown) => {
+    r.clock.t += 300; // no ritmo permitido (4 comandos/s por pessoa)
     const t0 = process.hrtime.bigint();
     const res = await p.ask(r.svc, t, d);
     times.push(Number(process.hrtime.bigint() - t0) / 1e6);
@@ -270,8 +275,8 @@ test("expedição: robô joga 1.000 expedições sem erro, o documento fica no l
       if (doc.bag.length > 30) await timed(p, "game.sell", { items: doc.bag.slice(0, 20).map((x) => x.id) });
       if (doc.pending.length) await timed(p, "game.sell", { items: doc.pending.map((x) => x.id) });
       if (doc.potions < 3 && doc.gold > 100) await timed(p, "game.buy", { offer: "potion", qty: 3 - doc.potions });
+      // Sem esperar a regeneração: depois de vencer o herói já volta inteiro.
       const degree = "normal";
-      r.clock.t += RULES.regenFullMs;
       let st = await timed(p, "game.run.start", { degree });
       if (st.error?.d.reason === "hurt" || st.error?.d.code === "game_busy") {
         r.clock.t += 11 * 60_000;

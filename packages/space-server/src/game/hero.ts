@@ -425,7 +425,12 @@ export function finishRun(d: HeroDoc, now: number) {
   }
   d.potions = Math.min(RULES.maxPotions, reward.potions);
   const hc = heroCombat(heroCore(d));
-  d.vitals = { hp: Math.min(hc.maxHp, Math.max(1, reward.hp)), mp: Math.min(hc.maxMp, reward.mp), at: now };
+  // Decisão do dono (22/11/2026): vencer ou se retirar devolve o herói inteiro ao
+  // Refúgio; só a morte (e o abandono, que conta como morte) custa a regeneração.
+  d.vitals =
+    reward.end === "morte"
+      ? { hp: Math.min(hc.maxHp, Math.max(1, reward.hp)), mp: Math.min(hc.maxMp, reward.mp), at: now }
+      : { hp: hc.maxHp, mp: hc.maxMp, at: now };
   d.training = resumeTraining(d.training, now);
   d.stats.runs++;
   d.stats.kills += reward.kills;
