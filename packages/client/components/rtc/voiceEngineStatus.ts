@@ -81,6 +81,16 @@ export interface VoiceEngineStatus {
   longestSilentRunMs?: number;
   /** Loudest sample published in the last window; 0 means a dead chain. */
   outputPeak?: number;
+  /** Active speech level the normalizer measured before its gain (dBFS). */
+  speechLevelDb?: number;
+  /** livekit stopped sending the mic (pauseUpstream): the "limbo". */
+  micUpstreamPaused?: boolean;
+  /** The OS/device is muting the raw capture (MediaStreamTrack.muted). */
+  micSourceMuted?: boolean;
+  /** readyState of the raw capture. */
+  micSourceState?: MediaStreamTrackState;
+  /** State of the AudioContext the mic chain renders in. */
+  audioContextState?: string;
 }
 
 export const IDLE_VOICE_ENGINE_STATUS: VoiceEngineStatus = {

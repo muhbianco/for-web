@@ -12,6 +12,14 @@ import {
   isNoiseSuppressionMode,
   NOISE_SUPPRESSION_SCHEMA,
 } from "./noiseSuppressionPolicy";
+import {
+  DEFAULT_VOICE_BITRATE,
+  isVoiceBitrate,
+  matchVoiceProfile,
+  type VoiceBitrate,
+  type VoiceProfile,
+  VOICE_PROFILES,
+} from "./voiceProfiles";
 
 /**
  * Noise suppression modes.
@@ -20,6 +28,7 @@ import {
  * - advanced: DeepFilterNet3 (default), falls back to RNNoise on weaker devices
  */
 export type { DeepFilterSensitivity, NoiseSuppresionState };
+export type { VoiceBitrate, VoiceProfile };
 
 /**
  * Possible screen share qualities. Low is 720p@30fps, high 1080p@30fps and text is source@5fps.
@@ -58,6 +67,11 @@ export interface TypeVoice {
    * Off = legacy RMS gate. Only affects the DeepFilter chain.
    */
   voiceGate: boolean;
+  /**
+   * Opus ceiling for non-supporters (supporters always get 96 kbps). Set by
+   * the "natural" voice profile; applies from the next room joined.
+   */
+  voiceBitrate: VoiceBitrate;
 
   screenShareQuality: ScreenShareQualityName;
   screenShareQualityAsk: boolean;
@@ -109,6 +123,7 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       deepFilterSensitivity: DEFAULT_DEEPFILTER_SENSITIVITY,
       inputSensitivity: DEFAULT_INPUT_SENSITIVITY,
       voiceGate: true,
+      voiceBitrate: DEFAULT_VOICE_BITRATE,
       screenShareQuality: "low",
       screenShareQualityAsk: true,
       screenShareAudio: true,
@@ -174,6 +189,10 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
 
     if (typeof input.voiceGate === "boolean") {
       data.voiceGate = input.voiceGate;
+    }
+
+    if (isVoiceBitrate(input.voiceBitrate)) {
+      data.voiceBitrate = input.voiceBitrate;
     }
 
     if (
@@ -384,6 +403,33 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
   }
 
   /**
+   * Set the Opus ceiling for non-supporters (next room joined)
+   */
+  set voiceBitrate(value: VoiceBitrate) {
+    this.set("voiceBitrate", value);
+  }
+
+  /**
+   * Apply a voice profile: writes all of its settings at once
+   */
+  applyVoiceProfile(profile: VoiceProfile) {
+    const settings = VOICE_PROFILES[profile];
+    this.set("noiseSupression", settings.noiseSupression);
+    this.set("deepFilterSensitivity", settings.deepFilterSensitivity);
+    this.set("voiceGate", settings.voiceGate);
+    this.set("autoGainControl", settings.autoGainControl);
+    this.set("echoCancellation", settings.echoCancellation);
+    this.set("voiceBitrate", settings.voiceBitrate);
+  }
+
+  /**
+   * Which voice profile the current settings are, or "custom"
+   */
+  get voiceProfile(): VoiceProfile | "custom" {
+    return matchVoiceProfile(this.get());
+  }
+
+  /**
    * Set screen share quality
    */
   set screenShareQuality(value: ScreenShareQualityName) {
@@ -507,6 +553,13 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
    */
   get voiceGate(): boolean {
     return this.get().voiceGate;
+  }
+
+  /**
+   * Get the Opus ceiling for non-supporters
+   */
+  get voiceBitrate(): VoiceBitrate {
+    return this.get().voiceBitrate ?? DEFAULT_VOICE_BITRATE;
   }
 
   /**

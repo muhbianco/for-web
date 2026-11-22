@@ -35,7 +35,9 @@ export function voicePort(voice: Voice, client: () => Client): VoicePort {
         { rethrow: true },
       );
     },
-    disconnect: () => voice.disconnect(),
+    // A revoke is usually the first half of a room change (the grant for the
+    // next room follows): keep the mic warm for a few seconds.
+    disconnect: () => voice.disconnect({ park: true }),
     identity: () => voice.room()?.localParticipant?.identity || null,
     live: () => voice.state() === "CONNECTED",
     busyElsewhere: (roomId) => {

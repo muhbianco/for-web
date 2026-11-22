@@ -73,16 +73,20 @@ export function VoiceCallCardActions(props: { size: "xs" | "sm" }) {
           tooltip: {
             placement: "top",
             content: voice.speakingPermission
-              ? voice.microphone()
-                ? t`Mute`
-                : t`Unmute`
+              ? voice.micBlocked()
+                ? t`O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo`
+                : voice.microphone()
+                  ? t`Mute`
+                  : t`Unmute`
               : t`Missing permission`,
           },
         }}
         isDisabled={!voice.speakingPermission}
       >
         <Show when={voice.microphone()} fallback={<Symbol>mic_off</Symbol>}>
-          <Symbol>mic</Symbol>
+          <Show when={voice.micBlocked()} fallback={<Symbol>mic</Symbol>}>
+            <Symbol>warning</Symbol>
+          </Show>
         </Show>
       </IconButton>
       <IconButton

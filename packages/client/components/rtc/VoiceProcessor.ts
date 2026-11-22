@@ -10,9 +10,8 @@ import {
   DEEPFILTER_AUTO_STEP_DB,
   deepFilterAttenDb,
   gateThresholdsFromSensitivity,
-  nextPreGainDb,
   rmsToDbfs,
-  updateActivityDb,
+  SpeechLevelNormalizer,
 } from "@revolt/state/stores/noiseSuppressionPolicy";
 
 import { DeepFilterHealth } from "./deepFilterHealth";
@@ -45,8 +44,9 @@ import type { VoiceEngineId } from "./voiceEngineStatus";
  *
  *   getUserMedia (EC on, AGC off in ML modes, browser NS off in ML modes)
  *     -> highpass 50 Hz (explicit mono: a stereo capture is downmixed here)
- *     -> make-up gain for quiet microphones (0..+18 dB, follows the
- *        "auto gain" setting; see noiseSuppressionPolicy PRE_GAIN_*)
+ *     -> speech-level normalizer (0..+30 dB toward an active speech level of
+ *        −23 dBFS, AGC2-style; follows the "auto gain" setting; see
+ *        noiseSuppressionPolicy SpeechLevelNormalizer)
  *     -> ONE neural noise suppressor: DeepFilterNet3 (default) or RNNoise
  *     -> voice gate (DeepFilter only, sits *after* the suppressor)
  *          RMS + Silero VAD speech probability; 32 ms lookahead
@@ -101,6 +101,13 @@ const dfContexts = createDfContextPool();
  */
 const deepFilterOwners = new WeakMap<AudioWorkletNode, object>();
 
+/**
+ * Gain the normalizer learned in this app session. A new chain (next room,
+ * rebuilt graph) starts from it instead of 0 dB, so a quiet talker is not
+ * quiet again for the first seconds of every room.
+ */
+let learnedGainDb = 0;
+
 /** How often the auto preset samples the pre-filter noise floor. */
 const NOISE_FLOOR_POLL_MS = 200;
 /** EMA coefficient for the noise floor (slow: fans, not keystrokes). */
@@ -143,7 +150,22 @@ export interface VoiceProcessorSnapshot {
   vadError?: string;
   /** Make-up gain applied before the suppressor right now (dB). */
   agcGainDb?: number;
+  /** Speech level the normalizer measured before its gain (dBFS, active speech). */
+  speechLevelDb?: number;
+  /** The raw capture is muted by the OS/device (MediaStreamTrack.muted). */
+  sourceMuted?: boolean;
+  /** readyState of the raw capture. */
+  sourceState?: MediaStreamTrackState;
+  /** State of the AudioContext the chain renders in. */
+  contextState?: AudioContextState | string;
 }
+
+/** Diagnostics the processor reports as they happen (call report timeline). */
+export type VoiceProcessorEvent =
+  | "micSourceMute"
+  | "micSourceUnmute"
+  | "micSourceEnded"
+  | "audioContext";
 
 function deepFilterCdnUrl(): string {
   const override = CONFIGURATION.DEEPFILTERNET_CDN_URL;
@@ -232,10 +254,10 @@ export class VoiceProcessor implements TrackProcessor<
   private speechProb?: number;
   private vadInferMs?: number;
   private vadError?: string;
-  /** Pre-suppressor make-up gain (see noiseSuppressionPolicy PRE_GAIN_*). */
+  /** Pre-suppressor speech-level normalizer (see SpeechLevelNormalizer). */
   private preGainNode?: GainNode;
+  private normalizer = new SpeechLevelNormalizer(learnedGainDb);
   private preGainDb = 0;
-  private activityDb?: number;
 
   private noiseSuppressionNode?: RNNoiseNode;
   private deepFilterNode?: AudioWorkletNode;
@@ -250,9 +272,21 @@ export class VoiceProcessor implements TrackProcessor<
 
   private disposeSolidjsContext: () => void = () => {};
 
-  constructor(voiceSettings: Voice, onStatus?: () => void) {
+  private onEvent?: (kind: VoiceProcessorEvent, detail?: string) => void;
+  /** Raw capture and render context we listen to (see watchSource/watchContext). */
+  private watchedSource?: MediaStreamTrack;
+  private watchedContext?: AudioContext;
+
+  constructor(
+    voiceSettings: Voice,
+    onStatus?: () => void,
+    onEvent?: (kind: VoiceProcessorEvent, detail?: string) => void,
+  ) {
     this.settings = voiceSettings;
     this.onStatus = onStatus;
+    this.onEvent = onEvent;
+    this.preGainDb =
+      voiceSettings.autoGainControl === false ? 0 : this.normalizer.gainDb();
 
     createRoot((dispose) => {
       createEffect(() => {
@@ -325,7 +359,76 @@ export class VoiceProcessor implements TrackProcessor<
           )
         : undefined,
       outputPeak: this.lastProduction?.peak,
+      speechLevelDb:
+        this.engine === "deepfilter" || this.engine === "rnnoise"
+          ? this.normalizer.speechLevelDb()
+          : undefined,
+      sourceMuted: this.sourceTrack?.muted,
+      sourceState: this.sourceTrack?.readyState,
+      contextState: graphContext?.state,
     };
+  }
+
+  /** Raw capture state, for the mic health check in Voice. */
+  sourceTrackState():
+    | { state: MediaStreamTrackState; muted: boolean }
+    | undefined {
+    const track = this.sourceTrack;
+    return track ? { state: track.readyState, muted: track.muted } : undefined;
+  }
+
+  /**
+   * Resume the render context if something suspended it. A suspended context
+   * publishes nothing at all, and nothing in the chain resumes it until the
+   * graph is rebuilt. Returns the state after the attempt.
+   */
+  async ensureRunning(): Promise<AudioContextState | string | undefined> {
+    const ctx = this.destinationNode?.context as AudioContext | undefined;
+    if (!ctx) return undefined;
+    if (ctx.state !== "running" && ctx.state !== "closed") {
+      await ctx.resume().catch(() => undefined);
+    }
+    return ctx.state;
+  }
+
+  private readonly onSourceMute = () => {
+    this.onEvent?.("micSourceMute");
+    this.emitStatus();
+  };
+  private readonly onSourceUnmute = () => {
+    this.onEvent?.("micSourceUnmute");
+    this.emitStatus();
+  };
+  private readonly onSourceEnded = () => {
+    this.onEvent?.("micSourceEnded");
+    this.emitStatus();
+  };
+  private readonly onContextState = () => {
+    this.onEvent?.("audioContext", this.watchedContext?.state);
+    this.emitStatus();
+  };
+
+  private watchSource(track: MediaStreamTrack | undefined) {
+    if (this.watchedSource === track) return;
+    const old = this.watchedSource;
+    if (old) {
+      old.removeEventListener("mute", this.onSourceMute);
+      old.removeEventListener("unmute", this.onSourceUnmute);
+      old.removeEventListener("ended", this.onSourceEnded);
+    }
+    this.watchedSource = track;
+    if (track) {
+      track.addEventListener("mute", this.onSourceMute);
+      track.addEventListener("unmute", this.onSourceUnmute);
+      track.addEventListener("ended", this.onSourceEnded);
+    }
+  }
+
+  private watchContext(ctx: AudioContext | undefined) {
+    if (this.watchedContext === ctx) return;
+    this.watchedContext?.removeEventListener("statechange", this.onContextState);
+    this.watchedContext = ctx;
+    ctx?.addEventListener("statechange", this.onContextState);
   }
 
   private vadEngine(): VadEngineId | undefined {
@@ -430,7 +533,12 @@ export class VoiceProcessor implements TrackProcessor<
   private applyDeepFilterStrength() {
     const sensitivity = this.settings.deepFilterSensitivity;
     if (!this.deepFilterCore || this.engine !== "deepfilter") return;
-    const target = deepFilterAttenDb(sensitivity, this.noiseFloorDb);
+    // The suppressor sees the floor after the normalizer gain.
+    const floor =
+      this.noiseFloorDb === undefined
+        ? undefined
+        : this.noiseFloorDb + this.preGainDb;
+    const target = deepFilterAttenDb(sensitivity, floor);
     if (
       this.deepFilterAttenDb !== undefined &&
       Math.abs(target - this.deepFilterAttenDb) < DEEPFILTER_AUTO_STEP_DB
@@ -454,12 +562,15 @@ export class VoiceProcessor implements TrackProcessor<
     this.analyserNode = analyser;
     const buffer = new Float32Array(analyser.fftSize);
     this.noiseFloorTimer = setInterval(() => {
-      if (this.engine !== "deepfilter" || !this.analyserNode) return;
+      if (!this.analyserNode) return;
+      if (this.engine !== "deepfilter" && this.engine !== "rnnoise") return;
       analyser.getFloatTimeDomainData(buffer);
       let sum = 0;
       for (let i = 0; i < buffer.length; i++) sum += buffer[i] * buffer[i];
       const db = rmsToDbfs(Math.sqrt(sum / buffer.length));
       this.trackPreGain(context, db);
+      // The floor below only drives the DeepFilter auto strength.
+      if (this.engine !== "deepfilter") return;
       // Gate open = someone talking; that is not the floor.
       if (this.gateOpen) return;
       this.noiseFloorDb =
@@ -473,9 +584,9 @@ export class VoiceProcessor implements TrackProcessor<
   }
 
   /**
-   * Make-up gain for quiet microphones, decided from the pre-suppressor level
-   * of polls that stand above the noise floor. Applied on the GainNode in front
-   * of the suppressor; off (0 dB) when the user disables auto gain.
+   * Speech-level normalizer: one poll of the pre-suppressor level in, the gain
+   * of the GainNode in front of the suppressor out. Off (0 dB) when the user
+   * disables auto gain.
    */
   private trackPreGain(context: AudioContext, sampleDbfs: number) {
     if (!this.preGainNode) return;
@@ -483,12 +594,8 @@ export class VoiceProcessor implements TrackProcessor<
       if (this.preGainDb !== 0) this.setPreGainDb(context, 0);
       return;
     }
-    this.activityDb = updateActivityDb(
-      this.activityDb,
-      sampleDbfs,
-      this.noiseFloorDb,
-    );
-    const next = nextPreGainDb(this.activityDb, this.preGainDb);
+    const next = this.normalizer.observe(sampleDbfs);
+    learnedGainDb = next;
     if (next !== this.preGainDb) this.setPreGainDb(context, next);
   }
 
@@ -638,6 +745,8 @@ export class VoiceProcessor implements TrackProcessor<
 
   async destroy(): Promise<void> {
     this.disposeSolidjsContext();
+    this.watchSource(undefined);
+    this.watchContext(undefined);
     this.livekitContext = undefined;
     this.sourceTrack = undefined;
     await this.teardown();
@@ -686,8 +795,8 @@ export class VoiceProcessor implements TrackProcessor<
     this.noiseSuppressionNode?.disconnect();
     this.preGainNode?.disconnect();
     this.preGainNode = undefined;
-    this.preGainDb = 0;
-    this.activityDb = undefined;
+    // The normalizer and its gain survive a rewire (RNNoise fallback, gate
+    // toggle): the next chain starts at the level this one reached.
     this.highpassNode?.disconnect();
     this.sourceNode?.disconnect();
     this.compressorNode = undefined;
@@ -742,6 +851,8 @@ export class VoiceProcessor implements TrackProcessor<
     this.noiseSuppressionNode = new RNNoiseNode(context);
     this.connectMlChain(this.noiseSuppressionNode, context);
     this.engine = "rnnoise";
+    // The normalizer runs on RNNoise too (it measures its own floor).
+    this.startNoiseFloorTracking(context, this.highpassNode!);
   }
 
   private connectBypass() {
@@ -895,15 +1006,6 @@ export class VoiceProcessor implements TrackProcessor<
       } catch (error) {
         this.lastError = errorMessage(error);
         console.warn("DeepFilterNet3 failed; staying on RNNoise", error);
-        if (
-          this.livekitContext &&
-          context !== this.livekitContext &&
-          this.sourceTrack
-        ) {
-          await this.teardown();
-          context = this.livekitContext;
-          await this.openGraph(context, this.sourceTrack);
-        }
       }
     } else if (mode === "advanced") {
       this.lastError = "device cannot run DeepFilterNet; using RNNoise";
@@ -911,6 +1013,22 @@ export class VoiceProcessor implements TrackProcessor<
       this.lastError = undefined;
     }
 
+    // RNNoise runs in the same context as the rest of the chain (the pooled
+    // one, see build); addModule with the same URL is idempotent.
+    try {
+      await RNNoiseNode.loadModule(
+        context,
+        CONFIGURATION.RNNOISE_WORKLET_CDN_URL,
+      );
+    } catch (error) {
+      this.lastError = `RNNoise could not load (${errorMessage(error)}); no noise suppression`;
+      console.warn("[voice]", this.lastError);
+      if (token !== this.graphToken) return;
+      this.connectBypass();
+      this.engine = "bypass";
+      return;
+    }
+    if (token !== this.graphToken) return;
     this.connectRnnoise(context);
   }
 
@@ -922,18 +1040,22 @@ export class VoiceProcessor implements TrackProcessor<
     }
     if (!this.sourceTrack) return;
 
-    const mode = this.settings.noiseSupression;
-    let context = this.livekitContext;
-    if (mode === "advanced" && canUseDeepFilter()) {
-      try {
-        context = await this.ensureDfContext();
-      } catch (error) {
-        this.lastError = errorMessage(error);
-        console.warn("DeepFilterNet3 context failed; using RNNoise", error);
-        context = this.livekitContext;
-      }
+    this.watchSource(this.sourceTrack);
+
+    // Every mode renders in the pooled 48 kHz context, never in the Room's:
+    // LiveKit closes its context when the Room disconnects, and the chain (the
+    // published track with it) has to outlive the Room when the person moves
+    // to another room of the Espaço (see Voice.parkMicrophone).
+    let context: AudioContext | undefined;
+    try {
+      context = await this.ensureDfContext();
+    } catch (error) {
+      this.lastError = errorMessage(error);
+      console.warn("[voice] 48 kHz context failed; using the Room's", error);
+      context = this.livekitContext;
     }
     if (!context) return;
+    this.watchContext(context);
 
     await this.openGraph(context, this.sourceTrack);
     await this.wireGraph(context);

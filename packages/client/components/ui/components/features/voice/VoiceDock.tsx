@@ -29,10 +29,22 @@ export function VoiceDock() {
       {(current) => (
         <Base aria-label={t`Voice controls`}>
           <Status>
-            <Live>
-              <Symbol size={14}>graphic_eq</Symbol>
-              <span>{t`Voz conectada`}</span>
-            </Live>
+            <Show
+              when={voice.micBlocked()}
+              fallback={
+                <Live>
+                  <Symbol size={14}>graphic_eq</Symbol>
+                  <span>{t`Voz conectada`}</span>
+                </Live>
+              }
+            >
+              <Blocked
+                title={t`O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo. Confira o botão de mudo do headset e o microfone nas configurações de som do sistema.`}
+              >
+                <Symbol size={14}>warning</Symbol>
+                <span>{t`Microfone silenciado pelo sistema`}</span>
+              </Blocked>
+            </Show>
             <ChannelName
               onClick={() => navigate(current().path ?? "")}
               title={current().name ?? ""}
@@ -135,6 +147,18 @@ const Live = styled("div", {
     fontSize: "12px",
     fontWeight: 600,
     color: "var(--md-sys-color-primary)",
+  },
+});
+
+/** The mic button says open but the system is silencing the capture. */
+const Blocked = styled("div", {
+  base: {
+    display: "flex",
+    gap: "4px",
+    alignItems: "center",
+    fontSize: "12px",
+    fontWeight: 600,
+    color: "var(--md-sys-color-error)",
   },
 });
 

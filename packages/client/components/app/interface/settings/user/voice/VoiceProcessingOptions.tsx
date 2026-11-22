@@ -8,6 +8,7 @@ import { useState } from "@revolt/state";
 import type {
   DeepFilterSensitivity,
   NoiseSuppresionState,
+  VoiceProfile,
 } from "@revolt/state/stores/Voice";
 import {
   DEEPFILTER_ATTEN_DB,
@@ -32,6 +33,7 @@ export function VoiceProcessingOptions() {
 
   return (
     <Column gap="lg">
+      <VoiceProfileSection />
       <NoiseSuppressionSection />
       <Show when={isDeepFilterSelected()}>
         <DeepFilterStrengthSection />
@@ -54,6 +56,74 @@ export function SectionHeader(props: {
           {props.description}
         </Text>
       </Show>
+    </Column>
+  );
+}
+
+/**
+ * One choice instead of five settings (docs/voz/10 §8). A profile writes the
+ * settings below; changing any of them by hand shows "custom".
+ */
+function VoiceProfileSection() {
+  const { voice } = useState();
+
+  return (
+    <Column gap="sm">
+      <SectionHeader
+        title={<Trans>Perfil de voz</Trans>}
+        description={
+          <Trans>
+            Escolha como a sua voz chega para os outros. As opções detalhadas
+            abaixo continuam disponíveis.
+          </Trans>
+        }
+      />
+      <CategoryButton.Group>
+        <CategoryButton.Select<VoiceProfile | "custom">
+          icon={<Symbol>record_voice_over</Symbol>}
+          title={<Trans>Perfil</Trans>}
+          options={{
+            natural: {
+              title: <Trans>Natural</Trans>,
+              description: (
+                <Trans>
+                  Menos processamento e mais qualidade de áudio. Para lugares
+                  silenciosos e bons microfones.
+                </Trans>
+              ),
+            },
+            balanced: {
+              title: <Trans>Equilibrado (recomendado)</Trans>,
+              description: (
+                <Trans>
+                  Remove o ruído conforme o ambiente e nivela o volume da sua
+                  voz.
+                </Trans>
+              ),
+              shortDesc: <Trans>Equilibrado (recomendado)</Trans>,
+            },
+            strong: {
+              title: <Trans>Redução forte de ruído</Trans>,
+              description: (
+                <Trans>
+                  Ventilador, rua, gente conversando perto. Remove mais ruído,
+                  com a voz um pouco menos natural.
+                </Trans>
+              ),
+            },
+            custom: {
+              title: <Trans>Personalizado</Trans>,
+              description: (
+                <Trans>Você ajustou as opções abaixo à mão.</Trans>
+              ),
+            },
+          }}
+          value={voice.voiceProfile}
+          onUpdate={(profile) => {
+            if (profile !== "custom") voice.applyVoiceProfile(profile);
+          }}
+        />
+      </CategoryButton.Group>
     </Column>
   );
 }
@@ -122,8 +192,10 @@ function NoiseSuppressionSection() {
           icon={<Symbol>volume_up</Symbol>}
           description={
             <Trans>
-              Browser volume levelling. Ignored while DeepFilterNet or RNNoise
-              is active, since it would boost the residual noise.
+              Nivela o volume da sua voz para todos ouvirem você na mesma
+              altura, mesmo com microfone baixo. Com DeepFilterNet ou RNNoise o
+              nivelamento é feito antes do supressor, sem aumentar o ruído
+              acima do limite.
             </Trans>
           }
           action={<Checkbox checked={voice.autoGainControl} />}
@@ -413,6 +485,18 @@ function DiagnosticsSection() {
     return run ? t`${ms} ms/s (maior trecho ${run} ms)` : t`${ms} ms/s`;
   };
 
+  /** Whether the open mic really reaches the others (the "limbo", doc 10). */
+  const micSendLabel = () => {
+    const current = status();
+    if (current.micSourceState === "ended") return t`microfone desconectado`;
+    if (current.micSourceMuted) return t`silenciado pelo sistema`;
+    if (current.micUpstreamPaused) return t`pausado (sem envio)`;
+    if (current.audioContextState && current.audioContextState !== "running") {
+      return t`processamento parado (${current.audioContextState})`;
+    }
+    return t`normal`;
+  };
+
   const gateLabel = () => {
     const current = status();
     switch (current.vadEngine) {
@@ -450,7 +534,19 @@ function DiagnosticsSection() {
       { label: t`Microphone sample rate`, value: deviceRateLabel() },
       // Medido no fim da cadeia, nas amostras que o LiveKit publica.
       { label: t`Silêncio publicado`, value: publishedSilenceLabel() },
+      { label: t`Envio do microfone`, value: micSendLabel() },
     ];
+    if (current.agcGainDb !== undefined) {
+      const gain = current.agcGainDb.toFixed(1);
+      const speech = current.speechLevelDb;
+      list.push({
+        label: t`Nivelamento de volume`,
+        value:
+          speech !== undefined
+            ? t`+${gain} dB (sua fala em ${Math.round(speech)} dBFS)`
+            : t`+${gain} dB (medindo a sua fala)`,
+      });
+    }
     if (current.engine === "deepfilter") {
       list.push({
         label: t`Noise removed`,

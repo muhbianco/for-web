@@ -17,11 +17,13 @@ import {
 } from "solid-livekit-components";
 
 import {
+  LocalAudioTrack,
   LocalTrackPublication,
   Room,
   ScreenShareCaptureOptions,
   ScreenSharePresets,
   Track,
+  TrackEvent,
   VideoEncoding,
 } from "livekit-client";
 import { Channel, Client, Message } from "stoat.js";
@@ -76,8 +78,30 @@ import {
   type VoiceEngineStatus,
   IDLE_VOICE_ENGINE_STATUS,
 } from "./voiceEngineStatus";
+import {
+  AUDIO_BW_CAPPED_BITRATE,
+  type AudioBandwidthAction,
+  AudioBandwidthPolicy,
+} from "./audioBandwidthPolicy";
+import { type MicHealReason, decideMicHeal, micBlocked } from "./micHealth";
 import { VoiceProcessor } from "./VoiceProcessor";
 import { participantUserId } from "./identity";
+
+/**
+ * How long a microphone stays captured, unpublished, between leaving one room
+ * and joining the next (Espaço room changes, switching calls). Past this the
+ * capture is released as if the call had simply ended. In the Espaço the
+ * avatar walks from one door to the next, which in the full lab took longer
+ * than the first value tried (6 s): the parked mic expired on the way and
+ * every room opened the device again. Nothing is sent while parked.
+ */
+const PARK_MIC_MS = 20_000;
+
+interface ParkedMic {
+  track: LocalAudioTrack;
+  processor: VoiceProcessor;
+  timer: ReturnType<typeof setTimeout>;
+}
 import { isSpaceServer } from "../space/config";
 
 type State =
@@ -148,6 +172,27 @@ class Voice {
   private screenShareTracks: Set<string>;
   private voiceProcessor?: VoiceProcessor;
   #moving = false;
+
+  /**
+   * The mic button says open but nothing reaches the others: the OS or the
+   * device is silencing the capture, or livekit paused the upstream (the
+   * "limbo", docs/voz/10). The UI warns; healMicrophone tries to fix it.
+   */
+  micBlocked: Accessor<boolean>;
+  #upstreamPausedSince?: number;
+  #lastMicRestartAt = 0;
+  #healing = false;
+  #instrumentedMics = new WeakSet<LocalAudioTrack>();
+  /** Capture + chain kept warm between two rooms (see parkMicrophone). */
+  #parkedMic?: ParkedMic;
+  /** The real stop() of each mic track, which guardMicrophoneStop wraps. */
+  #micStops = new WeakMap<LocalAudioTrack, () => void>();
+  /** True while this class tears a room down itself (real stops allowed). */
+  #ownTeardown = false;
+  /** Opus ceiling under a tight uplink (audioBandwidthPolicy.ts). */
+  #bandwidth = new AudioBandwidthPolicy();
+  /** The sender's own maxBitrate before a cap, to put back. */
+  #normalAudioBitrate?: number;
 
   engineStatus: Accessor<VoiceEngineStatus>;
   #setEngineStatus: Setter<VoiceEngineStatus>;
@@ -224,7 +269,24 @@ class Voice {
     this.#statsCollector = new CallStatsCollector((snapshot) => {
       this.#setCallStats(snapshot);
       this.#recorder.push(snapshot, dspSampleFrom(this.engineStatus()));
+      // Watchdog: every stats window, check the open mic is really sending.
+      if (this.microphone()) void this.healMicrophone("watchdog");
+      const bw = this.#bandwidth.observe(
+        snapshot.transport?.publisher?.availableOutgoingKbps,
+      );
+      if (bw) void this.applyAudioBitrateCap(bw);
     });
+
+    this.micBlocked = () => {
+      const status = this.engineStatus();
+      return micBlocked({
+        micOn: this.microphone(),
+        inCall: this.state() === "CONNECTED",
+        upstreamPaused: status.micUpstreamPaused,
+        sourceMuted: status.micSourceMuted,
+        sourceState: status.micSourceState,
+      });
+    };
 
     const inst = useInstance();
     this.config = inst.config;
@@ -305,11 +367,132 @@ class Voice {
       this.voiceProcessor = undefined;
     }
 
+    this.instrumentMicrophone(track);
+
     if (!track.getProcessor()) {
-      this.voiceProcessor = new VoiceProcessor(this.#settings, () =>
-        this.syncEngineStatus(),
+      this.voiceProcessor = new VoiceProcessor(
+        this.#settings,
+        () => this.syncEngineStatus(),
+        (kind, detail) => this.#recorder.event(kind, detail),
       );
       await track.setProcessor(this.voiceProcessor);
+    }
+  }
+
+  /**
+   * Puts what livekit does to the mic on the call report's timeline (the
+   * limbo was invisible in every report) and keeps the paused-since clock the
+   * watchdog uses. Once per track: a parked track is published again.
+   */
+  private instrumentMicrophone(track: LocalAudioTrack) {
+    if (this.#instrumentedMics.has(track)) return;
+    this.#instrumentedMics.add(track);
+    this.guardMicrophoneStop(track);
+    track.on(TrackEvent.UpstreamPaused, () => {
+      this.#upstreamPausedSince = Date.now();
+      this.#recorder.event("micUpstreamPaused");
+      this.syncEngineStatus();
+    });
+    track.on(TrackEvent.UpstreamResumed, () => {
+      this.#upstreamPausedSince = undefined;
+      this.#recorder.event("micUpstreamResumed");
+      this.syncEngineStatus();
+    });
+    track.on(TrackEvent.Ended, () => {
+      this.#recorder.event("micEnded");
+      this.syncEngineStatus();
+    });
+    track.on(TrackEvent.Restarted, () => {
+      this.#recorder.event("micRestarted");
+      this.syncEngineStatus();
+    });
+  }
+
+  /**
+   * Caps (or uncaps) the Opus bitrate on the mic's RTP sender. No SDP change
+   * and no renegotiation; the encoding's own maxBitrate is kept to restore.
+   */
+  private async applyAudioBitrateCap(action: AudioBandwidthAction) {
+    const sender = this.getMicrophoneTrack()?.audioTrack?.sender;
+    if (!sender) return;
+    try {
+      const params = sender.getParameters();
+      const encoding = params.encodings?.[0];
+      if (!encoding) return;
+      if (action === "cap") {
+        this.#normalAudioBitrate = encoding.maxBitrate;
+        encoding.maxBitrate = AUDIO_BW_CAPPED_BITRATE;
+      } else if (this.#normalAudioBitrate !== undefined) {
+        encoding.maxBitrate = this.#normalAudioBitrate;
+      } else {
+        delete encoding.maxBitrate;
+      }
+      await sender.setParameters(params);
+      this.#recorder.event(
+        "audioBitrate",
+        action === "cap"
+          ? `cap ${AUDIO_BW_CAPPED_BITRATE}`
+          : `restore ${this.#normalAudioBitrate ?? "default"}`,
+      );
+    } catch (error) {
+      console.warn("[voice] could not change the audio bitrate", error);
+    }
+  }
+
+  /**
+   * Makes an open mic actually send (see micHealth.ts): resumes a context
+   * something suspended, resumes an upstream livekit left paused, or re-opens
+   * a capture the OS muted or killed. Runs on every unmute and on the stats
+   * watchdog while the mic is meant to be open.
+   */
+  async healMicrophone(reason: MicHealReason) {
+    if (this.#healing) return;
+    const room = this.room();
+    const track = this.getMicrophoneTrack()?.audioTrack;
+    if (!room || !track || this.state() !== "CONNECTED") return;
+    this.#healing = true;
+    try {
+      const micOn =
+        this.microphone() && room.localParticipant.isMicrophoneEnabled;
+      if (!micOn) return;
+
+      // A suspended context publishes nothing, whatever the track says.
+      const processor = this.voiceProcessor;
+      const before = processor?.getSnapshot().contextState;
+      if (before && before !== "running") {
+        const after = await processor?.ensureRunning();
+        this.#recorder.event("micHeal", `${reason}:context ${before}->${after}`);
+      }
+
+      const source = processor?.sourceTrackState();
+      const now = Date.now();
+      const paused = track.isUpstreamPaused;
+      if (paused && this.#upstreamPausedSince === undefined) {
+        this.#upstreamPausedSince = now;
+      }
+      const action = decideMicHeal({
+        micOn,
+        upstreamPaused: paused,
+        sourceState: source?.state,
+        sourceMuted: source?.muted ?? false,
+        pausedForMs: paused ? now - (this.#upstreamPausedSince ?? now) : 0,
+        sinceLastRestartMs: now - this.#lastMicRestartAt,
+        reason,
+      });
+      if (action === "none") return;
+      this.#recorder.event("micHeal", `${reason}:${action}`);
+      if (action === "resume") {
+        await track.resumeUpstream();
+      } else {
+        this.#lastMicRestartAt = now;
+        await track.restartTrack();
+      }
+    } catch (error) {
+      console.warn("[voice] microphone heal failed", error);
+      this.#recorder.event("micHeal", `${reason}:failed`);
+    } finally {
+      this.#healing = false;
+      this.syncEngineStatus();
     }
   }
 
@@ -361,6 +544,13 @@ class Voice {
       longestSilentRunMs: snapshot?.longestSilentRunMs,
       outputPeak: snapshot?.outputPeak,
       agcGainDb: snapshot?.agcGainDb,
+      speechLevelDb: snapshot?.speechLevelDb,
+      micUpstreamPaused: inCall
+        ? publication?.audioTrack?.isUpstreamPaused
+        : undefined,
+      micSourceMuted: inCall ? snapshot?.sourceMuted : undefined,
+      micSourceState: inCall ? snapshot?.sourceState : undefined,
+      audioContextState: inCall ? snapshot?.contextState : undefined,
     });
   }
 
@@ -375,7 +565,8 @@ class Voice {
     auth?: { url: string; token: string },
     opts?: { recipients?: string[]; rethrow?: boolean },
   ) {
-    this.disconnect();
+    // Leaving one room for another: keep the mic chain warm for the next one.
+    this.disconnect({ park: true });
 
     this.device.setWakeLocked();
     this.#recorder.start({ room: channel.id });
@@ -409,12 +600,14 @@ class Voice {
 
     room.addListener("connected", () => {
       this.#setState("CONNECTED");
-      if (this.speakingPermission)
-        room.localParticipant
-          .setMicrophoneEnabled(this.#settings.micOn)
-          .then((track) => {
-            this.#settings.micOn = track != null;
-          });
+      const parked = this.takeParkedMicrophone();
+      if (!this.speakingPermission) {
+        this.releaseMicrophone(parked, "no permission to speak here");
+      } else if (parked) {
+        void this.publishParkedMicrophone(room, parked);
+      } else {
+        this.openMicrophone(room);
+      }
       for (const p of room.remoteParticipants.values()) {
         const screenShareTrack = p.getTrackPublication(
           Track.Source.ScreenShare,
@@ -563,7 +756,165 @@ class Voice {
     return loadLastReport();
   }
 
-  disconnect(opts?: { silent?: boolean }) {
+  /**
+   * Opens the mic in a fresh room the usual way. A failure (no device, denied
+   * permission) used to leave the button showing an open mic with nothing
+   * published; now the button follows what was really published.
+   */
+  private openMicrophone(room: Room) {
+    room.localParticipant
+      .setMicrophoneEnabled(this.#settings.micOn)
+      .then((track) => {
+        this.#settings.micOn = track != null;
+      })
+      .catch((error: unknown) => {
+        this.#settings.micOn = room.localParticipant.isMicrophoneEnabled;
+        this.#recorder.event("micOpenFailed", String(error));
+        this.onErr(error);
+      });
+  }
+
+  /**
+   * In the Espaço the server moves people between rooms by removing them from
+   * the old LiveKit room. livekit-client then tears the room down by itself
+   * and stops every local track (`stopLocalTrackOnUnpublish`), mic and
+   * processor included, before this class hears about it: measured in the full
+   * lab on 22/11/2026, every room change opened the device again. The mic's
+   * stop() is wrapped so that a stop this class did not ask for parks the
+   * capture instead (PARK_MIC_MS); our own teardowns still stop it. Turning
+   * the option off for the whole room is not an option: livekit also
+   * unpublishes with stop=false to republish on reconnects, and camera and
+   * screen tracks must keep their default behaviour.
+   */
+  private guardMicrophoneStop(track: LocalAudioTrack) {
+    if (this.#micStops.has(track)) return;
+    const original = track.stop.bind(track);
+    this.#micStops.set(track, original);
+    track.stop = () => {
+      if (this.#ownTeardown || !track.getProcessor()) {
+        original();
+        return;
+      }
+      // livekit calls stop() twice in a teardown; the first one parked it.
+      if (this.#parkedMic?.track === track) return;
+      if (!this.parkTrack(track, track.getProcessor() as VoiceProcessor)) {
+        original();
+      }
+    };
+  }
+
+  /** Really stops a mic track, past guardMicrophoneStop. */
+  private stopMicTrack(track: LocalAudioTrack) {
+    const original = this.#micStops.get(track);
+    if (original) original();
+    else track.stop();
+  }
+
+  /** Keeps a capture and its chain for the next room; false if it cannot. */
+  private parkTrack(track: LocalAudioTrack, processor: VoiceProcessor): boolean {
+    if (!(processor instanceof VoiceProcessor)) return false;
+    if (processor.sourceTrackState()?.state !== "live") return false;
+    this.releaseMicrophone(this.#parkedMic, "replaced by a newer park");
+    if (this.voiceProcessor === processor) this.voiceProcessor = undefined;
+    const parked: ParkedMic = {
+      track,
+      processor,
+      timer: setTimeout(() => {
+        if (this.#parkedMic === parked) {
+          this.#parkedMic = undefined;
+          this.releaseMicrophone(parked, "no room joined in time");
+        }
+      }, PARK_MIC_MS),
+    };
+    this.#parkedMic = parked;
+    return true;
+  }
+
+  /**
+   * Room → room without closing the mic (M1, docs/voz/10): unpublish the
+   * track without stopping it and keep its processor, so the next room
+   * publishes the same capture and the same warm chain (DeepFilter state,
+   * learned gain, noise floor, VAD) instead of a new getUserMedia and a cold
+   * model. unpublishTrack removes the publication synchronously, so the room
+   * teardown that follows does not stop this track.
+   */
+  private parkMicrophone(room: Room) {
+    const track = room.localParticipant.getTrackPublication(
+      Track.Source.Microphone,
+    )?.audioTrack;
+    const processor = this.voiceProcessor;
+    if (!track) return; // nothing published (listener, or mic never opened)
+    if (!processor || track.getProcessor() !== processor) {
+      console.warn("[voice] mic not parked: the processor is not ours");
+      return;
+    }
+    if (!this.parkTrack(track, processor)) {
+      console.warn("[voice] mic not parked: the capture already ended");
+      return;
+    }
+    void room.localParticipant
+      .unpublishTrack(track, false)
+      .catch(() => undefined);
+  }
+
+  private takeParkedMicrophone(): ParkedMic | undefined {
+    const parked = this.#parkedMic;
+    this.#parkedMic = undefined;
+    if (!parked) return undefined;
+    clearTimeout(parked.timer);
+    if (parked.processor.sourceTrackState()?.state !== "live") {
+      this.releaseMicrophone(parked, "the capture ended while parked");
+      return undefined;
+    }
+    return parked;
+  }
+
+  private releaseMicrophone(parked: ParkedMic | undefined, why?: string) {
+    if (!parked) return;
+    if (why) console.warn(`[voice] parked mic released: ${why}`);
+    clearTimeout(parked.timer);
+    if (this.#parkedMic === parked) this.#parkedMic = undefined;
+    try {
+      parked.processor.processedTrack?.stop();
+      void parked.processor.destroy();
+      this.stopMicTrack(parked.track);
+    } catch {
+      /* releasing a capture is best-effort */
+    }
+  }
+
+  private async publishParkedMicrophone(room: Room, parked: ParkedMic) {
+    try {
+      // The new room starts in the state the person chose; a muted track is
+      // published muted, like a mic muted after joining.
+      if (!this.#settings.micOn && !parked.track.isMuted) {
+        await parked.track.mute();
+      } else if (this.#settings.micOn && parked.track.isMuted) {
+        await parked.track.unmute();
+      }
+      this.voiceProcessor = parked.processor;
+      await room.localParticipant.publishTrack(parked.track, {
+        source: Track.Source.Microphone,
+      });
+      this.#recorder.event("micReused");
+      this.syncEngineStatus();
+      if (this.#settings.micOn) void this.healMicrophone("unmute");
+    } catch (error) {
+      console.warn("[voice] could not reuse the microphone; reopening", error);
+      this.#recorder.event("micReuseFailed", String(error));
+      if (this.voiceProcessor === parked.processor) {
+        this.voiceProcessor = undefined;
+      }
+      this.releaseMicrophone(parked);
+      if (this.room() === room) this.openMicrophone(room);
+    }
+  }
+
+  /**
+   * `park`: another room is about to be joined (connect, an Espaço room
+   * change): the mic is kept for PARK_MIC_MS instead of being released.
+   */
+  disconnect(opts?: { silent?: boolean; park?: boolean }) {
     this.#statsCollector.stop();
     const report = this.#recorder.stop();
     // Only calls that actually connected and ran for a while are worth keeping.
@@ -574,8 +925,17 @@ class Voice {
     cancelTts();
     const room = this.room();
 
+    this.#upstreamPausedSince = undefined;
+    this.#bandwidth.reset();
+    this.#normalAudioBitrate = undefined;
+    if (!opts?.park) {
+      this.releaseMicrophone(this.#parkedMic, "the call ended");
+    }
+
+    this.#ownTeardown = true;
     try {
       if (room) {
+        if (opts?.park) this.parkMicrophone(room);
         this.stopLocalMedia(room);
         room.removeAllListeners();
         void room.disconnect(true);
@@ -586,6 +946,10 @@ class Voice {
       } else {
         this.onErr(e);
       }
+    } finally {
+      // room.disconnect() finishes later; by then our mic is either parked
+      // (unpublished, livekit never sees it) or really stopped already.
+      this.#ownTeardown = false;
     }
 
     batch(() => {
@@ -627,6 +991,9 @@ class Voice {
         this.sound.playSound("deafen");
       } else {
         this.sound.playSound("undeafen");
+        if (room.localParticipant.isMicrophoneEnabled) {
+          await this.healMicrophone("unmute");
+        }
       }
     } catch (e) {
       this.onErr(e);
@@ -649,6 +1016,9 @@ class Voice {
 
       if (this.#settings.micOn) {
         this.sound.playSound("unmute");
+        // livekit's unmute does not resume an upstream it paused while the
+        // OS had the device muted: the limbo (docs/voz/10).
+        await this.healMicrophone("unmute");
       } else {
         this.sound.playSound("mute");
       }

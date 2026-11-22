@@ -161,74 +161,159 @@ export function applyNoiseSuppressionSchema(
 }
 
 /**
- * Make-up gain BEFORE the suppressor, for quiet microphones.
+ * Speech-level normalizer BEFORE the suppressor (AGC2-style), for quiet and
+ * uneven microphones.
  *
- * DeepFilterNet3 is trained on nominal levels: in the voice lab (15/11/2026)
- * speech at −48 dBFS RMS (a talker 24 dB under the reference) came out of it
- * as noise — RMS 0 at the gate, VAD probability 0.001 — so no gate or AGC
- * placed after the suppressor could ever bring it back. The browser AGC is off
- * in ML modes (it pumped the noise floor into the suppressor), so the chain
- * lifts the pre-suppressor level itself: slowly, from the level of the 200 ms
- * polls that stand clearly above the measured noise floor, never attenuating,
- * capped at PRE_GAIN_MAX_DB. A normal talker (−30…−20 dBFS) gets 0 dB.
+ * Why before: DeepFilterNet3 is trained on nominal levels; in the voice lab
+ * (15/11/2026) speech at −48 dBFS RMS came out of it as noise, so no gain
+ * placed after the suppressor can bring a quiet talker back. The browser AGC
+ * stays off in ML modes (it pumped the noise floor into the suppressor).
+ *
+ * What it aims at (docs/voz/10 in the muchat repo): Discord runs the WebRTC
+ * AGC2 adaptive digital controller and on the owner's headset delivered speech
+ * at ≈ −23 dBFS after +19 dB (median). The previous make-up gain aimed −26 dBFS
+ * at the *peak* of speech and stopped at +18 dB: a talker 24 dB under the
+ * reference left the chain 6.7 dB quieter than a normal one. This one measures
+ * the *active speech level* (power mean of the polls clearly above the noise
+ * floor, the same measure as the lab's `levels.mjs`) and brings it to
+ * NORMALIZER_TARGET_DBFS.
+ *
+ * Never attenuates (the limiter handles loud talkers), holds while nobody
+ * talks, rises at most 6 dB/s and falls at 12 dB/s, and never lifts the noise
+ * floor above NORMALIZER_NOISE_CEILING_DBFS. The floor is measured here (low
+ * percentile of all polls), not from the gate, so it works before the gate has
+ * ever closed and with RNNoise, which has no gate.
  */
-export const PRE_GAIN_TARGET_DBFS = -26;
-export const PRE_GAIN_MAX_DB = 18;
-/** The poll runs every 200 ms: 0.6 dB per poll is 3 dB/s up, 2.4 is 12 dB/s down. */
-export const PRE_GAIN_UP_DB_PER_POLL = 0.6;
-export const PRE_GAIN_DOWN_DB_PER_POLL = 2.4;
-/** A poll counts as "someone talking" only this far above the noise floor. */
-export const PRE_GAIN_ACTIVITY_ABOVE_FLOOR_DB = 12;
-/** And never below this absolute level (a dead mic must not be amplified). */
-export const PRE_GAIN_MIN_ACTIVITY_DBFS = -70;
+export const NORMALIZER_TARGET_DBFS = -23;
+export const NORMALIZER_MAX_GAIN_DB = 30;
 /**
- * The tracked level is a peak-hold of the speech-like polls (decaying this much
- * per poll, 2.5 dB/s): it follows the loud part of the voice, so a normal
- * talker whose quiet syllables dip to −40 dBFS is not pushed up on their account.
+ * Highest noise floor the gain may produce at the suppressor input. AGC2 uses
+ * −50; DeepFilter here removes a −45 dBFS fan cleanly (lab `noise45`), so the
+ * ceiling sits a little higher to keep lifting quiet talkers in normal rooms.
  */
-export const PRE_GAIN_ACTIVITY_DECAY_DB_PER_POLL = 0.5;
+export const NORMALIZER_NOISE_CEILING_DBFS = -40;
+/** Polls are 200 ms apart: 1.2 dB per poll is 6 dB/s up, 2.4 is 12 dB/s down. */
+export const NORMALIZER_UP_DB_PER_POLL = 1.2;
+export const NORMALIZER_DOWN_DB_PER_POLL = 2.4;
+/**
+ * Until the gain first reaches what the voice needs, it may rise 18 dB/s. The
+ * lab (22/11/2026, quiet-24) lost the first 5 s of a quiet talker at 6 dB/s:
+ * DeepFilter erases quiet speech until the gain is there. AGC2 solves the same
+ * with a fixed +15 dB start, which would blast a loud talker instead.
+ */
+export const NORMALIZER_ATTACK_UP_DB_PER_POLL = 3.6;
+/** Within this of the wanted gain counts as having reached it. */
+export const NORMALIZER_CONVERGED_DB = 1;
+/** A poll counts as speech only this far above the noise floor… */
+export const NORMALIZER_SPEECH_ABOVE_FLOOR_DB = 12;
+/** …and never below this absolute level (a dead mic must not be amplified). */
+export const NORMALIZER_MIN_SPEECH_DBFS = -70;
+/** Speech polls averaged for the level (~5 s of talking). */
+export const NORMALIZER_SPEECH_POLLS = 25;
+/** All polls kept for the floor (~10 s). */
+export const NORMALIZER_FLOOR_POLLS = 50;
+/** Floor = this percentile of the recent polls. */
+export const NORMALIZER_FLOOR_PERCENTILE = 0.1;
+/** Polls needed before the floor (and so any gain change) is trusted. */
+export const NORMALIZER_MIN_FLOOR_POLLS = 3;
+/** Speech polls needed before the level is trusted. */
+export const NORMALIZER_MIN_SPEECH_POLLS = 2;
+/** A floor that moved more than this re-classifies the recent polls. */
+export const NORMALIZER_RECLASSIFY_DB = 6;
 
-/**
- * Tracks the level of speech-like polls (dBFS, pre-gain) as a slowly decaying
- * peak-hold. Polls at or near the floor leave the estimate untouched.
- */
-export function updateActivityDb(
-  current: number | undefined,
-  sampleDbfs: number,
-  floorDbfs: number | undefined,
-): number | undefined {
-  if (!Number.isFinite(sampleDbfs)) return current;
-  const floor = floorDbfs ?? -120;
-  if (
-    sampleDbfs < PRE_GAIN_MIN_ACTIVITY_DBFS ||
-    sampleDbfs < floor + PRE_GAIN_ACTIVITY_ABOVE_FLOOR_DB
-  ) {
-    return current;
-  }
-  return current === undefined
-    ? sampleDbfs
-    : Math.max(sampleDbfs, current - PRE_GAIN_ACTIVITY_DECAY_DB_PER_POLL);
+function powerMeanDb(levels: readonly number[]): number {
+  let sum = 0;
+  for (const db of levels) sum += 10 ** (db / 10);
+  return 10 * Math.log10(sum / levels.length);
 }
 
-/**
- * Next pre-gain (dB) one poll later: moves toward TARGET − activity, clamped to
- * [0, PRE_GAIN_MAX_DB], at most UP/DOWN dB per poll. No activity yet: unchanged.
- */
-export function nextPreGainDb(
-  activityDbfs: number | undefined,
-  currentDb: number,
-): number {
-  if (activityDbfs === undefined || !Number.isFinite(activityDbfs)) {
-    return currentDb;
+export class SpeechLevelNormalizer {
+  #gainDb: number;
+  #all: number[] = [];
+  #speech: number[] = [];
+  /** The gain has reached what the voice needs once (ends the fast attack). */
+  #converged = false;
+  /** Floor the speech list was classified against. */
+  #classifiedFloor?: number;
+
+  constructor(initialGainDb = 0) {
+    this.#gainDb = Math.min(NORMALIZER_MAX_GAIN_DB, Math.max(0, initialGainDb));
   }
-  const desired = Math.min(
-    PRE_GAIN_MAX_DB,
-    Math.max(0, PRE_GAIN_TARGET_DBFS - activityDbfs),
-  );
-  if (desired > currentDb) {
-    return Math.min(desired, currentDb + PRE_GAIN_UP_DB_PER_POLL);
+
+  gainDb(): number {
+    return this.#gainDb;
   }
-  return Math.max(desired, currentDb - PRE_GAIN_DOWN_DB_PER_POLL);
+
+  /** Noise floor of the recent polls (dBFS, before the gain), once trusted. */
+  floorDb(): number | undefined {
+    if (this.#all.length < NORMALIZER_MIN_FLOOR_POLLS) return undefined;
+    const sorted = [...this.#all].sort((a, b) => a - b);
+    return sorted[Math.floor(sorted.length * NORMALIZER_FLOOR_PERCENTILE)];
+  }
+
+  /** Active speech level (dBFS, before the gain), once trusted. */
+  speechLevelDb(): number | undefined {
+    if (this.#speech.length < NORMALIZER_MIN_SPEECH_POLLS) return undefined;
+    return powerMeanDb(this.#speech);
+  }
+
+  /** Gain the normalizer wants right now, without the rate limit. */
+  desiredGainDb(): number | undefined {
+    const speech = this.speechLevelDb();
+    const floor = this.floorDb();
+    if (speech === undefined || floor === undefined) return undefined;
+    const noiseRoom = Math.max(0, NORMALIZER_NOISE_CEILING_DBFS - floor);
+    const desired = Math.min(
+      NORMALIZER_MAX_GAIN_DB,
+      noiseRoom,
+      Math.max(0, NORMALIZER_TARGET_DBFS - speech),
+    );
+    // Hundredths of a dB: the power mean of equal levels is not exact.
+    return Math.round(desired * 100) / 100;
+  }
+
+  /** One poll of the pre-gain level (dBFS). Returns the gain to apply (dB). */
+  observe(sampleDbfs: number): number {
+    if (!Number.isFinite(sampleDbfs)) return this.#gainDb;
+    this.#all.push(sampleDbfs);
+    if (this.#all.length > NORMALIZER_FLOOR_POLLS) this.#all.shift();
+    const floor = this.floorDb();
+    if (floor === undefined) return this.#gainDb;
+    const isSpeech = (db: number) =>
+      db >= NORMALIZER_MIN_SPEECH_DBFS &&
+      db >= floor + NORMALIZER_SPEECH_ABOVE_FLOOR_DB;
+    if (
+      this.#classifiedFloor === undefined ||
+      Math.abs(floor - this.#classifiedFloor) > NORMALIZER_RECLASSIFY_DB
+    ) {
+      // First floor, or the room changed: the recent polls are re-read
+      // against it, so speech heard before the first pause still counts.
+      this.#classifiedFloor = floor;
+      this.#speech = this.#all
+        .filter(isSpeech)
+        .slice(-NORMALIZER_SPEECH_POLLS);
+    } else if (isSpeech(sampleDbfs)) {
+      this.#speech.push(sampleDbfs);
+      if (this.#speech.length > NORMALIZER_SPEECH_POLLS) this.#speech.shift();
+    }
+    const desired = this.desiredGainDb();
+    if (desired === undefined) return this.#gainDb;
+    if (Math.abs(desired - this.#gainDb) <= NORMALIZER_CONVERGED_DB) {
+      this.#converged = true;
+    }
+    if (desired > this.#gainDb) {
+      const step = this.#converged
+        ? NORMALIZER_UP_DB_PER_POLL
+        : NORMALIZER_ATTACK_UP_DB_PER_POLL;
+      this.#gainDb = Math.min(desired, this.#gainDb + step);
+    } else {
+      this.#gainDb = Math.max(
+        desired,
+        this.#gainDb - NORMALIZER_DOWN_DB_PER_POLL,
+      );
+    }
+    return this.#gainDb;
+  }
 }
 
 /** Browser AGC fights ML denoisers and pumps the noise floor. */

@@ -12,6 +12,7 @@ import {
   captureAutoGainEnabled,
   captureBrowserNoiseSuppression,
 } from "@revolt/state/stores/noiseSuppressionPolicy";
+import type { VoiceBitrate } from "@revolt/state/stores/voiceProfiles";
 
 /**
  * Everything that decides how a voice Room captures and publishes, in one
@@ -31,7 +32,12 @@ export interface VoiceDeviceSettings extends VoiceCaptureSettings {
   preferredAudioInputDevice?: string;
   preferredAudioOutputDevice?: string;
   preferredVideoDevice?: string;
+  /** Opus ceiling for non-supporters (the "natural" profile picks high). */
+  voiceBitrate?: VoiceBitrate;
 }
+
+/** 64 kbps: the "natural" profile, and what Discord sends by default. */
+export const AUDIO_PRESET_HIGH = { maxBitrate: 64_000 } as const;
 
 /**
  * One noise suppressor per signal path: browser NS / voiceIsolation are only
@@ -62,15 +68,21 @@ export function voiceCaptureOptions(
  * the previous payload alongside the current one, so a single lost packet is
  * still heard; it is worth the extra bandwidth.
  *
- * 48 kbps for everyone, 96 for supporters. Mono in both cases, otherwise `red`
- * and `dtx` switch themselves off. (`voice_quality` in Revolt.toml is dead
- * config: nothing in the client reads it. This is the value that ships.)
+ * 48 kbps for everyone (64 with the "natural" profile), 96 for supporters.
+ * Mono in all cases, otherwise `red` and `dtx` switch themselves off.
+ * (`voice_quality` in Revolt.toml is dead config: nothing in the client reads
+ * it. This is the value that ships.)
  */
 export function voiceAudioPublishOptions(
   vip: boolean,
+  bitrate: VoiceBitrate = "standard",
 ): Pick<TrackPublishDefaults, "audioPreset" | "dtx" | "red" | "forceStereo"> {
   return {
-    audioPreset: vip ? AudioPresets.musicHighQuality : AudioPresets.music,
+    audioPreset: vip
+      ? AudioPresets.musicHighQuality
+      : bitrate === "high"
+        ? AUDIO_PRESET_HIGH
+        : AudioPresets.music,
     dtx: true,
     red: true,
     forceStereo: false,
@@ -107,7 +119,7 @@ export function buildVoiceRoomOptions(
         ? VideoPresets.h1080.encoding
         : VideoPresets.h720.encoding,
       screenShareEncoding: ScreenSharePresets.h720fps30.encoding,
-      ...voiceAudioPublishOptions(vip),
+      ...voiceAudioPublishOptions(vip, settings.voiceBitrate),
     },
     // Stop the SFU from pulling layers nobody is subscribed to. Pure upload
     // saving for whoever is publishing, invisible to everyone else.
