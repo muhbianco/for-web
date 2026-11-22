@@ -7,6 +7,7 @@ import { Redis } from "ioredis";
 import { MongoClient } from "mongodb";
 
 import { jsonLog as log } from "./log.ts";
+import { startLoopDelayLog } from "./loopDelay.ts";
 import { LiveKitRoomAdmin, LiveKitTokenMinter, RedisLeaseStore } from "./media/adapters.ts";
 import { MediaController } from "./media/controller.ts";
 import type { ParticipantLite } from "./media/ports.ts";
@@ -184,9 +185,12 @@ async function main() {
   const port = Number(env("SPACE_PORT", "8095"));
   await gateway.listen(port);
   log.info("space server listening", { port, enabled_servers: enabledIds.length, media: Boolean(media) });
+  // ADR 0009, decision 10: the yardstick for anything new in this process.
+  const stopLoopDelay = startLoopDelayLog(log);
 
   const shutdown = async (signal: string) => {
     log.info("shutting down", { signal });
+    stopLoopDelay();
     bonfire.stop();
     structure.stop();
     if (switchTimer) clearInterval(switchTimer);

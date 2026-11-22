@@ -9,6 +9,7 @@
 import { findPath, MAX_SPEED, MOVE_SEND_HZ, Perm, TILE, tileCenter } from "@muchat/space-core";
 
 import { jsonLog } from "./log.ts";
+import { startLoopDelayLog } from "./loopDelay.ts";
 import { MediaController } from "./media/controller.ts";
 import { FakeLeases, FakeLiveKit, FakeMinter } from "./media/fakes.ts";
 import { MediaHub } from "./space/roomMedia.ts";
@@ -162,6 +163,7 @@ async function npc(rt: SpaceRuntime, key: keyof typeof npcs, seed: number) {
 const port = Number(process.env.SPACE_PORT ?? 8095);
 await gateway.listen(port, "127.0.0.1");
 jsonLog.info("dev space server", { port, server: DEV_SERVER_ID, users: Object.keys(people) });
+startLoopDelayLog(jsonLog, { everyMs: Number(process.env.SPACE_LOOP_DELAY_MS ?? 60_000) });
 const rt = await registry.get(DEV_SERVER_ID);
 if (rt) {
   void npc(rt, "npc1", 7);

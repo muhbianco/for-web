@@ -19,6 +19,24 @@ steps:
       # packages/client/assets fica de fora (update = none, host interno do upstream).
       - git submodule update --init --depth 1 packages/stoat.js packages/solid-livekit-components
 
+  # Regra zero da voz (docs/espaco ADR 0009 no overlay muchat): num pull request, a cadeia de áudio
+  # só muda em branch voz/*. No push direto na main não roda: o trabalho de voz entra por ali, e um
+  # portão que errasse travaria o deploy. As pastas do jogo têm ainda o ESLint e a varredura do
+  # space-core (testing/voiceGuard.ts), que rodam em todo push.
+  audio-guard:
+    image: muhrilobianco/ci-deployer:1
+    depends_on: [submodules]
+    when:
+      - event: pull_request
+    commands:
+      - |
+        case "$CI_COMMIT_SOURCE_BRANCH" in
+          voz/*) echo "branch de voz: a cadeia de áudio pode mudar aqui"; exit 0 ;;
+        esac
+      - git fetch --unshallow --quiet || true
+      - git fetch --no-tags --quiet origin "+refs/heads/$CI_COMMIT_TARGET_BRANCH:refs/remotes/origin/$CI_COMMIT_TARGET_BRANCH"
+      - bash packages/client/qa/voice-lab/tools/protected-diff.sh "origin/$CI_COMMIT_TARGET_BRANCH"
+
   deps:
     image: node:24-alpine
     depends_on: [submodules]
