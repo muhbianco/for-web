@@ -6,6 +6,7 @@ import type { RpgCommand, RpgHeroView } from "@muchat/space-core/game/ot";
 import { silentLog } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
 import { LobbyHub } from "./lobby.ts";
+import { MemoryRunStore } from "./runs.ts";
 import { type RpgHost, RpgService, ratesFromEnv } from "./service.ts";
 import { MemoryRpgStore } from "./store.ts";
 
@@ -90,16 +91,41 @@ class FakeHost implements RpgHost {
   lobbyStart(userId: string) {
     return this.lobbies.start(userId, 1);
   }
+  lobbyOf(userId: string) {
+    return this.lobbies.of(userId);
+  }
+  /** Todas as sessões estão na sala R1. */
+  readonly runSends: Array<{ room: string; ev: Record<string, unknown> }> = [];
+  sendRun(room: string, userIds: readonly string[], ev: Record<string, unknown>) {
+    this.runSends.push({ room, ev });
+    const seen = new Set<SessionPort>();
+    for (const s of this.sessions.values()) {
+      seen.add(s);
+      s.send(ev);
+    }
+    for (const id of userIds) {
+      const s = this.sessions.get(id);
+      if (s && !seen.has(s)) s.send(ev);
+    }
+  }
   sessionOf(userId: string) {
     return this.sessions.get(userId) ?? null;
   }
 }
 
-function setup() {
+function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
   let now = 1_000_000;
-  const store = new MemoryRpgStore();
-  const svc = new RpgService({ store, log: silentLog, now: () => now });
+  const store = stores?.store ?? new MemoryRpgStore();
+  const runStore = stores?.runStore ?? new MemoryRunStore();
+  const svc = new RpgService({
+    store,
+    runStore,
+    log: silentLog,
+    now: () => now,
+    autoTick: false,
+  });
   const host = new FakeHost();
+  svc.setHosts(() => host);
   const viewer = {
     user: { _id: "U1", username: "ana", display_name: "Ana" },
     member: null,
@@ -116,10 +142,12 @@ function setup() {
   return {
     svc,
     store,
+    runStore,
     host,
     s,
     send,
     clock: {
+      set: (t: number) => (now = t),
       advance: (ms: number) => (now += ms),
       get now() {
         return now;
@@ -314,4 +342,131 @@ test("grupo na TV: exige vocação e estar ao lado; cria, outra pessoa entra, s�
     ended?: string;
   };
   assert.equal(started.ended, "started");
+});
+
+/** Ana (cavaleiro) e Bia (feiticeira) montam o grupo na TV; Ana começa. */
+async function startedRun(env = setup()) {
+  const { s: ana, host, send, svc } = env;
+  await send("rpg.vocation", { vocation: 4 });
+  await send("rpg.lobby.create", { tv: "tv1", dungeon: "cripta-do-musgo" });
+  const bia = new FakeSession({
+    user: { _id: "U2", username: "bia", display_name: "Bia" },
+    member: null,
+  } as unknown as Viewer);
+  host.sessions.set("U2", bia);
+  const biaSend = async (id: string, t: RpgCommand["t"], d?: Record<string, unknown>) => {
+    svc.handle(bia, host, { v: 1, id, t, ...(d ? { d } : {}) } as RpgCommand);
+    await svc.idle("U2");
+  };
+  await biaSend("b1", "rpg.vocation", { vocation: 1 });
+  await biaSend("b2", "rpg.lobby.join", { tv: "tv1" });
+  await send("rpg.lobby.start");
+  await svc.idle("U2");
+  return { ...env, ana, bia, biaSend };
+}
+
+test("corrida: começa marcando os dois, chega à sala e só manda o segundo quando ele chega", async () => {
+  const { ana, bia, svc, store, runStore, clock, send, biaSend } = await startedRun();
+  const [run] = svc.activeRuns();
+  assert.ok(run, "a corrida está em andamento");
+  assert.equal(runStore.docs.get(run._id)?.status, "running");
+  assert.equal(run.heroes.length, 2);
+  assert.deepEqual(
+    run.heroes.map((h) => [h.name, h.vocation, h.gear.weapon]),
+    [
+      ["Ana", 4, "machadinha"],
+      ["Bia", 1, "varinha-de-faiscas"],
+    ],
+  );
+  for (const id of ["U1", "U2"])
+    assert.equal((await store.get(id))?.run?.id, run._id, `${id} marcado`);
+  assert.equal(ana.lastHero()?.run?.id, run._id);
+  // Os dois recebem a corrida com o segundo 0.
+  const first = ana.events.find((e) => e.t === "rpg.run")!.d as {
+    run: { members: unknown[] };
+    frame: { s: number } | null;
+  };
+  assert.equal(first.run.members.length, 2);
+  assert.equal(first.frame?.s, 0);
+  assert.ok(bia.events.some((e) => e.t === "rpg.run"));
+  // Na dungeon não dá para treinar nem montar outro grupo.
+  const tr = await send("rpg.train.start", { instance: "d1", skill: "espada" });
+  assert.deepEqual(ana.errors(tr), [{ code: "rpg_invalid", reason: "in_run" }]);
+  await biaSend("b9", "rpg.lobby.create", { tv: "tv2", dungeon: "cripta-do-musgo" });
+  assert.deepEqual(bia.errors("b9"), [{ code: "rpg_invalid", reason: "in_run" }]);
+  // Sem o relógio andar, nada novo; três segundos depois, três quadros de uma vez.
+  await svc.tickRuns();
+  assert.equal(ana.events.filter((e) => e.t === "rpg.run.tick").length, 0);
+  clock.advance(3_000);
+  await svc.tickRuns();
+  const tick = ana.events.find((e) => e.t === "rpg.run.tick")!.d as {
+    frames: { s: number }[];
+  };
+  assert.deepEqual(
+    tick.frames.map((f) => f.s),
+    [1, 2, 3].filter((s) => s < run.seconds),
+  );
+});
+
+test("corrida: fecha no fim uma vez só, com a recompensa gravada no início", async () => {
+  const env = await startedRun();
+  const { svc, store, runStore, clock, ana } = env;
+  const [run] = svc.activeRuns();
+  const before = await store.get("U1");
+  clock.set(run!.ends_at);
+  await svc.tickRuns();
+  assert.equal(svc.activeRuns().length, 0);
+  assert.equal(runStore.docs.get(run!._id)?.status, "settled");
+  const after = (await store.get("U1"))!;
+  assert.equal(after.run, null);
+  const reward = run!.rewards[0];
+  assert.equal(after.experience, before!.experience + (reward?.exp ?? 0));
+  assert.equal(after.gold, before!.gold + (reward?.gold ?? 0));
+  assert.equal(after.stamina, before!.stamina - Math.ceil(run!.seconds / 60));
+  const end = ana.events.filter((e) => e.t === "rpg.run").at(-1)!.d as {
+    end?: { outcome: string; members: { user_id: string; reward: unknown }[] };
+  };
+  assert.equal(end.end?.outcome, run!.outcome);
+  assert.deepEqual(
+    end.end?.members.map((m) => m.user_id),
+    ["U1", "U2"],
+  );
+  // Um segundo fechamento (outro processo, retomada) não credita de novo.
+  const second = setup({ store, runStore });
+  runStore.docs.get(run!._id)!.status = "running";
+  assert.equal(await second.svc.resumeRuns(), 1);
+  second.clock.set(run!.ends_at + 1);
+  await second.svc.tickRuns();
+  const again = (await store.get("U1"))!;
+  assert.equal(again.experience, after.experience);
+  assert.equal(again.gold, after.gold);
+  assert.equal(again.stamina, after.stamina);
+});
+
+test("corrida: volta depois de reinício com os mesmos quadros e fecha na hora", async () => {
+  const env = await startedRun();
+  const [run] = env.svc.activeRuns();
+  // Outro processo sobe com os mesmos bancos no meio da corrida.
+  const next = setup({ store: env.store, runStore: env.runStore });
+  next.clock.set(run!.started_at + 2_000);
+  assert.equal(await next.svc.resumeRuns(), 1);
+  // Quem entra na sala recebe a corrida até o segundo de agora.
+  const caio = new FakeSession({
+    user: { _id: "U3", username: "caio", display_name: "Caio" },
+    member: null,
+  } as unknown as Viewer);
+  next.host.sessions.set("U3", caio);
+  next.svc.roomEntered(next.host, "U3", "R1");
+  const snap = caio.events.find((e) => e.t === "rpg.run")!.d as {
+    frame: { s: number } | null;
+    feed: { at: number }[];
+  };
+  assert.equal(snap.frame?.s, Math.min(2, run!.seconds - 1));
+  assert.ok(snap.feed.every((f) => f.at <= 2));
+  next.svc.roomEntered(next.host, "U3", "OUTRA");
+  assert.equal(caio.events.filter((e) => e.t === "rpg.run").length, 1);
+  next.clock.set(run!.ends_at);
+  await next.svc.tickRuns();
+  assert.equal((await env.store.get("U2"))?.run, null);
+  assert.equal(env.runStore.docs.get(run!._id)?.status, "settled");
 });

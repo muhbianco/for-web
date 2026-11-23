@@ -6,6 +6,7 @@
 import { Redis } from "ioredis";
 import { MongoClient } from "mongodb";
 
+import { MongoRunStore } from "./game/ot/runs.ts";
 import { MongoRpgStore } from "./game/ot/store.ts";
 import { RpgService, ratesFromEnv } from "./game/ot/service.ts";
 import { GameService } from "./game/service.ts";
@@ -117,7 +118,10 @@ async function main() {
   // grants the rooms' voice.
   const game = gameSwitch(process.env.SPACE_GAME_SERVERS);
   // Idle game (docs/espaco/jogo/ot): same switch; rates are the operator's, read the same way.
-  const rpg = new RpgService({ store: new MongoRpgStore(mongo), log, rates: ratesFromEnv(process.env.SPACE_GAME_RATES) });
+  // Dungeon runs (stage O5) live in rpg_runs; a failed index build is logged, never fatal (voice).
+  const runStore = new MongoRunStore(mongo);
+  void runStore.ensureIndexes().catch((err) => log.warn("rpg runs indexes failed", { err: String(err) }));
+  const rpg = new RpgService({ store: new MongoRpgStore(mongo), runStore, log, rates: ratesFromEnv(process.env.SPACE_GAME_RATES) });
   // The sweeper's view of LiveKit feeds presence (ADR 0008); the registry
   // exists only after media starts, hence the late binding.
   let onSnapshot: Parameters<typeof startMedia>[0] = () => undefined;
@@ -132,9 +136,19 @@ async function main() {
     enabled,
     everyServer,
     gameAvailable: game.available,
-    rpg: { trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId), avatarJoined: (rt, userId) => rpg.avatarJoined(rt, userId) },
+    rpg: {
+      trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId),
+      avatarJoined: (rt, userId) => rpg.avatarJoined(rt, userId),
+      roomEntered: (rt, userId, room) => rpg.roomEntered(rt, userId, room),
+    },
     media: media ? { hub: media.hub, lk: media.lk } : undefined,
   });
+  // Runs reach their rooms through the live runtime; the ones a restart cut come back from the store.
+  rpg.setHosts((serverId) => registry.liveRuntime(serverId));
+  void rpg
+    .resumeRuns()
+    .then((n) => n > 0 && log.info("rpg runs resumed", { runs: n }))
+    .catch((err) => log.error("rpg runs resume failed", { err: String(err) }));
   onSnapshot = (rooms, failed) => {
     for (const rt of registry.all()) rt.observeLiveKit(rooms, failed);
   };
@@ -209,6 +223,7 @@ async function main() {
     bonfire.stop();
     structure.stop();
     if (switchTimer) clearInterval(switchTimer);
+    rpg.stopRuns();
     await gateway.close().catch(() => undefined);
     await media?.stop();
     await mongo.close().catch(() => undefined);

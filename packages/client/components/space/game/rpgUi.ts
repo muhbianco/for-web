@@ -75,6 +75,10 @@ export function rpgLabels() {
       return t`Só quem montou o grupo pode começar.`;
     if (code === "rpg_invalid" && reason === "expired")
       return t`O tempo do grupo acabou. Monte de novo.`;
+    if (code === "rpg_invalid" && reason === "in_run")
+      return t`O herói está numa dungeon agora. Espere a corrida acabar.`;
+    if (code === "rpg_invalid" && reason === "changed")
+      return t`O grupo mudou enquanto começava. Confira e comece de novo.`;
     return t`Não foi possível fazer isso agora. Tente de novo.`;
   };
   return { vocation, skill, error };

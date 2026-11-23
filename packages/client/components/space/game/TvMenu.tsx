@@ -1,7 +1,7 @@
 import { For, Show, createEffect, createSignal, on, onCleanup } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
-import type { GameWireEvent, SpaceView } from "@muchat/space-client";
+import type { GameWireEvent, RunState, SpaceView } from "@muchat/space-client";
 import {
   type RpgHeroView,
   type RpgLobbyView,
@@ -27,6 +27,8 @@ export default function TvMenu(props: {
   request: { instance: string; title: string };
   hero: RpgHeroView | null;
   lobby: RpgLobbyView | null;
+  /** A corrida que saiu desta TV e ainda não acabou (etapa O5). */
+  run: RunState | null;
   myId: string | null;
   onClose: () => void;
 }) {
@@ -107,6 +109,30 @@ export default function TvMenu(props: {
             {t`Assistir na Smart TV`}
           </Button>
         </Row>
+        <Show when={props.run}>
+          {(r) => (
+            <Item>
+              <span>
+                <strong>{t`Dungeon em andamento`}</strong>{" "}
+                <Muted>
+                  {dungeonOf(r().run.dungeon)?.name ?? r().run.dungeon}
+                </Muted>
+              </span>
+              <Muted>
+                {r()
+                  .run.members.map((m) => m.name)
+                  .join(", ")}
+              </Muted>
+              <Button
+                size="xs"
+                variant="filled"
+                onPress={() => props.view.watchRun(r().run.id)}
+              >
+                {t`Assistir`}
+              </Button>
+            </Item>
+          )}
+        </Show>
         <h3>{t`Dungeon em grupo`}</h3>
         <Show
           when={vocation() !== 0}

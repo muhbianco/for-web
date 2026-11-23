@@ -28,6 +28,10 @@ import type {
   RpgHeroView,
   RpgLobbyMember,
   RpgLobbyView,
+  RpgRunEndView,
+  RpgRunFeedItem,
+  RpgRunView,
+  RunFrame,
 } from "@muchat/space-core/game/ot";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type EditorState, Editor } from "./editor.ts";
@@ -115,11 +119,32 @@ export interface SpaceUiState {
     members: RpgLobbyMember[];
     n: number;
   } | null;
+  /** Dungeon runs we see (stage O5): our room's and our own, by run id. */
+  runs: Record<string, RunState>;
+  /** The app shows the adventure panel of this run. */
+  runOpen: { id: string; n: number } | null;
 }
+
+/** A dungeon run as the app follows it: the last second and the recent log. */
+export interface RunState {
+  run: RpgRunView;
+  frame: RunFrame | null;
+  feed: RpgRunFeedItem[];
+  end: RpgRunEndView | null;
+}
+
+/** How much of the run log the app keeps. */
+const RUN_FEED_MAX = 40;
 
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
-  t: "game.state" | "game.fight" | "rpg.state" | "rpg.lobby" | "error";
+  t:
+    | "game.state"
+    | "game.fight"
+    | "rpg.state"
+    | "rpg.lobby"
+    | "rpg.run"
+    | "error";
   re?: string;
   d: Record<string, unknown>;
 };
@@ -243,12 +268,16 @@ export class SpaceView {
       tvMenu: null,
       lobbies: {},
       lobbyStarted: null,
+      runs: {},
+      runOpen: null,
     };
   }
 
   // ---- Refúgio (ADR 0009) -------------------------------------------------------
 
   private readonly gameListeners = new Set<(e: GameWireEvent) => void>();
+  /** Runs whose panel already opened by itself (once per run). */
+  private readonly autoOpened = new Set<string>();
   /** Ids of game commands in flight, so their errors go to the game, not the editor. */
   private readonly gameCommands = new Set<string>();
 
@@ -361,6 +390,8 @@ export class SpaceView {
           if (e.local) v.media?.roomChanged(e.to);
           // The groups shown are our room's; the server sends the new room's on entry.
           if (Object.keys(v.state.lobbies).length) v.patch({ lobbies: {} });
+          // Runs of the room we left go; ours stay (the new room's come on entry).
+          v.keepOwnRuns();
           v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
           v.syncTv();
           break;
@@ -593,6 +624,44 @@ export class SpaceView {
         });
         return;
       }
+      case "rpg.run": {
+        const run = d.run as RpgRunView | undefined;
+        if (!run || typeof run.id !== "string") return;
+        const me = this.world.me?.userId;
+        const mine = run.members.some((m) => m.user_id === me);
+        const next: RunState = {
+          run,
+          frame: (d.frame ?? null) as RunFrame | null,
+          feed: Array.isArray(d.feed)
+            ? (d.feed as RpgRunFeedItem[]).slice(-RUN_FEED_MAX)
+            : [],
+          end: (d.end ?? null) as RpgRunEndView | null,
+        };
+        this.patch({ runs: { ...this.state.runs, [run.id]: next } });
+        if (mine && !next.end) this.autoOpenRun(run.id);
+        this.emitGame({ t: "rpg.run", d });
+        return;
+      }
+      case "rpg.run.tick": {
+        const id = typeof d.id === "string" ? d.id : "";
+        const cur = this.state.runs[id];
+        const frames = Array.isArray(d.frames) ? (d.frames as RunFrame[]) : [];
+        if (!cur || frames.length === 0) return;
+        const feed = [...cur.feed];
+        for (const f of frames)
+          for (const ev of f.e) feed.push({ ...ev, at: f.s, st: f.st });
+        this.patch({
+          runs: {
+            ...this.state.runs,
+            [id]: {
+              ...cur,
+              frame: frames[frames.length - 1]!,
+              feed: feed.slice(-RUN_FEED_MAX),
+            },
+          },
+        });
+        return;
+      }
       case "rpg.state": {
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
         const hero = (d.hero ?? null) as RpgHeroView | null;
@@ -608,6 +677,10 @@ export class SpaceView {
             at: Date.now(),
           },
         });
+        // In a run we already see (it can arrive before we know who we are, on reload).
+        const runId = hero?.run?.id;
+        if (runId && this.state.runs[runId] && !this.state.runs[runId]!.end)
+          this.autoOpenRun(runId);
         this.emitGame({
           t: "rpg.state",
           re: typeof e.re === "string" ? e.re : undefined,
@@ -920,11 +993,52 @@ export class SpaceView {
     if (this.state.interaction) this.patch({ interaction: null });
   }
 
-  /** The app closed the training dialog (docs/espaco/jogo/ot). */
   /** The app closed the TV menu (stage O4). */
   closeTvMenu() {
     if (this.state.tvMenu) this.patch({ tvMenu: null });
   }
+
+  /** Show a dungeon run (the chip, the TV menu). */
+  watchRun(id: string) {
+    if (!this.state.runs[id]) return;
+    this.patch({
+      tvMenu: null,
+      runOpen: { id, n: (this.state.runOpen?.n ?? 0) + 1 },
+    });
+  }
+
+  /** The adventure panel closed; a run that already ended is dismissed with it. */
+  closeRun() {
+    const open = this.state.runOpen;
+    if (!open) return;
+    const runs = { ...this.state.runs };
+    if (runs[open.id]?.end) delete runs[open.id];
+    this.patch({ runOpen: null, runs });
+  }
+
+  /** Our own run opens by itself, once (closing it keeps it closed). */
+  private autoOpenRun(id: string) {
+    if (this.autoOpened.has(id)) return;
+    if (this.autoOpened.size > 50) this.autoOpened.clear();
+    this.autoOpened.add(id);
+    this.patch({ runOpen: { id, n: (this.state.runOpen?.n ?? 0) + 1 } });
+  }
+
+  /** Room changed: keep only the runs we are in. */
+  private keepOwnRuns() {
+    const me = this.world.me?.userId;
+    const runs: Record<string, RunState> = {};
+    let changed = false;
+    for (const [id, r] of Object.entries(this.state.runs)) {
+      if (r.run.members.some((m) => m.user_id === me)) runs[id] = r;
+      else changed = true;
+    }
+    if (!changed) return;
+    const open = this.state.runOpen;
+    this.patch({ runs, ...(open && !runs[open.id] ? { runOpen: null } : {}) });
+  }
+
+  /** The app closed the training dialog (docs/espaco/jogo/ot). */
 
   /** "Watch" from the TV menu: the Smart TV as before. */
   watchTv() {

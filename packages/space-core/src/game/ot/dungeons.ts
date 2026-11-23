@@ -1,12 +1,18 @@
 /**
- * Dungeons do jogo idle (docs/espaco/jogo/ot). Conteúdo nosso (nomes, temas); as regras de
- * combate, experiência, grupo e loot são as do OT (TFS). Na etapa O4 só os dados que a sala
- * de preparação na TV usa; as salas, os monstros e o chefe entram na O5.
+ * Dungeons do jogo idle (docs/espaco/jogo/ot). Conteúdo nosso (nomes, temas, salas); as
+ * regras de combate, experiência, grupo e loot são as do OT (TFS). Os monstros estão em
+ * monsters.ts e a corrida em run.ts.
  */
 export type DungeonId =
   | "cripta-do-musgo"
   | "galerias-afogadas"
   | "forja-rachada";
+
+/** Uma sala da dungeon: os monstros entram juntos; a última é a do chefe. */
+export interface DungeonStage {
+  name: string;
+  monsters: readonly { id: string; count: number }[];
+}
 
 export interface Dungeon {
   id: DungeonId;
@@ -16,6 +22,7 @@ export interface Dungeon {
   /** Level a partir do qual a dungeon fica confortável (só informação). */
   recommendedLevel: number;
   blurb: string;
+  stages: readonly DungeonStage[];
 }
 
 export const DUNGEONS: readonly Dungeon[] = [
@@ -26,6 +33,33 @@ export const DUNGEONS: readonly Dungeon[] = [
     recommendedLevel: 8,
     blurb:
       "Ratos, esqueletos e a Matriarca do Musgo no fundo. A primeira descida.",
+    stages: [
+      {
+        name: "Entrada alagada",
+        monsters: [{ id: "rato-do-musgo", count: 3 }],
+      },
+      {
+        name: "Galeria dos ossos",
+        monsters: [
+          { id: "rato-do-musgo", count: 2 },
+          { id: "ossada-inquieta", count: 1 },
+        ],
+      },
+      {
+        name: "Ninho dos morcegos",
+        monsters: [
+          { id: "morcego-da-cripta", count: 3 },
+          { id: "ossada-inquieta", count: 1 },
+        ],
+      },
+      {
+        name: "Câmara da Matriarca",
+        monsters: [
+          { id: "matriarca-do-musgo", count: 1 },
+          { id: "rato-do-musgo", count: 2 },
+        ],
+      },
+    ],
   },
   {
     id: "galerias-afogadas",
@@ -33,6 +67,33 @@ export const DUNGEONS: readonly Dungeon[] = [
     minLevel: 8,
     recommendedLevel: 20,
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
+    stages: [
+      {
+        name: "Comporta velha",
+        monsters: [{ id: "caranguejo-de-pedra", count: 3 }],
+      },
+      {
+        name: "Lodaçal",
+        monsters: [
+          { id: "troll-do-lodo", count: 3 },
+          { id: "caranguejo-de-pedra", count: 1 },
+        ],
+      },
+      {
+        name: "Canal fundo",
+        monsters: [
+          { id: "serpente-da-comporta", count: 2 },
+          { id: "troll-do-lodo", count: 2 },
+        ],
+      },
+      {
+        name: "Trono das águas",
+        monsters: [
+          { id: "rei-das-comportas", count: 1 },
+          { id: "caranguejo-de-pedra", count: 2 },
+        ],
+      },
+    ],
   },
   {
     id: "forja-rachada",
@@ -41,6 +102,33 @@ export const DUNGEONS: readonly Dungeon[] = [
     recommendedLevel: 40,
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
+    stages: [
+      {
+        name: "Pátio de escória",
+        monsters: [{ id: "automato-de-ferro", count: 2 }],
+      },
+      {
+        name: "Fornalhas",
+        monsters: [
+          { id: "brasa-viva", count: 2 },
+          { id: "automato-de-ferro", count: 1 },
+        ],
+      },
+      {
+        name: "Bigorna partida",
+        monsters: [
+          { id: "martelador", count: 2 },
+          { id: "brasa-viva", count: 1 },
+        ],
+      },
+      {
+        name: "Coração da forja",
+        monsters: [
+          { id: "guardiao-da-forja", count: 1 },
+          { id: "automato-de-ferro", count: 1 },
+        ],
+      },
+    ],
   },
 ];
 

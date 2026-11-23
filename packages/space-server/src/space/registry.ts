@@ -9,6 +9,13 @@ import type { DecorStore } from "./decorStore.ts";
 import type { TvStore } from "./tv.ts";
 import type { AssignmentStore } from "./store.ts";
 
+/** Idle game (docs/espaco/jogo/ot): hooks of each runtime into the game service. */
+type RpgHooks = {
+  trainingLeft: (runtime: SpaceRuntime, userId: string) => void;
+  avatarJoined: (runtime: SpaceRuntime, userId: string) => void;
+  roomEntered: (runtime: SpaceRuntime, userId: string, room: string) => void;
+};
+
 /**
  * One runtime per Stoat server, created on first join and kept current by the
  * bot's cache events (structure → re-layout; member → permissions).
@@ -30,7 +37,7 @@ export class Registry implements RuntimeRegistry {
   /** Operator switch for Refúgio (ADR 0009); off everywhere when absent. */
   private readonly gameAvailable: (serverId: string) => boolean;
   private readonly rpg:
-    | { trainingLeft: (runtime: SpaceRuntime, userId: string) => void; avatarJoined: (runtime: SpaceRuntime, userId: string) => void }
+    | RpgHooks
     | undefined;
 
   constructor(deps: {
@@ -51,7 +58,7 @@ export class Registry implements RuntimeRegistry {
     /** SPACE_GAME_SERVERS (ADR 0009): servers where Refúgio may be played. */
     gameAvailable?: (serverId: string) => boolean;
     /** Idle game (docs/espaco/jogo/ot): hooks of each runtime into the game service. */
-    rpg?: { trainingLeft: (runtime: SpaceRuntime, userId: string) => void; avatarJoined: (runtime: SpaceRuntime, userId: string) => void };
+    rpg?: RpgHooks;
   }) {
     this.cache = deps.cache;
     this.store = deps.store;
@@ -129,6 +136,7 @@ export class Registry implements RuntimeRegistry {
         const rpg = this.rpg;
         rt.onTrainingLeft = (userId) => rpg.trainingLeft(rt, userId);
         rt.onAvatarJoined = (userId) => rpg.avatarJoined(rt, userId);
+        rt.onRoomEntered = (userId, room) => rpg.roomEntered(rt, userId, room);
       }
       p = rt.init().then(() => {
         this.live.set(serverId, rt);
@@ -141,6 +149,11 @@ export class Registry implements RuntimeRegistry {
       this.runtimes.set(serverId, p);
     }
     return p;
+  }
+
+  /** The runtime of a server already up (the game service sends dungeon runs through it). */
+  liveRuntime(serverId: string): SpaceRuntime | null {
+    return this.live.get(serverId) ?? null;
   }
 
   all(): Iterable<SpaceRuntime> {

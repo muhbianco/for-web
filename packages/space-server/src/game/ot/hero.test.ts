@@ -4,13 +4,22 @@ import test from "node:test";
 import { DEFAULT_RATES, TRAINING } from "@muchat/space-core/game/ot";
 
 import {
+  type RpgHeroDoc,
   applyVocation,
+  bagWeight,
   creditTraining,
+  inRun,
+  markRun,
   newRpgHero,
+  normalizeHero,
+  RUN_STALE_MS,
   rpgHeroView,
+  settleRun,
+  staminaNow,
   startTraining,
   stopTraining,
   trainingExpired,
+  unmarkRun,
 } from "./hero.ts";
 
 const H = 3_600_000;
@@ -48,7 +57,7 @@ test("treino: exige vocação; 1 h de cavaleiro na espada rende 1800 tentativas 
   });
   assert.ok(stopTraining(d, H, DEFAULT_RATES));
   // 1800 tentativas: 50+55+60+66+73+80+88+97+107+117+128+141+155+171+188+... até onde cabem
-  const view = rpgHeroView(d, DEFAULT_RATES);
+  const view = rpgHeroView(d, DEFAULT_RATES, 0);
   assert.ok(view.skills.espada.level > 10);
   assert.ok(view.skills.escudo.level > 10);
   assert.equal(d.training, null);
@@ -123,4 +132,102 @@ test("treino de magia sobe o magic level", () => {
   stopTraining(d, H, DEFAULT_RATES);
   // 9000 de mana: 1600 + 1760 + 1936 + 2129 = 7425 → magic level 4, sobram 1575
   assert.deepEqual(d.magic, { level: 4, manaSpent: 1_575 });
+});
+
+const MARK = { id: "run-1", dungeon: "cripta-do-musgo", ends_at: 10 * 60_000 };
+const REWARD = {
+  exp: 1_000,
+  tries: { espada: 50, escudo: 20 },
+  manaSpent: 0,
+  loot: [{ item: "elmo-de-ferro", count: 1 }],
+  gold: 12,
+};
+
+test("corrida no herói: marca uma vez, credita uma vez, gasta a stamina do tempo lá dentro", () => {
+  const d = newRpgHero("u1", 0);
+  assert.deepEqual(markRun(d, MARK, 0, DEFAULT_RATES), {
+    ok: false,
+    reason: "no_vocation",
+  });
+  applyVocation(d, 4);
+  assert.deepEqual(markRun(d, MARK, 0, DEFAULT_RATES), { ok: true });
+  assert.ok(inRun(d, 1_000));
+  assert.deepEqual(markRun(d, { ...MARK, id: "run-2" }, 1_000, DEFAULT_RATES), {
+    ok: false,
+    reason: "in_run",
+  });
+  assert.deepEqual(startTraining(d, SPOT, "espada", 1_000, DEFAULT_RATES), {
+    ok: false,
+    reason: "in_run",
+  });
+  const out = settleRun(d, "run-1", REWARD, 3, MARK.ends_at);
+  assert.equal(out.ok, true);
+  assert.equal(d.run, null);
+  assert.equal(d.experience, 1_000);
+  assert.equal(d.level, 5, "1000 de experiência: level 5 (800 a 1499) [TFS player.h:146]");
+  assert.equal(d.health_max, 150 + 4 * 15);
+  assert.equal(d.gold, 12);
+  assert.deepEqual(d.bag, [{ item: "elmo-de-ferro", count: 1 }]);
+  assert.equal(d.stamina, 2520 - 3);
+  assert.ok(d.skills.espada.tries > 0 || d.skills.espada.level > 10);
+  // De novo (retomada, outro processo): nada muda.
+  const snap = structuredClone(d);
+  assert.deepEqual(settleRun(d, "run-1", REWARD, 3, MARK.ends_at), {
+    ok: false,
+    reason: "not_in_run",
+  });
+  assert.deepEqual(d, snap);
+});
+
+test("corrida no herói: quem caiu não leva; o que não cabe vira moedas; marca velha solta o herói", () => {
+  const d = newRpgHero("u1", 0);
+  applyVocation(d, 4);
+  markRun(d, MARK, 0, DEFAULT_RATES);
+  settleRun(d, "run-1", null, 2, MARK.ends_at);
+  assert.equal(d.experience, 0);
+  assert.equal(d.stamina, 2518);
+  // Capacidade de 30 oz: o elmo (30 oz) cabe, o segundo não e vira 30 moedas.
+  const e: RpgHeroDoc = newRpgHero("u2", 0);
+  applyVocation(e, 4);
+  e.cap = 30;
+  markRun(e, MARK, 0, DEFAULT_RATES);
+  const out = settleRun(
+    e,
+    "run-1",
+    { ...REWARD, exp: 0, gold: 0, loot: [{ item: "elmo-de-ferro", count: 2 }] },
+    1,
+    MARK.ends_at,
+  );
+  assert.ok(out.ok);
+  assert.deepEqual(e.bag, []);
+  assert.equal(e.gold, 60);
+  assert.equal(bagWeight([{ item: "elmo-de-ferro", count: 1 }]), 3000);
+  // Uma marca de corrida que nunca fechou deixa de prender depois de 10 min do fim.
+  const f = newRpgHero("u3", 0);
+  applyVocation(f, 4);
+  markRun(f, MARK, 0, DEFAULT_RATES);
+  assert.ok(inRun(f, MARK.ends_at + RUN_STALE_MS - 1));
+  assert.ok(!inRun(f, MARK.ends_at + RUN_STALE_MS));
+  assert.deepEqual(unmarkRun(f, "outra"), { ok: false, reason: "not_in_run" });
+  assert.deepEqual(unmarkRun(f, "run-1"), { ok: true });
+});
+
+test("herói de antes da O5 ganha os campos novos; a stamina recupera fora da dungeon", () => {
+  const old = newRpgHero("u1", 0) as Partial<RpgHeroDoc>;
+  delete old.gold;
+  delete old.bag;
+  delete old.stamina_at;
+  delete old.run;
+  const d = normalizeHero(old as RpgHeroDoc);
+  assert.equal(d.gold, 0);
+  assert.deepEqual(d.bag, []);
+  assert.equal(d.run, null);
+  d.stamina = 1_000;
+  d.stamina_at = 0;
+  // 10 min de carência, depois 1 min a cada 3 min [TFS regenerate_stamina.lua].
+  assert.equal(staminaNow(d, 600_000), 1_000);
+  assert.equal(staminaNow(d, 600_000 + 180_000 * 10), 1_010);
+  const view = rpgHeroView(d, DEFAULT_RATES, 600_000 + 180_000 * 10);
+  assert.equal(view.stamina, 1_010);
+  assert.equal(view.gear.weapon, null, "sem vocação, sem kit");
 });

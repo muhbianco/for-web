@@ -223,6 +223,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
   onAvatarJoined: ((userId: string) => void) | null = null;
   /** Idle game: the TVs' preparation rooms (docs/espaco/jogo/ot, stage O4). */
   readonly lobbies = new LobbyHub();
+  /** Called when someone enters a room (walked in, joined inside it): a dungeon run there shows (stage O5). */
+  onRoomEntered: ((userId: string, room: string) => void) | null = null;
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -508,7 +510,30 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const mine = this.lobbies.of(userId);
     if (mine && mine.room !== room) this.lobbyLeave(userId);
     const a = this.avatars.get(userId);
-    if (room && a?.session) this.sendLobbiesTo(a.session, room);
+    if (room && a?.session) {
+      this.sendLobbiesTo(a.session, room);
+      this.onRoomEntered?.(userId, room);
+    }
+  }
+
+  lobbyOf(userId: string): Lobby | undefined {
+    return this.lobbies.of(userId);
+  }
+
+  /** A dungeon run to everyone in its room and to its members wherever they are, once each (stage O5). */
+  sendRun(room: string, userIds: readonly string[], ev: Record<string, unknown>): void {
+    const seen = new Set<SessionPort>();
+    for (const s of this.sessionsIn(room)) {
+      seen.add(s);
+      s.send(ev);
+    }
+    for (const id of userIds) {
+      const s = this.avatars.get(id)?.session;
+      if (s && !seen.has(s)) {
+        seen.add(s);
+        s.send(ev);
+      }
+    }
   }
 
   private sendLobbiesTo(session: SessionPort, room: string) {
@@ -1370,6 +1395,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     // Back inside a room (reconnect, new tab, restart): its TV where it is now.
     if (a.move.room) this.tv.entered(session, a.move.room);
     if (a.move.room) this.sendLobbiesTo(session, a.move.room);
+    if (a.move.room) this.onRoomEntered?.(user._id, a.move.room);
     // Reconnected away from the dummy: the training that went on offline closes now.
     this.checkTraining(user._id);
     // The hero's level under the name, where the game is on.

@@ -66,6 +66,9 @@ const TrainingChip = lazy(() => import("./game/TrainingChip"));
 /** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
 const TvMenu = lazy(() => import("./game/TvMenu"));
 const LobbyChip = lazy(() => import("./game/LobbyChip"));
+/** A corrida da dungeon: a faixa e a tela da aventura (etapa O5). */
+const RunChip = lazy(() => import("./game/RunChip"));
+const RunPanel = lazy(() => import("./game/RunPanel"));
 
 const STAGE_MODE_KEY = "muchat.space.stageMode";
 
@@ -661,6 +664,24 @@ function ServerSpace(props: { serverId: string }) {
             </Suspense>
           )}
         </Show>
+        <Show
+          when={
+            view() && Object.keys(ui()?.runs ?? {}).length > 0
+              ? ui()!.runs
+              : null
+          }
+        >
+          {(runs) => (
+            <Suspense>
+              <RunChip
+                view={view()!}
+                runs={runs()}
+                myId={client().user?.id ?? null}
+                onAct={() => host?.focus()}
+              />
+            </Suspense>
+          )}
+        </Show>
         <Show when={ui()?.prompt && !ui()?.editor.enabled}>
           {(_) => (
             <PromptChip type="button" onClick={() => view()?.interact()}>
@@ -808,6 +829,11 @@ function ServerSpace(props: { serverId: string }) {
                     request={request()}
                     hero={ui()?.rpg?.hero ?? null}
                     lobby={ui()?.lobbies[request().instance] ?? null}
+                    run={
+                      Object.values(ui()?.runs ?? {}).find(
+                        (r) => r.run.tv === request().instance && !r.end,
+                      ) ?? null
+                    }
                     myId={client().user?.id ?? null}
                     onClose={() => {
                       view()?.closeTvMenu();
@@ -845,6 +871,26 @@ function ServerSpace(props: { serverId: string }) {
               )}
             </Match>
           </Switch>
+          <Show
+            when={
+              view() && ui()?.runOpen
+                ? (ui()!.runs[ui()!.runOpen!.id] ?? null)
+                : null
+            }
+          >
+            {(state) => (
+              <Suspense>
+                <RunPanel
+                  state={state()}
+                  myId={client().user?.id ?? null}
+                  onClose={() => {
+                    view()?.closeRun();
+                    host?.focus();
+                  }}
+                />
+              </Suspense>
+            )}
+          </Show>
           <Show when={hoverRoom()}>
             {(h) => (
               <Tooltip

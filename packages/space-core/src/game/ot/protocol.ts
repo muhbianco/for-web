@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../../protocol/messages.ts";
 import type { SkillId, VocationId } from "./data.ts";
+import type { Gear, RunFrame, RunOutcome } from "./run.ts";
 import { type TrainingSkill, TRAINING_SKILLS } from "./training.ts";
 
 /**
@@ -152,6 +153,16 @@ export interface RpgHeroView {
   training: RpgTrainingView | null;
   /** Taxas do servidor em vigor (skill e magia multiplicam as tentativas). */
   rates: { exp: number; skill: number; magic: number; loot: number };
+  /** Moedas (etapa O5). */
+  gold: number;
+  /** A mochila: o que caiu nas dungeons (o kit da vocação não entra). */
+  bag: { item: string; count: number }[];
+  /** Peso da mochila, em centésimos de oz; a capacidade é `cap` em oz. */
+  bag_weight: number;
+  /** O que o herói vestiria agora numa dungeon (o melhor do kit e da mochila). */
+  gear: Gear;
+  /** Na dungeon agora: até quando. */
+  run: { id: string; dungeon: string; ends_at: number } | null;
 }
 
 export interface RpgStateEvent {
@@ -182,7 +193,7 @@ export interface RpgLobbyView {
 
 /**
  * Estado da sala de uma TV, para quem está na sala do mapa: `lobby` null = não há grupo ali.
- * `started` vem uma vez, quando o líder começa (a dungeon em si é a etapa O5).
+ * `started` vem uma vez, quando o líder começa; a corrida chega depois em `rpg.run`.
  */
 export interface RpgLobbyEvent {
   v: 1;
@@ -193,4 +204,68 @@ export interface RpgLobbyEvent {
     ended?: "started" | "cancelled" | "expired";
     started?: { dungeon: string; members: RpgLobbyMember[] };
   };
+}
+
+/** Um herói na corrida, como a sala vê. */
+export interface RpgRunMemberView {
+  user_id: string;
+  name: string;
+  vocation: VocationId;
+  level: number;
+  health_max: number;
+  mana_max: number;
+  gear: Gear;
+}
+
+/** Uma corrida de dungeon (etapa O5): quem, onde e quando acaba. */
+export interface RpgRunView {
+  id: string;
+  tv: string;
+  room: string;
+  dungeon: string;
+  started_at: number;
+  ends_at: number;
+  members: RpgRunMemberView[];
+}
+
+/** O que cada um levou, no fim (null em `reward`: caiu e perdeu a recompensa). */
+export interface RpgRunEndView {
+  outcome: RunOutcome;
+  members: {
+    user_id: string;
+    dead: boolean;
+    reward: {
+      exp: number;
+      gold: number;
+      loot: { item: string; count: number }[];
+      tries: Partial<Record<SkillId, number>>;
+      mana_spent: number;
+    } | null;
+  }[];
+}
+
+/** Acontecimento do registro com o segundo em que aconteceu. */
+export type RpgRunFeedItem = RunFrame["e"][number] & { at: number; st: number };
+
+/**
+ * A corrida inteira até agora, para quem chega (entrou na sala, abriu o app, começou): o
+ * último quadro (`frame` null se a corrida veio de outra versão das regras) e o registro
+ * recente. `end` vem quando a corrida acaba.
+ */
+export interface RpgRunEvent {
+  v: 1;
+  t: "rpg.run";
+  d: {
+    run: RpgRunView;
+    frame: RunFrame | null;
+    feed: RpgRunFeedItem[];
+    end?: RpgRunEndView;
+  };
+}
+
+/** Os segundos que passaram desde o último envio (normalmente um). */
+export interface RpgRunTickEvent {
+  v: 1;
+  t: "rpg.run.tick";
+  d: { id: string; frames: RunFrame[] };
 }

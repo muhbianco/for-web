@@ -130,6 +130,15 @@ export function addExperience(
   return { level, experience, healthMax, manaMax, cap, gained: level - start };
 }
 
+/**
+ * Bônus de experiência de level baixo, em % [TFS data/lib/core/player.lua:548-556]: do level 2
+ * ao 50, `100 × (50 − level) / 48`; fora disso, 0.
+ */
+export function lowLevelBonus(level: number): number {
+  if (level > 1 && level <= 50) return (100 * (50 - level)) / 48;
+  return 0;
+}
+
 /** Uma skill nova no mínimo. */
 export function freshSkill(): SkillState {
   return { level: MIN_SKILL, tries: 0 };
