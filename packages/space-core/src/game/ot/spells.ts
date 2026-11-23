@@ -33,9 +33,11 @@ export type SpellFormula =
 export interface SpellDef {
   id: string;
   name: string;
-  /** Cura em si, cura num companheiro, ou ataque no alvo do grupo. */
-  kind: "cura" | "cura-outro" | "ataque";
+  /** Cura em si, cura num companheiro, ataque no alvo do grupo, ou o desafio do cavaleiro. */
+  kind: "cura" | "cura-outro" | "ataque" | "desafio";
   vocations: readonly VocationId[];
+  /** Só a vocação promovida [TFS spell:vocation("elite knight;true")]. */
+  promoted?: true;
   level: number;
   mana: number;
   cooldownMs: number;
@@ -49,6 +51,20 @@ const ALL_BUT_KNIGHT: readonly VocationId[] = [1, 2, 3];
 const MAGES: readonly VocationId[] = [1, 2];
 
 export const SPELLS: readonly SpellDef[] = [
+  // [TFS spells/support/challenge.lua] level 20, mana 40, recarga 2 s, só o cavaleiro
+  // promovido; puxa para ele os monstros em volta e os prende por 8 s.
+  {
+    id: "desafio",
+    name: "Desafio",
+    kind: "desafio",
+    vocations: [4],
+    promoted: true,
+    level: 20,
+    mana: 40,
+    cooldownMs: 2000,
+    element: "fisico",
+    formula: { type: "fixa", min: 0, max: 0 },
+  },
   // [TFS healing/magic_patch.lua] level 1, mana 6, magic level até 20.
   {
     id: "remendo",
@@ -178,9 +194,21 @@ export function spellDef(id: string): SpellDef | undefined {
 }
 
 /** As magias que a vocação base já pode lançar no level. */
-export function spellsFor(base: VocationId, level: number): SpellDef[] {
-  return SPELLS.filter((s) => s.vocations.includes(base) && level >= s.level);
+export function spellsFor(
+  base: VocationId,
+  level: number,
+  promoted = false,
+): SpellDef[] {
+  return SPELLS.filter(
+    (s) =>
+      s.vocations.includes(base) &&
+      level >= s.level &&
+      (!s.promoted || promoted),
+  );
 }
+
+/** Quanto tempo o desafio prende o monstro [TFS monster.cpp challengeCreature: 8000 ms]. */
+export const CHALLENGE_FOCUS_MS = 8000;
 
 /**
  * Faixa da magia [TFS onGetFormulaValues]: a divisão do level é a do Lua (sem truncar) e o

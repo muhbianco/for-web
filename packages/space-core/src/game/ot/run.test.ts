@@ -503,3 +503,63 @@ test("filtro de loot: o que o herói não pega fica no corpo, sem contar como fa
     assert.ok(!m.left.some((l) => k.lootSkip!.includes(l.item)));
   }
 });
+
+test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (chance 0) o cavaleiro segura tudo; na Forja os monstros trocam e o Campeão os puxa de volta por 8 s", async () => {
+  const { spellsFor } = await import("./spells.ts");
+  assert.ok(
+    !spellsFor(4, 40).some((s) => s.id === "desafio"),
+    "sem promoção, sem desafio",
+  );
+  assert.ok(spellsFor(4, 20, true).some((s) => s.id === "desafio"));
+  assert.ok(
+    !spellsFor(4, 19, true).some((s) => s.id === "desafio"),
+    "level 20",
+  );
+  // Cripta: ninguém além do cavaleiro leva golpe de um alvo só.
+  const crypt = run("cripta-do-musgo", [hero(4, 8, 35), hero(3, 8, 30)], 5);
+  const singleOnArcher = crypt.frames.flatMap((f) =>
+    f.e.filter((e) => e.k === "golpe" && e.a >= 100 && e.b === 1),
+  );
+  assert.equal(singleOnArcher.length, 0);
+  // Forja com o Campeão (8): o desafio sai e, nos 8 s seguintes, golpe corpo a corpo só nele.
+  const party = (knight: VocationId) => [
+    hero(knight, 40, 75, {
+      ml: 7,
+      owned: [
+        "lamina-da-forja",
+        "escudo-da-forja",
+        "placa-de-ferreiro",
+        "elmo-de-aco",
+      ],
+    }),
+    hero(2, 40, 10, { ml: 50, owned: ["cajado-de-pedra", "manto-azul"] }),
+    hero(1, 40, 10, { ml: 50, owned: ["varinha-ardente", "manto-azul"] }),
+  ];
+  let casts = 0;
+  let checked = 0;
+  for (let seed = 1; seed <= 20; seed++) {
+    const r = run("forja-rachada", party(8), seed);
+    r.frames.forEach((f, i) => {
+      if (!f.e.some((e) => e.k === "desafio")) return;
+      casts++;
+      // Nos segundos seguintes (dentro dos 8 s), o corpo a corpo dos monstros é no cavaleiro.
+      // A trava vence no 8º pensamento do monstro (o do próprio segundo conta): até o 6º seguinte.
+      for (const g of r.frames.slice(i + 1, i + 7))
+        for (const e of g.e)
+          if (e.k === "golpe" && e.a >= 100) {
+            checked++;
+            assert.equal(e.b, 0, `semente ${seed}, segundo ${g.s}`);
+          }
+    });
+  }
+  assert.ok(casts > 0, "o desafio saiu");
+  assert.ok(checked > 0);
+  // Sem promoção os monstros trocam e alguém atrás leva golpe corpo a corpo.
+  let backHits = 0;
+  for (let seed = 1; seed <= 20; seed++)
+    for (const f of run("forja-rachada", party(4), seed).frames)
+      backHits += f.e.filter(
+        (e) => e.k === "golpe" && e.a >= 100 && e.b > 0,
+      ).length;
+  assert.ok(backHits > 0, "a troca de alvo do TFS chega aos de trás");
+});

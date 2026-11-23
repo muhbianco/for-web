@@ -32,6 +32,11 @@ export interface MonsterDef {
   attacks: readonly MonsterAttack[];
   /** Cura própria [TFS <defense name="healing">]. */
   heal?: { intervalMs: number; chance: number; min: number; max: number };
+  /**
+   * Troca de alvo [TFS <targetchange interval chance>, monster.cpp onThinkTarget]: a cada
+   * intervalo, a chance de escolher outro herói ao acaso. Sem isto (ou chance 0), não troca.
+   */
+  targetChange?: { intervalMs: number; chance: number };
   /** % de dano a menos por elemento (negativo = fraqueza) [TFS `<element *Percent>`]. */
   elements?: Readonly<Partial<Record<Element, number>>>;
   loot: readonly LootEntry[];
@@ -69,6 +74,8 @@ const LIST: readonly MonsterDef[] = [
   // ---- Cripta do Musgo ------------------------------------------------------
   {
     id: "rato-do-musgo",
+    // [TFS rat.xml]
+    targetChange: { intervalMs: 4000, chance: 0 },
     name: "Rato do musgo",
     health: 20,
     experience: 5,
@@ -80,6 +87,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "morcego-da-cripta",
+    // [TFS bat.xml]
+    targetChange: { intervalMs: 4000, chance: 0 },
     name: "Morcego da cripta",
     health: 30,
     experience: 10,
@@ -91,6 +100,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "ossada-inquieta",
+    // [TFS skeleton.xml]
+    targetChange: { intervalMs: 4000, chance: 0 },
     name: "Ossada inquieta",
     health: 50,
     experience: 35,
@@ -120,6 +131,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "matriarca-do-musgo",
+    // [TFS o mais comum dos monstros: 2000/5]
+    targetChange: { intervalMs: 2000, chance: 5 },
     name: "Matriarca do Musgo",
     boss: true,
     health: 220,
@@ -163,6 +176,8 @@ const LIST: readonly MonsterDef[] = [
   // ---- Galerias Afogadas ----------------------------------------------------
   {
     id: "caranguejo-de-pedra",
+    // [TFS crab.xml]
+    targetChange: { intervalMs: 4000, chance: 0 },
     name: "Caranguejo de pedra",
     health: 55,
     experience: 30,
@@ -178,6 +193,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "troll-do-lodo",
+    // [TFS troll.xml]
+    targetChange: { intervalMs: 4000, chance: 0 },
     name: "Troll do lodo",
     health: 55,
     experience: 25,
@@ -194,6 +211,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "serpente-da-comporta",
+    // [TFS bog_raider.xml, hydra.xml]
+    targetChange: { intervalMs: 4000, chance: 10 },
     name: "Serpente da comporta",
     health: 90,
     experience: 55,
@@ -224,6 +243,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "rei-das-comportas",
+    // [TFS hydra.xml]
+    targetChange: { intervalMs: 4000, chance: 10 },
     name: "Rei das Comportas",
     boss: true,
     health: 900,
@@ -267,6 +288,8 @@ const LIST: readonly MonsterDef[] = [
   // ---- Forja Rachada --------------------------------------------------------
   {
     id: "automato-de-ferro",
+    // [TFS cyclops.xml]
+    targetChange: { intervalMs: 4000, chance: 10 },
     name: "Autômato de ferro",
     health: 220,
     experience: 160,
@@ -283,6 +306,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "brasa-viva",
+    // [TFS dragon.xml]
+    targetChange: { intervalMs: 4000, chance: 10 },
     name: "Brasa viva",
     health: 200,
     experience: 145,
@@ -310,6 +335,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "martelador",
+    // [TFS faixa 5000/8]
+    targetChange: { intervalMs: 5000, chance: 8 },
     name: "Martelador",
     health: 320,
     experience: 260,
@@ -327,6 +354,8 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "guardiao-da-forja",
+    // [TFS demon.xml]
+    targetChange: { intervalMs: 4000, chance: 20 },
     name: "Guardião da Forja",
     boss: true,
     health: 2_800,

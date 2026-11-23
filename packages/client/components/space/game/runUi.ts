@@ -104,6 +104,12 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
       const item = itemDef(ev.item)?.name ?? ev.item;
       return t`${item} de ${a} se desfez`;
     }
+    case "desafio": {
+      const a = name(ev.a);
+      return ev.n === 1
+        ? t`${a} desafiou o monstro: ele fica no cavaleiro`
+        : t`${a} desafiou ${ev.n} monstros: eles ficam no cavaleiro`;
+    }
     case "pocao": {
       const a = name(ev.a);
       const item = itemDef(ev.item)?.name ?? ev.item;
@@ -123,6 +129,7 @@ export function isMajor(ev: RpgRunFeedItem): boolean {
     ev.k === "queda" ||
     ev.k === "loot" ||
     ev.k === "sala" ||
+    ev.k === "desafio" ||
     ev.k === "municao" ||
     ev.k === "deixado"
   );

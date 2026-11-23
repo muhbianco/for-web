@@ -54,7 +54,12 @@ import { rollLoot } from "./loot.ts";
 import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
 import { canShare, sharedExperience } from "./party.ts";
 import { lowLevelBonus } from "./progression.ts";
-import { type SpellDef, spellRange, spellsFor } from "./spells.ts";
+import {
+  type SpellDef,
+  CHALLENGE_FOCUS_MS,
+  spellRange,
+  spellsFor,
+} from "./spells.ts";
 import { STAMINA, staminaMultiplier } from "./stamina.ts";
 
 /**
@@ -87,7 +92,7 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 3,
+  engine: 4,
 } as const;
 
 // ---- equipamento -------------------------------------------------------------
@@ -338,7 +343,9 @@ export type RunEvent =
   /** Etapa O7: o anel ou o colar acabou (tempo ou cargas). */
   | { k: "gasto"; a: number; item: string }
   /** Etapa O9: poção bebida; `v` é o que entrou (vida, ou mana com `mana`). */
-  | { k: "pocao"; a: number; item: string; v: number; mana?: true };
+  | { k: "pocao"; a: number; item: string; v: number; mana?: true }
+  /** O cavaleiro desafiou: `n` monstros presos nele [TFS challenge.lua]. */
+  | { k: "desafio"; a: number; n: number };
 
 /** O estado no fim de um segundo: vida e mana dos heróis, vida dos monstros da sala. */
 export interface RunFrame {
@@ -410,6 +417,9 @@ interface HeroRt {
   attacks: SpellDef[];
   cooldown: Map<string, number>;
   healGroup: number;
+  /** Etapa do desafio: o grupo de suporte [TFS spell:groupCooldown]. */
+  supportGroup: number;
+  supports: SpellDef[];
   attackGroup: number;
   /** A munição do último tiro (a reposição procura a mesma primeiro). */
   lastAmmo: string | null;
@@ -430,6 +440,10 @@ interface MonsterRt {
   healNext: number;
   target: number;
   dmgBy: number[];
+  /** Troca de alvo [TFS Monster targetChangeTicks, targetChangeCooldown, challengeFocusDuration]. */
+  tTicks: number;
+  tCooldown: number;
+  focus: number;
 }
 
 /**
@@ -534,7 +548,8 @@ export function simulateRun(input: RunInput): RunResult {
   const heroes: HeroRt[] = input.heroes.map((h, i) => {
     const voc = VOCATIONS[h.vocation];
     const inv = cloneInventory(h.inv);
-    const known = spellsFor(voc.base, h.level);
+    // A vocação promovida tem id diferente da base (Campeão 8, base 4).
+    const known = spellsFor(voc.base, h.level, voc.id !== voc.base);
     const byLevel = (a: SpellDef, b: SpellDef) => b.level - a.level;
     const rt: HeroRt = {
       i,
@@ -558,6 +573,8 @@ export function simulateRun(input: RunInput): RunResult {
       attacks: known.filter((s) => s.kind === "ataque").sort(byLevel),
       cooldown: new Map(),
       healGroup: 0,
+      supportGroup: 0,
+      supports: known.filter((s) => s.kind === "desafio"),
       attackGroup: 0,
       lastAmmo: inv.equip.municao?.item ?? null,
       noAmmo: false,
@@ -642,6 +659,9 @@ export function simulateRun(input: RunInput): RunResult {
         next: def.attacks.map(() => tMs + 1000 + (i % 2) * 1000),
         healNext: tMs + 2000,
         target: -1,
+        tTicks: 0,
+        tCooldown: 0,
+        focus: 0,
         dmgBy: heroes.map(() => 0),
       };
     });
@@ -972,6 +992,7 @@ export function simulateRun(input: RunInput): RunResult {
         if (s) castHeal(h, h, s, hero, tMs);
       }
     }
+    if (m && tMs >= h.supportGroup) challenge(h, tMs);
     if (m && tMs >= h.attackGroup) {
       // Ataca guardando mana para a cura mais forte que ele tem [nosso].
       const reserve = h.heals[0]?.mana ?? 0;
@@ -1007,6 +1028,65 @@ export function simulateRun(input: RunInput): RunResult {
       });
       hurtMonster(h, m, r.damage);
     }
+  }
+
+  /**
+   * O desafio do cavaleiro [TFS challenge.lua, monster.cpp challengeCreature]: quando algum
+   * monstro bate em outra pessoa do grupo [nosso: a regra de quando usar], puxa todos os
+   * monstros da sala [nosso: sem mapa, o cavaleiro vai até eles; no OT é a área 3×3 em
+   * volta] e os prende nele por 8 s, sem troca de alvo nesse tempo.
+   */
+  function challenge(h: HeroRt, tMs: number) {
+    const s = h.supports[0];
+    if (!s) return;
+    const reserve = h.heals[0]?.mana ?? 0;
+    if (!ready(h, s, tMs, reserve)) return;
+    const loose = monsters.some(
+      (m) =>
+        m.alive && m.target >= 0 && m.target !== h.i && heroes[m.target]?.alive,
+    );
+    if (!loose) return;
+    spendMana(h, s.mana);
+    h.cooldown.set(s.id, tMs + s.cooldownMs);
+    h.supportGroup = tMs + 2000;
+    let n = 0;
+    for (const m of monsters) {
+      if (!m.alive) continue;
+      m.target = h.i;
+      m.tCooldown = CHALLENGE_FOCUS_MS;
+      m.focus = CHALLENGE_FOCUS_MS;
+      m.tTicks = 0;
+      n++;
+    }
+    ev.push({ k: "desafio", a: h.i, n });
+  }
+
+  /**
+   * Troca de alvo do monstro, a cada segundo [TFS monster.cpp onThinkTarget, intervalo de 1 s]:
+   * o desafio e a troca recente seguram; vencido o intervalo, a chance de sortear outro herói
+   * [TFS searchTarget RANDOM: corpo a corpo, qualquer um da lista].
+   */
+  function thinkTarget(m: MonsterRt) {
+    const tc = m.def.targetChange;
+    if (!tc || tc.intervalMs <= 0) return;
+    const step = 1000;
+    if (m.focus > 0) m.focus = Math.max(0, m.focus - step);
+    if (m.tCooldown > 0) {
+      m.tCooldown -= step;
+      if (m.tCooldown > 0) return;
+      m.tCooldown = 0;
+      m.tTicks = tc.intervalMs;
+    }
+    m.tTicks += step;
+    if (m.tTicks < tc.intervalMs) return;
+    m.tTicks = 0;
+    m.tCooldown = tc.intervalMs;
+    m.focus = 0;
+    // Chance 0 nunca troca: sem sorteio, o mesmo resultado sem gastar a semente.
+    if (tc.chance <= 0 || tc.chance < uniformRandom(rng, 1, 100)) return;
+    const alive = living();
+    if (alive.length === 0) return;
+    m.target = alive[uniformRandom(rng, 0, alive.length - 1)]!.i;
   }
 
   function castHeal(
@@ -1201,7 +1281,11 @@ export function simulateRun(input: RunInput): RunResult {
           heroWeaponAttack(h, target);
         }
       }
-      for (const m of monsters) if (m.alive) monsterAct(m, tMs);
+      for (const m of monsters) {
+        if (!m.alive) continue;
+        if (s > 0) thinkTarget(m);
+        monsterAct(m, tMs);
+      }
     }
     const ended = living().length === 0;
     const cleared = pendingAt < 0 && !monsters.some((m) => m.alive);
