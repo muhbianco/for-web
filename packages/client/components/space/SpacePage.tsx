@@ -23,7 +23,11 @@ import {
   type SpaceView,
   wingHeading,
 } from "@muchat/space-client";
-import { type ProfileView, ONBOARDING_VERSION } from "@muchat/space-core";
+import {
+  type ProfileView,
+  ONBOARDING_VERSION,
+  defaultPalette,
+} from "@muchat/space-core";
 import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
@@ -916,6 +920,9 @@ function ServerSpace(props: { serverId: string }) {
                 <RunPanel
                   state={state()}
                   myId={client().user?.id ?? null}
+                  paletteOf={(id) =>
+                    view()?.paletteOf(id) ?? defaultPalette(id)
+                  }
                   onClose={() => {
                     view()?.closeRun();
                     host?.focus();

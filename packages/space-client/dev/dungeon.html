@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dungeon (dev)</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { margin: 0; background: #14151c; color: #eceaf2; font: 14px/1.4 system-ui, sans-serif; }
+      main { display: grid; gap: 12px; padding: 12px; grid-template-columns: minmax(0, 1fr) 260px; }
+      #scene { width: 100%; aspect-ratio: 15 / 9; background: #0f1015; border-radius: 10px; overflow: hidden; }
+      #map { width: 260px; height: 160px; border-radius: 10px; overflow: hidden; }
+      .bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+      button, select { background: #1e2029; color: inherit; border: 1px solid #2d3040; border-radius: 6px; padding: 4px 8px; }
+      pre { margin: 0; font-size: 12px; white-space: pre-wrap; color: #a5a3b3; }
+      ol { margin: 0; padding-left: 18px; font-size: 12px; max-height: 260px; overflow: auto; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div>
+        <div class="bar">
+          <select id="dungeon">
+            <option value="cripta-do-musgo">Cripta do Musgo</option>
+            <option value="galerias-afogadas" selected>Galerias Afogadas</option>
+            <option value="forja-rachada">Forja Rachada</option>
+          </select>
+          <button id="restart">Recomeçar</button>
+          <button id="pause">Pausar</button>
+          <button id="reduced">Reduzir movimento: não</button>
+          <button id="cycles">20 aberturas e fechamentos</button>
+          <span id="clock"></span>
+        </div>
+        <div id="scene"></div>
+      </div>
+      <aside>
+        <div id="map" title="Dublê do mapa do Espaço: outra Application do Pixi viva na página"></div>
+        <pre id="stats"></pre>
+        <ol id="feed"></ol>
+      </aside>
+    </main>
+    <script type="module" src="./dungeon.ts"></script>
+  </body>
+</html>

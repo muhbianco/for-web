@@ -87,7 +87,7 @@ export function isRanged(look: HeroLook): boolean {
 }
 
 /** Cor do número de dano pelo elemento; o físico é o sangue. */
-export const ELEMENT_COLOR: Readonly<Record<Element | "cura", number>> = {
+export const ELEMENT_COLOR: Readonly<Record<Element | "cura" | "mana", number>> = {
   fisico: 0xff6a5c,
   fogo: 0xff9a3c,
   gelo: 0x8fd8ff,
@@ -96,6 +96,8 @@ export const ELEMENT_COLOR: Readonly<Record<Element | "cura", number>> = {
   morte: 0xb5a6cc,
   sagrado: 0xffe27a,
   cura: 0x63e68a,
+  /** Poção de mana (O9, a cena da dungeon): o número sobe em azul. */
+  mana: 0x6fb6ff,
 };
 
 // ---- arma e escudo ---------------------------------------------------------------

@@ -578,7 +578,7 @@ function renderMarkdown(r) {
     `# Laboratório de voz — ${r.name}`,
     ``,
     `- Início: ${r.startedAt} · alvo: ${r.options.target} · LiveKit: ${r.livekitUrl} · sala: ${r.options.room}`,
-    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} run-load=${r.options.runLoad ? `on (${r.runLoad?.runs ?? "?"} corridas, ${r.runLoad?.frames ?? "?"} quadros, atualização máx ${r.runLoad?.updateMsMax ?? "?"} ms)` : "—"}`,
+    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} run-load=${r.options.runLoad ? `on (${r.runLoad?.runs ?? "?"} corridas, ${r.runLoad?.frames ?? "?"} quadros, atualização máx ${r.runLoad?.updateMsMax ?? "?"} ms${r.runLoad?.scene ? `, cena ${r.runLoad.sceneFrames} quadros a ${r.runLoad.sceneFps}/s` : ""})` : "—"}`,
     `- Máquina: ${r.machine.cpuModel} (${r.machine.cpus} núcleos, ${r.machine.totalMemGb} GB) · janelas de 2 s: ${s.windows}`,
     ``,
     `## Caminho`,

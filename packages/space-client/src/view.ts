@@ -14,6 +14,7 @@ import {
   type VoiceReport,
   CATALOG,
   ClockOffset,
+  defaultPalette,
   instanceRect,
   itemOf,
   MAX_TV_POS_S,
@@ -1046,6 +1047,15 @@ export class SpaceView {
       tvMenu: null,
       runOpen: { id, n: (this.state.runOpen?.n ?? 0) + 1 },
     });
+  }
+
+  /**
+   * Avatar palette of someone in this space, for the dungeon scene (docs/espaco/jogo/ot, O10):
+   * ours, or of whoever we see on the map; someone we no longer see gets the default for the id.
+   */
+  paletteOf(userId: string): number {
+    if (this.world.me?.userId === userId) return this.world.me.palette;
+    return this.world.others.get(userId)?.palette ?? defaultPalette(userId);
   }
 
   /** The adventure panel closed; a run that already ended is dismissed with it. */
