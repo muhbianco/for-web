@@ -41,9 +41,18 @@ export class MemoryRpgStore implements RpgStore {
 }
 
 type RpgMongo = RpgHeroDoc & { mtime: Date };
+
+/** As versões que este código sabe ler (a 1 é da etapa O5; a conversão mora em hero.ts). */
+export function knownVersion(v: unknown): boolean {
+  return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= RPG_VERSION;
+}
 const OP = { maxTimeMS: 2_000 } as const;
 
-/** Mongo `muchat_space.rpg_heroes`. Versão desconhecida no banco = recusa, nunca sobrescreve. */
+/**
+ * Mongo `muchat_space.rpg_heroes`. Versão de antes (1 até a atual) volta como está e o serviço
+ * converte (normalizeHero); versão mais nova que este código (um rollback) = recusa, nunca
+ * sobrescreve.
+ */
 export class MongoRpgStore implements RpgStore {
   private readonly col;
 
@@ -55,7 +64,7 @@ export class MongoRpgStore implements RpgStore {
     const raw = await this.col.findOne({ _id: userId }, OP);
     if (!raw) return null;
     const { mtime: _m, ...doc } = raw;
-    if (doc.v !== RPG_VERSION)
+    if (!knownVersion(doc.v))
       throw new Error(`rpg hero ${userId}: unknown version ${String(doc.v)}`);
     return doc as RpgHeroDoc;
   }
