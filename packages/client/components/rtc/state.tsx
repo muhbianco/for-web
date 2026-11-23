@@ -84,6 +84,7 @@ import {
   AudioBandwidthPolicy,
 } from "./audioBandwidthPolicy";
 import { type MicHealReason, decideMicHeal, micBlocked } from "./micHealth";
+import { isCurrentRoom } from "./currentRoom";
 import { VoiceProcessor } from "./VoiceProcessor";
 import { participantUserId } from "./identity";
 
@@ -760,14 +761,31 @@ class Voice {
    * Opens the mic in a fresh room the usual way. A failure (no device, denied
    * permission) used to leave the button showing an open mic with nothing
    * published; now the button follows what was really published.
+   *
+   * Only for this room while it is still the call's (currentRoom.ts): when
+   * the person already left it, its late answer (livekit's 15 s "engine not
+   * connected" rejection) is dropped, not shown, and never turns the mic
+   * setting off under the room they are in now (docs/voz/12).
    */
   private openMicrophone(room: Room) {
     room.localParticipant
       .setMicrophoneEnabled(this.#settings.micOn)
       .then((track) => {
+        if (!isCurrentRoom(this.room(), room)) {
+          // Published on a room already left: livekit's own teardown stops it;
+          // stopping it here too releases the device without waiting for that.
+          if (track?.audioTrack) this.stopMicTrack(track.audioTrack);
+          this.#recorder.event("micOpenStale", "opened");
+          return;
+        }
         this.#settings.micOn = track != null;
       })
       .catch((error: unknown) => {
+        if (!isCurrentRoom(this.room(), room)) {
+          console.warn("[voice] mic of a room already left; ignored", error);
+          this.#recorder.event("micOpenStale", String(error));
+          return;
+        }
         this.#settings.micOn = room.localParticipant.isMicrophoneEnabled;
         this.#recorder.event("micOpenFailed", String(error));
         this.onErr(error);
@@ -892,6 +910,15 @@ class Voice {
       } else if (this.#settings.micOn && parked.track.isMuted) {
         await parked.track.unmute();
       }
+      // Left while that ran: publishing there would wait 15 s for nothing and
+      // take the warm chain from the room the person is going to (docs/voz/12).
+      if (!isCurrentRoom(this.room(), room)) {
+        this.#recorder.event("micReuseStale");
+        if (!this.parkTrack(parked.track, parked.processor)) {
+          this.releaseMicrophone(parked, "the room was left before publishing");
+        }
+        return;
+      }
       this.voiceProcessor = parked.processor;
       await room.localParticipant.publishTrack(parked.track, {
         source: Track.Source.Microphone,
@@ -906,7 +933,7 @@ class Voice {
         this.voiceProcessor = undefined;
       }
       this.releaseMicrophone(parked);
-      if (this.room() === room) this.openMicrophone(room);
+      if (isCurrentRoom(this.room(), room)) this.openMicrophone(room);
     }
   }
 
