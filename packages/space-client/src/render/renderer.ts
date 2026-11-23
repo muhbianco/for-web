@@ -1,4 +1,6 @@
 import {
+  type AvatarGear,
+  type AvatarHero,
   type DecorInstance,
   type DecorItem,
   type DecorOp,
@@ -25,9 +27,18 @@ import {
 import { roomTitle } from "../list.ts";
 import type { World } from "../world.ts";
 import { textureFor } from "./atlas.ts";
+import { type FxArt, equippedSheet, fxCanvas, gearKey } from "./heroArt.ts";
 import { characterSheet, DIRS, FRAMES, palette, SPRITE } from "./sprites.ts";
 import { type FloorLookup, CHUNK, chunksIn, drawChunk } from "./tiles.ts";
 import { heroLabel } from "../hero.ts";
+import {
+  attackPeriod,
+  seedOf,
+  SHOT_FRAME_MS,
+  shotFor,
+  shotPhase,
+  shotStage,
+} from "./trainFx.ts";
 
 const AVATAR_SCALE = 2; // 16 px art drawn at 32 px, one tile
 const STEP_MS = 140;
@@ -47,6 +58,8 @@ export const RENDERER_DESTROY = {
 
 interface AvatarSprite {
   palette: number;
+  /** What the avatar wears while training ("" = the plain character). */
+  look: string;
   root: Container;
   body: Sprite;
   name: Text;
@@ -57,6 +70,11 @@ interface AvatarSprite {
   badge: Graphics;
   /** What ring and badge show now, to redraw only on change. */
   indicators: string;
+}
+
+/** The gear a hero wears on the map: only while training at a dummy. */
+function trainingGear(hero: AvatarHero | null): AvatarGear | null {
+  return hero?.training && hero.gear ? hero.gear : null;
 }
 
 /** What the map shows of someone's call (ADR 0008). */
@@ -183,7 +201,15 @@ export class Renderer {
   private readonly chunks = new Map<string, Sprite>();
   private readonly avatars = new Map<string, AvatarSprite>();
   private readonly decor = new Map<string, Sprite>();
-  private readonly paletteFrames = new Map<number, Texture[]>();
+  private readonly paletteFrames = new Map<string, Texture[]>();
+  /** Idle game training (docs/espaco/jogo/ot): the attack thrown at the dummy, per trainer. */
+  private readonly fx = new Container();
+  private readonly shots = new Map<
+    string,
+    { shot: Sprite; hit: Sprite; art: FxArt | null }
+  >();
+  private readonly fxTextures = new Map<FxArt, Texture>();
+  private shotAt = -Infinity;
   /** Textures created for this renderer alone (avatar sheets); chunks are tracked in `chunks`. */
   private readonly ownedTextures: Texture[] = [];
   private cam = { x: 0, y: 0, ready: false };
@@ -247,6 +273,7 @@ export class Renderer {
       this.doors,
       this.rugs,
       this.scene,
+      this.fx,
       this.tvGlow,
       this.ceiling,
       this.labels,
@@ -301,10 +328,16 @@ export class Renderer {
     };
   }
 
-  private framesFor(idx: number): Texture[] {
-    let frames = this.paletteFrames.get(idx);
+  /** The character sheet of a palette; with `gear`, the hero dressed for training. */
+  private framesFor(idx: number, gear: AvatarGear | null = null): Texture[] {
+    const key = gear ? `${idx}|${gearKey(gear)}` : String(idx);
+    let frames = this.paletteFrames.get(key);
     if (!frames) {
-      const base = Texture.from(characterSheet(palette(idx)));
+      const base = Texture.from(
+        gear
+          ? equippedSheet(palette(idx), gear)
+          : characterSheet(palette(idx)),
+      );
       this.ownedTextures.push(base);
       base.source.scaleMode = "nearest";
       frames = [];
@@ -316,7 +349,7 @@ export class Renderer {
           }),
         );
       }
-      this.paletteFrames.set(idx, frames);
+      this.paletteFrames.set(key, frames);
     }
     return frames;
   }
@@ -557,15 +590,18 @@ export class Renderer {
     userId: string,
     name: string,
     paletteIndex: number,
+    gear: AvatarGear | null = null,
   ): AvatarSprite {
     let a = this.avatars.get(userId);
-    if (a && a.palette !== paletteIndex) {
+    const look = gear ? gearKey(gear) : "";
+    if (a && (a.palette !== paletteIndex || a.look !== look)) {
       a.palette = paletteIndex;
-      a.frames = this.framesFor(paletteIndex);
+      a.look = look;
+      a.frames = this.framesFor(paletteIndex, gear);
       this.dirty = true;
     }
     if (!a) {
-      const frames = this.framesFor(paletteIndex);
+      const frames = this.framesFor(paletteIndex, gear);
       const body = new Sprite(frames[0]);
       body.anchor.set(0.5, 1);
       body.scale.set(AVATAR_SCALE);
@@ -588,6 +624,7 @@ export class Renderer {
       this.scene.addChild(root);
       a = {
         palette: paletteIndex,
+        look,
         root,
         body,
         name: tag,
@@ -619,6 +656,136 @@ export class Renderer {
     if (a.body.texture === tex) return;
     a.body.texture = tex;
     if (visible) this.dirty = true;
+  }
+
+  /** The middle of a dummy, in world px (null: it is gone). */
+  private dummyCenter(world: World, id: string): { x: number; y: number } | null {
+    const inst = world.decor?.items.find((i) => i.id === id);
+    const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+    const zone = inst ? world.zones?.byKey.get(inst.zone) : undefined;
+    if (!inst || !item || !zone) return null;
+    const r = instanceRect(zone, item, inst);
+    return {
+      x: ((r.x0 + r.x1 + 1) / 2) * TILE,
+      y: ((r.y0 + r.y1 + 1) / 2) * TILE - 4,
+    };
+  }
+
+  /** A trainer standing still faces their dummy. */
+  private faceDummy(
+    world: World,
+    x: number,
+    y: number,
+    hero: AvatarHero | null,
+    moving: boolean,
+  ): Direction | null {
+    if (moving || !hero?.training || !hero.at) return null;
+    const c = this.dummyCenter(world, hero.at);
+    if (!c) return null;
+    const dx = c.x - x;
+    const dy = c.y - (y - 8);
+    if (Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? "right" : "left";
+    return dy >= 0 ? "down" : "up";
+  }
+
+  private fxTexture(k: FxArt): Texture {
+    let t = this.fxTextures.get(k);
+    if (!t) {
+      t = Texture.from(fxCanvas(k));
+      t.source.scaleMode = "nearest";
+      this.ownedTextures.push(t);
+      this.fxTextures.set(k, t);
+    }
+    return t;
+  }
+
+  /**
+   * The attack of each trainer in view, thrown at the dummy in the rhythm of the vocation
+   * (trainFx.ts). Moves at most every SHOT_FRAME_MS, so a room of trainers costs ~30 frames a
+   * second while a shot flies and nothing in between; reduced motion shows none.
+   */
+  private drawShots(
+    world: World,
+    nowMs: number,
+    trainers: Array<{ userId: string; x: number; y: number; hero: AvatarHero }>,
+  ) {
+    const live = new Set<string>();
+    if (!this.reducedMotion) {
+      const due = nowMs - this.shotAt >= SHOT_FRAME_MS;
+      if (due) this.shotAt = nowMs;
+      for (const t of trainers) {
+        if (!t.hero.at || !t.hero.gear) continue;
+        const c = this.dummyCenter(world, t.hero.at);
+        if (!c || (!this.inView(t.x, t.y) && !this.inView(c.x, c.y))) continue;
+        live.add(t.userId);
+        if (!due) continue;
+        this.moveShot(t, c, nowMs);
+      }
+    }
+    for (const [id, s] of this.shots) {
+      if (live.has(id)) continue;
+      s.shot.destroy();
+      s.hit.destroy();
+      this.shots.delete(id);
+      this.dirty = true;
+    }
+  }
+
+  private moveShot(
+    t: { userId: string; x: number; y: number; hero: AvatarHero },
+    c: { x: number; y: number },
+    nowMs: number,
+  ) {
+    let s = this.shots.get(t.userId);
+    if (!s) {
+      const shot = new Sprite();
+      shot.anchor.set(0.5);
+      shot.scale.set(AVATAR_SCALE);
+      shot.visible = false;
+      const hit = new Sprite(this.fxTexture("faisca"));
+      hit.anchor.set(0.5);
+      hit.scale.set(AVATAR_SCALE);
+      hit.visible = false;
+      this.fx.addChild(shot, hit);
+      s = { shot, hit, art: null };
+      this.shots.set(t.userId, s);
+    }
+    const { n, phase } = shotPhase(
+      nowMs,
+      seedOf(t.userId),
+      attackPeriod(t.hero.vocation),
+    );
+    const kind = shotFor(t.hero.gear!, n);
+    const stage = shotStage(phase);
+    const fromX = t.x;
+    const fromY = t.y - 8;
+    if (s.art !== kind.art) {
+      s.art = kind.art;
+      s.shot.texture = this.fxTexture(kind.art);
+    }
+    s.shot.tint = kind.tint;
+    s.hit.tint = kind.tint;
+    if (stage.kind === "flying") {
+      const e = 1 - (1 - stage.t) * (1 - stage.t);
+      s.shot.position.set(
+        Math.round(fromX + (c.x - fromX) * e),
+        Math.round(fromY + (c.y - fromY) * e),
+      );
+      s.shot.rotation = kind.spin
+        ? phase / 60
+        : Math.atan2(c.y - fromY, c.x - fromX);
+      s.shot.visible = true;
+      s.hit.visible = false;
+    } else if (stage.kind === "hit") {
+      s.shot.visible = false;
+      s.hit.position.set(Math.round(c.x), Math.round(c.y));
+      s.hit.visible = true;
+    } else {
+      if (!s.shot.visible && !s.hit.visible) return;
+      s.shot.visible = false;
+      s.hit.visible = false;
+    }
+    this.dirty = true;
   }
 
   /** Call indicators of someone, from the server presence and our room's speakers. */
@@ -833,27 +1000,52 @@ export class Renderer {
       this.view.y0 + this.app.screen.height / this.zoom + margin * 2;
 
     const seen = new Set<string>([me.userId]);
+    // Who trains at a dummy now (they wear their gear, face it and throw at it).
+    const trainers: Array<{ userId: string; x: number; y: number; hero: AvatarHero }> = [];
     const mine = this.avatarFor(
       me.userId,
       heroLabel(me.name, world.myHero),
       me.palette,
+      trainingGear(world.myHero),
     );
     const mineVisible = this.place(mine, me.x, me.y, 1);
-    this.pose(mine, me.dir, me.moving, nowMs, mineVisible);
+    this.pose(
+      mine,
+      this.faceDummy(world, me.x, me.y, world.myHero, me.moving) ?? me.dir,
+      me.moving,
+      nowMs,
+      mineVisible,
+    );
     this.indicate(mine, this.indicatorsOf(world, me.userId), mineVisible);
+    if (world.myHero?.training)
+      trainers.push({ userId: me.userId, x: me.x, y: me.y, hero: world.myHero });
     for (const r of world.others.values()) {
       seen.add(r.userId);
       const p = world.positionOf(r, nowMs);
-      const a = this.avatarFor(r.userId, heroLabel(r.name, r.hero), r.palette);
+      const a = this.avatarFor(
+        r.userId,
+        heroLabel(r.name, r.hero),
+        r.palette,
+        trainingGear(r.hero),
+      );
       const visible = this.place(
         a,
         p.x,
         p.y,
         r.state === "reconnecting" ? 0.45 : r.state === "idle" ? 0.75 : 1,
       );
-      this.pose(a, r.dir, r.moving, nowMs, visible);
+      this.pose(
+        a,
+        this.faceDummy(world, p.x, p.y, r.hero, r.moving) ?? r.dir,
+        r.moving,
+        nowMs,
+        visible,
+      );
       this.indicate(a, this.indicatorsOf(world, r.userId), visible);
+      if (r.hero?.training)
+        trainers.push({ userId: r.userId, x: p.x, y: p.y, hero: r.hero });
     }
+    this.drawShots(world, nowMs, trainers);
     for (const [id, a] of this.avatars) {
       if (seen.has(id)) continue;
       a.root.destroy({ children: true });
@@ -930,6 +1122,8 @@ export class Renderer {
     for (const t of this.ownedTextures) t.destroy(true);
     this.ownedTextures.length = 0;
     this.paletteFrames.clear();
+    this.fxTextures.clear();
+    this.shots.clear();
     this.app.destroy(RENDERER_DESTROY, { children: true });
   }
 }
