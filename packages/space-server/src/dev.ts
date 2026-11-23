@@ -10,8 +10,6 @@ import { findPath, MAX_SPEED, MOVE_SEND_HZ, Perm, TILE, tileCenter } from "@much
 
 import { MemoryRpgStore } from "./game/ot/store.ts";
 import { RpgService } from "./game/ot/service.ts";
-import { GameService } from "./game/service.ts";
-import { MemoryGameStore } from "./game/store.ts";
 import { jsonLog } from "./log.ts";
 import { startLoopDelayLog } from "./loopDelay.ts";
 import { MediaController } from "./media/controller.ts";
@@ -116,7 +114,7 @@ const registry = new Registry({
   members,
   log: jsonLog,
   media: { hub, lk: devLk },
-  // Refúgio (ADR 0009) ligado no servidor de dev, em memória.
+  // Jogo do Espaço (chave do ADR 0009) ligado no servidor de dev.
   gameAvailable: () => true,
   rpg: {
     trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId),
@@ -131,7 +129,6 @@ const gateway = new Gateway({
   cache,
   runtimes: registry,
   profiles: new MemoryProfileStore(),
-  game: new GameService({ store: new MemoryGameStore(), log: jsonLog }),
   rpg,
   allowedOrigins: ["http://localhost:5180", "http://127.0.0.1:5180"],
   log: jsonLog,

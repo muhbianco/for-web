@@ -139,8 +139,6 @@ const RUN_FEED_MAX = 40;
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
   t:
-    | "game.state"
-    | "game.fight"
     | "rpg.state"
     | "rpg.lobby"
     | "rpg.run"
@@ -273,7 +271,7 @@ export class SpaceView {
     };
   }
 
-  // ---- Refúgio (ADR 0009) -------------------------------------------------------
+  // ---- Jogo do Espaço (rpg.*, docs/espaco/jogo/ot) --------------------------------
 
   private readonly gameListeners = new Set<(e: GameWireEvent) => void>();
   /** Runs whose panel already opened by itself (once per run). */
@@ -578,15 +576,6 @@ export class SpaceView {
         return;
       case "decor.rights":
         this.world.setRights(d);
-        return;
-      case "game.state":
-      case "game.fight":
-        if (typeof e.re === "string") this.gameCommands.delete(e.re);
-        this.emitGame({
-          t: e.t,
-          re: typeof e.re === "string" ? e.re : undefined,
-          d,
-        });
         return;
       case "rpg.lobby": {
         if (typeof e.re === "string") this.gameCommands.delete(e.re);

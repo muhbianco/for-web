@@ -51,11 +51,6 @@ import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
 import { SmartTv } from "./SmartTv";
 
-/**
- * Refúgio, o jogo do Espaço (ADR 0009): chunk próprio, carregado só quando o
- * painel abre (quem não joga não baixa nada além do botão).
- */
-const GamePanel = lazy(() => import("./game/GamePanel"));
 
 /**
  * Jogo idle (docs/espaco/jogo/ot): o diálogo do dummy e a faixa "treinando", num chunk que
@@ -127,7 +122,7 @@ function ServerSpace(props: { serverId: string }) {
   const [view, setView] = createSignal<SpaceView | null>(null);
   const [profile, setProfile] = createSignal<ProfileView | null>(null);
   const [failed, setFailed] = createSignal<string | null>(null);
-  const [panel, setPanel] = createSignal<"rooms" | "decor" | "game" | null>(
+  const [panel, setPanel] = createSignal<"rooms" | "decor" | null>(
     "rooms",
   );
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
@@ -232,26 +227,6 @@ function ServerSpace(props: { serverId: string }) {
       v.walkToRoom(roomId) ? "" : t`Não dá para chegar nessa sala daqui.`,
     );
     host?.focus();
-  }
-
-  /**
-   * The game's button: the operator switched it on for this server and the
-   * owner did not turn it off (the settings change live; the snapshot does not).
-   * Without InteractSpaceObjects the panel says so when it opens.
-   */
-  const gameOn = createMemo(
-    () => !!ui()?.game?.available && ui()?.settings?.game !== "off",
-  );
-  createEffect(
-    on(gameOn, (v) => {
-      if (!v && untrack(panel) === "game") setPanel("rooms");
-    }),
-  );
-
-  function openGame(on: boolean) {
-    if (panel() === "decor") view()?.setEditing(false);
-    setPanel(on ? "game" : "rooms");
-    if (!on) host?.focus();
   }
 
   function openDecor(on: boolean) {
@@ -426,12 +401,10 @@ function ServerSpace(props: { serverId: string }) {
       ? 280
       : panel() === "decor"
         ? 340
-        : panel() === "game"
-          ? 424
-          : 0;
+        : 0;
   /** Share of the page height the panel row takes (narrow screens), in %. */
   const panelRowPct = () =>
-    !panel() ? 0 : panel() === "decor" || panel() === "game" ? 55 : 40;
+    !panel() ? 0 : panel() === "decor" ? 55 : 40;
 
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
   const gridStyle = () => {
@@ -738,15 +711,6 @@ function ServerSpace(props: { serverId: string }) {
             </Show>
           </Button>
         </Show>
-        <Show when={gameOn()}>
-          <Button
-            variant={panel() === "game" ? "filled" : "tonal"}
-            onPress={() => openGame(panel() !== "game")}
-            aria-pressed={panel() === "game"}
-          >
-            <Symbol size={18}>swords</Symbol> {t`Aventura`}
-          </Button>
-        </Show>
         <Show when={ui()?.rights.can_edit}>
           <Button
             variant={panel() === "decor" ? "filled" : "tonal"}
@@ -983,13 +947,6 @@ function ServerSpace(props: { serverId: string }) {
               onStopShare={(userId) => view()?.stopScreenOf(userId)}
             />
           </div>
-        </Show>
-        <Show when={panel() === "game" && view()}>
-          {(v) => (
-            <Suspense>
-              <GamePanel view={v()} onClose={() => openGame(false)} />
-            </Suspense>
-          )}
         </Show>
         <Show when={panel() === "decor" && view() && ui()}>
           <DecorPanel

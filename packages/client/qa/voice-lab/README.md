@@ -52,13 +52,10 @@ node qa/voice-lab/run.mjs --target lab --name up-loss --uplink-loss 0.02
 # CPU do cliente ocupada (8 threads em prioridade baixa) com o DeepFilter rodando
 node qa/voice-lab/run.mjs --target lab --name cpu --cpu-load 8
 
-# Refúgio (ADR 0009 do muchat) na mesma página que fala: a cena do jogo passando
-# lutas de chefe sem parar a 1×. --below-normal roda o node e os Chromiums em
-# prioridade baixa (para comparar braços intercalados sem tomar a máquina)
-node qa/voice-lab/run.mjs --target lab --name jogo --game-load --below-normal
-
 # Jogo idle (docs/espaco/jogo/ot do muchat): a tela da aventura de verdade (RunPanel)
-# recebendo um quadro por segundo, uma corrida atrás da outra, com o painel aberto
+# recebendo um quadro por segundo, uma corrida atrás da outra, com o painel aberto.
+# --below-normal roda o node e os Chromiums em prioridade baixa (para comparar braços
+# intercalados sem tomar a máquina)
 node qa/voice-lab/run.mjs --target lab --name corrida --run-load --below-normal
 
 # bidirecional, outros supressores, portão desligado

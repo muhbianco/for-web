@@ -436,7 +436,7 @@ function SettingsCard(props: {
   view: SpaceView;
   settings: DecorSettings;
   roles: Array<{ id: string; name: string }>;
-  /** The operator switched Refúgio on for this server (ADR 0009). */
+  /** The operator switched the space's game on for this server (ADR 0009's switch; the idle game). */
   gameAvailable: boolean;
 }) {
   const { t } = useLingui();
@@ -493,9 +493,9 @@ function SettingsCard(props: {
         </Button>
       </Row>
       <Show when={props.gameAvailable}>
-        <strong>{t`Refúgio (jogo)`}</strong>
+        <strong>{t`Jogo do Espaço`}</strong>
         <Muted>
-          {t`O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão "Aventura". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados.`}
+          {t`Cada avatar é um herói: treina nos dummies das salas e entra em dungeons em grupo pela TV. Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados.`}
         </Muted>
         <label>
           <input
@@ -512,7 +512,7 @@ function SettingsCard(props: {
               })
             }
           />{" "}
-          {t`Refúgio ligado neste servidor`}
+          {t`Jogo ligado neste servidor`}
         </label>
       </Show>
     </Section>

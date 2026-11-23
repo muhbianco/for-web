@@ -9,8 +9,6 @@ import { MongoClient } from "mongodb";
 import { MongoRunStore } from "./game/ot/runs.ts";
 import { MongoRpgStore } from "./game/ot/store.ts";
 import { RpgService, ratesFromEnv } from "./game/ot/service.ts";
-import { GameService } from "./game/service.ts";
-import { MongoGameStore } from "./game/store.ts";
 import { gameSwitch } from "./game/switch.ts";
 import { jsonLog as log } from "./log.ts";
 import { startLoopDelayLog } from "./loopDelay.ts";
@@ -203,7 +201,6 @@ async function main() {
     cache,
     runtimes: registry,
     profiles: new MongoProfileStore(mongo),
-    game: new GameService({ store: new MongoGameStore(mongo), log }),
     rpg,
     allowedOrigins: env("SPACE_ALLOWED_ORIGINS", "https://chat.muhbianco.com.br").split(",").map((s) => s.trim()),
     log,

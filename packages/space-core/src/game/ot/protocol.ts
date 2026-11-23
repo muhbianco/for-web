@@ -7,7 +7,7 @@ import { type TrainingSkill, TRAINING_SKILLS } from "./training.ts";
 
 /**
  * Comandos do jogo idle na WS do Espaço (docs/espaco/jogo/ot). Prefixo `rpg.`, separado do
- * `game.` do Refúgio (ADR 0009): os dois convivem enquanto o piloto antigo existir. O
+ * `game.` do Refúgio (ADR 0009), removido em 23/11/2026. O
  * gateway tenta `parseRpgCommand` antes do parser do mapa.
  */
 

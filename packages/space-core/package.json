@@ -7,7 +7,6 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./game": "./src/game/index.ts",
     "./game/ot": "./src/game/ot/index.ts"
   },
   "scripts": {

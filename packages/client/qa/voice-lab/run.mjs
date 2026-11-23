@@ -74,7 +74,6 @@ const opts = {
    * Refúgio (ADR 0009, E6): A runs the game's real scene, one boss fight after
    * another at 1× (continuous 30 fps animation), in the same page that talks.
    */
-  gameLoad: !!args["game-load"],
   // Etapa O6 do jogo idle: a tela da aventura (RunPanel) com um quadro por segundo.
   runLoad: !!args["run-load"],
   /** Runs (and the Chromiums it starts) at BelowNormal, so the lab doesn't take the machine. */
@@ -252,7 +251,6 @@ async function main() {
   const timeline = [];
   let firstSnapshot;
   let mediaLoad;
-  let gameLoad;
   let runLoad;
   try {
     const a = await connect(A, { url: tokens.url, token: tokens.pub.token }, true);
@@ -280,14 +278,6 @@ async function main() {
         return "TV ok";
       }, opts.mediaLoad);
       log(`carga de mídia em A (${opts.mediaLoad}): ${res} · ${tvRes}`);
-    }
-    if (opts.gameLoad) {
-      const res = await A.page
-        .evaluate(async () =>
-          (await import("/qa/voice-lab/gameLoad.ts")).startGameLoad(),
-        )
-        .catch((e) => `jogo falhou: ${String(e?.message ?? e)}`);
-      log(`carga do jogo em A: ${res}`);
     }
     if (opts.runLoad) {
       const res = await A.page
@@ -388,12 +378,6 @@ async function main() {
         : null;
       mediaLoad = { screenAtB: screen, youtubeAtA: tv };
       log(`carga de mídia no fim: tela recebida em B ${JSON.stringify(screen)} · YouTube em A ${JSON.stringify(tv)}`);
-    }
-    if (opts.gameLoad) {
-      gameLoad = await A.page
-        .evaluate(() => window.__gameLoad?.stats() ?? null)
-        .catch(() => null);
-      log(`carga do jogo no fim: ${JSON.stringify(gameLoad)}`);
     }
     if (opts.runLoad) {
       runLoad = await A.page
@@ -543,7 +527,6 @@ async function main() {
       analysis,
       stats,
       mediaLoad,
-      gameLoad,
       runLoad,
     };
     writeFileSync(join(outDir, "report.json"), JSON.stringify(report, null, 2));
@@ -595,7 +578,7 @@ function renderMarkdown(r) {
     `# Laboratório de voz — ${r.name}`,
     ``,
     `- Início: ${r.startedAt} · alvo: ${r.options.target} · LiveKit: ${r.livekitUrl} · sala: ${r.options.room}`,
-    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} game-load=${r.options.gameLoad ? `on (${r.gameLoad?.fights ?? "?"} lutas, ${r.gameLoad?.fps ?? "?"} fps)` : "—"} run-load=${r.options.runLoad ? `on (${r.runLoad?.runs ?? "?"} corridas, ${r.runLoad?.frames ?? "?"} quadros, atualização máx ${r.runLoad?.updateMsMax ?? "?"} ms)` : "—"}`,
+    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} run-load=${r.options.runLoad ? `on (${r.runLoad?.runs ?? "?"} corridas, ${r.runLoad?.frames ?? "?"} quadros, atualização máx ${r.runLoad?.updateMsMax ?? "?"} ms)` : "—"}`,
     `- Máquina: ${r.machine.cpuModel} (${r.machine.cpus} núcleos, ${r.machine.totalMemGb} GB) · janelas de 2 s: ${s.windows}`,
     ``,
     `## Caminho`,
