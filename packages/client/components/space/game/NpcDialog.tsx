@@ -124,7 +124,7 @@ export default function NpcDialog(props: {
 
   const subtitle = () => {
     if (props.request.npc === "mercador")
-      return t`Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares.`;
+      return t`Compra o loot e o kit; o que ele vende, recompra pela metade. Vende munição, poções, mochilas, anéis e colares.`;
     if (props.request.npc === "banqueiro")
       return t`Guarda suas moedas sem peso e transfere para quem está no Espaço.`;
     return t`Promove o herói a partir do level ${PROMOTION.level}.`;

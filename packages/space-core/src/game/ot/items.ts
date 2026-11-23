@@ -103,8 +103,15 @@ export interface ItemDef {
   vocations?: readonly VocationId[];
   /** Peso em centésimos de oz [TFS items.xml `weight`]. */
   weight: number;
-  /** Valor em moedas de ouro (o mercador paga por ele na etapa O8; 0: não compra). */
+  /**
+   * Valor em moedas de ouro: o que o mercador paga por ele (etapa O8). 0: só o que ele mesmo
+   * vende, pela metade (shops.ts merchantBuys).
+   */
   value: number;
+  /**
+   * Cai em quantidade no loot e nasce em pilha (moedas, munição, poções). Na mochila qualquer
+   * item igual se junta [nosso] (inventory.ts sameStack).
+   */
   stackable?: boolean;
   /** Do kit da vocação: todo herói ganha ao escolher a vocação. */
   starter?: boolean;
@@ -194,6 +201,9 @@ const LIST: readonly ItemDef[] = [
 
   // Kit de cada vocação [nosso]. A varinha do kit não gasta mana: o herói começa no level 1,
   // com mana 0 [TFS: level 1 sem vocação], e a varinha mais fraca do TFS gasta 1 por tiro.
+  // [nosso] O kit vale pouco no mercador (2 a 12): quem trocou por coisa melhor não fica com
+  // peso morto na mochila; o kit vem uma vez só (a vocação é definitiva). O arco e a flecha do
+  // kit ele vende, então recompra pela metade do preço.
   {
     id: "espada-curta",
     name: "Espada curta",
@@ -203,7 +213,7 @@ const LIST: readonly ItemDef[] = [
     defense: 10,
     vocations: KNIGHT,
     weight: 3500,
-    value: 0,
+    value: 10,
     starter: true,
   },
   {
@@ -215,7 +225,7 @@ const LIST: readonly ItemDef[] = [
     defense: 7,
     vocations: KNIGHT,
     weight: 4000,
-    value: 0,
+    value: 10,
     starter: true,
   },
   {
@@ -227,7 +237,7 @@ const LIST: readonly ItemDef[] = [
     defense: 9,
     vocations: KNIGHT,
     weight: 3800,
-    value: 0,
+    value: 10,
     starter: true,
   },
   {
@@ -237,7 +247,7 @@ const LIST: readonly ItemDef[] = [
     defense: 13,
     vocations: KNIGHT,
     weight: 4000,
-    value: 0,
+    value: 5,
     starter: true,
   },
   // Arco e besta não têm ataque próprio: o dano vem da munição [TFS items.xml 2456, 2455;
@@ -276,7 +286,7 @@ const LIST: readonly ItemDef[] = [
     wand: { element: "energia", min: 3, max: 7, mana: 0 },
     vocations: SORC,
     weight: 2200,
-    value: 0,
+    value: 10,
     starter: true,
   },
   {
@@ -287,7 +297,7 @@ const LIST: readonly ItemDef[] = [
     wand: { element: "terra", min: 3, max: 7, mana: 0 },
     vocations: DRUID,
     weight: 2200,
-    value: 0,
+    value: 10,
     starter: true,
   },
   {
@@ -296,7 +306,7 @@ const LIST: readonly ItemDef[] = [
     slot: "cabeca",
     armor: 1,
     weight: 2200,
-    value: 0,
+    value: 4,
     starter: true,
   },
   {
@@ -305,7 +315,7 @@ const LIST: readonly ItemDef[] = [
     slot: "corpo",
     armor: 3,
     weight: 6000,
-    value: 0,
+    value: 12,
     starter: true,
   },
   {
@@ -314,7 +324,7 @@ const LIST: readonly ItemDef[] = [
     slot: "pernas",
     armor: 1,
     weight: 1800,
-    value: 0,
+    value: 9,
     starter: true,
   },
   {
@@ -323,7 +333,7 @@ const LIST: readonly ItemDef[] = [
     slot: "pes",
     armor: 1,
     weight: 900,
-    value: 0,
+    value: 2,
     starter: true,
   },
 

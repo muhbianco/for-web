@@ -44,22 +44,20 @@ export function merchantOffer(itemId: string): ShopOffer | undefined {
 }
 
 /**
- * Quanto o mercador paga por um item: o valor dele; moedas e o que não tem valor (o kit, a
- * munição) ele não compra [nosso: um mercador só para tudo, no lugar dos vários do OT].
+ * Quanto o mercador paga por um item: o valor dele (o loot e o kit); moedas ele não compra
+ * [nosso: um mercador só para tudo, no lugar dos vários do OT].
  */
 export function merchantBuys(itemId: string): number | null {
   if (COINS.includes(itemId)) return null;
   const def = itemDef(itemId);
-  const v = def?.value ?? 0;
-  if (v > 0) return v;
-  // [nosso] A munição que ele vende, ele compra de volta pela metade (para baixo): flecha 1,
-  // virote 1, flecha afiada e virote perfurante 2. No OT o NPC não compra munição; aqui quem
-  // comprou a do level errado não fica com o ouro preso. Menos que o preço: não há lucro em girar.
-  if (def?.slot === "municao") {
-    const half = Math.floor((merchantOffer(itemId)?.price ?? 0) / 2);
-    if (half > 0) return half;
-  }
-  return null;
+  if (!def) return null;
+  if (def.value > 0) return def.value;
+  // [nosso] O que ele vende e não tem valor próprio (munição, poções, bolsa, mochila, o arco
+  // do kit) ele compra de volta pela metade (para baixo): flecha 1, flecha afiada 2, mochila
+  // 10, poção pequena de vida 10. No OT o NPC não compra munição; aqui quem comprou a errada
+  // não fica com o ouro preso. Menos que o preço: não há lucro em girar.
+  const half = Math.floor((merchantOffer(itemId)?.price ?? 0) / 2);
+  return half > 0 ? half : null;
 }
 
 /** O custo de repor um item gasto (o analisador): o preço do mercador, senão o valor. */

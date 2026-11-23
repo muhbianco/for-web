@@ -20,7 +20,10 @@ import {
  * Adaptações [nosso]:
  * - um recipiente só (o do lugar da mochila); bolsa ou mochila guardada dentro dele é um item
  *   vazio, sem conteúdo próprio;
- * - item novo entra no começo da mochila [TFS container.cpp addThing: push_front].
+ * - item novo entra no começo da mochila [TFS container.cpp addThing: push_front];
+ * - itens iguais (o mesmo item com as mesmas cargas e o mesmo tempo) se juntam sozinhos em
+ *   pilhas de até 100, também o equipamento [no TFS só os empilháveis]: dois elmos iguais
+ *   ocupam um espaço; vestir tira um da pilha.
  */
 
 /** Pilha máxima [TFS game.h ITEM_STACK_SIZE]. */
@@ -49,6 +52,46 @@ export function newStack(def: ItemDef, count = 1): ItemStack {
   if (def.charges) s.charges = def.charges;
   if (def.duration) s.duration = def.duration;
   return s;
+}
+
+/**
+ * [nosso] Duas pilhas se juntam quando são o mesmo item com o mesmo desgaste (as cargas e o
+ * tempo que restam): um anel gasto não se mistura com um novo.
+ */
+export function sameStack(a: ItemStack, b: ItemStack): boolean {
+  return (
+    a.item === b.item &&
+    (a.charges ?? null) === (b.charges ?? null) &&
+    (a.duration ?? null) === (b.duration ?? null)
+  );
+}
+
+/**
+ * Junta `s` às pilhas iguais de `pack` (até 100 em cada) e põe o resto em pilhas novas na
+ * posição `at`. Pilha que muda vira objeto novo (quem guardou uma das outras continua achando
+ * ela); não confere o tamanho do recipiente: quem chama confere antes de gravar.
+ */
+function mergeInto(pack: ItemStack[], s: ItemStack, at: number): void {
+  let left = s.count;
+  for (let i = 0; i < pack.length && left > 0; i++) {
+    const x = pack[i]!;
+    if (!sameStack(x, s) || x.count >= STACK_MAX) continue;
+    const k = Math.min(left, STACK_MAX - x.count);
+    pack[i] = { ...x, count: x.count + k };
+    left -= k;
+  }
+  while (left > 0) {
+    const k = Math.min(left, STACK_MAX);
+    pack.splice(at, 0, { ...s, count: k });
+    left -= k;
+  }
+}
+
+/** Junta as pilhas iguais da mochila, na ordem em que aparecem (a primeira enche antes). */
+export function compactPack(inv: Inventory): void {
+  const out: ItemStack[] = [];
+  for (const x of inv.pack) mergeInto(out, x, out.length);
+  inv.pack = out;
 }
 
 export function emptyInventory(): Inventory {
@@ -99,9 +142,10 @@ export function coinValue(inv: Inventory): number {
 }
 
 /**
- * Põe até `n` de um item na mochila: completa as pilhas que existem e abre outras enquanto
- * houver espaço; só o que cabe no peso [TFS Player::queryAdd, Container::queryMaxCount].
- * Devolve quantos entraram.
+ * Põe até `n` de um item na mochila: completa as pilhas iguais que existem e abre outras
+ * enquanto houver espaço; só o que cabe no peso [TFS Player::queryAdd, Container::queryMaxCount].
+ * [nosso] Qualquer item junta com o igual (sameStack), não só os empilháveis. Devolve quantos
+ * entraram.
  */
 export function addItem(
   inv: Inventory,
@@ -118,27 +162,20 @@ export function addItem(
     left = Math.min(left, Math.max(0, fit));
   }
   let added = 0;
-  if (def.stackable) {
-    for (const x of inv.pack) {
-      if (left <= 0) break;
-      if (x.item !== itemId || x.count >= STACK_MAX) continue;
-      const k = Math.min(left, STACK_MAX - x.count);
-      x.count += k;
-      left -= k;
-      added += k;
-    }
-    while (left > 0 && inv.pack.length < size) {
-      const k = Math.min(left, STACK_MAX);
-      inv.pack.unshift(newStack(def, k));
-      left -= k;
-      added += k;
-    }
-    return added;
+  const fresh = newStack(def, 0);
+  for (const x of inv.pack) {
+    if (left <= 0) break;
+    if (!sameStack(x, fresh) || x.count >= STACK_MAX) continue;
+    const k = Math.min(left, STACK_MAX - x.count);
+    x.count += k;
+    left -= k;
+    added += k;
   }
   while (left > 0 && inv.pack.length < size) {
-    inv.pack.unshift(newStack(def, 1));
-    left--;
-    added++;
+    const k = Math.min(left, STACK_MAX);
+    inv.pack.unshift(newStack(def, k));
+    left -= k;
+    added += k;
   }
   return added;
 }
@@ -255,6 +292,9 @@ export function changeCoins(
  * Veste o item da mochila (troca de lugar com o que estava lá). As duas mãos: arma de duas
  * mãos não entra com escudo, nem escudo com ela [TFS player.cpp queryAdd, "Both hands need to
  * be free"]. Trocar de recipiente leva o conteúdo para o novo, com o velho dentro.
+ * [nosso] A munição vai em pilha: a mesma completa a do lugar (até 100), outra troca a pilha
+ * inteira. O resto sai um só da pilha; o que estava vestido junta na pilha igual da mochila ou
+ * fica no espaço que o item deixou (sem espaço: no_room).
  */
 export function equipItem(
   inv: Inventory,
@@ -275,30 +315,43 @@ export function equipItem(
     const w = inv.equip.arma ? itemDef(inv.equip.arma.item) : undefined;
     if (w?.twoHanded) return { ok: false, reason: "both_hands" };
   }
-  if (slot === "mochila") {
-    const old = inv.equip.mochila;
-    const after = inv.pack.length - 1 + (old ? 1 : 0);
-    if (after > (def.container ?? 0)) return { ok: false, reason: "no_room" };
-    inv.pack.splice(index, 1);
-    inv.equip.mochila = x;
-    if (old) inv.pack.unshift(old);
+  const cur = inv.equip[slot];
+  const pack = [...inv.pack];
+  if (slot === "municao" && cur && sameStack(cur, x)) {
+    const k = Math.min(x.count, STACK_MAX - cur.count);
+    if (k <= 0) return { ok: true };
+    inv.equip.municao = { ...cur, count: cur.count + k };
+    if (k < x.count) pack[index] = { ...x, count: x.count - k };
+    else pack.splice(index, 1);
+    inv.pack = pack;
     return { ok: true };
   }
-  const cur = inv.equip[slot];
-  inv.equip[slot] = x;
-  if (cur) inv.pack[index] = cur;
-  else inv.pack.splice(index, 1);
+  const n = slot === "municao" ? x.count : 1;
+  const whole = n >= x.count;
+  if (whole) pack.splice(index, 1);
+  else pack[index] = { ...x, count: x.count - n };
+  // O recipiente velho entra no começo do novo [push_front]; o resto, no espaço que ficou.
+  if (cur) mergeInto(pack, cur, whole && slot !== "mochila" ? index : 0);
+  const size = slot === "mochila" ? (def.container ?? 0) : packSize(inv);
+  if (pack.length > size) return { ok: false, reason: "no_room" };
+  inv.pack = pack;
+  inv.equip[slot] = whole ? x : { ...x, count: n };
   return { ok: true };
 }
 
-/** Tira do corpo para a mochila (precisa de espaço; o recipiente não sai, ele leva tudo). */
+/**
+ * Tira do corpo para a mochila: junta na pilha igual ou ocupa um espaço livre (sem os dois:
+ * no_room). O recipiente não sai, ele leva tudo.
+ */
 export function unequipItem(inv: Inventory, slot: Slot): InvOutcome {
   const cur = inv.equip[slot];
   if (!cur) return { ok: false, reason: "no_item" };
   if (slot === "mochila") return { ok: false, reason: "is_container" };
-  if (inv.pack.length >= packSize(inv)) return { ok: false, reason: "no_room" };
+  const pack = [...inv.pack];
+  mergeInto(pack, cur, 0);
+  if (pack.length > packSize(inv)) return { ok: false, reason: "no_room" };
   delete inv.equip[slot];
-  inv.pack.unshift(cur);
+  inv.pack = pack;
   return { ok: true };
 }
 

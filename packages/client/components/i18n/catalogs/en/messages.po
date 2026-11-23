@@ -1835,8 +1835,12 @@ msgid "Compartilhar tela"
 msgstr "Compartilhar tela"
 
 #: components/space/game/NpcDialog.tsx
-msgid "Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares."
-msgstr "Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares."
+#~ msgid "Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares."
+#~ msgstr "Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Compra o loot e o kit; o que ele vende, recompra pela metade. Vende munição, poções, mochilas, anéis e colares."
+msgstr "Compra o loot e o kit; o que ele vende, recompra pela metade. Vende munição, poções, mochilas, anéis e colares."
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Compra o loot e vende munição, mochilas, anéis e colares."

@@ -7,12 +7,14 @@ import {
   addItem,
   changeCoins,
   coinValue,
+  compactPack,
   equipItem,
   freeCapacity,
   gearOf,
   inventoryKey,
   inventoryWeight,
   packSize,
+  sameStack,
   STACK_MAX,
   starterInventory,
   unequipItem,
@@ -33,21 +35,35 @@ test("pilha de até 100, espaços contados e o peso contra a capacidade [TFS gam
     inv.pack.map((x) => x.count),
     [50, 100, 100],
   );
-  // Não empilhável: um espaço cada; a bolsa tem 8.
-  assert.equal(addItem(inv, 1_000, "elmo-de-ferro", 9), 5);
-  assert.equal(inv.pack.length, 8);
+  // [nosso] Equipamento igual também junta: 9 elmos, um espaço só.
+  assert.equal(addItem(inv, 1_000, "elmo-de-ferro", 9), 9);
+  assert.equal(inv.pack.length, 4);
   assert.equal(
     addItem(inv, 1_000, "flecha", 50),
     50,
     "completa a pilha que existe",
   );
+  // Peso: a bolsa (8 oz) e 300 flechas (210 oz) e 9 elmos (270 oz).
+  assert.equal(inventoryWeight(inv), 800 + 300 * 70 + 9 * 3000);
+  // A bolsa tem 8: itens diferentes enchem os espaços.
+  for (const id of [
+    "colete-de-escamas",
+    "espada-de-ferro",
+    "escudo-de-bronze",
+    "maca-cravejada",
+  ])
+    assert.equal(addItem(inv, 1_000, id, 1), 1);
+  assert.equal(inv.pack.length, 8);
   assert.equal(
     addItem(inv, 1_000, "flecha", 1),
     0,
     "sem espaço nem pilha aberta",
   );
-  // Peso: a bolsa (8 oz) e 300 flechas (210 oz) e 5 elmos (150 oz).
-  assert.equal(inventoryWeight(inv), 800 + 300 * 70 + 5 * 3000);
+  assert.equal(
+    addItem(inv, 1_000, "elmo-de-ferro", 1),
+    1,
+    "junta na pilha de elmos, sem espaço livre",
+  );
   const light = bag();
   assert.equal(
     addItem(light, 10, "moeda-de-ouro", 500),
@@ -129,6 +145,87 @@ test("as duas mãos, o recipiente e o que a vocação e o level permitem", () =>
     ok: false,
     reason: "is_container",
   });
+});
+
+test("[nosso] itens iguais se juntam: a mochila lida junta, vestir tira um, tirar junta na pilha", () => {
+  const inv = bag();
+  inv.pack = [
+    { item: "elmo-de-ferro", count: 1 },
+    { item: "gibao-de-couro", count: 1 },
+    { item: "elmo-de-ferro", count: 1 },
+  ];
+  compactPack(inv);
+  assert.deepEqual(inv.pack, [
+    { item: "elmo-de-ferro", count: 2 },
+    { item: "gibao-de-couro", count: 1 },
+  ]);
+  const again = structuredClone(inv);
+  compactPack(again);
+  assert.equal(
+    inventoryKey(again),
+    inventoryKey(inv),
+    "juntar de novo não muda nada",
+  );
+  // Vestir tira um da pilha; o outro fica no mesmo espaço.
+  assert.deepEqual(equipItem(inv, 3, 15, 0), { ok: true });
+  assert.deepEqual(inv.equip.cabeca, { item: "elmo-de-ferro", count: 1 });
+  assert.deepEqual(inv.pack[0], { item: "elmo-de-ferro", count: 1 });
+  // Bolsa cheia: tirar o elmo ainda dá, ele junta na pilha igual.
+  while (inv.pack.length < packSize(inv))
+    inv.pack.push({ item: "flecha-afiada", count: STACK_MAX });
+  assert.deepEqual(unequipItem(inv, "cabeca"), { ok: true });
+  assert.equal(inv.equip.cabeca, undefined);
+  assert.deepEqual(inv.pack[0], { item: "elmo-de-ferro", count: 2 });
+  // Sem pilha igual e sem espaço: recusa sem mexer.
+  inv.equip.corpo = { item: "colete-de-escamas", count: 1 };
+  assert.deepEqual(unequipItem(inv, "corpo"), { ok: false, reason: "no_room" });
+  // Vestir de uma pilha com outro item no lugar: o que sai precisa de espaço.
+  inv.equip.cabeca = { item: "capuz-de-couro", count: 1 };
+  const before = inventoryKey(inv);
+  assert.deepEqual(equipItem(inv, 3, 15, 0), { ok: false, reason: "no_room" });
+  assert.equal(inventoryKey(inv), before, "nada mudou");
+  // Com o mesmo elmo no lugar, trocar é juntar de volta.
+  inv.equip.cabeca = { item: "elmo-de-ferro", count: 1 };
+  assert.deepEqual(equipItem(inv, 3, 15, 0), { ok: true });
+  assert.deepEqual(inv.pack[0], { item: "elmo-de-ferro", count: 2 });
+  // A munição vai em pilha: a mesma completa a do lugar até 100.
+  const a = bag();
+  a.equip.municao = { item: "flecha", count: 70 };
+  addItem(a, 1_000, "flecha", 50);
+  assert.deepEqual(equipItem(a, 3, 1, 0), { ok: true });
+  assert.equal(a.equip.municao?.count, 100);
+  assert.deepEqual(a.pack, [{ item: "flecha", count: 20 }]);
+});
+
+test("[nosso] desgaste separa: anel gasto não junta com o novo; dois novos juntam", () => {
+  const r = bag();
+  assert.equal(addItem(r, 1_000, "anel-do-folego", 2), 2);
+  assert.deepEqual(r.pack, [
+    { item: "anel-do-folego", count: 2, duration: 1200 },
+  ]);
+  r.equip.anel = { item: "anel-do-folego", count: 1, duration: 600 };
+  assert.deepEqual(unequipItem(r, "anel"), { ok: true });
+  assert.equal(r.pack.length, 2);
+  assert.ok(!sameStack(r.pack[0]!, r.pack[1]!));
+  const fresh = r.pack.findIndex((x) => x.duration === 1200);
+  assert.deepEqual(equipItem(r, 3, 1, fresh), { ok: true });
+  assert.deepEqual(r.equip.anel, {
+    item: "anel-do-folego",
+    count: 1,
+    duration: 1200,
+  });
+  assert.equal(
+    r.pack.reduce((n, x) => n + x.count, 0),
+    2,
+    "um novo e o gasto na mochila",
+  );
+  // Sem cargas definidas e com `charges: undefined` (lido do banco) contam como iguais.
+  assert.ok(
+    sameStack(
+      { item: "elmo-de-ferro", count: 1 },
+      { item: "elmo-de-ferro", count: 3, charges: undefined },
+    ),
+  );
 });
 
 test("colar e anel nascem com cargas e tempo cheios; a chave compara inventários", () => {

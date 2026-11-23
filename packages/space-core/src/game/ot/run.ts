@@ -37,6 +37,7 @@ import {
   addItem,
   cloneInventory,
   equipItem,
+  sameStack,
   unequipItem,
 } from "./inventory.ts";
 import {
@@ -92,7 +93,7 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 5,
+  engine: 6,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
   stallMs: 60_000,
 } as const;
@@ -205,7 +206,9 @@ export function autoEquip(
   };
   const wear = (x: ItemStack | null) => {
     if (!x) return;
-    const i = inv.pack.indexOf(x);
+    // A pilha pode ter virado outro objeto (o que saiu do lugar juntou nela).
+    let i = inv.pack.indexOf(x);
+    if (i < 0) i = inv.pack.findIndex((s) => sameStack(s, x));
     if (i >= 0) equipItem(inv, base, level, i);
   };
   const ammoFor = (type: AmmoType | undefined): ItemDef | null => {

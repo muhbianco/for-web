@@ -231,6 +231,34 @@ test("corrida no herói: quem caiu não leva; o que não cabe fica no corpo; mar
   assert.deepEqual(unmarkRun(f, "run-1"), { ok: true });
 });
 
+test("[nosso] a mochila lida junta itens iguais; a corrida que começou antes fecha com o loot", () => {
+  const d = newRpgHero("u9", 0);
+  applyVocation(d, 3);
+  d.auto_equip = false;
+  // Como gravado antes: dois elmos em espaços separados.
+  d.inv.pack.push(
+    { item: "elmo-de-ferro", count: 1 },
+    { item: "elmo-de-ferro", count: 1 },
+  );
+  const start = structuredClone(d.inv);
+  markRun(d, MARK, 0, DEFAULT_RATES);
+  const read = normalizeHero(structuredClone(d));
+  const helms = (x: RpgHeroDoc) =>
+    x.inv.pack.filter((p) => p.item === "elmo-de-ferro");
+  assert.deepEqual(helms(read), [{ item: "elmo-de-ferro", count: 2 }]);
+  // O fim da corrida veio da mochila de antes, com o loot.
+  const alive = structuredClone(start);
+  alive.pack.unshift({ item: "espada-de-ferro", count: 1 });
+  const out = settleRun(read, "run-1", REWARD, 1, MARK.ends_at, {
+    start,
+    alive,
+    bare: structuredClone(start),
+  });
+  assert.ok(out.ok && !out.settled.invMismatch, "sem perder o loot");
+  assert.ok(read.inv.pack.some((p) => p.item === "espada-de-ferro"));
+  assert.deepEqual(helms(read), [{ item: "elmo-de-ferro", count: 2 }]);
+});
+
 test("herói de antes da O7: kit vestido, mochila de 20, os itens de mais valor e o resto em moedas", () => {
   const old = newRpgHero("u1", 0) as unknown as Record<string, unknown>;
   applyVocation(old as unknown as RpgHeroDoc, 4);
@@ -251,16 +279,18 @@ test("herói de antes da O7: kit vestido, mochila de 20, os itens de mais valor 
   assert.ok(d.inv.pack.length <= 20);
   assert.equal("gold" in d, false);
   assert.equal("bag" in d, false);
-  // 20 espaços, 3 guardados para as moedas, 2 do kit: cabem 15, pelo valor: a espada larga
-  // (150) e 14 cotas (120). O elmo (30) e 16 cotas viram moedas.
+  // [nosso] Itens iguais juntam: as 30 cotas são uma pilha; tudo cabe nos 15 espaços livres
+  // (20, menos 3 para as moedas e 2 do kit) e só o ouro vira moeda.
   const cotas =
-    d.inv.pack.filter((x) => x.item === "cota-de-malha").length +
+    d.inv.pack
+      .filter((x) => x.item === "cota-de-malha")
+      .reduce((n, x) => n + x.count, 0) +
     (d.inv.equip.corpo?.item === "cota-de-malha" ? 1 : 0);
   assert.equal(d.inv.equip.corpo?.item, "cota-de-malha", "o automático veste a melhor");
-  assert.equal(cotas, 14);
-  assert.equal(d.inv.equip.cabeca?.item, "capuz-de-couro", "o elmo não coube");
+  assert.equal(cotas, 30);
+  assert.equal(d.inv.equip.cabeca?.item, "elmo-de-ferro", "o elmo coube");
   assert.ok(d.inv.pack.some((x) => x.item === "espada-larga"));
-  assert.equal(coinValue(d.inv), 250 + 16 * 120 + 30);
+  assert.equal(coinValue(d.inv), 250);
   // Sem vocação: só a bolsa.
   const nov = newRpgHero("u9", 0) as unknown as Record<string, unknown>;
   delete nov.inv;
@@ -342,25 +372,28 @@ test("NPCs: compra paga das moedas e do banco; venda pelo valor; depósito e saq
   assert.deepEqual(buyFromMerchant(d, "flecha", 100, 0), { ok: true });
   assert.equal(coinValue(d.inv), 0);
   assert.equal(d.bank_gold, 150 - 100);
-  // Venda: o mercador paga o valor; o kit ele não compra.
+  // Venda: o mercador paga o valor; o arco do kit, que ele vende, pela metade.
   d.inv.pack.unshift({ item: "besta-leve", count: 1 });
   assert.deepEqual(sellToMerchant(d, 0, "besta-leve", 1, 0), { ok: true });
   assert.equal(coinValue(d.inv), 80);
   const bow = d.inv.equip.arma!;
   d.inv.pack.unshift(bow);
   delete d.inv.equip.arma;
-  assert.deepEqual(sellToMerchant(d, 0, "arco-de-caca", 1, 0), {
+  assert.deepEqual(sellToMerchant(d, 0, "arco-de-caca", 1, 0), { ok: true });
+  assert.equal(coinValue(d.inv), 180);
+  const coin = d.inv.pack.findIndex((x) => x.item === "moeda-de-ouro");
+  assert.deepEqual(sellToMerchant(d, coin, "moeda-de-ouro", 1, 0), {
     ok: false,
     reason: "not_bought",
   });
   // Banco: depositar tudo, sacar parte.
   assert.deepEqual(bankDeposit(d, 0, 0), { ok: true });
   assert.equal(coinValue(d.inv), 0);
-  assert.equal(d.bank_gold, 130);
-  assert.deepEqual(bankWithdraw(d, 200, 0), { ok: false, reason: "no_money" });
+  assert.equal(d.bank_gold, 230);
+  assert.deepEqual(bankWithdraw(d, 300, 0), { ok: false, reason: "no_money" });
   assert.deepEqual(bankWithdraw(d, 30, 0), { ok: true });
   assert.equal(coinValue(d.inv), 30);
-  assert.equal(d.bank_gold, 100);
+  assert.equal(d.bank_gold, 200);
   // Promoção: level 20 e 20.000.
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "level" });
   d.level = 20;

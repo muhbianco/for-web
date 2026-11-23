@@ -27,6 +27,7 @@ import {
   cloneInventory,
   coinValue,
   COINS,
+  compactPack,
   DEFAULT_SUPPLIES,
   discardItem,
   equipItem,
@@ -45,6 +46,7 @@ import {
   regenStamina,
   reqMana,
   reqSkillTries,
+  sameStack,
   settleSession,
   SKILLS,
   STACK_MAX,
@@ -212,10 +214,11 @@ function migrateInventory(x: RpgHeroDoc & { gold?: unknown; bag?: unknown }) {
   const room = () => inv.pack.length < packSize(inv) - MIGRATE_COIN_SLOTS;
   for (const b of items) {
     const def = itemDef(b.item)!;
+    const fresh = newStack(def, 0);
     for (let k = 0; k < b.count; k++) {
-      const merge = def.stackable
-        ? inv.pack.some((p) => p.item === def.id && p.count < STACK_MAX)
-        : false;
+      const merge = inv.pack.some(
+        (p) => sameStack(p, fresh) && p.count < STACK_MAX,
+      );
       if ((merge || room()) && addItem(inv, Infinity, def.id, 1) === 1)
         continue;
       gold += def.value;
@@ -232,6 +235,8 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (typeof x.stamina_at !== "number") x.stamina_at = x.updated_at ?? 0;
   if (x.run === undefined) x.run = null;
   if (!validInventory(x.inv)) migrateInventory(x);
+  // [nosso] Itens iguais se juntam (inventory.ts): o herói gravado antes junta na leitura.
+  compactPack(x.inv);
   if (typeof x.auto_equip !== "boolean") x.auto_equip = true;
   if (typeof x.bank_gold !== "number" || !(x.bank_gold >= 0)) x.bank_gold = 0;
   if (!Array.isArray(x.outbox)) x.outbox = [];
@@ -387,9 +392,12 @@ export function settleRun(
   d.stamina_at = now;
   d.run = null;
   if (after) {
-    if (inventoryKey(d.inv) === inventoryKey(after.start))
+    // Comparadas já juntadas: a corrida que começou antes da mochila juntar as pilhas (o herói
+    // é juntado na leitura) não pode perder o loot por isso.
+    if (packedKey(d.inv) === packedKey(after.start)) {
       d.inv = cloneInventory(reward ? after.alive : after.bare);
-    else settled.invMismatch = true;
+      compactPack(d.inv);
+    } else settled.invMismatch = true;
   } else if (reward) {
     for (const l of reward.loot) addItem(d.inv, d.cap, l.item, l.count);
     addGold(d.inv, d.cap, reward.gold);
@@ -419,6 +427,13 @@ export function settleRun(
   if (d.auto_equip)
     autoEquip(d.inv, d.vocation, d.level, skillLevels(d), d.mana_max);
   return { ok: true, settled };
+}
+
+/** A chave do inventário com a mochila juntada (não mexe no original). */
+function packedKey(inv: Inventory): string {
+  const c = cloneInventory(inv);
+  compactPack(c);
+  return inventoryKey(c);
 }
 
 export type RpgOutcome = { ok: true } | { ok: false; reason: string };
