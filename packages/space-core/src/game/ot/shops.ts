@@ -22,6 +22,12 @@ export const MERCHANT_SELLS: readonly ShopOffer[] = [
   { item: "virote", price: 3 },
   { item: "flecha-afiada", price: 5 },
   { item: "virote-perfurante", price: 5 },
+  // Poções (etapa O9) [nosso, na faixa de preço do OT].
+  { item: "pocao-pequena-de-vida", price: 20 },
+  { item: "pocao-de-vida", price: 50 },
+  { item: "pocao-de-mana", price: 56 },
+  { item: "pocao-forte-de-vida", price: 115 },
+  { item: "pocao-forte-de-mana", price: 93 },
   { item: "bolsa", price: 4 },
   { item: "mochila", price: 20 },
   { item: "arco-de-caca", price: 200 },

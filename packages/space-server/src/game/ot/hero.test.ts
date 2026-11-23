@@ -394,3 +394,40 @@ test("transferência: sai do saldo para a fila; crédito uma vez só; devoluçã
   transferSettled(a, "t2", true);
   assert.equal(a.bank_gold, 100, "destino sem herói: volta");
 });
+
+test("poções e filtro: a escolha é guardada e vai para a corrida; moeda não se ignora", async () => {
+  const { setLootSkip, setSupplies, heroRunSnapshot } = await import("./hero.ts");
+  const d = newRpgHero("u1", 0);
+  assert.deepEqual(d.supplies.health, { item: null, below: 50 });
+  applyVocation(d, 2);
+  assert.deepEqual(
+    setSupplies(d, {
+      health: { item: "pocao-de-mana", below: 40 },
+      mana: { item: null, below: 30 },
+    }),
+    { ok: false, reason: "not_potion" },
+  );
+  assert.deepEqual(
+    setSupplies(d, {
+      health: { item: "pocao-de-vida", below: 40 },
+      mana: { item: "pocao-de-mana", below: 60 },
+    }),
+    { ok: true },
+  );
+  assert.deepEqual(setLootSkip(d, "moeda-de-ouro", true), { ok: false, reason: "not_item" });
+  assert.deepEqual(setLootSkip(d, "elmo-de-ferro", true), { ok: true });
+  setLootSkip(d, "elmo-de-ferro", true);
+  assert.deepEqual(d.loot_skip, ["elmo-de-ferro"]);
+  const snap = heroRunSnapshot(d, "Ana", 0);
+  assert.equal(snap.supplies?.mana.below, 60);
+  assert.deepEqual(snap.lootSkip, ["elmo-de-ferro"]);
+  setLootSkip(d, "elmo-de-ferro", false);
+  assert.deepEqual(d.loot_skip, []);
+  // Herói antigo: o padrão.
+  const old = newRpgHero("u2", 0) as unknown as Record<string, unknown>;
+  delete old.supplies;
+  delete old.loot_skip;
+  const n = normalizeHero(old as unknown as RpgHeroDoc);
+  assert.deepEqual(n.supplies.mana, { item: null, below: 30 });
+  assert.deepEqual(n.loot_skip, []);
+});

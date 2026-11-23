@@ -454,3 +454,52 @@ test("anel e colar: o tempo do anel corre na dungeon; o colar gasta uma carga po
     );
   }
 });
+
+test("poções: abaixo do limite bebe a que mais cura, uma por segundo; o frasco volta [TFS potions.lua]", () => {
+  const k = hero(4, 1, 10);
+  addItem(k.inv, 100_000, "pocao-pequena-de-vida", 10);
+  addItem(k.inv, 100_000, "pocao-de-vida", 10);
+  addItem(k.inv, 100_000, "pocao-forte-de-vida", 5);
+  k.supplies = {
+    health: { item: null, below: 60 },
+    mana: { item: null, below: 0 },
+  };
+  const r = run("cripta-do-musgo", [k], 3);
+  const drinks = r.frames.flatMap((f) =>
+    f.e.filter((e) => e.k === "pocao").map((e) => ({ s: f.s, e })),
+  );
+  const m = r.members[0]!;
+  const used = m.spent.find((x) => x.item === "pocao-de-vida")?.count ?? 0;
+  assert.ok(used > 0, "bebeu alguma");
+  assert.equal(drinks.length, used, "cada gole gasta uma");
+  assert.ok(
+    drinks.every((d) => d.e.k === "pocao" && d.e.item === "pocao-de-vida"),
+    "a forte pede level 50: bebe a de vida, que cura mais que a pequena",
+  );
+  const seconds = drinks.map((d) => d.s);
+  assert.equal(new Set(seconds).size, seconds.length, "uma por segundo");
+  const flasks = m.inv.pack
+    .filter((x) => x.item === "frasco-vazio")
+    .reduce((n, x) => n + x.count, 0);
+  assert.equal(flasks, used, "o frasco vazio volta para a mochila");
+  // Desligado (0%): não bebe.
+  const off = hero(4, 8, 35);
+  addItem(off.inv, 100_000, "pocao-de-vida", 10);
+  off.supplies = {
+    health: { item: null, below: 0 },
+    mana: { item: null, below: 0 },
+  };
+  const r2 = run("cripta-do-musgo", [off], 3);
+  assert.ok(!r2.frames.some((f) => f.e.some((e) => e.k === "pocao")));
+});
+
+test("filtro de loot: o que o herói não pega fica no corpo, sem contar como falta de espaço", () => {
+  const k = hero(4, 8, 35);
+  k.lootSkip = ["elmo-de-ferro", "espada-de-ferro", "flecha"];
+  for (let seed = 1; seed <= 30; seed++) {
+    const m = run("cripta-do-musgo", [k], seed).members[0]!;
+    for (const id of k.lootSkip)
+      assert.ok(!m.loot.some((l) => l.item === id), `${id} na semente ${seed}`);
+    assert.ok(!m.left.some((l) => k.lootSkip!.includes(l.item)));
+  }
+});

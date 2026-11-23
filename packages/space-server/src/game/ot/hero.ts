@@ -5,6 +5,7 @@ import {
   type RpgHeroView,
   type RunHero,
   type RunReward,
+  type RunSupplies,
   type SkillId,
   type SkillState,
   type Slot,
@@ -25,6 +26,8 @@ import {
   changeCoins,
   cloneInventory,
   coinValue,
+  COINS,
+  DEFAULT_SUPPLIES,
   discardItem,
   equipItem,
   freshSkill,
@@ -108,7 +111,13 @@ export interface RpgHeroDoc {
   outbox: RpgTransfer[];
   /** As últimas transferências recebidas (a entrega repetida não credita duas vezes). */
   inbox: string[];
+  /** Etapa O9: quando beber poção e o que não pegar do loot. */
+  supplies: RunSupplies;
+  loot_skip: string[];
 }
+
+/** Quantos itens o filtro de loot guarda. */
+export const LOOT_SKIP_MAX = 64;
 
 /** Uma transferência do banco a caminho de `to`. */
 export interface RpgTransfer {
@@ -156,6 +165,8 @@ export function newRpgHero(userId: string, now: number): RpgHeroDoc {
     bank_gold: 0,
     outbox: [],
     inbox: [],
+    supplies: structuredClone(DEFAULT_SUPPLIES),
+    loot_skip: [],
   };
 }
 
@@ -225,10 +236,27 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (typeof x.bank_gold !== "number" || !(x.bank_gold >= 0)) x.bank_gold = 0;
   if (!Array.isArray(x.outbox)) x.outbox = [];
   if (!Array.isArray(x.inbox)) x.inbox = [];
+  if (!validSupplies(x.supplies)) x.supplies = structuredClone(DEFAULT_SUPPLIES);
+  if (!Array.isArray(x.loot_skip)) x.loot_skip = [];
   delete x.gold;
   delete x.bag;
   x.v = RPG_VERSION;
   return x;
+}
+
+function validSupplies(s: unknown): s is RunSupplies {
+  const rule = (r: unknown) =>
+    typeof r === "object" &&
+    r !== null &&
+    typeof (r as { below?: unknown }).below === "number" &&
+    ((r as { item?: unknown }).item === null ||
+      typeof (r as { item?: unknown }).item === "string");
+  return (
+    typeof s === "object" &&
+    s !== null &&
+    rule((s as RunSupplies).health) &&
+    rule((s as RunSupplies).mana)
+  );
 }
 
 /** Na dungeon agora (uma marca muito velha, de corrida que não fechou, não prende o herói). */
@@ -262,6 +290,8 @@ export function heroRunSnapshot(
     gear: gearOf(inv),
     inv,
     cap: d.cap,
+    supplies: structuredClone(d.supplies),
+    lootSkip: [...d.loot_skip],
   };
 }
 
@@ -615,6 +645,39 @@ export function promoteHero(d: RpgHeroDoc, now: number): RpgOutcome {
   return { ok: true };
 }
 
+// ---- poções e filtro de loot (etapa O9) ----------------------------------------
+
+/** Quando beber poção: a poção escolhida tem de existir e cuidar daquilo (vida ou mana). */
+export function setSupplies(d: RpgHeroDoc, s: RunSupplies): RpgOutcome {
+  if (d.vocation === 0) return { ok: false, reason: "no_vocation" };
+  for (const kind of ["health", "mana"] as const) {
+    const item = s[kind].item;
+    if (item !== null && !itemDef(item)?.potion?.[kind])
+      return { ok: false, reason: "not_potion" };
+  }
+  d.supplies = structuredClone(s);
+  return { ok: true };
+}
+
+/** Pegar ou não pegar um item (moedas sempre se pegam). */
+export function setLootSkip(
+  d: RpgHeroDoc,
+  item: string,
+  skip: boolean,
+): RpgOutcome {
+  if (d.vocation === 0) return { ok: false, reason: "no_vocation" };
+  if (!itemDef(item) || COINS.includes(item))
+    return { ok: false, reason: "not_item" };
+  const has = d.loot_skip.includes(item);
+  if (skip && !has) {
+    if (d.loot_skip.length >= LOOT_SKIP_MAX)
+      return { ok: false, reason: "busy" };
+    d.loot_skip.push(item);
+  }
+  if (!skip && has) d.loot_skip = d.loot_skip.filter((x) => x !== item);
+  return { ok: true };
+}
+
 // ---- treino ------------------------------------------------------------------
 
 /** Credita o que o treino aberto rendeu até `now` (sem fechar). Devolve se algo mudou. */
@@ -740,6 +803,8 @@ export function rpgHeroView(
     weight: inventoryWeight(d.inv),
     gold: coinValue(d.inv),
     bank_gold: d.bank_gold,
+    supplies: structuredClone(d.supplies),
+    loot_skip: [...d.loot_skip],
     auto_equip: d.auto_equip,
     gear: gearOf(d.inv),
     run: inRun(d, now) && d.run ? { ...d.run } : null,

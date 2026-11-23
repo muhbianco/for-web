@@ -104,6 +104,13 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
       const item = itemDef(ev.item)?.name ?? ev.item;
       return t`${item} de ${a} se desfez`;
     }
+    case "pocao": {
+      const a = name(ev.a);
+      const item = itemDef(ev.item)?.name ?? ev.item;
+      return ev.mana
+        ? t`${a} bebeu ${item}: +${ev.v} de mana`
+        : t`${a} bebeu ${item}: +${ev.v}`;
+    }
     default:
       return "";
   }

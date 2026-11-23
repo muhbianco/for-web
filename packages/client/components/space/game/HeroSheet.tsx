@@ -5,12 +5,16 @@ import type { GameWireEvent, SpaceView } from "@muchat/space-client";
 import {
   type ItemStack,
   type RpgHeroView,
+  type RunSupplies,
   type Slot,
+  COINS,
+  DEFAULT_SUPPLIES,
   SKILLS,
   VOCATIONS,
   cannotUse,
   expForLevel,
   itemDef,
+  potionDefs,
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
@@ -134,6 +138,25 @@ export default function HeroSheet(props: {
     return t`${used} de ${cap} oz`;
   };
   const gold = () => (hero()?.gold ?? 0).toLocaleString();
+  // Poções (etapa O9): quantas carrega de cada e a escolha de quando beber.
+  const supplies = () => hero()?.supplies ?? DEFAULT_SUPPLIES;
+  const carried = (id: string) =>
+    inv().pack.reduce((n, x) => (x.item === id ? n + x.count : n), 0);
+  const potionsFor = (kind: "health" | "mana") =>
+    potionDefs().filter((d) => d.potion?.[kind]);
+  const setRule = (
+    kind: "health" | "mana",
+    patch: Partial<RunSupplies["health"]>,
+  ) => {
+    const next: RunSupplies = {
+      health: { ...supplies().health },
+      mana: { ...supplies().mana },
+    };
+    next[kind] = { ...next[kind], ...patch };
+    send("rpg.supplies", { health: next.health, mana: next.mana });
+  };
+  const skipped = () => hero()?.loot_skip ?? [];
+  const LIMITS = [0, 20, 30, 40, 50, 60, 70, 80, 90];
 
   const tile = (x: ItemStack | undefined, fallback: string) => {
     const def = x ? itemDef(x.item) : undefined;
@@ -421,6 +444,25 @@ export default function HeroSheet(props: {
                 <Show when={why()}>
                   {(w) => <Muted>{inventoryError(w())}</Muted>}
                 </Show>
+                <Show when={!COINS.includes(x().item)}>
+                  <Row>
+                    <Button
+                      size="xs"
+                      variant="text"
+                      isDisabled={busy()}
+                      onPress={() =>
+                        send("rpg.lootskip", {
+                          item: x().item,
+                          skip: !skipped().includes(x().item),
+                        })
+                      }
+                    >
+                      {skipped().includes(x().item)
+                        ? t`Voltar a pegar no loot`
+                        : t`Não pegar mais no loot`}
+                    </Button>
+                  </Row>
+                </Show>
               </Details>
             );
           }}
@@ -429,6 +471,68 @@ export default function HeroSheet(props: {
         <Show when={error()}>
           {(msg) => <ErrorText role="alert">{msg()}</ErrorText>}
         </Show>
+
+        <Potions aria-label={t`Poções na dungeon`}>
+          <strong>{t`Poções na dungeon`}</strong>
+          <For each={["health", "mana"] as const}>
+            {(kind) => (
+              <PotionRow>
+                <span>
+                  {kind === "health" ? t`Vida abaixo de` : t`Mana abaixo de`}
+                </span>
+                <select
+                  value={String(supplies()[kind].below)}
+                  disabled={busy()}
+                  aria-label={
+                    kind === "health"
+                      ? t`Limite da poção de vida`
+                      : t`Limite da poção de mana`
+                  }
+                  onChange={(e) =>
+                    setRule(kind, { below: Number(e.currentTarget.value) })
+                  }
+                >
+                  <For each={LIMITS}>
+                    {(n) => (
+                      <option value={String(n)}>
+                        {n === 0 ? t`nunca` : `${n}%`}
+                      </option>
+                    )}
+                  </For>
+                </select>
+                <select
+                  value={supplies()[kind].item ?? ""}
+                  disabled={busy() || supplies()[kind].below === 0}
+                  aria-label={
+                    kind === "health"
+                      ? t`Qual poção de vida`
+                      : t`Qual poção de mana`
+                  }
+                  onChange={(e) =>
+                    setRule(kind, { item: e.currentTarget.value || null })
+                  }
+                >
+                  <option value="">{t`a melhor que tiver`}</option>
+                  <For each={potionsFor(kind)}>
+                    {(d) => (
+                      <option value={d.id}>
+                        {`${d.name} (${carried(d.id)})`}
+                      </option>
+                    )}
+                  </For>
+                </select>
+              </PotionRow>
+            )}
+          </For>
+          <Muted>
+            {t`Uma poção por segundo, como no OT. Compre no mercador; o frasco vazio volta para a mochila.`}
+          </Muted>
+          <Show when={skipped().length > 0}>
+            <Muted>
+              {t`Não pega no loot: ${skipped().map(itemName).join(", ")}.`}
+            </Muted>
+          </Show>
+        </Potions>
 
         <Skills aria-label={t`Skills`}>
           <For each={SKILLS}>
@@ -635,6 +739,34 @@ const Row = styled("div", {
 
 const Muted = styled("span", {
   base: { color: "var(--md-sys-color-on-surface-variant)", fontSize: "0.85em" },
+});
+
+const Potions = styled("section", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "10px 12px",
+    borderRadius: "12px",
+    background: "var(--md-sys-color-surface-container)",
+    fontSize: "0.9em",
+  },
+});
+
+const PotionRow = styled("div", {
+  base: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "8px",
+    "& select": {
+      padding: "3px 6px",
+      borderRadius: "8px",
+      border: "1px solid var(--md-sys-color-outline-variant)",
+      background: "var(--md-sys-color-surface-container-highest)",
+      color: "inherit",
+    },
+  },
 });
 
 const ErrorText = styled("p", {

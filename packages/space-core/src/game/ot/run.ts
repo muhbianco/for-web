@@ -46,6 +46,7 @@ import {
   type Slot,
   ARMOR_SLOTS,
   GOLD,
+  canDrink,
   canUse,
   itemDef,
 } from "./items.ts";
@@ -86,7 +87,7 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 2,
+  engine: 3,
 } as const;
 
 // ---- equipamento -------------------------------------------------------------
@@ -293,7 +294,28 @@ export interface RunHero {
   /** Etapa O7: o inventário e a capacidade em oz. */
   inv: Inventory;
   cap: number;
+  /** Etapa O9: quando beber poção; sem isto, o padrão. */
+  supplies?: RunSupplies;
+  /** Etapa O9: itens que o herói não pega (ficam no corpo). */
+  lootSkip?: readonly string[];
 }
+
+/** Beber poção abaixo de `below`% (0: nunca); `item` null: a que mais cura entre as que tem. */
+export interface SupplyRule {
+  item: string | null;
+  below: number;
+}
+
+export interface RunSupplies {
+  health: SupplyRule;
+  mana: SupplyRule;
+}
+
+/** [nosso] Vida abaixo de 50% e mana abaixo de 30%, com a melhor poção que tiver. */
+export const DEFAULT_SUPPLIES: RunSupplies = {
+  health: { item: null, below: 50 },
+  mana: { item: null, below: 30 },
+};
 
 export type RunOutcome = "vitoria" | "derrota" | "retirada";
 
@@ -314,7 +336,9 @@ export type RunEvent =
   /** Etapa O7: não coube na mochila de ninguém e ficou no corpo. */
   | { k: "deixado"; a: number; item: string; n: number }
   /** Etapa O7: o anel ou o colar acabou (tempo ou cargas). */
-  | { k: "gasto"; a: number; item: string };
+  | { k: "gasto"; a: number; item: string }
+  /** Etapa O9: poção bebida; `v` é o que entrou (vida, ou mana com `mana`). */
+  | { k: "pocao"; a: number; item: string; v: number; mana?: true };
 
 /** O estado no fim de um segundo: vida e mana dos heróis, vida dos monstros da sala. */
 export interface RunFrame {
@@ -389,6 +413,8 @@ interface HeroRt {
   attackGroup: number;
   /** A munição do último tiro (a reposição procura a mesma primeiro). */
   lastAmmo: string | null;
+  /** Quando pode beber de novo (ms). */
+  potionAt: number;
   noAmmo: boolean;
   res: RunMemberResult;
 }
@@ -535,6 +561,7 @@ export function simulateRun(input: RunInput): RunResult {
       attackGroup: 0,
       lastAmmo: inv.equip.municao?.item ?? null,
       noAmmo: false,
+      potionAt: 0,
       res: {
         dead: false,
         exp: 0,
@@ -677,9 +704,13 @@ export function simulateRun(input: RunInput): RunResult {
       }
       // Quem pode usar leva; se não couber nele, o dono do corpo; se não couber em ninguém,
       // fica no corpo [TFS: o que não cabe não sai do corpo].
+      // O filtro (etapa O9): quem marcou "não pegar" passa a vez; se ninguém pega, fica no corpo.
       const first = heroes[lootReceiver(entry.item, alive, m.dmgBy, owner.i)]!;
       let rest = n;
+      let tried = false;
       for (const to of first === owner ? [owner] : [first, owner]) {
+        if (to.h.lootSkip?.includes(entry.item)) continue;
+        tried = true;
         const got = addItem(to.inv, to.h.cap, entry.item, rest);
         if (got > 0) {
           addTo(to.res.loot, entry.item, got);
@@ -688,7 +719,7 @@ export function simulateRun(input: RunInput): RunResult {
         rest -= got;
         if (rest <= 0) break;
       }
-      if (rest > 0) {
+      if (rest > 0 && tried) {
         addTo(owner.res.left, entry.item, rest);
         ev.push({ k: "deixado", a: owner.i, item: entry.item, n: rest });
       }
@@ -697,6 +728,77 @@ export function simulateRun(input: RunInput): RunResult {
 
   function focus(): MonsterRt | null {
     return monsters.find((m) => m.alive) ?? null;
+  }
+
+  /** A poção que serve: a escolhida, ou a que mais cura entre as que pode beber e carrega. */
+  function pickPotion(
+    h: HeroRt,
+    kind: "health" | "mana",
+    item: string | null,
+  ): ItemDef | null {
+    let best: ItemDef | null = null;
+    let bestAvg = -1;
+    for (const x of h.inv.pack) {
+      const d = itemDef(x.item);
+      const range = d?.potion?.[kind];
+      if (!d || !range || (item && d.id !== item)) continue;
+      if (!canDrink(d, h.voc.base, h.h.level)) continue;
+      const avg = (range[0] + range[1]) / 2;
+      if (avg > bestAvg) {
+        best = d;
+        bestAvg = avg;
+      }
+    }
+    return best;
+  }
+
+  /** Uma unidade da pilha `id` da mochila sai (a primeira pilha dele). */
+  function takeFromPack(inv: Inventory, id: string) {
+    const i = inv.pack.findIndex((x) => x.item === id);
+    if (i < 0) return;
+    inv.pack[i]!.count--;
+    if (inv.pack[i]!.count <= 0) inv.pack.splice(i, 1);
+  }
+
+  /**
+   * Poção (etapa O9) [TFS potions.lua]: abaixo do limite que a pessoa escolheu, bebe a poção
+   * (vida antes de mana); uma por segundo [TFS config timeBetweenExActions = 1000]; o quanto
+   * cura sai na faixa por sorteio normal [TFS luaDoTargetCombat normal_random]; o frasco
+   * vazio volta para a mochila, se couber (no OT cai no chão).
+   */
+  function drink(h: HeroRt, tMs: number) {
+    if (tMs < h.potionAt) return;
+    const sup = h.h.supplies ?? DEFAULT_SUPPLIES;
+    const need = (kind: "health" | "mana"): ItemDef | null => {
+      const rule = sup[kind];
+      const cur = kind === "health" ? h.hp : h.mana;
+      const max = kind === "health" ? h.h.healthMax : h.h.manaMax;
+      if (rule.below <= 0 || max <= 0 || cur * 100 >= max * rule.below)
+        return null;
+      return pickPotion(h, kind, rule.item);
+    };
+    const def = need("health") ?? need("mana");
+    const p = def?.potion;
+    if (!def || !p) return;
+    h.potionAt = tMs + 1000;
+    if (p.health) {
+      const v = normalRandom(rng, p.health[0], p.health[1]);
+      const real = Math.min(h.h.healthMax - h.hp, v);
+      h.hp += real;
+      h.res.healing += real;
+      ev.push({ k: "pocao", a: h.i, item: def.id, v: real });
+    }
+    if (p.mana) {
+      const v = normalRandom(rng, p.mana[0], p.mana[1]);
+      const real = Math.min(h.h.manaMax - h.mana, v);
+      h.mana += real;
+      ev.push({ k: "pocao", a: h.i, item: def.id, v: real, mana: true });
+    }
+    takeFromPack(h.inv, def.id);
+    takeFromPack(h.bare, def.id);
+    addTo(h.res.spent, def.id, 1);
+    addItem(h.inv, h.h.cap, p.flask, 1);
+    addItem(h.bare, h.h.cap, p.flask, 1);
   }
 
   /**
@@ -1091,6 +1193,7 @@ export function simulateRun(input: RunInput): RunResult {
       for (const h of heroes) {
         if (!h.alive) continue;
         const m = focus();
+        drink(h, tMs);
         heroSpells(h, m, tMs);
         const target = focus();
         if (target && tMs >= h.nextAttack) {

@@ -4,7 +4,7 @@ import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../../protocol/messages.ts";
 import type { SkillId, VocationId } from "./data.ts";
 import type { Gear, Inventory } from "./inventory.ts";
 import { type Slot, SLOTS } from "./items.ts";
-import type { RunFrame, RunOutcome } from "./run.ts";
+import type { RunFrame, RunOutcome, RunSupplies } from "./run.ts";
 import { MONEY_MAX } from "./shops.ts";
 import { type TrainingSkill, TRAINING_SKILLS } from "./training.ts";
 
@@ -193,6 +193,29 @@ export const RpgPromoteCmd = z.object({
   d: z.object({ npc }).strict(),
 });
 
+// ---- poções e filtro de loot (etapa O9) ----------------------------------------
+
+const supplyRule = z
+  .object({
+    item: z.string().min(1).max(40).nullable(),
+    below: z.number().int().min(0).max(95),
+  })
+  .strict();
+
+/** Quando beber poção de vida e de mana (o limite em %, 0 desliga; a poção ou "a melhor"). */
+export const RpgSuppliesCmd = z.object({
+  ...env,
+  t: z.literal("rpg.supplies"),
+  d: z.object({ health: supplyRule, mana: supplyRule }).strict(),
+});
+
+/** Pegar ou não pegar um item do loot. */
+export const RpgLootSkipCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lootskip"),
+  d: z.object({ item: z.string().min(1).max(40), skip: z.boolean() }).strict(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
@@ -213,6 +236,8 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgBankWithdrawCmd,
   RpgBankTransferCmd,
   RpgPromoteCmd,
+  RpgSuppliesCmd,
+  RpgLootSkipCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -279,6 +304,9 @@ export interface RpgHeroView {
   gold: number;
   /** Etapa O8: saldo no banco, em ouro (não pesa). */
   bank_gold: number;
+  /** Etapa O9: quando o herói bebe poção na dungeon e o que ele não pega. */
+  supplies: RunSupplies;
+  loot_skip: string[];
   /** "Escolher o melhor sozinho" (arma, escudo, armaduras, mochila e munição). */
   auto_equip: boolean;
   /** O que veste agora (o mesmo que entra na dungeon). */

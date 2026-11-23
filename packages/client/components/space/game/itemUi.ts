@@ -58,6 +58,8 @@ export const SLOT_ICON: Record<Slot, string> = {
 export function itemIcon(def: ItemDef | undefined): string {
   if (!def) return "help";
   if (COINS.includes(def.id)) return "toll";
+  if (def.potion) return "science";
+  if (def.id.startsWith("frasco")) return "science";
   if (def.kind === "distancia") return "target";
   if (def.kind === "varinha") return "auto_fix_high";
   return def.slot ? SLOT_ICON[def.slot] : "inventory_2";
@@ -125,6 +127,14 @@ export function itemLines(
         ? t`${min} a ${max} de ${e} por tiro; ${mana} de mana`
         : t`${min} a ${max} de ${e} por tiro`,
     );
+  }
+  if (def.potion?.health) {
+    const [a, b] = def.potion.health;
+    out.push(t`Cura ${a} a ${b} de vida`);
+  }
+  if (def.potion?.mana) {
+    const [a, b] = def.potion.mana;
+    out.push(t`Devolve ${a} a ${b} de mana`);
   }
   if (def.container) {
     const n = def.container;

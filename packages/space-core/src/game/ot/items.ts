@@ -110,6 +110,15 @@ export interface ItemDef {
   starter?: boolean;
   /** Quantos do kit (munição). */
   starterCount?: number;
+  /**
+   * Poção (etapa O9): vida e mana na faixa (sorteio normal) e o frasco que sobra
+   * [TFS actions/scripts/others/potions.lua].
+   */
+  potion?: {
+    health?: readonly [number, number];
+    mana?: readonly [number, number];
+    flask: string;
+  };
 }
 
 const KNIGHT: readonly VocationId[] = [4];
@@ -499,6 +508,74 @@ const LIST: readonly ItemDef[] = [
     value: 250,
   },
 
+  // Poções [TFS potions.lua e items.xml 8704, 7618, 7620, 7588, 7589]: os mesmos números e
+  // requisitos, com os nossos nomes. O frasco vazio volta para a mochila [TFS player:addItem].
+  {
+    id: "pocao-pequena-de-vida",
+    name: "Poção pequena de vida",
+    slot: null,
+    potion: { health: [60, 90], flask: "frasco-vazio" },
+    weight: 265,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-de-vida",
+    name: "Poção de vida",
+    slot: null,
+    potion: { health: [125, 175], flask: "frasco-vazio" },
+    weight: 270,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-de-mana",
+    name: "Poção de mana",
+    slot: null,
+    potion: { mana: [75, 125], flask: "frasco-vazio" },
+    weight: 270,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-forte-de-vida",
+    name: "Poção forte de vida",
+    slot: null,
+    potion: { health: [250, 350], flask: "frasco-forte" },
+    minLevel: 50,
+    vocations: FRONT,
+    weight: 290,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-forte-de-mana",
+    name: "Poção forte de mana",
+    slot: null,
+    potion: { mana: [115, 185], flask: "frasco-forte" },
+    minLevel: 50,
+    weight: 290,
+    value: 0,
+    stackable: true,
+  },
+  // Frascos vazios [TFS items.xml 7636, 7634]; o mercador paga 5 por um [nosso, o preço do OT].
+  {
+    id: "frasco-vazio",
+    name: "Frasco vazio",
+    slot: null,
+    weight: 150,
+    value: 5,
+    stackable: true,
+  },
+  {
+    id: "frasco-forte",
+    name: "Frasco vazio grande",
+    slot: null,
+    weight: 160,
+    value: 5,
+    stackable: true,
+  },
+
   // Cripta do Musgo (level 1+).
   {
     id: "espada-de-ferro",
@@ -845,6 +922,22 @@ export function canUse(
   if (item.slot === null) return false;
   if (item.vocations && !item.vocations.includes(base)) return false;
   return level >= (item.minLevel ?? 0);
+}
+
+/** A vocação base e o level permitem beber a poção? [TFS potions.lua: level e vocations]. */
+export function canDrink(
+  item: ItemDef,
+  base: VocationId,
+  level: number,
+): boolean {
+  if (!item.potion) return false;
+  if (item.vocations && !item.vocations.includes(base)) return false;
+  return level >= (item.minLevel ?? 0);
+}
+
+/** As poções do jogo (etapa O9). */
+export function potionDefs(): ItemDef[] {
+  return LIST.filter((i) => i.potion);
 }
 
 /** Por que não pode usar: "vocation", "level" ou null (pode). */

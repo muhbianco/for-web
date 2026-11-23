@@ -42,6 +42,8 @@ import {
   normalizeHero,
   promoteHero,
   sellToMerchant,
+  setLootSkip,
+  setSupplies,
   settleRun,
   RPG_DOC_MAX_BYTES,
   rpgDocBytes,
@@ -515,6 +517,19 @@ export class RpgService {
             from: before?.vocation,
             to: out.doc.vocation,
           });
+        return this.push(session, out.doc, cmd.id, host);
+      }
+      case "rpg.supplies":
+      case "rpg.lootskip": {
+        // Escolhas (etapa O9): valem para a próxima corrida; a que está correndo não muda.
+        const out = await this.mutate(userId, false, (d) =>
+          cmd.t === "rpg.supplies"
+            ? setSupplies(d, cmd.d)
+            : setLootSkip(d, cmd.d.item, cmd.d.skip),
+        );
+        if (!out) return fail("rpg_invalid", "no_vocation");
+        if ("reason" in out) return fail("rpg_invalid", out.reason);
+        this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
       }
       case "rpg.bank.transfer": {
