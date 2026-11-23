@@ -49,8 +49,17 @@ export function merchantOffer(itemId: string): ShopOffer | undefined {
  */
 export function merchantBuys(itemId: string): number | null {
   if (COINS.includes(itemId)) return null;
-  const v = itemDef(itemId)?.value ?? 0;
-  return v > 0 ? v : null;
+  const def = itemDef(itemId);
+  const v = def?.value ?? 0;
+  if (v > 0) return v;
+  // [nosso] A munição que ele vende, ele compra de volta pela metade (para baixo): flecha 1,
+  // virote 1, flecha afiada e virote perfurante 2. No OT o NPC não compra munição; aqui quem
+  // comprou a do level errado não fica com o ouro preso. Menos que o preço: não há lucro em girar.
+  if (def?.slot === "municao") {
+    const half = Math.floor((merchantOffer(itemId)?.price ?? 0) / 2);
+    if (half > 0) return half;
+  }
+  return null;
 }
 
 /** O custo de repor um item gasto (o analisador): o preço do mercador, senão o valor. */

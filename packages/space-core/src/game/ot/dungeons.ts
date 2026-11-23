@@ -19,8 +19,17 @@ export interface Dungeon {
   name: string;
   /** Level mínimo para entrar (cada membro). */
   minLevel: number;
-  /** Level a partir do qual a dungeon fica confortável (só informação). */
-  recommendedLevel: number;
+  /**
+   * [nosso] Level a partir do qual a dungeon fica confortável (vence 70% ou mais das corridas;
+   * só informação para o menu). Medido no simulador em 23/11/2026: 120 sementes por level, kit
+   * inicial com o melhor vestido, 100 flechas, 5 poções, skill principal 10 + 2·level, escudo
+   * 10 + level, magic level do mago = level (o treino dos heróis de produção). `group` é o trio
+   * cavaleiro + arqueiro + druida; `solo`, por vocação base (null: sozinho não dá até o 50).
+   */
+  comfort: {
+    group: number;
+    solo: Readonly<Record<1 | 2 | 3 | 4, number | null>>;
+  };
   blurb: string;
   stages: readonly DungeonStage[];
 }
@@ -30,7 +39,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "cripta-do-musgo",
     name: "Cripta do Musgo",
     minLevel: 1,
-    recommendedLevel: 8,
+    comfort: { group: 1, solo: { 1: 4, 2: 4, 3: 1, 4: 1 } },
     blurb:
       "Ratos, esqueletos e a Matriarca do Musgo no fundo. A primeira descida.",
     stages: [
@@ -65,7 +74,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "galerias-afogadas",
     name: "Galerias Afogadas",
     minLevel: 8,
-    recommendedLevel: 20,
+    comfort: { group: 10, solo: { 1: 16, 2: 18, 3: 24, 4: 32 } },
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
     stages: [
       {
@@ -99,7 +108,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    recommendedLevel: 40,
+    comfort: { group: 36, solo: { 1: null, 2: null, 3: null, 4: null } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [

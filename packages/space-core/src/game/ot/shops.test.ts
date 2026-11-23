@@ -22,7 +22,11 @@ test("mercador: preços do TFS onde há; compra pelo valor; moedas e kit não [T
   assert.equal(merchantBuys("espada-de-ferro"), 60);
   assert.equal(merchantBuys("moeda-de-ouro"), null);
   assert.equal(merchantBuys("espada-curta"), null, "o kit não vale nada");
-  assert.equal(merchantBuys("flecha"), null, "munição ele só vende");
+  // [nosso] munição volta pela metade do preço, para baixo
+  assert.equal(merchantBuys("flecha"), 1);
+  assert.equal(merchantBuys("virote"), 1);
+  assert.equal(merchantBuys("flecha-afiada"), 2);
+  assert.equal(merchantBuys("virote-perfurante"), 2);
   // Nada se compra mais barato do que ele paga (senão daria lucro sem caçar).
   for (const o of MERCHANT_SELLS)
     assert.ok((merchantBuys(o.item) ?? 0) <= o.price, o.item);

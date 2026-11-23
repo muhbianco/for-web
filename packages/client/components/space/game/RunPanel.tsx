@@ -176,6 +176,11 @@ export default function RunPanel(props: {
           <Stage ref={host} />
         </Show>
         <Side>
+          <Show when={sceneFailed()}>
+            <Muted role="status">
+              {t`A vista da dungeon não abriu neste aparelho; segue o resumo em texto.`}
+            </Muted>
+          </Show>
           <Show
             when={frame()}
             fallback={

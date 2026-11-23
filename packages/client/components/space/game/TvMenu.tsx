@@ -102,6 +102,27 @@ export default function TvMenu(props: {
     if (props.view.knowsRun(id)) return props.view.watchRun(id);
     send("rpg.run.watch", { id }, () => props.view.watchRun(id));
   };
+  // Confortável = vence 70% ou mais (medido no simulador, dungeons.ts): em trio e sozinho com a
+  // vocação de quem olha.
+  const comfortLine = (d: (typeof DUNGEONS)[number]) => {
+    const group = d.comfort.group;
+    const inGroup =
+      group <= d.minLevel
+        ? t`Em trio, confortável desde a entrada.`
+        : t`Em trio, confortável a partir do level ${group}.`;
+    const voc = props.hero?.vocation ?? 0;
+    if (voc === 0) return inGroup;
+    const base = VOCATIONS[voc].base as 1 | 2 | 3 | 4;
+    const solo = d.comfort.solo[base];
+    const name = vocationName(base);
+    const alone =
+      solo === null
+        ? t`Sozinho como ${name}, não dá.`
+        : solo <= d.minLevel
+          ? t`Sozinho como ${name}, desde a entrada.`
+          : t`Sozinho como ${name}, a partir do ${solo}.`;
+    return `${inGroup} ${alone}`;
+  };
   const idleStatus = () => {
     const n = runs().length;
     if (n === 1) return t`1 partida rolando`;
@@ -279,9 +300,10 @@ export default function TvMenu(props: {
                         <Item>
                           <span>
                             <strong>{d.name}</strong>{" "}
-                            <Muted>{t`level ${d.minLevel}+ · confortável a partir do ${d.recommendedLevel}`}</Muted>
+                            <Muted>{t`level ${d.minLevel}+`}</Muted>
                           </span>
                           <Muted>{d.blurb}</Muted>
+                          <Muted data-comfort="">{comfortLine(d)}</Muted>
                           <Button
                             size="xs"
                             variant={tooLow() ? "tonal" : "filled"}

@@ -705,6 +705,14 @@ msgstr ""
 msgid "A TV não aceitou o comando."
 msgstr ""
 
+#: components/space/game/RunPanel.tsx
+msgid "A vista da dungeon não abriu neste aparelho; segue o resumo em texto."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A vocação do seu herói não usa"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "A vocação já foi escolhida."
 msgstr ""
@@ -1827,8 +1835,12 @@ msgid "Compartilhar tela"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Compra o loot e vende munição, mochilas, anéis e colares."
+msgid "Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares."
 msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+#~ msgid "Compra o loot e vende munição, mochilas, anéis e colares."
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "Comprado."
@@ -1894,6 +1906,11 @@ msgstr "Пацвердзіць дзеянне"
 
 #: components/space/game/VocationPicker.tsx
 msgid "Confirmar"
+msgstr ""
+
+#. placeholder {0}: money(total())
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: comprar por {0}"
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
@@ -2661,6 +2678,14 @@ msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "Em andamento"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Em trio, confortável a partir do level {group}."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Em trio, confortável desde a entrada."
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -3775,10 +3800,15 @@ msgid "Leva para"
 msgstr ""
 
 #. placeholder {0}: d.minLevel
+#: components/space/game/TvMenu.tsx
+msgid "level {0}+"
+msgstr ""
+
+#. placeholder {0}: d.minLevel
 #. placeholder {1}: d.recommendedLevel
 #: components/space/game/TvMenu.tsx
-msgid "level {0}+ · confortável a partir do {1}"
-msgstr ""
+#~ msgid "level {0}+ · confortável a partir do {1}"
+#~ msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "level {lv}"
@@ -6041,6 +6071,11 @@ msgstr ""
 msgid "Seu herói já foi promovido."
 msgstr ""
 
+#. placeholder {0}: def?.minLevel ?? 0
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói só usa a partir do level {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Seu microfone processado está saindo com silêncio"
 msgstr ""
@@ -6183,6 +6218,18 @@ msgstr ""
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 msgid "Sounds"
 msgstr "Гукі"
+
+#: components/space/game/TvMenu.tsx
+msgid "Sozinho como {name}, a partir do {solo}."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Sozinho como {name}, desde a entrada."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Sozinho como {name}, não dá."
+msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Spam or similar platform abuse"

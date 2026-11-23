@@ -6,6 +6,7 @@ import type { NpcKind } from "@muchat/space-core";
 import {
   type RpgHeroView,
   cannotPromote,
+  cannotUse,
   itemDef,
   MERCHANT_SELLS,
   merchantBuys,
@@ -123,7 +124,7 @@ export default function NpcDialog(props: {
 
   const subtitle = () => {
     if (props.request.npc === "mercador")
-      return t`Compra o loot e vende munição, mochilas, anéis e colares.`;
+      return t`Compra o loot (e a munição, pela metade) e vende munição, poções, mochilas, anéis e colares.`;
     if (props.request.npc === "banqueiro")
       return t`Guarda suas moedas sem peso e transfere para quem está no Espaço.`;
     return t`Promove o herói a partir do level ${PROMOTION.level}.`;
@@ -205,6 +206,18 @@ export default function NpcDialog(props: {
                     const stack = !!def?.stackable;
                     const n = () => qty()[o.item] ?? (stack ? 100 : 1);
                     const total = () => o.price * n();
+                    // O que o herói não usa (vocação ou level): aviso à vista e confirmação.
+                    const why = () => {
+                      const h = hero();
+                      if (!h || !def || def.slot === null) return null;
+                      const r = cannotUse(
+                        def,
+                        VOCATIONS[h.vocation].base,
+                        h.level,
+                      );
+                      return r === "vocation" || r === "level" ? r : null;
+                    };
+                    const key = `buy:${o.item}`;
                     return (
                       <ShopRow
                         title={
@@ -217,6 +230,15 @@ export default function NpcDialog(props: {
                         <span>
                           <strong>{itemName(o.item)}</strong>
                           <Muted>{t`${money(o.price)} cada`}</Muted>
+                          <Show when={why()}>
+                            {(w) => (
+                              <Warn>
+                                {w() === "level"
+                                  ? t`Seu herói só usa a partir do level ${def?.minLevel ?? 0}`
+                                  : t`A vocação do seu herói não usa`}
+                              </Warn>
+                            )}
+                          </Show>
                         </span>
                         <Show when={stack} fallback={<span />}>
                           <Qty
@@ -245,15 +267,19 @@ export default function NpcDialog(props: {
                           isDisabled={
                             busy() || inRun() || total() > carried() + bank()
                           }
-                          onPress={() =>
+                          onPress={() => {
+                            if (why() && confirm() !== key)
+                              return setConfirm(key);
                             send(
                               "rpg.shop.buy",
                               { item: o.item, count: n() },
                               t`Comprado.`,
-                            )
-                          }
+                            );
+                          }}
                         >
-                          {t`Comprar por ${money(total())}`}
+                          {why() && confirm() === key
+                            ? t`Confirmar: comprar por ${money(total())}`
+                            : t`Comprar por ${money(total())}`}
                         </Button>
                       </ShopRow>
                     );
@@ -606,6 +632,10 @@ const Muted = styled("span", {
 
 const DoneText = styled("p", {
   base: { color: "var(--md-sys-color-primary)" },
+});
+
+const Warn = styled("span", {
+  base: { color: "var(--md-sys-color-error)", fontSize: "0.85em" },
 });
 
 const ErrorText = styled("p", {
