@@ -972,6 +972,10 @@ export class RpgService {
   ) {
     // O level sob o nome acompanha o herói (quem tem herói aparece com ele).
     if (doc) host?.setHero(doc._id, heroLook(doc));
+    // O mapa segue o banco: sem treino no herói, sem "treinando" no avatar. Começar a dungeon
+    // (markRun) e outros caminhos fecham o treino no herói sem passar pelo runtime; sem isto o
+    // avatar seguia com ⚔, o equipamento e o tiro no dummy, sem treinar (23/11/2026, Acais).
+    if (doc && !doc.training) host?.setTraining(doc._id, null);
     if (!session) return;
     const ev: RpgStateEvent = {
       v: 1,

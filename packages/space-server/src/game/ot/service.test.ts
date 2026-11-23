@@ -653,3 +653,31 @@ test("transferência: duas cruzadas não travam; caída no meio é entregue na v
   assert.equal((await store.get("U2"))?.bank_gold, 350);
   assert.equal((await store.get("U1"))?.bank_gold, 650);
 });
+
+test("dungeon começa: quem treinava para de treinar também no mapa (a marca não fica para trás)", async () => {
+  const env = setup();
+  const { send, host, svc } = env;
+  await send("rpg.vocation", { vocation: 4 });
+  // Ana treina e, sem sair do treino, monta o grupo na TV (o dojo tem a TV a poucos tiles do dummy).
+  await send("rpg.train.start", { instance: "d1", skill: "espada" });
+  assert.equal(host.training.get("U1"), "d1");
+  await send("rpg.lobby.create", { tv: "tv1", dungeon: "cripta-do-musgo" });
+  const bia = new FakeSession({
+    user: { _id: "U2", username: "bia", display_name: "Bia" },
+    member: null,
+  } as unknown as Viewer);
+  host.sessions.set("U2", bia);
+  const biaSend = async (id: string, t: RpgCommand["t"], d?: Record<string, unknown>) => {
+    svc.handle(bia, host, { v: 1, id, t, ...(d ? { d } : {}) } as RpgCommand);
+    await svc.idle("U2");
+  };
+  await biaSend("b1", "rpg.vocation", { vocation: 1 });
+  await biaSend("b2", "rpg.train.start", { instance: "d2", skill: "magia" });
+  assert.equal(host.training.get("U2"), "d2");
+  await biaSend("b3", "rpg.lobby.join", { tv: "tv1" });
+  await send("rpg.lobby.start");
+  await svc.idle("U2");
+  assert.equal(svc.activeRuns().length, 1);
+  assert.equal(host.training.has("U1"), false, "a líder");
+  assert.equal(host.training.has("U2"), false, "quem entrou no grupo");
+});
