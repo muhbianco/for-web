@@ -1,6 +1,9 @@
-import { drawCharacter, palette } from "../render/sprites.ts";
+import type { AvatarGear } from "@muchat/space-core";
+
+import { artCanvas as canvas, type Ctx, drawEquipped, outline, px } from "../render/heroArt.ts";
 import { OUTLINE, shade } from "../render/pixel.ts";
-import { DOOR_ROW, type HeroGear, type HeroLook, SCENE_H, SCENE_W, TILE } from "./script.ts";
+import { palette } from "../render/sprites.ts";
+import { DOOR_ROW, SCENE_H, SCENE_W, TILE } from "./script.ts";
 
 /**
  * Arte da dungeon vista de cima (docs/espaco/jogo/ot, etapa O10), desenhada em código no estilo
@@ -8,37 +11,6 @@ import { DOOR_ROW, type HeroGear, type HeroLook, SCENE_H, SCENE_W, TILE } from "
  * (nada de sprite, nome ou mapa do Tibia). Cada função pinta num canvas na escala 1; a cena
  * amplia com "nearest" e destrói só as texturas que criou a partir destes canvas.
  */
-
-type Ctx = CanvasRenderingContext2D;
-
-function canvas(w: number, h: number): { c: HTMLCanvasElement; ctx: Ctx } {
-  const c = document.createElement("canvas");
-  c.width = w;
-  c.height = h;
-  // Canvas na memória (não na GPU): o contorno lê os pixels, e ler de um canvas acelerado trava a GPU.
-  const ctx = c.getContext("2d", { willReadFrequently: true })!;
-  ctx.imageSmoothingEnabled = false;
-  return { c, ctx };
-}
-
-function px(ctx: Ctx, x: number, y: number, w: number, h: number, color: string) {
-  ctx.fillStyle = color;
-  ctx.fillRect(x, y, w, h);
-}
-
-/** Contorno de 1 px em volta do que já foi pintado (para fora). */
-function outline(c: HTMLCanvasElement, color = OUTLINE) {
-  const ctx = c.getContext("2d")!;
-  const img = ctx.getImageData(0, 0, c.width, c.height);
-  const a = (x: number, y: number) => (x < 0 || y < 0 || x >= c.width || y >= c.height ? 0 : img.data[(y * c.width + x) * 4 + 3]!);
-  ctx.fillStyle = color;
-  for (let y = 0; y < c.height; y++) {
-    for (let x = 0; x < c.width; x++) {
-      if (a(x, y) > 0) continue;
-      if (a(x - 1, y) || a(x + 1, y) || a(x, y - 1) || a(x, y + 1)) ctx.fillRect(x, y, 1, 1);
-    }
-  }
-}
 
 /** Sorteio fixo por semente (mulberry32): a mesma sala sai sempre igual. */
 function seeded(seed: number) {
@@ -60,71 +32,19 @@ function hash(s: string): number {
 
 // ---- heróis ------------------------------------------------------------------
 
-/** A arma na mão da frente do herói virado para a direita. */
-function weapon(ctx: Ctx, look: HeroLook) {
-  switch (look) {
-    case "espada":
-      px(ctx, 12, 3, 1, 7, "#d7dce6");
-      px(ctx, 13, 3, 1, 1, "#f1f1f4");
-      px(ctx, 11, 10, 3, 1, "#b9823f");
-      px(ctx, 12, 11, 1, 2, "#6a4a2e");
-      break;
-    case "machado":
-      px(ctx, 12, 3, 1, 10, "#6a4a2e");
-      px(ctx, 13, 3, 2, 4, "#c3cad6");
-      px(ctx, 14, 4, 1, 2, "#e8ebf0");
-      break;
-    case "maca":
-      px(ctx, 12, 7, 1, 6, "#6a4a2e");
-      px(ctx, 11, 4, 3, 3, "#8c909d");
-      px(ctx, 12, 3, 1, 1, "#8c909d");
-      px(ctx, 11, 4, 1, 1, "#c3cad6");
-      break;
-    case "arco":
-      px(ctx, 13, 3, 1, 10, "#8a5a2e");
-      px(ctx, 12, 2, 1, 1, "#8a5a2e");
-      px(ctx, 12, 13, 1, 1, "#8a5a2e");
-      px(ctx, 12, 3, 1, 10, "#e8e0cf");
-      break;
-    case "besta":
-      px(ctx, 11, 8, 4, 1, "#6a4a2e");
-      px(ctx, 14, 5, 1, 7, "#9aa3b2");
-      px(ctx, 13, 6, 1, 5, "#e8e0cf");
-      break;
-    case "varinha":
-      px(ctx, 12, 7, 1, 5, "#3a2a20");
-      px(ctx, 12, 5, 1, 2, "#2ee6ff");
-      px(ctx, 13, 5, 1, 1, "#bff8ff");
-      break;
-    case "cajado":
-      px(ctx, 12, 1, 1, 14, "#6a4a2e");
-      px(ctx, 11, 0, 3, 2, "#4dff7a");
-      px(ctx, 12, 0, 1, 1, "#d7ffe0");
-      break;
-    case "punhos":
-      break;
-  }
-}
-
-/** Escudo no braço de trás (virado para a direita, é o lado de dentro). */
-function shield(ctx: Ctx) {
-  px(ctx, 3, 7, 3, 5, "#8a5a34");
-  px(ctx, 3, 7, 3, 1, "#b9823f");
-  px(ctx, 4, 9, 1, 1, "#d7dce6");
-}
-
-/** Quadros do herói: [parado, passo A, passo B] para a direita e [parado] de frente. */
-export function heroFrames(pal: number, g: HeroGear): HTMLCanvasElement[] {
+/**
+ * Quadros do herói na cena: [parado, passo A, passo B] para a direita e [parado] de frente, com o
+ * avatar equipado do mapa (heroArt.drawEquipped: armadura, arma e escudo pelo material).
+ */
+export function equippedFrames(pal: number, gear: AvatarGear): HTMLCanvasElement[] {
   const out: HTMLCanvasElement[] = [];
   for (let f = 0; f < 3; f++) {
     const { c, ctx } = canvas(TILE, TILE);
-    if (g.shield) shield(ctx);
-    drawCharacter(ctx, 0, 0, "right", f, palette(pal));
-    weapon(ctx, g.look);
+    drawEquipped(ctx, "right", f, palette(pal), gear);
     out.push(c);
   }
   const { c, ctx } = canvas(TILE, TILE);
-  drawCharacter(ctx, 0, 0, "down", 0, palette(pal));
+  drawEquipped(ctx, "down", 0, palette(pal), gear);
   out.push(c);
   return out;
 }
@@ -436,93 +356,6 @@ export function corpseCanvas(id: string, body: HTMLCanvasElement): HTMLCanvasEle
   ctx.fillRect(0, 0, s, s);
   ctx.globalCompositeOperation = "source-over";
   return c;
-}
-
-// ---- efeitos -----------------------------------------------------------------
-
-export type FxArt = "flecha" | "virote" | "orbe" | "lanca" | "estrela" | "faisca" | "fumaca" | "corte" | "saco" | "moedas";
-
-/** Efeitos em branco (o tom do elemento entra pelo `tint`), menos fumaça, saco e moedas. */
-export function fxCanvas(k: FxArt): HTMLCanvasElement {
-  switch (k) {
-    case "flecha": {
-      const { c, ctx } = canvas(8, 3);
-      px(ctx, 1, 1, 5, 1, "#c8a26a");
-      px(ctx, 6, 0, 1, 3, "#d7dce6");
-      px(ctx, 7, 1, 1, 1, "#d7dce6");
-      px(ctx, 0, 0, 1, 1, "#e8e0cf");
-      px(ctx, 0, 2, 1, 1, "#e8e0cf");
-      return c;
-    }
-    case "virote": {
-      const { c, ctx } = canvas(6, 3);
-      px(ctx, 0, 1, 4, 1, "#8a5a34");
-      px(ctx, 4, 0, 2, 3, "#9aa3b2");
-      return c;
-    }
-    case "orbe": {
-      const { c, ctx } = canvas(6, 6);
-      px(ctx, 1, 0, 4, 6, "#ffffff");
-      px(ctx, 0, 1, 6, 4, "#ffffff");
-      return c;
-    }
-    case "lanca": {
-      const { c, ctx } = canvas(10, 3);
-      px(ctx, 0, 1, 7, 1, "#ffffff");
-      px(ctx, 7, 0, 2, 3, "#ffffff");
-      px(ctx, 9, 1, 1, 1, "#ffffff");
-      return c;
-    }
-    case "estrela": {
-      const { c, ctx } = canvas(12, 12);
-      ctx.globalAlpha = 0.85;
-      px(ctx, 5, 0, 2, 12, "#ffffff");
-      px(ctx, 0, 5, 12, 2, "#ffffff");
-      px(ctx, 3, 3, 6, 6, "#ffffff");
-      ctx.globalAlpha = 1;
-      px(ctx, 4, 4, 4, 4, "#ffffff");
-      return c;
-    }
-    case "faisca": {
-      const { c, ctx } = canvas(5, 5);
-      px(ctx, 2, 0, 1, 5, "#ffffff");
-      px(ctx, 0, 2, 5, 1, "#ffffff");
-      return c;
-    }
-    case "fumaca": {
-      const { c, ctx } = canvas(9, 7);
-      px(ctx, 2, 1, 5, 5, "#c8ccd6");
-      px(ctx, 1, 2, 7, 3, "#c8ccd6");
-      px(ctx, 0, 3, 9, 2, "#aeb3c0");
-      px(ctx, 3, 1, 2, 1, "#eceef3");
-      return c;
-    }
-    case "corte": {
-      const { c, ctx } = canvas(12, 12);
-      for (let i = 0; i < 10; i++) px(ctx, 1 + i, 10 - i, 2, 1, "#ffffff");
-      return c;
-    }
-    case "saco": {
-      const { c, ctx } = canvas(9, 9);
-      px(ctx, 2, 3, 5, 6, "#8a5a34");
-      px(ctx, 1, 4, 7, 4, "#8a5a34");
-      px(ctx, 3, 2, 3, 1, "#5e3c22");
-      px(ctx, 3, 0, 3, 2, "#a8743f");
-      px(ctx, 2, 4, 1, 2, "#b9823f");
-      outline(c);
-      return c;
-    }
-    case "moedas": {
-      const { c, ctx } = canvas(7, 5);
-      px(ctx, 0, 2, 3, 3, "#ffd23c");
-      px(ctx, 3, 1, 4, 4, "#f0c03a");
-      px(ctx, 2, 0, 3, 2, "#ffe27a");
-      px(ctx, 1, 3, 1, 1, "#b9823f");
-      px(ctx, 5, 3, 1, 1, "#b9823f");
-      outline(c);
-      return c;
-    }
-  }
 }
 
 // ---- salas -------------------------------------------------------------------

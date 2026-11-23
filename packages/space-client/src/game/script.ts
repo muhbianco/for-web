@@ -1,4 +1,9 @@
-import { type Element, type RunEvent, type RunFrame, type VocationId, itemDef, MONSTER_BASE, monsterDef, spellDef, VOCATIONS } from "@muchat/space-core/game/ot";
+import { type Element, type RunEvent, type RunFrame, type VocationId, MONSTER_BASE, monsterDef, spellDef, VOCATIONS } from "@muchat/space-core/game/ot";
+
+import { type HeroGear, isRanged } from "../render/heroArt.ts";
+
+// A cara do herói pela arma e as cores dos elementos moram no heroArt (o mapa usa as mesmas).
+export { ELEMENT_COLOR, heroGear, type HeroGear, type HeroLook, isRanged } from "../render/heroArt.ts";
 
 /**
  * A dungeon vista de cima (docs/espaco/jogo/ot, etapa O10): a parte pura da cena. Diz onde cada
@@ -22,46 +27,6 @@ export const DOOR_ROW = 4;
 export const SECOND_MS = 800;
 /** Recém-chegado na sala: os golpes esperam o grupo chegar no lugar. */
 export const ENTER_DELAY_MS = 350;
-
-/** O que o herói tem na mão, pela arma do equipamento. */
-export type HeroLook = "espada" | "machado" | "maca" | "arco" | "besta" | "varinha" | "cajado" | "punhos";
-
-export interface HeroGear {
-  look: HeroLook;
-  /** Elemento do tiro da varinha (os outros batem no físico). */
-  element: Element;
-  shield: boolean;
-}
-
-export function heroGear(weapon: string | null | undefined, shield: string | null | undefined): HeroGear {
-  const it = weapon ? itemDef(weapon) : undefined;
-  let look: HeroLook = "punhos";
-  let element: Element = "fisico";
-  if (it) {
-    switch (it.kind) {
-      case "espada":
-      case "machado":
-      case "maca":
-        look = it.kind;
-        break;
-      case "distancia":
-        look = it.id.includes("besta") ? "besta" : "arco";
-        break;
-      case "varinha":
-        look = /cajado|bastao/.test(it.id) ? "cajado" : "varinha";
-        element = it.wand?.element ?? "energia";
-        break;
-      default:
-        // Arma do kit sem tipo (a espada curta do arqueiro): luta com os punhos [run.ts weaponSkill].
-        look = it.id.includes("espada") ? "espada" : "punhos";
-    }
-  }
-  return { look, element, shield: !!shield };
-}
-
-export function isRanged(look: HeroLook): boolean {
-  return look === "arco" || look === "besta" || look === "varinha" || look === "cajado";
-}
 
 /** Um ponto da sala em px de arte: o meio dos pés de quem está ali. */
 export interface Spot {
@@ -131,19 +96,6 @@ export function monsterSpots(ids: readonly (string | undefined)[]): MonsterSpot[
     return { x: s.x + lap * 4, y: s.y, size: boss ? 2 : 1 };
   });
 }
-
-/** Cor do número de dano pelo elemento; o físico é o sangue. */
-export const ELEMENT_COLOR: Readonly<Record<Element | "cura" | "mana", number>> = {
-  fisico: 0xff6a5c,
-  fogo: 0xff9a3c,
-  gelo: 0x8fd8ff,
-  energia: 0xc98cff,
-  terra: 0x9ee35a,
-  morte: 0xb5a6cc,
-  sagrado: 0xffe27a,
-  cura: 0x63e68a,
-  mana: 0x6fb6ff,
-};
 
 /** Moedas caem como moedas, não como saco: "moedas" hoje, "moeda-de-ouro/platina/cristal" na O7. */
 export function isCoins(item: string): boolean {

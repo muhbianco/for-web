@@ -130,6 +130,7 @@ export default function RunPanel(props: {
         palette: props.paletteOf?.(m.user_id) ?? defaultPalette(m.user_id),
         weapon: m.gear?.weapon ?? null,
         shield: m.gear?.shield ?? null,
+        armor: m.gear?.armor ?? {},
       })),
     };
     s.show(sceneRun, frameM(), outcomeM());

@@ -50,7 +50,7 @@ function newRun() {
   run = {
     id: `dev-${dungeon}-${seed}`,
     dungeon,
-    members: party.map((h, i) => ({ userId: h.userId, name: h.name, vocation: h.vocation, healthMax: h.healthMax, palette: PALETTES[i]!, weapon: h.gear.weapon, shield: h.gear.shield })),
+    members: party.map((h, i) => ({ userId: h.userId, name: h.name, vocation: h.vocation, healthMax: h.healthMax, palette: PALETTES[i]!, weapon: h.gear.weapon, shield: h.gear.shield, armor: h.gear.armor })),
   };
   sec = Number(q.get("at") ?? 0);
   $("feed").innerHTML = "";

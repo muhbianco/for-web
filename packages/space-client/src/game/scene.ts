@@ -1,8 +1,10 @@
+import type { AvatarGear } from "@muchat/space-core";
 import { dungeonOf, MONSTER_BASE, monsterDef, type RunFrame, type RunOutcome, stageMonsters, type VocationId } from "@muchat/space-core/game/ot";
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { RENDERER_DESTROY } from "../render/renderer.ts";
-import { corpseCanvas, fallenCanvas, type FxArt, fxCanvas, heroFrames, monsterCanvas, monsterSize, roomCanvas } from "./art.ts";
+import { type FxArt, fxCanvas, gearKey } from "../render/heroArt.ts";
+import { corpseCanvas, equippedFrames, fallenCanvas, monsterCanvas, monsterSize, roomCanvas } from "./art.ts";
 import {
   afterHit,
   type Cue,
@@ -60,6 +62,20 @@ export interface DungeonMember {
   palette: number;
   weapon: string | null;
   shield: string | null;
+  /** A armadura vestida (o herói aparece como o avatar equipado do mapa). */
+  armor?: Readonly<Partial<Record<"cabeca" | "corpo" | "pernas" | "pes", string>>>;
+}
+
+/** O que o avatar do mapa mostra, a partir do equipamento da corrida. */
+function avatarGear(m: DungeonMember): AvatarGear {
+  const g: AvatarGear = {};
+  if (m.weapon) g.weapon = m.weapon;
+  if (m.shield) g.shield = m.shield;
+  if (m.armor?.cabeca) g.head = m.armor.cabeca;
+  if (m.armor?.corpo) g.body = m.armor.corpo;
+  if (m.armor?.pernas) g.legs = m.armor.pernas;
+  if (m.armor?.pes) g.feet = m.armor.pes;
+  return g;
 }
 
 export interface DungeonRun {
@@ -335,15 +351,15 @@ export class DungeonScene {
     this.gears = run.members.map((m) => heroGear(m.weapon, m.shield));
     const homes = heroSpots(this.gears);
     this.heroes = run.members.map((m, i) => {
-      const look = this.heroLook(m.palette, this.gears[i]!);
+      const look = this.heroLook(m.palette, avatarGear(m));
       return this.makeUnit(i, true, m.userId === this.me, false, look.frames, TILE, m.name, homes[i]!, m.healthMax, look.fallen);
     });
   }
 
-  private heroLook(pal: number, g: HeroGear): { frames: Texture[]; fallen: Texture } {
-    const key = `heroi|${pal}|${g.look}|${g.shield ? 1 : 0}`;
+  private heroLook(pal: number, gear: AvatarGear): { frames: Texture[]; fallen: Texture } {
+    const key = `heroi|${pal}|${gearKey(gear)}`;
     let canvases: HTMLCanvasElement[] | null = null;
-    const draw = () => (canvases ??= heroFrames(pal, g));
+    const draw = () => (canvases ??= equippedFrames(pal, gear));
     const frames = [0, 1, 2, 3].map((f) => this.tex(`${key}|${f}`, () => draw()[f]!));
     const fallen = this.tex(`${key}|caido`, () => fallenCanvas(draw()[0]!));
     return { frames, fallen };
@@ -358,7 +374,7 @@ export class DungeonScene {
     run.members.forEach((m, i) => {
       const h = this.heroes[i];
       if (!h || prev.members[i]?.palette === m.palette) return;
-      const look = this.heroLook(m.palette, this.gears[i]!);
+      const look = this.heroLook(m.palette, avatarGear(m));
       const was = h.sprite.texture;
       const f = h.frames.indexOf(was);
       h.frames = look.frames;
