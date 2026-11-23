@@ -84,7 +84,7 @@ msgstr "{0, plural, one {Bir Dosya Bırak} other {Dosya # Bırak}}"
 msgid "{0} · level {1} ({2}%)"
 msgstr ""
 
-#. placeholder {0}: L.vocation[m.vocation as 1 | 2 | 3 | 4]?.name ?? ""
+#. placeholder {0}: vocationName(m.vocation)
 #. placeholder {1}: m.level
 #: components/space/game/TvMenu.tsx
 msgid "{0} · Nv {1}"
@@ -109,11 +109,24 @@ msgstr ""
 msgid "{0} {1} · {2}%"
 msgstr ""
 
+#. placeholder {0}: vocationName(v())
+#. placeholder {1}: vocationName(next()!)
+#. placeholder {2}: PROMOTION.level
+#: components/space/game/NpcDialog.tsx
+msgid "{0} → {1}: level {2} e {cost} de ouro (das moedas e do banco)."
+msgstr ""
+
 #. placeholder {0}: users() .slice(0, -1) .map((user) => user!.username) .join(", ")
 #. placeholder {1}: users().slice(-1)[0]!.username
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "{0} and {1} are typing…"
 msgstr "{0} ve {1} yazıyor…"
+
+#. placeholder {0}: money(o.price)
+#. placeholder {0}: money(r.price!)
+#: components/space/game/NpcDialog.tsx
+msgid "{0} cada"
+msgstr ""
 
 #. placeholder {0}: (message.systemMessage as ChannelEditSystemMessage).by?.username
 #: components/client/NotificationsWorker.tsx
@@ -356,6 +369,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{device} Hz (não bate com {context} Hz)"
+msgstr ""
+
+#: components/space/game/runUi.ts
+msgid "{expH} de experiência por hora · loot {loot} · gasto {sup} · saldo {bal}"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -629,6 +646,10 @@ msgstr ""
 #~ msgid "A primeira expedição é a iniciação: curta, para conhecer o caminho."
 #~ msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "A promoção pede level {lv}."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A reprodução neste computador está engasgando"
 msgstr ""
@@ -643,6 +664,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "A vocação já foi escolhida."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A vocação promovida recupera vida e mana mais depressa, como no OT."
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -864,6 +889,10 @@ msgstr "Bir hata oluştu."
 msgid "An internal error occurred. ({0})"
 msgstr "Dahili bir hata oluştu. ({0})"
 
+#: components/space/game/rpgUi.ts
+msgid "Ancião"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Andarilho ferido pede {price} de ouro: +10% de vida máxima."
 #~ msgstr ""
@@ -892,6 +921,10 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Appearance"
 msgstr "Görünüm"
+
+#: components/space/game/rpgUi.ts
+msgid "Aprendiz"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Arco"
@@ -946,6 +979,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Arqueiro"
+msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Arquimago"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -1130,6 +1167,11 @@ msgstr "Kullanıcıyı yasakla"
 msgid "Ban User"
 msgstr "Kullanıcıyı Yasakla"
 
+#. placeholder {0}: money(bank())
+#: components/space/game/NpcDialog.tsx
+msgid "Banco {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Banda de subida estimada"
 msgstr ""
@@ -1273,6 +1315,10 @@ msgstr ""
 #~ msgid "Cabelo"
 #~ msgstr ""
 
+#: components/space/game/rpgUi.ts
+msgid "Caçador"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Cada avatar é um herói: treina nos dummies das salas e entra em dungeons em grupo pela TV. Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
 msgstr ""
@@ -1316,6 +1362,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Caminho"
+msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Campeão"
 msgstr ""
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
@@ -1401,6 +1451,11 @@ msgstr ""
 #: components/space/DecorPanel.tsx
 #~ msgid "Cargos escolhidos"
 #~ msgstr ""
+
+#. placeholder {0}: money(carried())
+#: components/space/game/NpcDialog.tsx
+msgid "Carrega {0}"
+msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "Carregando…"
@@ -1539,6 +1594,10 @@ msgstr "Posta kutunu kontrol et!"
 
 #: components/space/game/rpgUi.ts
 msgid "Chegue mais perto do dummy para treinar."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Chegue mais perto para falar."
 msgstr ""
 
 #: components/auth/src/flows/FlowLogin.tsx
@@ -1721,9 +1780,22 @@ msgstr ""
 msgid "Compartilhar tela"
 msgstr ""
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Comprar"
-#~ msgstr ""
+#: components/space/game/NpcDialog.tsx
+msgid "Compra o loot e vende munição, mochilas, anéis e colares."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Comprado."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Comprar"
+msgstr ""
+
+#. placeholder {0}: money(total())
+#: components/space/game/NpcDialog.tsx
+msgid "Comprar por {0}"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "comum"
@@ -1780,6 +1852,15 @@ msgstr ""
 
 #: components/space/game/HeroSheet.tsx
 msgid "Confirmar: jogar fora"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: promover por {cost}"
+msgstr ""
+
+#. placeholder {0}: money(amount())
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: transferir {0}"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -2262,6 +2343,19 @@ msgstr "Rolü Sil"
 msgid "Delete Server"
 msgstr "Sunucuyu Sil"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Depositado."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Depositar"
+msgstr ""
+
+#. placeholder {0}: money(carried())
+#: components/space/game/NpcDialog.tsx
+msgid "Depositar tudo ({0})"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #: components/space/game/labels.ts
 #~ msgid "Descanso"
@@ -2681,6 +2775,10 @@ msgstr ""
 #~ msgid "Equipar"
 #~ msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Escolha a vocação do seu herói num dummy de treino primeiro."
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Escolha a vocação primeiro."
 msgstr ""
@@ -2691,6 +2789,10 @@ msgstr ""
 
 #: components/space/AudioCheck.tsx
 msgid "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Escolha quem está no Espaço"
 msgstr ""
 
 #: components/space/Onboarding.tsx
@@ -2792,6 +2894,14 @@ msgstr ""
 msgid "Essa arma usa as duas mãos: tire o escudo antes (ou a arma, para pôr o escudo)."
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Essa pessoa ainda não escolheu a vocação."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Essa pessoa não está no Espaço agora."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Esse caminho não está ao alcance."
 #~ msgstr ""
@@ -2830,6 +2940,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Este dummy não está mais aqui."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Este NPC não está mais aqui."
 msgstr ""
 
 #: components/space/InteractionDialog.tsx
@@ -2924,6 +3038,7 @@ msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
+#: components/space/game/NpcDialog.tsx
 #: components/space/game/RunPanel.tsx
 #: components/space/game/TrainingDialog.tsx
 #: components/space/game/TvMenu.tsx
@@ -3191,6 +3306,10 @@ msgstr ""
 msgid "Grupo: {0} · {1}/{2}"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Guarda suas moedas sem peso e transfere para quem está no Espaço."
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Guardar"
 #~ msgstr ""
@@ -3198,6 +3317,10 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Guidelines"
 msgstr "Yönergeler"
+
+#: components/space/game/NpcDialog.tsx
+msgid "Há transferências demais a caminho. Espere um pouco."
+msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Harassment or cyberbullying"
@@ -3385,6 +3508,14 @@ msgstr "alakasız mizah rozeti 2"
 #: components/app/interface/settings/user/Language.tsx
 msgid "ISO Standard (YYYY-MM-DD)"
 msgstr "ISO Standartı (YYYY-AA-GG)"
+
+#: components/space/game/NpcDialog.tsx
+msgid "Isso ele não compra."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Isso ele não vende."
+msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Isso não se veste."
@@ -4188,6 +4319,10 @@ msgstr ""
 msgid "Nada encontrado."
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Nada na mochila que ele compre."
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Nada para mostrar nesta aba."
 msgstr ""
@@ -4232,6 +4367,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Não dá para chegar nessa sala daqui."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Não dá: falta dinheiro (nas moedas e no banco)."
 msgstr ""
 
 #: components/space/AudioCheck.tsx
@@ -4378,6 +4517,10 @@ msgstr "Bu platformu kullanmak için gereken yaşta değil"
 msgid "Notifications"
 msgstr "Bildirimler"
 
+#: components/space/game/NpcDialog.tsx
+msgid "O banco não pesa. Sacar só funciona se as moedas couberem na mochila."
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "O boneco chegou ao limite: colete para não perder treino."
 #~ msgstr ""
@@ -4412,6 +4555,10 @@ msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "O herói está numa dungeon: o inventário volta quando a corrida acabar."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "O herói está numa dungeon: volte quando a corrida acabar."
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
@@ -4627,6 +4774,10 @@ msgstr "Kurucu"
 msgid "Pacotes por segundo"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Paga com as moedas que você carrega; se faltar, com o banco. O troco volta nas moedas maiores."
+msgstr ""
+
 #: components/space/InteractionDialog.tsx
 msgid "Páginas do próprio Muchat não podem ser mostradas dentro de um objeto."
 msgstr ""
@@ -4650,6 +4801,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Para onde?"
 #~ msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Para quem"
+msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Para trocar ouro por platina, junte 100 moedas na mesma pilha."
@@ -4910,6 +5065,19 @@ msgstr "Hakkımda"
 msgid "Promotes harm"
 msgstr "Zarar veya tehlike taşıyan eylemlere teşvik ediyor"
 
+#. placeholder {0}: PROMOTION.level
+#: components/space/game/NpcDialog.tsx
+msgid "Promove o herói a partir do level {0}."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Promover"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Promovido!"
+msgstr ""
+
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 #: components/modal/modals/ServerIdentity.tsx
 msgid "Pronouns"
@@ -4945,6 +5113,10 @@ msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Quality"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Quantidade"
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -5364,6 +5536,14 @@ msgstr ""
 #~ msgid "Roupa"
 #~ msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Sacado."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Sacar"
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "sagrado"
 msgstr ""
@@ -5406,6 +5586,10 @@ msgstr ""
 
 #: components/space/game/TrainingChip.tsx
 msgid "saldo esgotado"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Saldo no banco (não pesa)"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -5711,6 +5895,15 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Seu herói ainda não tem o level mínimo desta dungeon."
+msgstr ""
+
+#. placeholder {0}: vocationName(v())
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói já é {0}."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói já foi promovido."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -6343,6 +6536,18 @@ msgstr "Vurgulu Tonlar"
 msgid "Traditional (DD/MM/YYYY)"
 msgstr "Geleneksel (GG/AA/YYYY)"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Transferido."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Transferir"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Transferir do banco para"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Travamentos"
 msgstr ""
@@ -6628,6 +6833,10 @@ msgstr ""
 msgid "Valor das moedas que carrega"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Valor em ouro"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Varinha"
 #~ msgstr ""
@@ -6653,10 +6862,23 @@ msgstr ""
 #~ msgid "velocidade +{0}%"
 #~ msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Vender"
+msgstr ""
+
 #. placeholder {0}: sellValue(props.item)
 #: components/space/game/GamePanel.tsx
 #~ msgid "Vender ({0})"
 #~ msgstr ""
+
+#. placeholder {0}: money(r.price! * r.x.count)
+#: components/space/game/NpcDialog.tsx
+msgid "Vender por {0}"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Vendido."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Ventilador, rua, gente conversando perto. Remove mais ruído, com a voz um pouco menos natural."
@@ -6819,6 +7041,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Você não é membro deste servidor"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Você não pode transferir para você mesmo."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
