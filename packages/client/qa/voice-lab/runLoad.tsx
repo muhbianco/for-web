@@ -1,9 +1,12 @@
 /**
- * Carga da corrida da dungeon para o laboratório de voz (etapa O6, muchat/docs/espaco/jogo/ot):
- * a tela da aventura de verdade (RunPanel, com o CSS e as traduções do app) na mesma página
- * que fala, recebendo um quadro por segundo como o app recebe do servidor. Uma corrida atrás
- * da outra com o painel sempre aberto: o pior caso do jogo novo no app (no uso normal o painel
- * fecha e as corridas param). O run.mjs carrega este módulo pelo vite do app com `--run-load`.
+ * Carga da corrida da dungeon para o laboratório de voz (etapas O6 e O10,
+ * muchat/docs/espaco/jogo/ot): a tela da aventura de verdade (RunPanel, com o CSS e as
+ * traduções do app) na mesma página que fala, recebendo um quadro por segundo como o app
+ * recebe do servidor. Desde a O10 o painel monta a dungeon vista de cima (DungeonScene, Pixi
+ * próprio) num tamanho de desktop, e cada segundo anima ~0,8 s a até 30 quadros/s. Uma corrida
+ * atrás da outra com o painel sempre aberto: o pior caso do jogo novo no app (no uso normal o
+ * painel fecha e as corridas param). O run.mjs carrega este módulo pelo vite do app com
+ * `--run-load`.
  */
 import "../../src/index.css";
 
@@ -29,6 +32,8 @@ import { I18nProvider } from "../../components/i18n";
 import RunPanel from "../../components/space/game/RunPanel";
 
 const DUNGEON = "galerias-afogadas";
+/** Cada herói com uma paleta do Espaço, como as pessoas de verdade. */
+const PALETTES: Record<string, number> = { u1: 6, u2: 3, u3: 5, u4: 0 };
 
 function hero(
   vocation: VocationId,
@@ -90,22 +95,33 @@ const PARTY = [
 ];
 
 export async function startRunLoad(): Promise<string> {
+  const { DungeonScene } = await import("@muchat/space-client/game");
   const host = document.createElement("div");
+  // O painel com a cena no tamanho de um desktop (780 px de largura, cena ~500 × 300).
   host.style.cssText =
-    "position:fixed;right:0;bottom:0;width:440px;height:600px;z-index:10";
+    "position:fixed;right:0;bottom:0;width:820px;height:640px;z-index:10";
   document.body.appendChild(host);
   const [state, setState] = createSignal<RunState | null>(null);
   const dispose = render(
     () => (
       <I18nProvider>
         <Show when={state()}>
-          {(s) => <RunPanel state={s()} myId="u4" onClose={() => undefined} />}
+          {(s) => (
+            <RunPanel
+              state={s()}
+              myId="u4"
+              onClose={() => undefined}
+              paletteOf={(id) => PALETTES[id] ?? 0}
+            />
+          )}
         </Show>
       </I18nProvider>
     ),
     host,
   );
 
+  const t0 = performance.now();
+  const drawn0 = DungeonScene.drawn;
   let runs = 0;
   let frames = 0;
   let updateMsMax = 0;
@@ -197,6 +213,13 @@ export async function startRunLoad(): Promise<string> {
       updateMsAvg: frames ? Math.round((updateMsSum / frames) * 100) / 100 : 0,
       updateMsMax: Math.round(updateMsMax * 100) / 100,
       panel: !!host.querySelector("[role=region]"),
+      scene: !!host.querySelector("canvas"),
+      sceneFrames: DungeonScene.drawn - drawn0,
+      sceneFps:
+        Math.round(
+          ((DungeonScene.drawn - drawn0) / ((performance.now() - t0) / 1000)) *
+            10,
+        ) / 10,
     }),
     stop: () => {
       clearInterval(timer);
