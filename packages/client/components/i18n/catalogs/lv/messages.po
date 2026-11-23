@@ -944,6 +944,10 @@ msgstr ""
 msgid "Appearance"
 msgstr "Izskats"
 
+#: components/space/game/TvMenu.tsx
+msgid "Apps da TV"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Aprendiz"
 msgstr ""
@@ -1020,8 +1024,8 @@ msgid "Assistir"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Assistir na Smart TV"
-msgstr ""
+#~ msgid "Assistir na Smart TV"
+#~ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
@@ -2542,6 +2546,10 @@ msgstr ""
 msgid "Dungeon em grupo"
 msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "Dungeons em grupo"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Duplicar"
 msgstr ""
@@ -3327,6 +3335,12 @@ msgstr "Grupas nosaukums"
 msgid "Grupo"
 msgstr ""
 
+#. placeholder {0}: l.members.length
+#. placeholder {1}: l.max
+#: components/space/game/TvMenu.tsx
+msgid "Grupo se formando · {0}/{1}"
+msgstr ""
+
 #. placeholder {0}: dungeonOf(l().dungeon)?.name ?? l().dungeon
 #. placeholder {1}: l().members.length
 #. placeholder {2}: l().max
@@ -3430,6 +3444,10 @@ msgstr ""
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Idle"
 msgstr "Brīvs"
+
+#: components/space/game/TvMenu.tsx
+msgid "Idle Hunt"
+msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Illegal hacking or cracking"
@@ -4286,6 +4304,10 @@ msgstr ""
 #~ msgid "Muralha"
 #~ msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "Music"
+msgstr ""
+
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/app/menus/UserContextMenu.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -4656,6 +4678,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "O tempo do grupo acabou. Monte de novo."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "O vídeo ou a música da sala, para todos"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -7184,6 +7210,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Voltar ao áudio"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Voltar aos apps"
 msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx

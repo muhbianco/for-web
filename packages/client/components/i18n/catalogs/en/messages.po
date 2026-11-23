@@ -944,6 +944,10 @@ msgstr "Apoiar o Muchat"
 msgid "Appearance"
 msgstr "Appearance"
 
+#: components/space/game/TvMenu.tsx
+msgid "Apps da TV"
+msgstr "Apps da TV"
+
 #: components/space/game/rpgUi.ts
 msgid "Aprendiz"
 msgstr "Aprendiz"
@@ -1020,8 +1024,8 @@ msgid "Assistir"
 msgstr "Assistir"
 
 #: components/space/game/TvMenu.tsx
-msgid "Assistir na Smart TV"
-msgstr "Assistir na Smart TV"
+#~ msgid "Assistir na Smart TV"
+#~ msgstr "Assistir na Smart TV"
 
 #: components/space/DecorPanel.tsx
 msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
@@ -2542,6 +2546,10 @@ msgstr "Dungeon em andamento"
 msgid "Dungeon em grupo"
 msgstr "Dungeon em grupo"
 
+#: components/space/game/TvMenu.tsx
+msgid "Dungeons em grupo"
+msgstr "Dungeons em grupo"
+
 #: components/space/DecorPanel.tsx
 msgid "Duplicar"
 msgstr "Duplicar"
@@ -3327,6 +3335,12 @@ msgstr "Group Name"
 msgid "Grupo"
 msgstr "Grupo"
 
+#. placeholder {0}: l.members.length
+#. placeholder {1}: l.max
+#: components/space/game/TvMenu.tsx
+msgid "Grupo se formando · {0}/{1}"
+msgstr "Grupo se formando · {0}/{1}"
+
 #. placeholder {0}: dungeonOf(l().dungeon)?.name ?? l().dungeon
 #. placeholder {1}: l().members.length
 #. placeholder {2}: l().max
@@ -3430,6 +3444,10 @@ msgstr "Ida e volta do transporte"
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Idle"
 msgstr "Idle"
+
+#: components/space/game/TvMenu.tsx
+msgid "Idle Hunt"
+msgstr "Idle Hunt"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Illegal hacking or cracking"
@@ -4286,6 +4304,10 @@ msgstr "Munição"
 #~ msgid "Muralha"
 #~ msgstr "Muralha"
 
+#: components/space/game/TvMenu.tsx
+msgid "Music"
+msgstr "Music"
+
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/app/menus/UserContextMenu.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -4657,6 +4679,10 @@ msgstr "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui 
 #: components/space/game/rpgUi.ts
 msgid "O tempo do grupo acabou. Monte de novo."
 msgstr "O tempo do grupo acabou. Monte de novo."
+
+#: components/space/game/TvMenu.tsx
+msgid "O vídeo ou a música da sala, para todos"
+msgstr "O vídeo ou a música da sala, para todos"
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo"
@@ -7185,6 +7211,10 @@ msgstr "Voltar a pegar no loot"
 #: components/space/SpacePage.tsx
 msgid "Voltar ao áudio"
 msgstr "Voltar ao áudio"
+
+#: components/space/game/TvMenu.tsx
+msgid "Voltar aos apps"
+msgstr "Voltar aos apps"
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
