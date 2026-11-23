@@ -38,6 +38,10 @@ msgstr "[Afgelopen] dddd [om] LT"
 msgid "dddd [at] LT"
 msgstr "dddd [om] LT"
 
+#: components/space/game/itemUi.ts
+msgid " ou "
+msgstr ""
+
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
 msgid "(changes are being saved…)"
 msgstr "(wijzigingen worden opgeslagen…)"
@@ -72,6 +76,13 @@ msgstr "{0, plural, one {# geblokkeerd bericht} other {# geblokkeerde berichten}
 #: components/ui/components/utils/files/FileDropAnywhereCollector.tsx
 msgid "{0, plural, one {Drop a file} other {Drop # files}}"
 msgstr "{0, plural, one {Sleep een bestand} other {Sleep # bestanden}}"
+
+#. placeholder {0}: vocationName(hero()?.vocation ?? 0)
+#. placeholder {1}: hero()?.level ?? 1
+#. placeholder {2}: levelPct()
+#: components/space/game/HeroSheet.tsx
+msgid "{0} · level {1} ({2}%)"
+msgstr ""
 
 #. placeholder {0}: L.vocation[m.vocation as 1 | 2 | 3 | 4]?.name ?? ""
 #. placeholder {1}: m.level
@@ -122,6 +133,12 @@ msgstr ""
 #. placeholder {0}: s.name
 #: components/space/SpacePage.tsx
 msgid "{0} começou a compartilhar a tela."
+msgstr ""
+
+#. placeholder {0}: inv().pack.length
+#. placeholder {1}: hero()?.pack_size ?? 0
+#: components/space/game/HeroSheet.tsx
+msgid "{0} de {1} espaços"
 msgstr ""
 
 #. placeholder {0}: s().mp
@@ -247,6 +264,11 @@ msgstr ""
 msgid "{0}-{1} of {2}"
 msgstr "{0}-{1} van de {2}"
 
+#. placeholder {0}: S[slot]
+#: components/space/game/HeroSheet.tsx
+msgid "{0}: vazio"
+msgstr ""
+
 #. placeholder {0}: props.member.displayName
 #: components/modal/modals/UserProfileRoles.tsx
 msgid "{0}'s roles"
@@ -271,6 +293,10 @@ msgstr ""
 
 #: components/space/game/runUi.ts
 msgid "{a} errou {b}"
+msgstr ""
+
+#: components/space/game/runUi.ts
+msgid "{a} ficou sem munição"
 msgstr ""
 
 #. placeholder {0}: ev.v
@@ -340,8 +366,20 @@ msgstr ""
 msgid "{h} h {m} min"
 msgstr ""
 
+#: components/space/game/runUi.ts
+msgid "{item} de {a} se desfez"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "{m} min"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "{min} a {max} de {e} por tiro"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "{min} a {max} de {e} por tiro; {mana} de mana"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -352,9 +390,13 @@ msgstr ""
 msgid "{ms} ms/s (maior trecho {run} ms)"
 msgstr ""
 
-#: components/space/game/runUi.ts
-msgid "{n} moedas"
+#: components/space/game/itemUi.ts
+msgid "{n} espaços"
 msgstr ""
+
+#: components/space/game/runUi.ts
+#~ msgid "{n} moedas"
+#~ msgstr ""
 
 #. placeholder {0}: r.gold
 #: components/space/game/RunPanel.tsx
@@ -391,6 +433,10 @@ msgstr ""
 msgid "{unknown} reacted"
 msgstr "{unknown} reageerde"
 
+#: components/space/game/HeroSheet.tsx
+msgid "{used} de {cap} oz"
+msgstr ""
+
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "{usernames} and {unknown} others reacted"
 msgstr "{usernames} en {unknown} anderen reageerde"
@@ -398,6 +444,14 @@ msgstr "{usernames} en {unknown} anderen reageerde"
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "{usernames} reacted"
 msgstr "{usernames} reageerde"
+
+#: components/space/game/runUi.ts
+msgid "{v} de ouro"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "{v} oz"
+msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "+ e − mudam o zoom. Esc cancela o caminho."
@@ -416,6 +470,10 @@ msgstr ""
 #. placeholder {0}: Math.round(speech)
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "+{gain} dB (sua fala em {0} dBFS)"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "+{health} de vida e +{mana} de mana a cada {s} s"
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -509,8 +567,8 @@ msgid "1 hora"
 msgstr ""
 
 #: components/space/game/runUi.ts
-msgid "1 moeda"
-msgstr ""
+#~ msgid "1 moeda"
+#~ msgstr ""
 
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "1 person reacted"
@@ -558,6 +616,14 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "A mochila está cheia."
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "A mochila mudou. Confira e tente de novo."
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "A mochila não sai do corpo: é ela que guarda tudo. Para trocar, vista outra."
+msgstr ""
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "A primeira expedição é a iniciação: curta, para conhecer o caminho."
@@ -631,6 +697,10 @@ msgstr ""
 msgid "Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs das salas"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Absorve {good}"
+msgstr ""
+
 #: components/modal/modals/SignOutSessions.tsx
 #: components/ui/components/features/voice/IncomingCallOverlay.tsx
 msgid "Accept"
@@ -639,6 +709,10 @@ msgstr "Accepteer"
 #: components/app/menus/UserContextMenu.tsx
 msgid "Accept friend request"
 msgstr "Accepteer vriendschapsverzoek"
+
+#: components/space/game/itemUi.ts
+msgid "Acerto +{h}%"
+msgstr ""
 
 #: components/modal/modals/PolicyChange.tsx
 msgid "Acknowledge"
@@ -793,9 +867,9 @@ msgstr "Er is een interne fout opgetreden. ({0})"
 #~ msgid "Andarilho ferido pede {price} de ouro: +10% de vida máxima."
 #~ msgstr ""
 
-#: components/space/game/labels.ts
-#~ msgid "Anel"
-#~ msgstr ""
+#: components/space/game/itemUi.ts
+msgid "Anel"
+msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Aplicativos"
@@ -848,9 +922,13 @@ msgstr ""
 msgid "Are you sure you want to unpin this message?"
 msgstr ""
 
-#: components/space/game/labels.ts
-#~ msgid "Arma"
-#~ msgstr ""
+#: components/space/game/itemUi.ts
+msgid "Arma"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Arma, escudo, armaduras, mochila e munição, a cada volta da dungeon. Colar e anel ficam com você."
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Armadura"
@@ -860,6 +938,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "armadura {0}"
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Armadura {a}"
+msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Arqueiro"
@@ -894,6 +976,22 @@ msgstr ""
 #~ msgid "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Ataque {atk} · defesa {dfn}"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Ataque {atk}; acerto {hit}%"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Ataque {atk}; acerto pela skill, até {hit}%"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Ataque +{atk}"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Ataque à distância e um pouco de magia; treina distância."
 msgstr ""
@@ -901,6 +999,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "ataque atinge mais um"
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Atira {ammo}; usa as duas mãos"
+msgstr ""
 
 #. placeholder {0}: it.atk
 #: components/space/game/labels.ts
@@ -1162,6 +1264,10 @@ msgstr ""
 msgid "Bypasses slowmode in channels"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Cabeça"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Cabelo"
 #~ msgstr ""
@@ -1176,6 +1282,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo antes de trocar o vídeo (quem gerencia a TV pode trocar antes)."
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Cada tiro gasta uma"
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -1278,6 +1388,14 @@ msgstr "Account kan niet worden verwijderd totdat servers zijn verwijderd of ove
 #: components/i18n/errors.tsx
 msgid "Cannot edit this message."
 msgstr "Kan dit bericht niet weizigen."
+
+#: components/space/game/HeroSheet.tsx
+msgid "Capacidade: peso de tudo o que carrega"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Cargas: {left} de {max} (uma por golpe absorvido)"
+msgstr ""
 
 #: components/space/DecorPanel.tsx
 #~ msgid "Cargos escolhidos"
@@ -1527,6 +1645,10 @@ msgstr "Code"
 msgid "Codec"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Colar"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Cole um link do YouTube (youtube.com/watch, youtu.be, shorts) ou o ID do vídeo."
 msgstr ""
@@ -1653,6 +1775,10 @@ msgstr "Actie bevestigen"
 
 #: components/space/game/VocationPicker.tsx
 msgid "Confirmar"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Confirmar: jogar fora"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -1796,6 +1922,10 @@ msgstr "Kopieer gebruikers-ID"
 #: components/app/interface/settings/channel/webhooks/ViewWebhook.tsx
 msgid "Copy webhook URL"
 msgstr "Webhook URL Kopiëren"
+
+#: components/space/game/itemUi.ts
+msgid "Corpo"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Corrente"
@@ -2043,6 +2173,10 @@ msgstr ""
 msgid "Default"
 msgstr "Standaard"
 
+#: components/space/game/itemUi.ts
+msgid "Defesa {dfn}"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Definir o que os objetos interativos desta sala mostram (link, nota, imagem, página, portal)"
 msgstr ""
@@ -2224,6 +2358,10 @@ msgstr "Weergavenaam"
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Display users with this role separately in the member list"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "distância"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -2429,6 +2567,10 @@ msgstr ""
 msgid "Endereço da página (https)"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "energia"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Engine"
 msgstr ""
@@ -2528,6 +2670,10 @@ msgstr ""
 #~ msgid "Equipado"
 #~ msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Equipamento"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Equipar"
 #~ msgstr ""
@@ -2564,6 +2710,10 @@ msgstr ""
 #~ msgid "Escolha uma opção antes de seguir."
 #~ msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Escolher o melhor sozinho"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Escolher o vídeo, dar play, pausar e avançar na TV das salas"
 msgstr ""
@@ -2580,6 +2730,11 @@ msgstr ""
 msgid "Esconder lista de salas"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "escudo"
+msgstr ""
+
+#: components/space/game/itemUi.ts
 #: components/space/game/rpgUi.ts
 msgid "Escudo"
 msgstr ""
@@ -2592,6 +2747,14 @@ msgstr ""
 #: components/space/SpacePage.tsx
 #: components/space/SpaceSidebarEntry.tsx
 msgid "Espaço"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Espaço vazio"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "espada"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -2622,6 +2785,10 @@ msgstr ""
 #~ msgid "esquiva"
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Essa arma usa as duas mãos: tire o escudo antes (ou a arma, para pôr o escudo)."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Esse caminho não está ao alcance."
 #~ msgstr ""
@@ -2637,6 +2804,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Esse item não é da sua classe."
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Esse item não está mais aí."
+msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "Esse link não é de um vídeo do YouTube."
@@ -2749,6 +2920,7 @@ msgstr ""
 msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
 msgstr ""
 
+#: components/space/game/HeroSheet.tsx
 #: components/space/game/RunPanel.tsx
 #: components/space/game/TrainingDialog.tsx
 #: components/space/game/TvMenu.tsx
@@ -2794,14 +2966,26 @@ msgstr ""
 #~ msgid "Ferido: a vida volta sozinha em alguns minutos (precisa de {0}%)."
 #~ msgstr ""
 
+#: components/space/game/RunPanel.tsx
+msgid "Ficou no corpo (sem espaço): {left}."
+msgstr ""
+
 #. placeholder {0}: humanFileSize(local.maxSize)
 #: components/ui/components/utils/Form2.tsx
 msgid "File must be smaller than {0}"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "físico"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Flecha luminosa"
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "flechas"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Foco"
@@ -2813,6 +2997,10 @@ msgstr ""
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Focus"
 msgstr "Focus"
+
+#: components/space/game/itemUi.ts
+msgid "fogo"
+msgstr ""
 
 #. placeholder {0}: h().combat.attrs.for
 #. placeholder {1}: h().combat.attrs.des
@@ -2887,6 +3075,14 @@ msgstr "Fruitsalade"
 #: components/space/game/labels.ts
 #~ msgid "Fúria da mata"
 #~ msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Gastou: {spent}."
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "gelo"
+msgstr ""
 
 #: components/app/interface/settings/user/bots/ViewBot.tsx
 msgid "Generate a new token if it gets lost or compromised"
@@ -3029,9 +3225,9 @@ msgstr "Geholpen met Stoat te vertalen"
 msgid "Here is your new invite code: <0>{0}</0>"
 msgstr "Hier is uw nieuwe uitnodigingscode: <0>{0}</0>"
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Herói"
-#~ msgstr ""
+#: components/space/SpacePage.tsx
+msgid "Herói"
+msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
 msgid "Hide Others"
@@ -3187,6 +3383,10 @@ msgstr "irrelevante grap badge 2"
 msgid "ISO Standard (YYYY-MM-DD)"
 msgstr "ISO Standaard (JJJJ-MM-DD)"
 
+#: components/space/game/itemUi.ts
+msgid "Isso não se veste."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Item indisponível."
 #~ msgstr ""
@@ -3209,6 +3409,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Jitter"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Jogar fora"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -3369,6 +3573,10 @@ msgstr ""
 msgid "level {0}+ · confortável a partir do {1}"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "level {lv}"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Libera 30 dias de VIP."
 msgstr ""
@@ -3486,8 +3694,16 @@ msgstr ""
 #~ msgid "Luta contra {foes}: vitória em {0} s."
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "maça"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Maça"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "machado"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -3808,9 +4024,10 @@ msgstr "Ontbrekende machtiging"
 #~ msgid "mítico"
 #~ msgstr ""
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Mochila"
-#~ msgstr ""
+#: components/space/game/HeroSheet.tsx
+#: components/space/game/itemUi.ts
+msgid "Mochila"
+msgstr ""
 
 #. placeholder {0}: h().bag.length
 #. placeholder {1}: h().bag_max
@@ -3851,6 +4068,10 @@ msgstr ""
 msgid "More Contrast"
 msgstr "Meer contrast"
 
+#: components/space/game/itemUi.ts
+msgid "morte"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Mostrar lista de salas"
 msgstr ""
@@ -3882,6 +4103,10 @@ msgstr ""
 #: components/i18n/errors.tsx
 msgid "Multi-factor authentication is already enabled for this account."
 msgstr "Meervoudige authenticatie is al ingeschakeld voor dit account."
+
+#: components/space/game/itemUi.ts
+msgid "Munição"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Muralha"
@@ -3944,6 +4169,10 @@ msgstr "Mijn Account"
 msgid "My Bots"
 msgstr "Mijn bots"
 
+#: components/space/game/HeroSheet.tsx
+msgid "Na dungeon: o inventário volta quando a corrida acabar."
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "na entrada"
 #~ msgstr ""
@@ -3973,12 +4202,29 @@ msgstr "Naam"
 #~ msgid "Não cabe aí."
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Não cabe: falta espaço na mochila ou capacidade."
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui abrir o checkout. Tente de novo em instantes."
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui falar com o servidor."
+msgstr ""
+
+#. placeholder {0}: ev.n
+#: components/space/game/runUi.ts
+msgid "Não coube: {0}× {item} ficaram no corpo ({a})"
+msgstr ""
+
+#: components/space/game/runUi.ts
+msgid "Não coube: {c} ficaram no corpo ({a})"
+msgstr ""
+
+#: components/space/game/runUi.ts
+msgid "Não coube: {item} ficou no corpo ({a})"
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -4159,6 +4405,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "O herói está numa dungeon agora. Espere a corrida acabar."
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "O herói está numa dungeon: o inventário volta quando a corrida acabar."
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
@@ -4398,6 +4648,10 @@ msgstr ""
 #~ msgid "Para onde?"
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Para trocar ouro por platina, junte 100 moedas na mesma pilha."
+msgstr ""
+
 #: components/space/game/TrainingChip.tsx
 msgid "Parar"
 msgstr ""
@@ -4457,6 +4711,10 @@ msgstr ""
 msgid "Pausar para todos"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Pede {r}"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Pele"
 #~ msgstr ""
@@ -4501,6 +4759,10 @@ msgstr ""
 msgid "Permissões do Espaço"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Pernas"
+msgstr ""
+
 #. placeholder {0}: i + 1
 #: components/space/Onboarding.tsx
 msgid "Personagem {0}"
@@ -4514,9 +4776,17 @@ msgstr ""
 msgid "Personalizado"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Pés"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Pesadelo"
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Peso {w}"
+msgstr ""
 
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Pick a username that you want people to be able to find you by. This can be changed later in your user settings."
@@ -4658,6 +4928,10 @@ msgstr ""
 #~ msgid "Pular animação"
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "punhos"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Punhos"
 msgstr ""
@@ -4774,6 +5048,10 @@ msgstr ""
 #. placeholder {0}: (dr.status as { Removed: string | null }) .Removed
 #: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Reason: {0} Contact support for more information."
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Recebe a mais: {bad}"
 msgstr ""
 
 #: components/app/interface/settings/user/notifications/Notifications.tsx
@@ -5082,6 +5360,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Roupa"
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "sagrado"
+msgstr ""
 
 #: components/space/game/LobbyChip.tsx
 msgid "Sair"
@@ -5420,6 +5702,10 @@ msgstr ""
 msgid "Seu computador não está dando conta"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Seu herói ainda não tem o level desse item."
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Seu herói ainda não tem o level mínimo desta dungeon."
 msgstr ""
@@ -5490,9 +5776,9 @@ msgstr ""
 #~ msgid "Skill treinada"
 #~ msgstr ""
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Skills"
-#~ msgstr ""
+#: components/space/game/HeroSheet.tsx
+msgid "Skills"
+msgstr ""
 
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Slowmode Immune"
@@ -5583,6 +5869,10 @@ msgstr ""
 msgid "Spellchecker"
 msgstr "Spellingcontrole"
 
+#: components/space/game/HeroSheet.tsx
+msgid "Stamina (horas:minutos)"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Start camera"
 msgstr ""
@@ -5662,6 +5952,10 @@ msgstr ""
 
 #: components/space/MediaStage.tsx
 msgid "Sua tela"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Sua vocação não usa esse item."
 msgstr ""
 
 #. placeholder {0}: props.labels.spell[id] ?? id
@@ -5747,6 +6041,10 @@ msgstr "Vertel ons wat er mis is met deze server"
 msgid "Tell us what's wrong with this user"
 msgstr "Vertel ons wat er mis is met deze gebruiker"
 
+#: components/space/game/itemUi.ts
+msgid "Tempo: {left} (só corre na dungeon)"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr "Voorkom tijdelijk dat leden met een lagere rang interactie hebben"
@@ -5765,6 +6063,10 @@ msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Terms"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "terra"
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -5993,6 +6295,10 @@ msgstr "Timeout leden"
 #~ msgid "Tirar"
 #~ msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Tirar para a mochila"
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Título (aparece no aviso)"
 msgstr ""
@@ -6055,6 +6361,14 @@ msgstr ""
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "Trending GIFs"
 msgstr "Trending GIF's"
+
+#: components/space/game/itemUi.ts
+msgid "Trocar 1 por 100 {name}"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Trocar 100 por 1 {name}"
+msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "Trocar vídeo"
@@ -6203,6 +6517,10 @@ msgstr "Bestanden Uploaden"
 msgid "Upload to Gifbox"
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Usa as duas mãos"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Usar aqui"
 msgstr ""
@@ -6294,8 +6612,16 @@ msgstr "Gebruikers wordt niet langer gevraagd hun leeftijd te bevestigen voordat
 msgid "Uses your output volume."
 msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Vale {v} de ouro"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Valor"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Valor das moedas que carrega"
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -6357,6 +6683,10 @@ msgstr "Account aan het verifiëren…"
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Version:"
 msgstr "Versie:"
+
+#: components/space/game/HeroSheet.tsx
+msgid "Vestir"
+msgstr ""
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Vida"
@@ -6433,6 +6763,10 @@ msgstr "Je bekijkt oudere berichten"
 #: components/space/game/labels.ts
 #~ msgid "Vigor"
 #~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "virotes"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Visual ainda não conquistado."
