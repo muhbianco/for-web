@@ -29,7 +29,9 @@ export class Registry implements RuntimeRegistry {
   private readonly media: { hub: MediaHub; lk: LiveKitAdmin } | undefined;
   /** Operator switch for Refúgio (ADR 0009); off everywhere when absent. */
   private readonly gameAvailable: (serverId: string) => boolean;
-  private readonly trainingLeft: ((runtime: SpaceRuntime, userId: string) => void) | undefined;
+  private readonly rpg:
+    | { trainingLeft: (runtime: SpaceRuntime, userId: string) => void; avatarJoined: (runtime: SpaceRuntime, userId: string) => void }
+    | undefined;
 
   constructor(deps: {
     cache: StoatCache;
@@ -48,8 +50,8 @@ export class Registry implements RuntimeRegistry {
     media?: { hub: MediaHub; lk: LiveKitAdmin };
     /** SPACE_GAME_SERVERS (ADR 0009): servers where Refúgio may be played. */
     gameAvailable?: (serverId: string) => boolean;
-    /** Idle game (docs/espaco/jogo/ot): a trainer left their dummy in this runtime. */
-    trainingLeft?: (runtime: SpaceRuntime, userId: string) => void;
+    /** Idle game (docs/espaco/jogo/ot): hooks of each runtime into the game service. */
+    rpg?: { trainingLeft: (runtime: SpaceRuntime, userId: string) => void; avatarJoined: (runtime: SpaceRuntime, userId: string) => void };
   }) {
     this.cache = deps.cache;
     this.store = deps.store;
@@ -64,7 +66,7 @@ export class Registry implements RuntimeRegistry {
     this.everyServer = deps.everyServer ?? deps.enabled === undefined;
     this.media = deps.media;
     this.gameAvailable = deps.gameAvailable ?? (() => false);
-    this.trainingLeft = deps.trainingLeft;
+    this.rpg = deps.rpg;
     deps.cache.on((change) => {
       switch (change.kind) {
         case "structure": {
@@ -123,9 +125,10 @@ export class Registry implements RuntimeRegistry {
         media: this.media,
         gameAvailable: this.gameAvailable(serverId),
       });
-      if (this.trainingLeft) {
-        const left = this.trainingLeft;
-        rt.onTrainingLeft = (userId) => left(rt, userId);
+      if (this.rpg) {
+        const rpg = this.rpg;
+        rt.onTrainingLeft = (userId) => rpg.trainingLeft(rt, userId);
+        rt.onAvatarJoined = (userId) => rpg.avatarJoined(rt, userId);
       }
       p = rt.init().then(() => {
         this.live.set(serverId, rt);

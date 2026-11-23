@@ -5,6 +5,7 @@ import { generateLayout, MAX_SPEED, MOVE_SEND_HZ, applyMove, initialMoveState, i
 
 import { announceRoomChange, buildList, locationText, wingHeading } from "./list.ts";
 import { type MoveCommand, Mover } from "./mover.ts";
+import { heroLabel } from "./hero.ts";
 import { decodeMap, INTERP_DELAY_MS, World } from "./world.ts";
 
 const ROOM_A = "01JR00000000000000000000AA";
@@ -148,4 +149,18 @@ test("a full room keeps its door shut in the prediction too, never for who is in
   assert.match(buildList(w).flatMap((x) => x.rooms).find((r) => r.roomId === ROOM_A)!.status, /cheia/);
   w.setMyRoom(ROOM_A);
   assert.equal(w.doorRule(ROOM_A), true, "whoever is inside can always leave");
+});
+
+test("jogo idle: o herói dos outros chega no AvatarView e vira rótulo sob o nome", () => {
+  const w = world();
+  const base = { user_id: "C", name: "Caio", look: { palette: 2 }, x: 0, y: 0, dir: "down" as const, moving: false, room: null, state: "online" as const };
+  w.applyPositions({ avatars: [base], gone: [] }, 0);
+  assert.equal(w.others.get("C")!.hero, null);
+  w.applyPositions({ avatars: [{ ...base, hero: { level: 12, training: true } }], gone: [] }, 10);
+  assert.deepEqual(w.others.get("C")!.hero, { level: 12, training: true });
+  w.applyPositions({ avatars: [base], gone: [] }, 20);
+  assert.equal(w.others.get("C")!.hero, null);
+  assert.equal(heroLabel("Caio", null), "Caio");
+  assert.equal(heroLabel("Caio", { level: 12, training: false }), "Caio · Nv 12");
+  assert.equal(heroLabel("Caio", { level: 3, training: true }), "⚔ Caio · Nv 3");
 });

@@ -429,6 +429,8 @@ export interface AvatarView {
   moving: boolean;
   room: string | null;
   state: "online" | "idle" | "reconnecting";
+  /** Idle game (docs/espaco/jogo/ot): the hero's level and whether they train at a dummy. */
+  hero?: { level: number; training: boolean };
 }
 
 /**

@@ -57,6 +57,13 @@ import { SmartTv } from "./SmartTv";
  */
 const GamePanel = lazy(() => import("./game/GamePanel"));
 
+/**
+ * Jogo idle (docs/espaco/jogo/ot): o diálogo do dummy e a faixa "treinando", num chunk que
+ * só carrega quando alguém usa um dummy ou está treinando.
+ */
+const TrainingDialog = lazy(() => import("./game/TrainingDialog"));
+const TrainingChip = lazy(() => import("./game/TrainingChip"));
+
 const STAGE_MODE_KEY = "muchat.space.stageMode";
 
 function storedStageMode(): StageMode {
@@ -598,6 +605,13 @@ function ServerSpace(props: { serverId: string }) {
             </Button>
           )}
         </Show>
+        <Show when={view() && ui()?.rpg?.hero?.training ? ui()!.rpg : null}>
+          {(rpg) => (
+            <Suspense>
+              <TrainingChip view={view()!} rpg={rpg()} />
+            </Suspense>
+          )}
+        </Show>
         <Show when={ui()?.prompt && !ui()?.editor.enabled}>
           {(_) => (
             <PromptChip type="button" onClick={() => view()?.interact()}>
@@ -736,6 +750,21 @@ function ServerSpace(props: { serverId: string }) {
                   host?.focus();
                 }}
               />
+            </Match>
+            <Match when={view() && ui()?.trainRequest}>
+              {(request) => (
+                <Suspense>
+                  <TrainingDialog
+                    view={view()!}
+                    request={request()}
+                    rpg={ui()?.rpg ?? null}
+                    onClose={() => {
+                      view()?.closeTrainRequest();
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
             </Match>
             <Match when={ui()?.interaction}>
               {(interaction) => (

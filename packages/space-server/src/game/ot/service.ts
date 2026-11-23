@@ -34,6 +34,8 @@ export interface RpgHost {
   /** O runtime ainda vê a pessoa treinando neste dummy. */
   isTrainingAt(userId: string, instanceId: string): boolean;
   setTraining(userId: string, instanceId: string | null): void;
+  /** The hero's level under the person's name on the map (null: no hero). */
+  setHeroLevel(userId: string, level: number | null): void;
   sessionOf(userId: string): SessionPort | null;
 }
 
@@ -107,7 +109,22 @@ export class RpgService {
             : { ok: false, reason: "no_training" },
         );
         if (doc && "doc" in doc)
-          this.push(host.sessionOf(userId), doc.doc, undefined);
+          this.push(host.sessionOf(userId), doc.doc, undefined, host);
+      },
+      () => undefined,
+    );
+  }
+
+  /**
+   * Alguém entrou no mapa onde o jogo está ligado: o level do herói (se houver) aparece sob
+   * o nome. Uma leitura por entrada, servida pelo cache depois.
+   */
+  avatarJoined(host: RpgHost, userId: string): void {
+    this.enqueue(
+      userId,
+      async () => {
+        const doc = await this.load(userId);
+        host.setHeroLevel(userId, doc ? doc.level : null);
       },
       () => undefined,
     );
@@ -153,7 +170,7 @@ export class RpgService {
 
     // Reenvio de um comando já aplicado (reconexão): devolve o estado, não age de novo.
     if (cmd.t !== "rpg.open" && this.recent.get(userId)?.includes(cmd.id)) {
-      return this.push(session, await this.load(userId), cmd.id);
+      return this.push(session, await this.load(userId), cmd.id, host);
     }
 
     switch (cmd.t) {
@@ -166,15 +183,15 @@ export class RpgService {
           (cur.training.server !== host.serverId ||
             !host.isTrainingAt(userId, cur.training.instance) ||
             trainingExpired(cur, now));
-        if (!cur || !stale) return this.push(session, cur, cmd.id);
+        if (!cur || !stale) return this.push(session, cur, cmd.id, host);
         const out = await this.mutate(userId, false, (d) =>
           stopTraining(d, now, this.rates)
             ? { ok: true }
             : { ok: false, reason: "no_training" },
         );
         if (cur.training) host.setTraining(userId, null);
-        if (out && "doc" in out) return this.push(session, out.doc, cmd.id);
-        return this.push(session, await this.load(userId), cmd.id);
+        if (out && "doc" in out) return this.push(session, out.doc, cmd.id, host);
+        return this.push(session, await this.load(userId), cmd.id, host);
       }
       case "rpg.vocation": {
         const out = await this.mutate(userId, true, (d) =>
@@ -183,7 +200,7 @@ export class RpgService {
         if (!out) return fail("conflict");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
         this.remember(userId, cmd.id);
-        return this.push(session, out.doc, cmd.id);
+        return this.push(session, out.doc, cmd.id, host);
       }
       case "rpg.train.start": {
         const spot = host.trainSpot(session.viewer, cmd.d.instance);
@@ -200,7 +217,7 @@ export class RpgService {
         if ("reason" in out) return fail("rpg_invalid", out.reason);
         host.setTraining(userId, cmd.d.instance);
         this.remember(userId, cmd.id);
-        return this.push(session, out.doc, cmd.id);
+        return this.push(session, out.doc, cmd.id, host);
       }
       case "rpg.train.stop": {
         const out = await this.mutate(userId, false, (d) =>
@@ -209,11 +226,11 @@ export class RpgService {
             : { ok: false, reason: "no_training" },
         );
         host.setTraining(userId, null);
-        if (!out) return this.push(session, await this.load(userId), cmd.id);
+        if (!out) return this.push(session, await this.load(userId), cmd.id, host);
         if ("reason" in out)
-          return this.push(session, await this.load(userId), cmd.id);
+          return this.push(session, await this.load(userId), cmd.id, host);
         this.remember(userId, cmd.id);
-        return this.push(session, out.doc, cmd.id);
+        return this.push(session, out.doc, cmd.id, host);
       }
     }
   }
@@ -261,7 +278,10 @@ export class RpgService {
     session: SessionPort | null,
     doc: RpgHeroDoc | null,
     re: string | undefined,
+    host: RpgHost,
   ) {
+    // O level sob o nome acompanha o herói (quem tem herói aparece com ele).
+    if (doc) host.setHeroLevel(doc._id, doc.level);
     if (!session) return;
     const ev: RpgStateEvent = {
       v: 1,

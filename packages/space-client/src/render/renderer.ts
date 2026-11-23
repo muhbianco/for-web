@@ -1,24 +1,33 @@
 import {
-  CATALOG,
   type DecorInstance,
   type DecorItem,
   type DecorOp,
   type Direction,
+  type TileRect,
+  CATALOG,
   defaultFloor,
   instanceRect,
   itemOf,
   parseFloorRef,
   TILE,
-  type TileRect,
   zoneAt,
 } from "@muchat/space-core";
-import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture } from "pixi.js";
+import {
+  Application,
+  Container,
+  Graphics,
+  Rectangle,
+  Sprite,
+  Text,
+  Texture,
+} from "pixi.js";
 
 import { roomTitle } from "../list.ts";
 import type { World } from "../world.ts";
 import { textureFor } from "./atlas.ts";
 import { characterSheet, DIRS, FRAMES, palette, SPRITE } from "./sprites.ts";
-import { CHUNK, chunksIn, drawChunk, type FloorLookup } from "./tiles.ts";
+import { type FloorLookup, CHUNK, chunksIn, drawChunk } from "./tiles.ts";
+import { heroLabel } from "../hero.ts";
 
 const AVATAR_SCALE = 2; // 16 px art drawn at 32 px, one tile
 const STEP_MS = 140;
@@ -31,7 +40,10 @@ export const MAX_FPS = 60;
 export const MAX_RESOLUTION = 2;
 
 /** Removes the canvas; leaves PixiJS's global pools alone (see `Renderer.destroy`). */
-export const RENDERER_DESTROY = { removeView: true, releaseGlobalResources: false } as const;
+export const RENDERER_DESTROY = {
+  removeView: true,
+  releaseGlobalResources: false,
+} as const;
 
 interface AvatarSprite {
   palette: number;
@@ -78,13 +90,15 @@ function drawBadge(g: Graphics, i: AvatarIndicators, y: number) {
       g.rect(x + 1, y + 3, 1, 2).fill({ color: 0xff6b6b });
       g.rect(x + 5, y + 3, 1, 2).fill({ color: 0xff6b6b });
       g.rect(x + 3, y + 5, 1, 2).fill({ color: 0xff6b6b });
-      for (let k = 0; k < 7; k++) g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
+      for (let k = 0; k < 7; k++)
+        g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
     } else if (icon === "deaf") {
       // Headset with a slash: orange.
       g.rect(x + 1, y + 1, 5, 1).fill({ color: 0xffa94d });
       g.rect(x, y + 2, 1, 4).fill({ color: 0xffa94d });
       g.rect(x + 6, y + 2, 1, 4).fill({ color: 0xffa94d });
-      for (let k = 0; k < 7; k++) g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
+      for (let k = 0; k < 7; k++)
+        g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
     } else {
       // Screen: blue frame with a stand.
       g.rect(x, y, 7, 5).fill({ color: 0x74c0fc });
@@ -105,7 +119,13 @@ export interface EditorOverlay {
   zoneRect: TileRect | null;
   floorTool: boolean;
   /** Item preview following the cursor (absolute tile rect already resolved). */
-  ghost: { item: DecorItem; rot: 0 | 1 | 2 | 3; variant: string | undefined; rect: TileRect; valid: boolean } | null;
+  ghost: {
+    item: DecorItem;
+    rot: 0 | 1 | 2 | 3;
+    variant: string | undefined;
+    rect: TileRect;
+    valid: boolean;
+  } | null;
   /** Footprint of the selected instance. */
   selected: TileRect | null;
 }
@@ -117,7 +137,14 @@ export interface PromptView {
   label: string;
 }
 
-const EMPTY_OVERLAY: EditorOverlay = { enabled: false, hoverTile: null, zoneRect: null, floorTool: false, ghost: null, selected: null };
+const EMPTY_OVERLAY: EditorOverlay = {
+  enabled: false,
+  hoverTile: null,
+  zoneRect: null,
+  floorTool: false,
+  ghost: null,
+  selected: null,
+};
 
 /**
  * PixiJS view of the world. Holds no game state: every frame reads World.
@@ -143,7 +170,16 @@ export class Renderer {
   private readonly ghost = new Sprite();
   private readonly promptBox = new Container();
   private readonly promptBg = new Graphics();
-  private readonly promptText = new Text({ text: "", style: { fontFamily: "system-ui, sans-serif", fontSize: 11, fill: 0xffffff, fontWeight: "700" }, resolution: 3 });
+  private readonly promptText = new Text({
+    text: "",
+    style: {
+      fontFamily: "system-ui, sans-serif",
+      fontSize: 11,
+      fill: 0xffffff,
+      fontWeight: "700",
+    },
+    resolution: 3,
+  });
   private readonly chunks = new Map<string, Sprite>();
   private readonly avatars = new Map<string, AvatarSprite>();
   private readonly decor = new Map<string, Sprite>();
@@ -206,7 +242,18 @@ export class Renderer {
     this.ghost.visible = false;
     this.promptBox.addChild(this.promptBg, this.promptText);
     this.promptBox.visible = false;
-    this.stage.addChild(this.floor, this.doors, this.rugs, this.scene, this.tvGlow, this.ceiling, this.labels, this.overlayGfx, this.ghost, this.promptBox);
+    this.stage.addChild(
+      this.floor,
+      this.doors,
+      this.rugs,
+      this.scene,
+      this.tvGlow,
+      this.ceiling,
+      this.labels,
+      this.overlayGfx,
+      this.ghost,
+      this.promptBox,
+    );
     this.app.stage.addChild(this.stage);
   }
 
@@ -248,7 +295,10 @@ export class Renderer {
 
   /** Screen (CSS px relative to the canvas) → world px. */
   screenToWorld(sx: number, sy: number): { x: number; y: number } {
-    return { x: (sx - this.stage.position.x) / this.zoom, y: (sy - this.stage.position.y) / this.zoom };
+    return {
+      x: (sx - this.stage.position.x) / this.zoom,
+      y: (sy - this.stage.position.y) / this.zoom,
+    };
   }
 
   private framesFor(idx: number): Texture[] {
@@ -259,7 +309,12 @@ export class Renderer {
       base.source.scaleMode = "nearest";
       frames = [];
       for (let i = 0; i < DIRS.length * FRAMES; i++) {
-        frames.push(new Texture({ source: base.source, frame: new Rectangle(i * SPRITE, 0, SPRITE, SPRITE) }));
+        frames.push(
+          new Texture({
+            source: base.source,
+            frame: new Rectangle(i * SPRITE, 0, SPRITE, SPRITE),
+          }),
+        );
       }
       this.paletteFrames.set(idx, frames);
     }
@@ -295,27 +350,47 @@ export class Renderer {
         this.doors.rect(x, y + TILE - 5, TILE, 3).fill({ color: 0x575b74 });
       }
       if (open) {
-        this.doors.rect(x + 6, y + 6, TILE - 12, TILE - 12).fill({ color: 0x9a6b3f });
-        this.doors.rect(x + 8, y + 8, TILE - 16, TILE - 16).fill({ color: 0xc48f5a });
+        this.doors
+          .rect(x + 6, y + 6, TILE - 12, TILE - 12)
+          .fill({ color: 0x9a6b3f });
+        this.doors
+          .rect(x + 8, y + 8, TILE - 16, TILE - 16)
+          .fill({ color: 0xc48f5a });
         this.doors.rect(x + 12, y + 14, 2, 4).fill({ color: 0xe9d7a8 });
       } else {
-        this.doors.rect(x + 6, y + 6, TILE - 12, TILE - 12).fill({ color: 0x5a2f2a });
+        this.doors
+          .rect(x + 6, y + 6, TILE - 12, TILE - 12)
+          .fill({ color: 0x5a2f2a });
         // Lock glyph: shackle + body (shape, not only colour).
         this.doors.rect(x + 12, y + 9, 8, 2).fill({ color: 0xe9d7a8 });
         this.doors.rect(x + 11, y + 10, 2, 5).fill({ color: 0xe9d7a8 });
         this.doors.rect(x + 19, y + 10, 2, 5).fill({ color: 0xe9d7a8 });
         this.doors.rect(x + 9, y + 14, 14, 9).fill({ color: 0xe9d7a8 });
       }
-      const title = view?.label ? view.label : `🔒 ${roomTitle(world, r.roomId)}`;
+      const title = view?.label
+        ? view.label
+        : `🔒 ${roomTitle(world, r.roomId)}`;
       // How many are inside (server presence), for rooms the viewer may see.
-      const inside = view?.label ? (world.presence?.rooms.find((x) => x.room_id === r.roomId)?.people.length ?? 0) : 0;
+      const inside = view?.label
+        ? (world.presence?.rooms.find((x) => x.room_id === r.roomId)?.people
+            .length ?? 0)
+        : 0;
       const label = new Text({
         text: inside > 0 ? `${title} · ${inside}` : title,
-        style: { fontFamily: "system-ui, sans-serif", fontSize: 12, fill: 0xffffff, fontWeight: "700", stroke: { color: 0x15131a, width: 3 } },
+        style: {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: 12,
+          fill: 0xffffff,
+          fontWeight: "700",
+          stroke: { color: 0x15131a, width: 3 },
+        },
         resolution: 3,
       });
       label.anchor.set(0.5, 0);
-      label.position.set(r.labelAnchor.tx * TILE + TILE / 2, r.interior.y0 * TILE + 2);
+      label.position.set(
+        r.labelAnchor.tx * TILE + TILE / 2,
+        r.interior.y0 * TILE + 2,
+      );
       this.labels.addChild(label);
     }
     for (const w of map.wings) {
@@ -323,25 +398,36 @@ export class Renderer {
       if (!title) continue;
       const t = new Text({
         text: `Ala ${title}`,
-        style: { fontFamily: "system-ui, sans-serif", fontSize: 11, fill: 0xeeeeff, fontWeight: "700", stroke: { color: 0x15131a, width: 3 } },
+        style: {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: 11,
+          fill: 0xeeeeff,
+          fontWeight: "700",
+          stroke: { color: 0x15131a, width: 3 },
+        },
         resolution: 3,
       });
       t.anchor.set(0.5);
       const near = w.north ? w.corridor.y1 : w.corridor.y0;
-      t.position.set(((w.corridor.x0 + w.corridor.x1 + 1) / 2) * TILE, near * TILE + TILE / 2);
+      t.position.set(
+        ((w.corridor.x0 + w.corridor.x1 + 1) / 2) * TILE,
+        near * TILE + TILE / 2,
+      );
       this.labels.addChild(t);
     }
   }
 
   private dropChunks() {
-    for (const s of this.chunks.values()) s.destroy({ texture: true, textureSource: true });
+    for (const s of this.chunks.values())
+      s.destroy({ texture: true, textureSource: true });
     this.chunks.clear();
     this.dirty = true;
   }
 
   /** Floors per zone changed (or the decoration was loaded): chunks repaint lazily. */
   private refreshFloors(world: World) {
-    const key = JSON.stringify(world.decor?.floors ?? {}) + "|" + this.mapFingerprint;
+    const key =
+      JSON.stringify(world.decor?.floors ?? {}) + "|" + this.mapFingerprint;
     if (key === this.floorsKey) return;
     this.floorsKey = key;
     const { map, zones } = world;
@@ -369,7 +455,12 @@ export class Renderer {
     const y0 = -this.stage.position.y / this.zoom;
     const margin = CHUNK * TILE * 0.5;
     const need = new Set<string>();
-    for (const [cx, cy] of chunksIn(x0 - margin, y0 - margin, x0 + w + margin, y0 + h + margin)) {
+    for (const [cx, cy] of chunksIn(
+      x0 - margin,
+      y0 - margin,
+      x0 + w + margin,
+      y0 + h + margin,
+    )) {
       const key = `${cx},${cy}`;
       need.add(key);
       if (this.chunks.has(key)) continue;
@@ -462,7 +553,11 @@ export class Renderer {
 
   // ---- avatars -------------------------------------------------------------
 
-  private avatarFor(userId: string, name: string, paletteIndex: number): AvatarSprite {
+  private avatarFor(
+    userId: string,
+    name: string,
+    paletteIndex: number,
+  ): AvatarSprite {
     let a = this.avatars.get(userId);
     if (a && a.palette !== paletteIndex) {
       a.palette = paletteIndex;
@@ -476,7 +571,12 @@ export class Renderer {
       body.scale.set(AVATAR_SCALE);
       const tag = new Text({
         text: name,
-        style: { fontFamily: "system-ui, sans-serif", fontSize: 11, fill: 0xffffff, stroke: { color: 0x15131a, width: 3 } },
+        style: {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: 11,
+          fill: 0xffffff,
+          stroke: { color: 0x15131a, width: 3 },
+        },
         resolution: 3,
       });
       tag.anchor.set(0.5, 1);
@@ -486,7 +586,16 @@ export class Renderer {
       const root = new Container();
       root.addChild(ring, body, tag, badge);
       this.scene.addChild(root);
-      a = { palette: paletteIndex, root, body, name: tag, frames, ring, badge, indicators: "" };
+      a = {
+        palette: paletteIndex,
+        root,
+        body,
+        name: tag,
+        frames,
+        ring,
+        badge,
+        indicators: "",
+      };
       this.avatars.set(userId, a);
       this.dirty = true;
     }
@@ -497,7 +606,13 @@ export class Renderer {
     return a;
   }
 
-  private pose(a: AvatarSprite, dir: Direction, moving: boolean, nowMs: number, visible: boolean) {
+  private pose(
+    a: AvatarSprite,
+    dir: Direction,
+    moving: boolean,
+    nowMs: number,
+    visible: boolean,
+  ) {
     const d = DIRS.indexOf(dir);
     const f = moving ? 1 + (Math.floor(nowMs / STEP_MS) % 2) : 0;
     const tex = a.frames[d * FRAMES + f] ?? a.frames[0]!;
@@ -523,7 +638,9 @@ export class Renderer {
     a.indicators = key;
     a.ring.clear();
     if (i.speaking) {
-      a.ring.ellipse(0, -2, 11, 4).stroke({ color: 0x4ade80, width: 2, alpha: 0.95 });
+      a.ring
+        .ellipse(0, -2, 11, 4)
+        .stroke({ color: 0x4ade80, width: 2, alpha: 0.95 });
     }
     drawBadge(a.badge, i, -SPRITE * AVATAR_SCALE - 24);
     if (visible) this.dirty = true;
@@ -586,17 +703,29 @@ export class Renderer {
       const y0 = r.y0 * TILE;
       const w = (r.x1 - r.x0 + 1) * TILE;
       const h = (r.y1 - r.y0 + 1) * TILE;
-      if (o.floorTool) g.rect(x0, y0, w, h).fill({ color: 0x7aa2ff, alpha: 0.18 });
-      for (let x = x0; x <= x0 + w; x += TILE) g.rect(x, y0, 1, h).fill({ color: 0xffffff, alpha: 0.18 });
-      for (let y = y0; y <= y0 + h; y += TILE) g.rect(x0, y, w, 1).fill({ color: 0xffffff, alpha: 0.18 });
+      if (o.floorTool)
+        g.rect(x0, y0, w, h).fill({ color: 0x7aa2ff, alpha: 0.18 });
+      for (let x = x0; x <= x0 + w; x += TILE)
+        g.rect(x, y0, 1, h).fill({ color: 0xffffff, alpha: 0.18 });
+      for (let y = y0; y <= y0 + h; y += TILE)
+        g.rect(x0, y, w, 1).fill({ color: 0xffffff, alpha: 0.18 });
       g.rect(x0, y0, w, h).stroke({ color: 0x7aa2ff, width: 2, alpha: 0.6 });
     }
     if (o.hoverTile && !o.ghost) {
-      g.rect(o.hoverTile.tx * TILE, o.hoverTile.ty * TILE, TILE, TILE).stroke({ color: 0xffffff, width: 2, alpha: 0.5 });
+      g.rect(o.hoverTile.tx * TILE, o.hoverTile.ty * TILE, TILE, TILE).stroke({
+        color: 0xffffff,
+        width: 2,
+        alpha: 0.5,
+      });
     }
     if (o.selected) {
       const r = o.selected;
-      g.rect(r.x0 * TILE - 2, r.y0 * TILE - 2, (r.x1 - r.x0 + 1) * TILE + 4, (r.y1 - r.y0 + 1) * TILE + 4).stroke({ color: 0xffd166, width: 3 });
+      g.rect(
+        r.x0 * TILE - 2,
+        r.y0 * TILE - 2,
+        (r.x1 - r.x0 + 1) * TILE + 4,
+        (r.y1 - r.y0 + 1) * TILE + 4,
+      ).stroke({ color: 0xffd166, width: 3 });
     }
     if (o.ghost) {
       const gh = o.ghost;
@@ -606,7 +735,12 @@ export class Renderer {
       this.ghost.tint = gh.valid ? 0xb8ffb8 : 0xff8a8a;
       this.ghost.visible = true;
       const r = gh.rect;
-      g.rect(r.x0 * TILE, r.y0 * TILE, (r.x1 - r.x0 + 1) * TILE, (r.y1 - r.y0 + 1) * TILE).fill({ color: gh.valid ? 0x4dff7a : 0xff5d5d, alpha: 0.2 });
+      g.rect(
+        r.x0 * TILE,
+        r.y0 * TILE,
+        (r.x1 - r.x0 + 1) * TILE,
+        (r.y1 - r.y0 + 1) * TILE,
+      ).fill({ color: gh.valid ? 0x4dff7a : 0xff5d5d, alpha: 0.2 });
     } else {
       this.ghost.visible = false;
     }
@@ -616,7 +750,11 @@ export class Renderer {
     const p = this.prompt;
     const was = this.drawnPrompt;
     // Re-set at 4 Hz with a fresh object; redraw only when it actually moved.
-    if (p === was || (p && was && p.x === was.x && p.y === was.y && p.label === was.label)) return;
+    if (
+      p === was ||
+      (p && was && p.x === was.x && p.y === was.y && p.label === was.label)
+    )
+      return;
     this.drawnPrompt = p;
     this.dirty = true;
     if (!p) {
@@ -628,10 +766,17 @@ export class Renderer {
     const w = this.promptText.width + 14;
     const h = this.promptText.height + 8;
     this.promptBg.clear();
-    this.promptBg.roundRect(0, 0, w, h, 6).fill({ color: 0x15131a, alpha: 0.85 });
-    this.promptBg.roundRect(0, 0, w, h, 6).stroke({ color: 0x7aa2ff, width: 1 });
+    this.promptBg
+      .roundRect(0, 0, w, h, 6)
+      .fill({ color: 0x15131a, alpha: 0.85 });
+    this.promptBg
+      .roundRect(0, 0, w, h, 6)
+      .stroke({ color: 0x7aa2ff, width: 1 });
     this.promptText.position.set(7, 4);
-    this.promptBox.position.set(Math.round(p.x - w / 2), Math.round(p.y - h - 6));
+    this.promptBox.position.set(
+      Math.round(p.x - w / 2),
+      Math.round(p.y - h - 6),
+    );
   }
 
   /** Updates the scene from World, then draws it if anything visible changed. */
@@ -655,7 +800,8 @@ export class Renderer {
     if (!me || !world.map) return;
     // Camera follows us, or looks at a room for a moment ("Ver no mapa");
     // walking brings it back at once. Smoothing off with reduced motion.
-    if (this.peekAt && (me.moving || nowMs > this.peekAt.until)) this.peekAt = null;
+    if (this.peekAt && (me.moving || nowMs > this.peekAt.until))
+      this.peekAt = null;
     const target = this.peekAt ?? me;
     if (!this.cam.ready || this.reducedMotion) {
       this.cam = { x: target.x, y: target.y, ready: true };
@@ -681,19 +827,30 @@ export class Renderer {
     const margin = SPRITE * AVATAR_SCALE * 2;
     this.view.x0 = -this.stage.position.x / this.zoom - margin;
     this.view.y0 = -this.stage.position.y / this.zoom - margin;
-    this.view.x1 = this.view.x0 + this.app.screen.width / this.zoom + margin * 2;
-    this.view.y1 = this.view.y0 + this.app.screen.height / this.zoom + margin * 2;
+    this.view.x1 =
+      this.view.x0 + this.app.screen.width / this.zoom + margin * 2;
+    this.view.y1 =
+      this.view.y0 + this.app.screen.height / this.zoom + margin * 2;
 
     const seen = new Set<string>([me.userId]);
-    const mine = this.avatarFor(me.userId, me.name, me.palette);
+    const mine = this.avatarFor(
+      me.userId,
+      heroLabel(me.name, world.myHero),
+      me.palette,
+    );
     const mineVisible = this.place(mine, me.x, me.y, 1);
     this.pose(mine, me.dir, me.moving, nowMs, mineVisible);
     this.indicate(mine, this.indicatorsOf(world, me.userId), mineVisible);
     for (const r of world.others.values()) {
       seen.add(r.userId);
       const p = world.positionOf(r, nowMs);
-      const a = this.avatarFor(r.userId, r.name, r.palette);
-      const visible = this.place(a, p.x, p.y, r.state === "reconnecting" ? 0.45 : r.state === "idle" ? 0.75 : 1);
+      const a = this.avatarFor(r.userId, heroLabel(r.name, r.hero), r.palette);
+      const visible = this.place(
+        a,
+        p.x,
+        p.y,
+        r.state === "reconnecting" ? 0.45 : r.state === "idle" ? 0.75 : 1,
+      );
       this.pose(a, r.dir, r.moving, nowMs, visible);
       this.indicate(a, this.indicatorsOf(world, r.userId), visible);
     }
@@ -719,8 +876,18 @@ export class Renderer {
     for (const inst of world.decor?.items ?? []) {
       const item = itemOf(CATALOG, inst.item);
       const zone = zones?.byKey.get(inst.zone);
-      if (!item?.smartTv || zone?.kind !== "room" || !zone.roomId || !world.tvOn(zone.roomId)) continue;
-      lit.push({ id: inst.id, rect: instanceRect(zone, item, inst), wall: item.layer === "wall" });
+      if (
+        !item?.smartTv ||
+        zone?.kind !== "room" ||
+        !zone.roomId ||
+        !world.tvOn(zone.roomId)
+      )
+        continue;
+      lit.push({
+        id: inst.id,
+        rect: instanceRect(zone, item, inst),
+        wall: item.layer === "wall",
+      });
     }
     const key = lit.map((l) => l.id).join(",");
     if (key === this.tvKey) return;
@@ -738,7 +905,10 @@ export class Renderer {
       g.rect(x, y, w - 8, h).stroke({ color: 0xe0f2fe, width: 1, alpha: 0.9 });
       const cx = x + (w - 8) / 2;
       const cy = y + h / 2;
-      g.poly([cx - 3, cy - 4, cx - 3, cy + 4, cx + 4, cy]).fill({ color: 0xffffff, alpha: 0.95 });
+      g.poly([cx - 3, cy - 4, cx - 3, cy + 4, cx + 4, cy]).fill({
+        color: 0xffffff,
+        alpha: 0.95,
+      });
     }
   }
 

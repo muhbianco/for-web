@@ -57,6 +57,10 @@ class FakeHost implements RpgHost {
     if (instanceId === null) this.training.delete(userId);
     else this.training.set(userId, instanceId);
   }
+  readonly levels = new Map<string, number | null>();
+  setHeroLevel(userId: string, level: number | null) {
+    this.levels.set(userId, level);
+  }
   sessionOf(userId: string) {
     return this.sessions.get(userId) ?? null;
   }
@@ -202,4 +206,18 @@ test("taxas do operador pelo ambiente; valores ruins ficam no padrão", () => {
     magic: 2,
     loot: 2,
   });
+});
+
+test("o level do herói vai para o avatar: ao mudar e quando a pessoa entra", async () => {
+  const { host, send, svc } = await setup();
+  host.levels.clear();
+  svc.avatarJoined(host, "U1");
+  await svc.idle("U1");
+  assert.equal(host.levels.get("U1"), null);
+  await send("rpg.vocation", { vocation: 4 });
+  assert.equal(host.levels.get("U1"), 1);
+  host.levels.clear();
+  svc.avatarJoined(host, "U1");
+  await svc.idle("U1");
+  assert.equal(host.levels.get("U1"), 1);
 });

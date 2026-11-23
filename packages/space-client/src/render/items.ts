@@ -1,16 +1,15 @@
 import {
+  type G,
   alpha,
   ART_PX,
   bevel,
   block,
   cushion,
-  DARK,
   DARKER,
   disc,
   dot,
   FABRIC,
   foliage,
-  type G,
   glow,
   LEAF,
   legs,
@@ -42,11 +41,31 @@ export interface ArtDef {
 
 const T = ART_PX;
 
-const GAMER: Record<string, string> = { "preto-vermelho": "#d2473f", "preto-azul": "#3f6fd6", "branco-rosa": "#ff6fb0" };
-const POT: Record<string, string> = { "vaso-terracota": TERRACOTTA, "vaso-branco": "#e6e3dc", "vaso-preto": "#35363f" };
-const LOCKER: Record<string, string> = { azul: "#3c6ec0", verde: "#3f9b6a", cinza: "#7f8592" };
-const WHITE_BLACK: Record<string, string> = { preto: "#30313b", branco: "#e8e8ec" };
-const RED_BLUE: Record<string, string> = { vermelho: "#c9403a", azul: "#3b63c4", roxo: "#7a4fd0", amarelo: "#e2b23a" };
+const GAMER: Record<string, string> = {
+  "preto-vermelho": "#d2473f",
+  "preto-azul": "#3f6fd6",
+  "branco-rosa": "#ff6fb0",
+};
+const POT: Record<string, string> = {
+  "vaso-terracota": TERRACOTTA,
+  "vaso-branco": "#e6e3dc",
+  "vaso-preto": "#35363f",
+};
+const LOCKER: Record<string, string> = {
+  azul: "#3c6ec0",
+  verde: "#3f9b6a",
+  cinza: "#7f8592",
+};
+const WHITE_BLACK: Record<string, string> = {
+  preto: "#30313b",
+  branco: "#e8e8ec",
+};
+const RED_BLUE: Record<string, string> = {
+  vermelho: "#c9403a",
+  azul: "#3b63c4",
+  roxo: "#7a4fd0",
+  amarelo: "#e2b23a",
+};
 
 // ---- shared pieces -----------------------------------------------------------
 
@@ -64,7 +83,8 @@ function sofa(g: G, seats: number) {
       outline(g, x0, y0 - 6, W, T + 6);
       bevel(g, x0 + 1, y0 - 5, W - 2, 7, back);
       rect(g, x0 + 1, y0 + 1, W - 2, T - 3, c);
-      for (let s = 0; s < seats; s++) cushion(g, x0 + 2 + s * T, y0 + 3, T - 4, T - 6, shade(c, 0.05));
+      for (let s = 0; s < seats; s++)
+        cushion(g, x0 + 2 + s * T, y0 + 3, T - 4, T - 6, shade(c, 0.05));
       bevel(g, x0 + 1, y0 + 1, 2, T - 2, back);
       bevel(g, x0 + W - 3, y0 + 1, 2, T - 2, back);
       legs(g, x0, y0 + T - 2, W, DARKER);
@@ -72,7 +92,8 @@ function sofa(g: G, seats: number) {
       // Facing up: we see the back of the backrest at the bottom.
       outline(g, x0, y0 - 2, W, T + 2);
       rect(g, x0 + 1, y0 - 1, W - 2, T - 6, c);
-      for (let s = 0; s < seats; s++) cushion(g, x0 + 2 + s * T, y0, T - 4, T - 8, shade(c, 0.05));
+      for (let s = 0; s < seats; s++)
+        cushion(g, x0 + 2 + s * T, y0, T - 4, T - 8, shade(c, 0.05));
       bevel(g, x0 + 1, y0 + T - 7, W - 2, 6, back);
       bevel(g, x0 + 1, y0 - 1, 2, T - 7, back);
       bevel(g, x0 + W - 3, y0 - 1, 2, T - 7, back);
@@ -85,7 +106,8 @@ function sofa(g: G, seats: number) {
   const backLeft = g.rot === 3; // facing right → backrest on the left
   outline(g, 0, y0 - 2, T, H + 2);
   rect(g, 1, y0 - 1, T - 2, H, c);
-  for (let s = 0; s < seats; s++) cushion(g, backLeft ? 6 : 2, y0 + 1 + s * T, T - 8, T - 4, shade(c, 0.05));
+  for (let s = 0; s < seats; s++)
+    cushion(g, backLeft ? 6 : 2, y0 + 1 + s * T, T - 8, T - 4, shade(c, 0.05));
   bevel(g, backLeft ? 1 : T - 6, y0 - 1, 5, H, back);
   bevel(g, 1, y0 - 1, T - 2, 2, back);
   bevel(g, 1, y0 + H - 3, T - 2, 2, back);
@@ -152,7 +174,8 @@ function table(g: G, round: boolean) {
 
 /** Desk with the given things on it: monitors at the back, keyboard in front. */
 function desk(g: G, kind: "plain" | "pc" | "laptop" | "stream") {
-  const c = kind === "plain" || kind === "laptop" ? pick(WOOD, g.variant) : "#3a3b47";
+  const c =
+    kind === "plain" || kind === "laptop" ? pick(WOOD, g.variant) : "#3a3b47";
   const n = pick(NEON, g.variant);
   const y0 = g.top;
   const horizontal = g.rot % 2 === 0;
@@ -176,7 +199,8 @@ function desk(g: G, kind: "plain" | "pc" | "laptop" | "stream") {
       return;
     }
     // Monitors: two for pc, one wide for stream (plus mic and light).
-    const screens = kind === "pc" ? [1, g.W / 2 + 1] : [Math.floor(g.W / 2) - 7];
+    const screens =
+      kind === "pc" ? [1, g.W / 2 + 1] : [Math.floor(g.W / 2) - 7];
     const sw = kind === "pc" ? Math.floor(g.W / 2) - 2 : 14;
     for (const sx of screens) {
       if (facingDown) {
@@ -226,7 +250,11 @@ function desk(g: G, kind: "plain" | "pc" | "laptop" | "stream") {
 }
 
 /** Tall storage: body, doors or shelves inside. */
-function tallBox(g: G, c: string, inner: (x: number, y: number, w: number, h: number) => void) {
+function tallBox(
+  g: G,
+  c: string,
+  inner: (x: number, y: number, w: number, h: number) => void,
+) {
   const y0 = g.top - 10;
   outline(g, 1, y0, g.W - 2, g.H - y0 - 1);
   bevel(g, 2, y0 + 1, g.W - 4, 3, shade(c, 0.15)); // top face
@@ -236,7 +264,14 @@ function tallBox(g: G, c: string, inner: (x: number, y: number, w: number, h: nu
 }
 
 function books(g: G, x: number, y: number, w: number, h: number) {
-  const palette = ["#d2473f", "#3f6fd6", "#e2b23a", "#3faa6a", "#8457d8", "#e8e8ec"];
+  const palette = [
+    "#d2473f",
+    "#3f6fd6",
+    "#e2b23a",
+    "#3faa6a",
+    "#8457d8",
+    "#e8e8ec",
+  ];
   const rows = Math.max(1, Math.floor(h / 6));
   for (let r = 0; r < rows; r++) {
     const ry = y + 1 + r * 6;
@@ -271,7 +306,11 @@ function plant(g: G, tall: boolean) {
 const LEAF_HI = "#8fe08c";
 
 /** Frame on the wall holding a picture painted by `motif`. */
-function wallFrame(g: G, frameColor: string, motif: (x: number, y: number, w: number, h: number) => void) {
+function wallFrame(
+  g: G,
+  frameColor: string,
+  motif: (x: number, y: number, w: number, h: number) => void,
+) {
   const x = 2;
   const y = 3;
   const w = g.W - 4;
@@ -313,9 +352,30 @@ function sky(g: G, night: boolean, city: boolean) {
 
 function rugBorder(g: G, c: string, inset = 0) {
   const y0 = g.top;
-  outline(g, inset, y0 + inset, g.W - 2 * inset, g.H - y0 - 2 * inset, shade(c, -0.35));
-  rect(g, inset + 1, y0 + inset + 1, g.W - 2 * inset - 2, g.H - y0 - 2 * inset - 2, c);
-  outline(g, inset + 2, y0 + inset + 2, g.W - 2 * inset - 4, g.H - y0 - 2 * inset - 4, shade(c, 0.15));
+  outline(
+    g,
+    inset,
+    y0 + inset,
+    g.W - 2 * inset,
+    g.H - y0 - 2 * inset,
+    shade(c, -0.35),
+  );
+  rect(
+    g,
+    inset + 1,
+    y0 + inset + 1,
+    g.W - 2 * inset - 2,
+    g.H - y0 - 2 * inset - 2,
+    c,
+  );
+  outline(
+    g,
+    inset + 2,
+    y0 + inset + 2,
+    g.W - 2 * inset - 4,
+    g.H - y0 - 2 * inset - 4,
+    shade(c, 0.15),
+  );
 }
 
 function arcadeCabinet(g: G, x: number, w: number, c: string) {
@@ -335,7 +395,8 @@ function arcadeCabinet(g: G, x: number, w: number, c: string) {
   glow(g, x + 2, y0 - 4, w - 4, 7, "#6fd3ff", 0.3);
   screen(g, x + 2, y0 - 4, w - 4, 7, "#2a6fd1");
   bevel(g, x + 1, y0 + 4, w - 2, 4, shade(c, -0.1)); // control panel
-  for (let i = 0; i < Math.floor((w - 4) / 4); i++) dot(g, x + 3 + i * 4, y0 + 5, i % 2 ? "#ffe08a" : "#ff5d5d");
+  for (let i = 0; i < Math.floor((w - 4) / 4); i++)
+    dot(g, x + 3 + i * 4, y0 + 5, i % 2 ? "#ffe08a" : "#ff5d5d");
   rect(g, x + Math.floor(w / 2) - 1, y0 + 4, 1, 3, DARKER);
   rect(g, x + 1, y0 + 9, w - 2, T - 10, shade(c, -0.25));
   rect(g, x + 2, y0 + T - 3, w - 4, 1, DARKER);
@@ -370,12 +431,18 @@ export const ART: Record<string, ArtDef> = {
     draw(g) {
       const c = pick(FABRIC, g.variant);
       rugBorder(g, shade(c, -0.1));
-      for (let y = g.top + 4; y < g.H - 4; y += 4) for (let x = 4; x < g.W - 4; x += 8) rect(g, x + ((y >> 2) % 2) * 4, y, 2, 2, shade(c, 0.2));
+      for (let y = g.top + 4; y < g.H - 4; y += 4)
+        for (let x = 4; x < g.W - 4; x += 8)
+          rect(g, x + ((y >> 2) % 2) * 4, y, 2, 2, shade(c, 0.2));
     },
   },
   "rug-runner": {
     draw(g) {
-      const colors: Record<string, string> = { vermelho: "#a93a3a", azul: "#3b5aa8", cinza: "#7d808c" };
+      const colors: Record<string, string> = {
+        vermelho: "#a93a3a",
+        azul: "#3b5aa8",
+        cinza: "#7d808c",
+      };
       const c = pick(colors, g.variant);
       rugBorder(g, c, 1);
       const vertical = g.H - g.top > g.W;
@@ -404,10 +471,21 @@ export const ART: Record<string, ArtDef> = {
   },
   "rug-striped": {
     draw(g) {
-      const colors: Record<string, string> = { areia: "#d8c9a5", marinho: "#2f4a7d" };
+      const colors: Record<string, string> = {
+        areia: "#d8c9a5",
+        marinho: "#2f4a7d",
+      };
       const c = pick(colors, g.variant);
       rugBorder(g, c, 0);
-      for (let y = g.top + 3; y < g.H - 3; y += 4) rect(g, 3, y, g.W - 6, 2, shade(c, g.variant === "marinho" ? 0.25 : -0.2));
+      for (let y = g.top + 3; y < g.H - 3; y += 4)
+        rect(
+          g,
+          3,
+          y,
+          g.W - 6,
+          2,
+          shade(c, g.variant === "marinho" ? 0.25 : -0.2),
+        );
     },
   },
 
@@ -481,7 +559,8 @@ export const ART: Record<string, ArtDef> = {
     draw(g) {
       const c = pick(WOOD, g.variant);
       block(g, 0, g.top - 4, g.W, 5, g.H - g.top - 2, c);
-      for (let x = 3; x < g.W - 3; x += 6) rect(g, x, g.top + 4, 3, g.H - g.top - 8, shade(c, -0.2));
+      for (let x = 3; x < g.W - 3; x += 6)
+        rect(g, x, g.top + 4, 3, g.H - g.top - 8, shade(c, -0.2));
       rect(g, 1, g.top - 3, g.W - 2, 1, shade(c, 0.35));
     },
   },
@@ -495,7 +574,14 @@ export const ART: Record<string, ArtDef> = {
           const ry = y + 2 + row * Math.floor(h / 2);
           rect(g, x, ry + 5, w, 1, shade(c, -0.3));
           for (let i = 0; i < Math.floor(w / 3); i++) {
-            rect(g, x + 1 + i * 3, ry + 1, 2, 4, bottles[(i + row) % bottles.length]!);
+            rect(
+              g,
+              x + 1 + i * 3,
+              ry + 1,
+              2,
+              4,
+              bottles[(i + row) % bottles.length]!,
+            );
             dot(g, x + 1 + i * 3, ry, DARKER);
           }
         }
@@ -538,7 +624,14 @@ export const ART: Record<string, ArtDef> = {
         block(g, 3, y0 + 1, T - 6, 3, g.H - y0 - 6, "#3a3b47");
         const left = g.rot === 1;
         outline(g, left ? 9 : 4, y0 - 2, 3, g.H - y0 - 2, DARKER);
-        rect(g, left ? 10 : 5, y0 - 1, 1, g.H - y0 - 4, left ? "#3b86d9" : "#2a2b36");
+        rect(
+          g,
+          left ? 10 : 5,
+          y0 - 1,
+          1,
+          g.H - y0 - 4,
+          left ? "#3b86d9" : "#2a2b36",
+        );
       }
     },
   },
@@ -561,13 +654,20 @@ export const ART: Record<string, ArtDef> = {
       rect(g, 8, g.top + 9, 4, 3, "#3b63c4");
     },
   },
-  arcade: { tall: 1, draw: (g) => arcadeCabinet(g, 1, T - 2, pick(RED_BLUE, g.variant)) },
+  arcade: {
+    tall: 1,
+    draw: (g) => arcadeCabinet(g, 1, T - 2, pick(RED_BLUE, g.variant)),
+  },
   "arcade-double": {
     tall: 1,
     draw(g) {
-      const colors: Record<string, string> = { preto: "#2b2c38", vermelho: "#c9403a" };
+      const colors: Record<string, string> = {
+        preto: "#2b2c38",
+        vermelho: "#c9403a",
+      };
       arcadeCabinet(g, 0, g.W, pick(colors, g.variant));
-      if (g.rot !== 2) rect(g, Math.floor(g.W / 2), g.top - 4, 1, T + 2, DARKER);
+      if (g.rot !== 2)
+        rect(g, Math.floor(g.W / 2), g.top - 4, 1, T + 2, DARKER);
     },
   },
   pinball: {
@@ -583,7 +683,13 @@ export const ART: Record<string, ArtDef> = {
         if (backTop) glow(g, 4, y0 - 4, T - 8, 4, "#ffe08a", 0.4);
         rect(g, 3, backTop ? y0 + 2 : y0 - 5, T - 6, g.H - y0 - 4, "#2b2c38");
         rect(g, 4, backTop ? y0 + 3 : y0 - 4, T - 8, g.H - y0 - 6, "#3b63c4");
-        for (let i = 0; i < 5; i++) dot(g, 5 + ((i * 3) % 7), y0 + 5 + i * 3, i % 2 ? "#ffe08a" : "#ff5d5d");
+        for (let i = 0; i < 5; i++)
+          dot(
+            g,
+            5 + ((i * 3) % 7),
+            y0 + 5 + i * 3,
+            i % 2 ? "#ffe08a" : "#ff5d5d",
+          );
         rect(g, 3, g.H - 3, T - 6, 1, shade(c, -0.4));
       } else {
         outline(g, 0, y0 - 4, g.W, T + 3);
@@ -649,7 +755,10 @@ export const ART: Record<string, ArtDef> = {
   },
   painting: {
     draw(g) {
-      const motifs: Record<string, (x: number, y: number, w: number, h: number) => void> = {
+      const motifs: Record<
+        string,
+        (x: number, y: number, w: number, h: number) => void
+      > = {
         paisagem: sky(g, false, false),
         abstrato: (x, y, w, h) => {
           rect(g, x, y, w, h, "#f0c25a");
@@ -664,30 +773,62 @@ export const ART: Record<string, ArtDef> = {
         },
         mar: (x, y, w, h) => {
           rect(g, x, y, w, h, "#8fd0f5");
-          rect(g, x, y + Math.floor(h / 2), w, h - Math.floor(h / 2), "#2d6fb3");
+          rect(
+            g,
+            x,
+            y + Math.floor(h / 2),
+            w,
+            h - Math.floor(h / 2),
+            "#2d6fb3",
+          );
           rect(g, x + 1, y + Math.floor(h / 2) + 1, 3, 1, WHITE);
         },
       };
-      wallFrame(g, pick(WOOD, "escuro"), motifs[g.variant ?? "paisagem"] ?? motifs.paisagem!);
+      wallFrame(
+        g,
+        pick(WOOD, "escuro"),
+        motifs[g.variant ?? "paisagem"] ?? motifs.paisagem!,
+      );
     },
   },
   "painting-wide": {
     draw(g) {
-      const motifs: Record<string, (x: number, y: number, w: number, h: number) => void> = {
+      const motifs: Record<
+        string,
+        (x: number, y: number, w: number, h: number) => void
+      > = {
         paisagem: sky(g, false, false),
         abstrato: (x, y, w, h) => {
           rect(g, x, y, w, h, "#2f2a44");
-          for (let i = 0; i < 5; i++) rect(g, x + 2 + i * 5, y + 1 + (i % 3), 3, h - 2 - (i % 3), ["#d2473f", "#f0c25a", "#3faa6a", "#3f6fd6", "#ff6fb0"][i]!);
+          for (let i = 0; i < 5; i++)
+            rect(
+              g,
+              x + 2 + i * 5,
+              y + 1 + (i % 3),
+              3,
+              h - 2 - (i % 3),
+              ["#d2473f", "#f0c25a", "#3faa6a", "#3f6fd6", "#ff6fb0"][i]!,
+            );
         },
         cidade: sky(g, true, true),
       };
-      wallFrame(g, "#1d1d26", motifs[g.variant ?? "paisagem"] ?? motifs.paisagem!);
+      wallFrame(
+        g,
+        "#1d1d26",
+        motifs[g.variant ?? "paisagem"] ?? motifs.paisagem!,
+      );
     },
   },
   poster: {
     draw(g) {
       const motif = g.variant ?? "gamer";
-      const bg: Record<string, string> = { gamer: "#1f1b3a", retro: "#f0c25a", espaço: "#0d1030", banda: "#2a2a2a", mapa: "#e6dcc0" };
+      const bg: Record<string, string> = {
+        gamer: "#1f1b3a",
+        retro: "#f0c25a",
+        espaço: "#0d1030",
+        banda: "#2a2a2a",
+        mapa: "#e6dcc0",
+      };
       const c = bg[motif] ?? bg.gamer!;
       rect(g, 3, 2, T - 6, T - 4, c);
       outline(g, 3, 2, T - 6, T - 4, shade(c, -0.4));
@@ -695,7 +836,15 @@ export const ART: Record<string, ArtDef> = {
         rect(g, 5, 5, 6, 4, "#4dff7a");
         rect(g, 6, 10, 4, 2, "#ff3fd0");
       } else if (motif === "retro") {
-        for (let i = 0; i < 4; i++) rect(g, 4, 4 + i * 2, T - 8, 1, ["#d2473f", "#3f6fd6", "#3faa6a", "#2a2a2a"][i]!);
+        for (let i = 0; i < 4; i++)
+          rect(
+            g,
+            4,
+            4 + i * 2,
+            T - 8,
+            1,
+            ["#d2473f", "#3f6fd6", "#3faa6a", "#2a2a2a"][i]!,
+          );
       } else if (motif === "espaço") {
         dot(g, 5, 4, WHITE);
         dot(g, 10, 6, WHITE);
@@ -715,12 +864,20 @@ export const ART: Record<string, ArtDef> = {
   },
   window: {
     draw(g) {
-      wallFrame(g, "#dfe3ea", sky(g, g.variant === "noite", g.variant === "cidade"));
+      wallFrame(
+        g,
+        "#dfe3ea",
+        sky(g, g.variant === "noite", g.variant === "cidade"),
+      );
     },
   },
   "window-wide": {
     draw(g) {
-      wallFrame(g, "#dfe3ea", sky(g, g.variant === "noite", g.variant === "cidade"));
+      wallFrame(
+        g,
+        "#dfe3ea",
+        sky(g, g.variant === "noite", g.variant === "cidade"),
+      );
       rect(g, Math.floor(g.W / 2), 3, 1, T - 7, "#dfe3ea");
     },
   },
@@ -740,7 +897,13 @@ export const ART: Record<string, ArtDef> = {
     draw(g) {
       disc(g, 8, 7, 6, OUTLINE);
       disc(g, 8, 7, 5, WHITE);
-      for (const [dx, dy] of [[0, -3], [3, 0], [0, 3], [-3, 0]] as const) dot(g, 8 + dx, 7 + dy, DARKER);
+      for (const [dx, dy] of [
+        [0, -3],
+        [3, 0],
+        [0, 3],
+        [-3, 0],
+      ] as const)
+        dot(g, 8 + dx, 7 + dy, DARKER);
       rect(g, 8, 5, 1, 3, DARKER);
       rect(g, 8, 7, 3, 1, "#d2473f");
     },
@@ -757,7 +920,11 @@ export const ART: Record<string, ArtDef> = {
   },
   sign: {
     draw(g) {
-      const styles: Record<string, string> = { madeira: WOOD.mel!, neon: "#1d1a2e", metal: "#6f7480" };
+      const styles: Record<string, string> = {
+        madeira: WOOD.mel!,
+        neon: "#1d1a2e",
+        metal: "#6f7480",
+      };
       const c = pick(styles, g.variant);
       outline(g, 1, 3, g.W - 2, T - 7);
       bevel(g, 2, 4, g.W - 4, T - 9, c);
@@ -781,7 +948,11 @@ export const ART: Record<string, ArtDef> = {
   },
   "trash-can": {
     draw(g) {
-      const colors: Record<string, string> = { cinza: "#7f8592", azul: "#3b63c4", verde: "#3f9b6a" };
+      const colors: Record<string, string> = {
+        cinza: "#7f8592",
+        azul: "#3b63c4",
+        verde: "#3f9b6a",
+      };
       const c = pick(colors, g.variant);
       outline(g, 5, g.top + 3, 6, T - 4);
       bevel(g, 6, g.top + 4, 4, T - 6, c);
@@ -800,12 +971,22 @@ export const ART: Record<string, ArtDef> = {
   "vending-machine": {
     tall: 1,
     draw(g) {
-      const colors: Record<string, string> = { azul: "#3b63c4", vermelho: "#c9403a" };
+      const colors: Record<string, string> = {
+        azul: "#3b63c4",
+        vermelho: "#c9403a",
+      };
       const c = pick(colors, g.variant);
       tallBox(g, c, (x, y, w, h) => {
         glow(g, x + 1, y + 1, w - 4, h - 7, "#ffffff", 0.15);
         rect(g, x + 1, y + 1, w - 4, h - 7, "#20222e");
-        for (let r = 0; r < 3; r++) for (let i = 0; i < 3; i++) dot(g, x + 2 + i * 3, y + 2 + r * 3, ["#ffe08a", "#ff5d5d", "#4dff7a"][(r + i) % 3]!);
+        for (let r = 0; r < 3; r++)
+          for (let i = 0; i < 3; i++)
+            dot(
+              g,
+              x + 2 + i * 3,
+              y + 2 + r * 3,
+              ["#ffe08a", "#ff5d5d", "#4dff7a"][(r + i) % 3]!,
+            );
         rect(g, x + w - 3, y + 2, 2, h - 8, shade(c, -0.3));
         rect(g, x + 1, y + h - 4, w - 2, 2, DARKER);
       });
@@ -826,12 +1007,23 @@ export const ART: Record<string, ArtDef> = {
   fridge: {
     tall: 1,
     draw(g) {
-      const colors: Record<string, string> = { branco: "#e8e8ec", preto: "#30313b", vermelho: "#c9403a" };
+      const colors: Record<string, string> = {
+        branco: "#e8e8ec",
+        preto: "#30313b",
+        vermelho: "#c9403a",
+      };
       const c = pick(colors, g.variant);
       tallBox(g, c, (x, y, w, h) => {
         rect(g, x, y + Math.floor(h / 3), w, 1, shade(c, -0.35));
         rect(g, x + w - 3, y + 2, 1, Math.floor(h / 3) - 3, METAL);
-        rect(g, x + w - 3, y + Math.floor(h / 3) + 2, 1, h - Math.floor(h / 3) - 4, METAL);
+        rect(
+          g,
+          x + w - 3,
+          y + Math.floor(h / 3) + 2,
+          1,
+          h - Math.floor(h / 3) - 4,
+          METAL,
+        );
       });
     },
   },
@@ -861,7 +1053,11 @@ export const ART: Record<string, ArtDef> = {
   "floor-lamp": {
     tall: 1,
     draw(g) {
-      const colors: Record<string, string> = { preto: "#30313b", dourado: "#c9a24a", branco: "#e8e8ec" };
+      const colors: Record<string, string> = {
+        preto: "#30313b",
+        dourado: "#c9a24a",
+        branco: "#e8e8ec",
+      };
       const c = pick(colors, g.variant);
       glow(g, 2, g.top - 10, 12, 8, "#ffe8a3", 0.3);
       rect(g, 7, g.top - 4, 2, T + 1, c);
@@ -891,7 +1087,12 @@ export const ART: Record<string, ArtDef> = {
   },
   "neon-sign": {
     draw(g) {
-      const words: Record<string, string> = { gg: NEON.verde!, live: NEON.magenta!, play: NEON.ciano!, coracao: "#ff5d8a" };
+      const words: Record<string, string> = {
+        gg: NEON.verde!,
+        live: NEON.magenta!,
+        play: NEON.ciano!,
+        coracao: "#ff5d8a",
+      };
       const n = pick(words, g.variant);
       glow(g, 2, 3, g.W - 4, T - 6, n, 0.4);
       const glyph = (x: number, y: number) => {
@@ -914,7 +1115,10 @@ export const ART: Record<string, ArtDef> = {
       rect(g, 1, T - 3, g.W - 2, 1, alpha(n, 0.3));
     },
   },
-  "ceiling-lamp": { draw: (g) => ceilingLight(g, g.variant === "frio" ? "#cfe9ff" : "#ffe3a3", true) },
+  "ceiling-lamp": {
+    draw: (g) =>
+      ceilingLight(g, g.variant === "frio" ? "#cfe9ff" : "#ffe3a3", true),
+  },
   spotlight: { draw: (g) => ceilingLight(g, pick(NEON, g.variant), false) },
 
   // Equipment
@@ -922,7 +1126,12 @@ export const ART: Record<string, ArtDef> = {
     tall: 1,
     draw(g) {
       const y0 = g.top;
-      for (const [dx, dy] of [[-3, 0], [3, 0], [0, 1]] as const) rect(g, 8 + dx, y0 + 7 + dy, 1, 7, METAL);
+      for (const [dx, dy] of [
+        [-3, 0],
+        [3, 0],
+        [0, 1],
+      ] as const)
+        rect(g, 8 + dx, y0 + 7 + dy, 1, 7, METAL);
       rect(g, 7, y0 + 1, 2, 7, METAL);
       const left = g.rot === 1 || g.rot === 2;
       outline(g, left ? 3 : 7, y0 - 5, 7, 6);
@@ -987,7 +1196,11 @@ export const ART: Record<string, ArtDef> = {
   "guitar-stand": {
     tall: 1,
     draw(g) {
-      const colors: Record<string, string> = { vermelho: "#c9403a", preto: "#2b2c38", sunburst: "#d9892f" };
+      const colors: Record<string, string> = {
+        vermelho: "#c9403a",
+        preto: "#2b2c38",
+        sunburst: "#d9892f",
+      };
       const c = pick(colors, g.variant);
       rect(g, 7, g.top - 8, 2, 6, "#5a3d22");
       rect(g, 6, g.top - 10, 4, 2, DARKER);
@@ -1060,7 +1273,11 @@ export const ART: Record<string, ArtDef> = {
   statue: {
     tall: 1,
     draw(g) {
-      const colors: Record<string, string> = { mármore: "#e6e3dc", bronze: "#9a6b3f", ouro: "#d9b560" };
+      const colors: Record<string, string> = {
+        mármore: "#e6e3dc",
+        bronze: "#9a6b3f",
+        ouro: "#d9b560",
+      };
       const c = pick(colors, g.variant);
       block(g, 3, g.top + 7, 10, 3, 6, shade(c, -0.1));
       disc(g, 8, g.top - 6, 3, OUTLINE);
@@ -1068,6 +1285,65 @@ export const ART: Record<string, ArtDef> = {
       rect(g, 5, g.top - 3, 6, 10, OUTLINE);
       rect(g, 6, g.top - 2, 4, 9, c);
       rect(g, 6, g.top - 2, 1, 9, shade(c, 0.25));
+    },
+  },
+  // Treino do jogo idle (docs/espaco/jogo/ot). Estáticos: o mapa segue desenhado sob demanda.
+  "dummy-wood": {
+    tall: 1,
+    draw(g) {
+      const wood = "#a0703f";
+      const straw = "#d8b56a";
+      block(g, 4, g.top + 9, 8, 2, 4, shade(wood, -0.25));
+      rect(g, 7, g.top - 6, 3, 16, OUTLINE);
+      rect(g, 8, g.top - 5, 1, 14, wood);
+      rect(g, 2, g.top - 1, 12, 3, OUTLINE);
+      rect(g, 3, g.top, 10, 1, wood);
+      rect(g, 5, g.top + 2, 7, 6, OUTLINE);
+      rect(g, 6, g.top + 3, 5, 4, straw);
+      rect(g, 6, g.top + 5, 5, 1, shade(straw, -0.2));
+      disc(g, 8, g.top - 8, 3, OUTLINE);
+      disc(g, 8, g.top - 8, 2, straw);
+      dot(g, 7, g.top - 9, shade(straw, 0.3));
+    },
+  },
+  "dummy-target": {
+    tall: 1,
+    draw(g) {
+      const wood = "#8a5a32";
+      rect(g, 4, g.top + 3, 2, 11, OUTLINE);
+      rect(g, 11, g.top + 3, 2, 11, OUTLINE);
+      rect(g, 4, g.top + 4, 1, 9, wood);
+      rect(g, 11, g.top + 4, 1, 9, wood);
+      disc(g, 8, g.top - 1, 7, OUTLINE);
+      disc(g, 8, g.top - 1, 6, "#f2efe6");
+      disc(g, 8, g.top - 1, 5, "#d2473f");
+      disc(g, 8, g.top - 1, 3, "#f2efe6");
+      disc(g, 8, g.top - 1, 2, "#d2473f");
+      dot(g, 8, g.top - 1, "#f4c542");
+    },
+  },
+  "dummy-mannequin": {
+    tall: 1,
+    draw(g) {
+      const side = g.rot % 2 === 1;
+      const w = side ? 6 : 10;
+      const x = 8 - w / 2;
+      block(g, 4, g.top + 10, 8, 2, 3, "#3a3b47");
+      rect(g, 7, g.top + 5, 2, 6, METAL);
+      rect(g, x - 1, g.top - 4, w + 2, 10, OUTLINE);
+      bevel(g, x, g.top - 3, w, 8, METAL);
+      rect(g, x, g.top + 3, w, 1, shade(METAL, -0.25));
+      if (!side) rect(g, 7, g.top - 3, 2, 6, shade(METAL, 0.2));
+      disc(g, 8, g.top - 8, 3, OUTLINE);
+      disc(g, 8, g.top - 8, 2, shade(METAL, -0.1));
+      rect(
+        g,
+        side ? (g.rot === 1 ? 6 : 8) : 6,
+        g.top - 8,
+        side ? 2 : 4,
+        1,
+        DARKER,
+      );
     },
   },
 };

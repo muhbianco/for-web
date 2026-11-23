@@ -132,7 +132,7 @@ async function main() {
     enabled,
     everyServer,
     gameAvailable: game.available,
-    trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId),
+    rpg: { trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId), avatarJoined: (rt, userId) => rpg.avatarJoined(rt, userId) },
     media: media ? { hub: media.hub, lk: media.lk } : undefined,
   });
   onSnapshot = (rooms, failed) => {

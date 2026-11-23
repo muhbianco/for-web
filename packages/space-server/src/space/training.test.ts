@@ -292,3 +292,36 @@ test("dummy: desconectar não encerra (segue como o treino offline); reconectar 
   moveTo(rt, ANA, dummy.tx + 6, dummy.ty);
   assert.deepEqual(left, [ANA]);
 });
+
+test("herói no avatar: level e treino chegam aos outros; quem entra com o jogo ligado é anunciado", async () => {
+  const rt = new SpaceRuntime({
+    serverId: SRV,
+    cache: makeCache(),
+    store: new MemoryAssignmentStore(),
+    decorStore: new MemoryDecorStore(),
+    log: silentLog,
+    gameAvailable: true,
+  });
+  await rt.init();
+  const joined: string[] = [];
+  rt.onAvatarJoined = (userId) => joined.push(userId);
+  const ana = enter(rt, ANA, "Ana");
+  assert.deepEqual(joined, [ANA]);
+  const cai = enter(rt, "01JCA100000000000000000000", "Cai");
+  rt.tick();
+  rt.setHeroLevel(ANA, 7);
+  rt.tick();
+  const seen = () =>
+    (cai.last("avatar.positions")?.d as { avatars: Array<{ user_id: string; hero?: { level: number; training: boolean } }> })
+      .avatars.find((a) => a.user_id === ANA)?.hero;
+  assert.deepEqual(seen(), { level: 7, training: false });
+  const dummy = await placeDummy(rt, ana, "dummy-1");
+  moveTo(rt, ANA, dummy.tx, dummy.ty + 1);
+  rt.setTraining(ANA, "dummy-1");
+  rt.tick();
+  assert.deepEqual(seen(), { level: 7, training: true });
+  // Afastou: o "treinando" some para os outros.
+  moveTo(rt, ANA, dummy.tx + 5, dummy.ty);
+  rt.tick();
+  assert.deepEqual(seen(), { level: 7, training: false });
+});

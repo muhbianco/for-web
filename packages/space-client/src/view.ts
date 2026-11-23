@@ -1,33 +1,44 @@
 import {
-  CATALOG,
   type CompiledMapWire,
   type DecorInstance,
   type DecorItem,
   type DecorRights,
   type DecorSettings,
   type DecorState,
-  instanceRect,
   type InteractionConfig,
-  itemOf,
   type ProfilePatch,
   type ProfileView,
-  ClockOffset,
-  MAX_TV_POS_S,
-  regionAt,
-  TILE,
   type TvRights,
   type TvState,
   type VoiceReport,
+  CATALOG,
+  ClockOffset,
+  instanceRect,
+  itemOf,
+  MAX_TV_POS_S,
+  regionAt,
+  TILE,
   youtube,
 } from "@muchat/space-core";
 
-const clampPos = (s: number) => Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
+const clampPos = (s: number) =>
+  Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
 
+import type { RpgHeroView } from "@muchat/space-core/game/ot";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
-import { Editor, type EditorState } from "./editor.ts";
-import { nearestInteractive, type Prompt } from "./interact.ts";
-import { announceRoomChange, buildList, type ListWing, locationText, shareList, shareZones, zoneList, type ZoneOption } from "./list.ts";
-import { MediaLink, type MediaStatus, type VoicePort } from "./media.ts";
+import { type EditorState, Editor } from "./editor.ts";
+import { type Prompt, nearestInteractive } from "./interact.ts";
+import {
+  type ListWing,
+  type ZoneOption,
+  announceRoomChange,
+  buildList,
+  locationText,
+  shareList,
+  shareZones,
+  zoneList,
+} from "./list.ts";
+import { type MediaStatus, type VoicePort, MediaLink } from "./media.ts";
 import { Mover } from "./mover.ts";
 import { Renderer } from "./render/renderer.ts";
 import { decodeMap, World } from "./world.ts";
@@ -83,10 +94,21 @@ export interface SpaceUiState {
    * it on for this server; `enabled` = this person may play now. null = unknown.
    */
   game: { available: boolean; enabled: boolean } | null;
+  /**
+   * Idle game (docs/espaco/jogo/ot): our hero as the server last sent it, with the server's
+   * clock then (`serverNow`) and ours (`at`), so the app projects training progress.
+   */
+  rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
+  /** Someone used a training dummy on the map: the app opens the training dialog. */
+  trainRequest: { instance: string; title: string; n: number } | null;
 }
 
 /** What the game panel receives: its own events, and errors of its own commands. */
-export type GameWireEvent = { t: "game.state" | "game.fight" | "error"; re?: string; d: Record<string, unknown> };
+export type GameWireEvent = {
+  t: "game.state" | "game.fight" | "rpg.state" | "error";
+  re?: string;
+  d: Record<string, unknown>;
+};
 
 /** The room's TV as this person may see and use it. */
 export interface RoomTv {
@@ -137,7 +159,9 @@ export class SpaceView {
 
   private constructor(opts: SpaceViewOptions) {
     this.opts = opts;
-    this.mover = new Mover(this.world, (cmd) => this.conn.send(cmd as unknown as Record<string, unknown>));
+    this.mover = new Mover(this.world, (cmd) =>
+      this.conn.send(cmd as unknown as Record<string, unknown>),
+    );
     this.conn = new SpaceConnection({
       baseUrl: opts.baseUrl,
       sessionToken: opts.sessionToken,
@@ -145,16 +169,27 @@ export class SpaceView {
       client: opts.client,
       onStatus: (status) => {
         // The session is over here (another tab, expired, not a member): leave its call.
-        if (status === "replaced" || status === "unauthenticated" || status === "not_member") this.media?.detach();
+        if (
+          status === "replaced" ||
+          status === "unauthenticated" ||
+          status === "not_member"
+        )
+          this.media?.detach();
         this.patch({ status });
       },
       onEvent: (e) => void this.onEvent(e),
-      onClock: (sent, received, serverMs) => this.clock.add(sent, received, serverMs),
+      onClock: (sent, received, serverMs) =>
+        this.clock.add(sent, received, serverMs),
     });
     this.media = opts.voice
       ? new MediaLink({
           voice: opts.voice,
-          request: () => this.conn.send({ v: 1, t: "media.session.request", id: this.conn.nextId() }),
+          request: () =>
+            this.conn.send({
+              v: 1,
+              t: "media.session.request",
+              id: this.conn.nextId(),
+            }),
           onStatus: (media) => this.patch({ media }),
         })
       : null;
@@ -189,6 +224,8 @@ export class SpaceView {
       tvError: null,
       tvOpenRequest: 0,
       game: null,
+      rpg: null,
+      trainRequest: null,
     };
   }
 
@@ -206,7 +243,8 @@ export class SpaceView {
   gameSend(t: string, d?: Record<string, unknown>): string {
     const id = this.conn.nextId();
     this.gameCommands.add(id);
-    if (this.gameCommands.size > 64) this.gameCommands.delete(this.gameCommands.values().next().value!);
+    if (this.gameCommands.size > 64)
+      this.gameCommands.delete(this.gameCommands.values().next().value!);
     this.conn.send({ v: 1, t, id, ...(d === undefined ? {} : { d }) });
     return id;
   }
@@ -251,8 +289,14 @@ export class SpaceView {
     if (!tv) return false;
     const id = this.conn.nextId();
     this.tvCommands.add(id);
-    if (this.tvCommands.size > 64) this.tvCommands.delete(this.tvCommands.values().next().value!);
-    this.conn.send({ v: 1, t, id, d: { room_id: tv.roomId, base_rev: tv.state?.rev ?? 0, ...d } });
+    if (this.tvCommands.size > 64)
+      this.tvCommands.delete(this.tvCommands.values().next().value!);
+    this.conn.send({
+      v: 1,
+      t,
+      id,
+      d: { room_id: tv.roomId, base_rev: tv.state?.rev ?? 0, ...d },
+    });
     return true;
   }
 
@@ -314,14 +358,18 @@ export class SpaceView {
           if (e.op.kind === "reset") v.renderer.rebuildDecor(v.world);
           else v.renderer.applyDecorOp(v.world, e.op);
           v.renderer.tvDirty = true;
-          v.patch({ decorRev: v.world.decor?.rev ?? 0, settings: v.world.decor?.settings ?? null });
+          v.patch({
+            decorRev: v.world.decor?.rev ?? 0,
+            settings: v.world.decor?.settings ?? null,
+          });
           v.updatePrompt();
           break;
         case "decor_stale":
           void v.loadDecor();
           break;
         case "rights_changed":
-          if (!v.world.rights.can_edit && v.editor.state.enabled) v.editor.setEnabled(false);
+          if (!v.world.rights.can_edit && v.editor.state.enabled)
+            v.editor.setEnabled(false);
           v.patch({ rights: v.world.rights });
           break;
         case "tv_changed":
@@ -331,7 +379,9 @@ export class SpaceView {
         case "presence_changed": {
           v.renderer.tvDirty = true;
           // Room labels carry the head count: redraw them only when a count moved.
-          const counts = (v.world.presence?.rooms ?? []).map((r) => `${r.room_id}:${r.people.length}`).join(",");
+          const counts = (v.world.presence?.rooms ?? [])
+            .map((r) => `${r.room_id}:${r.people.length}`)
+            .join(",");
           if (counts !== v.presenceCounts) {
             v.presenceCounts = counts;
             v.renderer.rebuildStatic(v.world);
@@ -383,12 +433,20 @@ export class SpaceView {
     const zoom = this.renderer.zoom;
     // The 4 Hz timer marks the UI dirty unconditionally; only tell the page when
     // something it shows actually moved.
-    if (location === s.location && list === s.list && zones === s.zones && zoom === s.zoom) return;
+    if (
+      location === s.location &&
+      list === s.list &&
+      zones === s.zones &&
+      zoom === s.zoom
+    )
+      return;
     this.patch({ location, list, zoom, zones });
   }
 
   private async loadMap(url: string) {
-    const res = await fetch(new URL(url, this.opts.baseUrl), { headers: { "X-Session-Token": this.opts.sessionToken } });
+    const res = await fetch(new URL(url, this.opts.baseUrl), {
+      headers: { "X-Session-Token": this.opts.sessionToken },
+    });
     if (!res.ok) throw new Error(`layout ${res.status}`);
     const wire = (await res.json()) as CompiledMapWire;
     this.world.setMap(decodeMap(wire));
@@ -401,15 +459,20 @@ export class SpaceView {
   private loadDecor(): Promise<void> {
     if (this.decorLoading) return this.decorLoading;
     this.decorLoading = (async () => {
-      const url = this.world.decorUrl || `/_muchat/space/v1/spaces/${this.opts.serverId}/decor`;
-      const res = await fetch(new URL(url, this.opts.baseUrl), { headers: { "X-Session-Token": this.opts.sessionToken } });
+      const url =
+        this.world.decorUrl ||
+        `/_muchat/space/v1/spaces/${this.opts.serverId}/decor`;
+      const res = await fetch(new URL(url, this.opts.baseUrl), {
+        headers: { "X-Session-Token": this.opts.sessionToken },
+      });
       if (!res.ok) throw new Error(`decor ${res.status}`);
       const state = (await res.json()) as DecorState;
       this.world.setDecor({ ...state, furnished: state.furnished ?? [] });
     })().finally(() => {
       this.decorLoading = null;
       // A newer revision was announced while we fetched: once more.
-      if (this.world.decor && this.world.decor.rev < this.world.decorRevWanted) void this.loadDecor();
+      if (this.world.decor && this.world.decor.rev < this.world.decorRevWanted)
+        void this.loadDecor();
     });
     return this.decorLoading;
   }
@@ -421,18 +484,27 @@ export class SpaceView {
       case "hello.ok":
         return;
       case "space.snapshot": {
-        if (d.layout.fingerprint !== this.world.fingerprint) await this.loadMap(d.layout.url);
+        if (d.layout.fingerprint !== this.world.fingerprint)
+          await this.loadMap(d.layout.url);
         this.world.applySnapshot(d, now);
         this.mover.resync();
         this.renderer.rebuildStatic(this.world);
-        if (!this.world.decor || this.world.decor.rev !== d.decor?.rev) await this.loadDecor().catch(() => undefined);
+        if (!this.world.decor || this.world.decor.rev !== d.decor?.rev)
+          await this.loadDecor().catch(() => undefined);
         this.patch({
           rights: this.world.rights,
           settings: this.world.decor?.settings ?? null,
           decorRev: this.world.decor?.rev ?? 0,
-          game: d.game ? { available: d.game.available === true, enabled: d.game.enabled === true } : null,
+          game: d.game
+            ? {
+                available: d.game.available === true,
+                enabled: d.game.enabled === true,
+              }
+            : null,
         });
         this.dirtyUi = true;
+        // Idle game: our hero (level under the name; closes a training left behind).
+        if (d.game?.enabled === true) this.gameSend("rpg.open");
         return;
       }
       case "avatar.positions":
@@ -449,7 +521,10 @@ export class SpaceView {
         return;
       case "decor.changed":
         this.world.applyDecorOp(d.rev, d.op);
-        this.editor.onChanged(d.op, typeof e.re === "string" ? e.re : undefined);
+        this.editor.onChanged(
+          d.op,
+          typeof e.re === "string" ? e.re : undefined,
+        );
         return;
       case "decor.rights":
         this.world.setRights(d);
@@ -457,25 +532,68 @@ export class SpaceView {
       case "game.state":
       case "game.fight":
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
-        this.emitGame({ t: e.t, re: typeof e.re === "string" ? e.re : undefined, d });
+        this.emitGame({
+          t: e.t,
+          re: typeof e.re === "string" ? e.re : undefined,
+          d,
+        });
         return;
+      case "rpg.state": {
+        if (typeof e.re === "string") this.gameCommands.delete(e.re);
+        const hero = (d.hero ?? null) as RpgHeroView | null;
+        this.world.myHero = hero
+          ? { level: hero.level, training: hero.training !== null }
+          : null;
+        this.renderer.invalidate();
+        this.patch({
+          rpg: {
+            hero,
+            serverNow:
+              typeof d.server_now === "number" ? d.server_now : Date.now(),
+            at: Date.now(),
+          },
+        });
+        this.emitGame({
+          t: "rpg.state",
+          re: typeof e.re === "string" ? e.re : undefined,
+          d,
+        });
+        return;
+      }
       case "error":
         if (typeof e.re === "string" && this.gameCommands.delete(e.re)) {
           this.emitGame({ t: "error", re: e.re, d: d ?? {} });
           return;
         }
         if (typeof e.re === "string" && this.tvCommands.delete(e.re)) {
-          this.patch({ tvError: { code: d?.code ?? "internal", retryAfterMs: d?.retry_after_ms, at: Date.now() } });
+          this.patch({
+            tvError: {
+              code: d?.code ?? "internal",
+              retryAfterMs: d?.retry_after_ms,
+              at: Date.now(),
+            },
+          });
           return;
         }
-        if (d?.code && (typeof e.re === "string" || d.code === "not_allowed")) this.editor.onError(typeof e.re === "string" ? e.re : undefined, d.code, d.reason);
+        if (d?.code && (typeof e.re === "string" || d.code === "not_allowed"))
+          this.editor.onError(
+            typeof e.re === "string" ? e.re : undefined,
+            d.code,
+            d.reason,
+          );
         return;
       case "space.presence":
         this.world.setPresence(d);
         this.dirtyUi = true;
         return;
       case "tv.state": {
-        const tv: RoomTv = { roomId: d.room_id, state: d.state ?? null, you: d.you, cooldownS: d.cooldown_s ?? 0, hasTv: d.has_tv !== false };
+        const tv: RoomTv = {
+          roomId: d.room_id,
+          state: d.state ?? null,
+          you: d.you,
+          cooldownS: d.cooldown_s ?? 0,
+          hasTv: d.has_tv !== false,
+        };
         this.tvRooms.set(d.room_id, tv);
         this.world.setTv(d.room_id, tv.state);
         if (!this.clock.ready && tv.state) this.conn.probeClock();
@@ -485,7 +603,9 @@ export class SpaceView {
       case "screen.stopped":
         // A moderator of the room ended our screen share: stop it here too.
         this.opts.voice?.stopScreenShare?.();
-        this.patch({ announcement: "Um moderador encerrou o compartilhamento da sua tela." });
+        this.patch({
+          announcement: "Um moderador encerrou o compartilhamento da sua tela.",
+        });
         return;
       case "media.grant":
         // A new grant is a new call: its state is told afresh.
@@ -526,7 +646,8 @@ export class SpaceView {
         this.mover.cancelPath();
         if (this.state.interaction) this.patch({ interaction: null });
       }
-      if (ev.key === "+" || ev.key === "=") this.setZoom(this.renderer.zoom + 1);
+      if (ev.key === "+" || ev.key === "=")
+        this.setZoom(this.renderer.zoom + 1);
       if (ev.key === "-") this.setZoom(this.renderer.zoom - 1);
     };
     const up = (ev: KeyboardEvent) => {
@@ -536,7 +657,10 @@ export class SpaceView {
     const blur = () => this.mover.clearKeys();
     const canvasPoint = (ev: PointerEvent) => {
       const rect = this.renderer.app.canvas.getBoundingClientRect();
-      return this.renderer.screenToWorld(ev.clientX - rect.left, ev.clientY - rect.top);
+      return this.renderer.screenToWorld(
+        ev.clientX - rect.left,
+        ev.clientY - rect.top,
+      );
     };
     const pointerDown = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
@@ -560,7 +684,11 @@ export class SpaceView {
       const roomId = region?.kind === "room" ? region.roomId : null;
       if (roomId === (this.state.hover?.roomId ?? null)) return;
       const rect = this.renderer.app.canvas.getBoundingClientRect();
-      this.patch({ hover: roomId ? { roomId, x: ev.clientX - rect.left, y: ev.clientY - rect.top } : null });
+      this.patch({
+        hover: roomId
+          ? { roomId, x: ev.clientX - rect.left, y: ev.clientY - rect.top }
+          : null,
+      });
     };
     const pointerUp = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
@@ -573,12 +701,16 @@ export class SpaceView {
       }
       if (!start) return;
       // A tap on an interactive object within reach uses it; otherwise walk there.
-      const hit = this.editor.instanceAt(Math.floor(p.x / TILE), Math.floor(p.y / TILE));
+      const hit = this.editor.instanceAt(
+        Math.floor(p.x / TILE),
+        Math.floor(p.y / TILE),
+      );
       if (hit && this.prompt && hit.inst.id === this.prompt.inst.id) {
         this.interact();
         return;
       }
-      if (!this.mover.walkTo(p.x, p.y)) this.patch({ announcement: "Não dá para chegar lá." });
+      if (!this.mover.walkTo(p.x, p.y))
+        this.patch({ announcement: "Não dá para chegar lá." });
     };
     const leave = () => {
       if (this.editor.state.enabled) this.editor.hover(-1e9, -1e9);
@@ -587,7 +719,12 @@ export class SpaceView {
     const visibility = () => {
       // The renderer draws on demand and skips while hidden: repaint on return.
       if (document.visibilityState === "visible") this.renderer.invalidate();
-      this.conn.send({ v: 1, t: "presence.idle", id: this.conn.nextId(), d: { idle: document.visibilityState === "hidden" } });
+      this.conn.send({
+        v: 1,
+        t: "presence.idle",
+        id: this.conn.nextId(),
+        d: { idle: document.visibilityState === "hidden" },
+      });
     };
     const canvas = this.renderer.app.canvas;
     el.addEventListener("keydown", down);
@@ -655,17 +792,28 @@ export class SpaceView {
       hoverTile: s.hoverTile,
       zoneRect: s.hoverZone?.rect ?? null,
       floorTool: s.tool.kind === "floor",
-      ghost: s.ghost ? { item: s.ghost.item, rot: s.ghost.inst.rot, variant: s.ghost.inst.variant, rect: s.ghost.rect, valid: s.ghost.error === null } : null,
+      ghost: s.ghost
+        ? {
+            item: s.ghost.item,
+            rot: s.ghost.inst.rot,
+            variant: s.ghost.inst.variant,
+            rect: s.ghost.rect,
+            valid: s.ghost.error === null,
+          }
+        : null,
       selected: selectedRect,
     };
   }
 
   private updatePrompt() {
     const p = this.editor.state.enabled ? null : nearestInteractive(this.world);
-    const changed = (p?.inst.id ?? null) !== (this.prompt?.inst.id ?? null) || p?.label !== this.prompt?.label;
+    const changed =
+      (p?.inst.id ?? null) !== (this.prompt?.inst.id ?? null) ||
+      p?.label !== this.prompt?.label;
     this.prompt = p;
     this.renderer.prompt = p ? { x: p.x, y: p.y, label: p.label } : null;
-    if (changed) this.patch({ prompt: p ? { id: p.inst.id, label: p.label } : null });
+    if (changed)
+      this.patch({ prompt: p ? { id: p.inst.id, label: p.label } : null });
   }
 
   /** Use the interactive object within reach (E, Enter, tap). */
@@ -673,7 +821,12 @@ export class SpaceView {
     const p = this.prompt;
     if (!p) return;
     if (p.item.interaction === "teleport") {
-      this.conn.send({ v: 1, t: "avatar.teleport", id: this.conn.nextId(), d: { id: p.inst.id } });
+      this.conn.send({
+        v: 1,
+        t: "avatar.teleport",
+        id: this.conn.nextId(),
+        d: { id: p.inst.id },
+      });
       return;
     }
     if (p.item.interaction === "tv") {
@@ -681,11 +834,29 @@ export class SpaceView {
       this.patch({ tvOpenRequest: this.state.tvOpenRequest + 1 });
       return;
     }
-    this.patch({ interaction: { inst: p.inst, item: p.item, config: p.inst.config ?? {} } });
+    if (p.item.interaction === "train") {
+      // A training dummy (docs/espaco/jogo/ot): the app asks vocation and skill.
+      this.patch({
+        trainRequest: {
+          instance: p.inst.id,
+          title: p.label,
+          n: (this.state.trainRequest?.n ?? 0) + 1,
+        },
+      });
+      return;
+    }
+    this.patch({
+      interaction: { inst: p.inst, item: p.item, config: p.inst.config ?? {} },
+    });
   }
 
   closeInteraction() {
     if (this.state.interaction) this.patch({ interaction: null });
+  }
+
+  /** The app closed the training dialog (docs/espaco/jogo/ot). */
+  closeTrainRequest() {
+    if (this.state.trainRequest) this.patch({ trainRequest: null });
   }
 
   // ---- editor API for the app ------------------------------------------------
@@ -698,19 +869,28 @@ export class SpaceView {
 
   /** Profile (chosen look, first-access progress) of the signed-in person. */
   async profile(): Promise<ProfileView> {
-    const res = await fetch(new URL("/_muchat/space/v1/me/profile", this.opts.baseUrl), {
-      headers: { "X-Session-Token": this.opts.sessionToken },
-    });
+    const res = await fetch(
+      new URL("/_muchat/space/v1/me/profile", this.opts.baseUrl),
+      {
+        headers: { "X-Session-Token": this.opts.sessionToken },
+      },
+    );
     if (!res.ok) throw new Error(`profile ${res.status}`);
     return (await res.json()) as ProfileView;
   }
 
   async updateProfile(patch: ProfilePatch): Promise<ProfileView> {
-    const res = await fetch(new URL("/_muchat/space/v1/me/profile", this.opts.baseUrl), {
-      method: "PUT",
-      headers: { "X-Session-Token": this.opts.sessionToken, "Content-Type": "application/json" },
-      body: JSON.stringify(patch),
-    });
+    const res = await fetch(
+      new URL("/_muchat/space/v1/me/profile", this.opts.baseUrl),
+      {
+        method: "PUT",
+        headers: {
+          "X-Session-Token": this.opts.sessionToken,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(patch),
+      },
+    );
     if (!res.ok) throw new Error(`profile ${res.status}`);
     const profile = (await res.json()) as ProfileView;
     if (this.world.me) this.world.me.palette = profile.look.palette;
@@ -726,7 +906,10 @@ export class SpaceView {
   walkToRoom(roomId: string): boolean {
     const room = this.world.ix?.roomsById.get(roomId);
     if (!room) return false;
-    return this.mover.walkTo(room.inside.tx * TILE + TILE / 2, room.inside.ty * TILE + TILE / 2);
+    return this.mover.walkTo(
+      room.inside.tx * TILE + TILE / 2,
+      room.inside.ty * TILE + TILE / 2,
+    );
   }
 
   setZoom(z: number) {
@@ -738,7 +921,11 @@ export class SpaceView {
   peekRoom(roomId: string): boolean {
     const room = this.world.ix?.roomsById.get(roomId);
     if (!room) return false;
-    this.renderer.peek(room.inside.tx * TILE + TILE / 2, room.inside.ty * TILE + TILE / 2, performance.now());
+    this.renderer.peek(
+      room.inside.tx * TILE + TILE / 2,
+      room.inside.ty * TILE + TILE / 2,
+      performance.now(),
+    );
     return true;
   }
 
@@ -751,13 +938,19 @@ export class SpaceView {
     const key = JSON.stringify(report);
     if (key === this.lastReport) return;
     this.lastReport = key;
-    this.conn.send({ v: 1, t: "media.state.report", id: this.conn.nextId(), d: report });
+    this.conn.send({
+      v: 1,
+      t: "media.state.report",
+      id: this.conn.nextId(),
+      d: report,
+    });
   }
 
   /** Who is speaking in our room's call right now (LiveKit, from the app). */
   setSpeakers(userIds: ReadonlySet<string>) {
     const prev = this.world.speakers;
-    if (prev.size === userIds.size && [...userIds].every((id) => prev.has(id))) return;
+    if (prev.size === userIds.size && [...userIds].every((id) => prev.has(id)))
+      return;
     this.world.speakers = userIds;
     this.renderer.invalidate();
   }

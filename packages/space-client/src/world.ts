@@ -1,7 +1,5 @@
 import {
-  applyDecorOp,
   type AvatarView,
-  CATALOG,
   type CompiledMap,
   type CompiledMapWire,
   type DecorOp,
@@ -9,15 +7,17 @@ import {
   type DecorState,
   type Direction,
   type DoorRule,
-  indexMap,
   type MapIndex,
   type PresenceEvent,
   type RoomView,
   type TvState,
-  setSolid,
-  solidMask,
   type WingView,
   type ZoneIndex,
+  applyDecorOp,
+  CATALOG,
+  indexMap,
+  setSolid,
+  solidMask,
   zonesOf,
 } from "@muchat/space-core";
 
@@ -53,11 +53,18 @@ export interface Remote {
   dir: Direction;
   moving: boolean;
   samples: Array<{ t: number; x: number; y: number }>;
+  /** Idle game: level and training, shown under the name (docs/espaco/jogo/ot). */
+  hero: { level: number; training: boolean } | null;
 }
 
 export type WorldEvent =
   /** `local`: our own predicted walk crossed the door (the person's intent), not a server placement. */
-  | { kind: "room_changed"; from: string | null; to: string | null; local?: boolean }
+  | {
+      kind: "room_changed";
+      from: string | null;
+      to: string | null;
+      local?: boolean;
+    }
   | { kind: "corrected"; reason: string }
   | { kind: "layout_changed"; fingerprint: string; url: string }
   | { kind: "rooms_changed" }
@@ -76,6 +83,8 @@ export type WorldEvent =
  * position. Pure state with no DOM, so it runs under node:test.
  */
 export class World {
+  /** Our own hero (from `rpg.state`): its level and training under our name. */
+  myHero: { level: number; training: boolean } | null = null;
   map: CompiledMap | null = null;
   ix: MapIndex | null = null;
   zones: ZoneIndex | null = null;
@@ -111,8 +120,11 @@ export class World {
 
   /** The room's TV is playing (drawn lit on the map). */
   tvOn(roomId: string): boolean {
-    if (this.me?.room === roomId && this.tvStates.has(roomId)) return this.tvStates.get(roomId)?.status === "playing";
-    return this.presence?.rooms.find((r) => r.room_id === roomId)?.tv === "playing";
+    if (this.me?.room === roomId && this.tvStates.has(roomId))
+      return this.tvStates.get(roomId)?.status === "playing";
+    return (
+      this.presence?.rooms.find((r) => r.room_id === roomId)?.tv === "playing"
+    );
   }
 
   /** Voice state of someone as the presence says (null: not in a call we may see). */
@@ -143,7 +155,8 @@ export class World {
 
   /** The door opens for rooms we may enter that have a free place, and always for the room we are in. */
   readonly doorRule: DoorRule = (roomId) =>
-    roomId === this.me?.room || (this.rooms.get(roomId)?.can_enter === true && !this.isFull(roomId));
+    roomId === this.me?.room ||
+    (this.rooms.get(roomId)?.can_enter === true && !this.isFull(roomId));
 
   /** Same rule as the server (voice.max_users), from the avatars we see inside. */
   isFull(roomId: string): boolean {
@@ -154,16 +167,38 @@ export class World {
     return n >= cap;
   }
 
-  applySnapshot(d: {
-    layout: { fingerprint: string };
-    decor?: { rev: number; url: string };
-    you: { user_id: string; name: string; look: { palette: number }; x: number; y: number; room: string | null; seq: number; decor?: DecorRights };
-    rooms: RoomView[];
-    wings: WingView[];
-    avatars: AvatarView[];
-  }, nowMs: number) {
+  applySnapshot(
+    d: {
+      layout: { fingerprint: string };
+      decor?: { rev: number; url: string };
+      you: {
+        user_id: string;
+        name: string;
+        look: { palette: number };
+        x: number;
+        y: number;
+        room: string | null;
+        seq: number;
+        decor?: DecorRights;
+      };
+      rooms: RoomView[];
+      wings: WingView[];
+      avatars: AvatarView[];
+    },
+    nowMs: number,
+  ) {
     const prevRoom = this.me?.room ?? null;
-    this.me = { userId: d.you.user_id, name: d.you.name, palette: d.you.look.palette, x: d.you.x, y: d.you.y, room: d.you.room, seq: Math.max(this.me?.seq ?? 0, d.you.seq), dir: this.me?.dir ?? "down", moving: false };
+    this.me = {
+      userId: d.you.user_id,
+      name: d.you.name,
+      palette: d.you.look.palette,
+      x: d.you.x,
+      y: d.you.y,
+      room: d.you.room,
+      seq: Math.max(this.me?.seq ?? 0, d.you.seq),
+      dir: this.me?.dir ?? "down",
+      moving: false,
+    };
     this.setRooms(d.rooms, d.wings);
     this.others.clear();
     for (const a of d.avatars) this.upsertRemote(a, nowMs);
@@ -172,7 +207,8 @@ export class World {
       this.decorRevWanted = d.decor.rev;
     }
     if (d.you.decor) this.setRights(d.you.decor);
-    if (prevRoom !== d.you.room) this.emit({ kind: "room_changed", from: prevRoom, to: d.you.room });
+    if (prevRoom !== d.you.room)
+      this.emit({ kind: "room_changed", from: prevRoom, to: d.you.room });
   }
 
   setRooms(rooms: RoomView[], wings: WingView[]) {
@@ -184,7 +220,11 @@ export class World {
   }
 
   setRights(rights: DecorRights) {
-    if (rights.can_edit === this.rights.can_edit && rights.can_manage === this.rights.can_manage) return;
+    if (
+      rights.can_edit === this.rights.can_edit &&
+      rights.can_manage === this.rights.can_manage
+    )
+      return;
     this.rights = rights;
     this.emit({ kind: "rights_changed" });
   }
@@ -218,14 +258,27 @@ export class World {
   /** Movement and pathing see the furniture exactly as the server does. */
   private refreshSolid() {
     if (!this.map || !this.ix || !this.zones || !this.decor) return;
-    setSolid(this.ix, solidMask(this.map, this.zones, CATALOG, this.decor.items));
+    setSolid(
+      this.ix,
+      solidMask(this.map, this.zones, CATALOG, this.decor.items),
+    );
   }
 
   private upsertRemote(a: AvatarView, nowMs: number) {
     if (a.user_id === this.me?.userId) return;
     let r = this.others.get(a.user_id);
     if (!r) {
-      r = { userId: a.user_id, name: a.name, palette: a.look.palette, room: a.room, state: a.state, dir: a.dir, moving: a.moving, samples: [] };
+      r = {
+        userId: a.user_id,
+        name: a.name,
+        palette: a.look.palette,
+        room: a.room,
+        state: a.state,
+        dir: a.dir,
+        moving: a.moving,
+        samples: [],
+        hero: null,
+      };
       this.others.set(a.user_id, r);
     }
     r.name = a.name;
@@ -234,8 +287,10 @@ export class World {
     r.state = a.state;
     r.dir = a.dir;
     r.moving = a.moving;
+    r.hero = a.hero ? { level: a.hero.level, training: a.hero.training } : null;
     r.samples.push({ t: nowMs, x: a.x, y: a.y });
-    if (r.samples.length > MAX_SAMPLES) r.samples.splice(0, r.samples.length - MAX_SAMPLES);
+    if (r.samples.length > MAX_SAMPLES)
+      r.samples.splice(0, r.samples.length - MAX_SAMPLES);
   }
 
   applyPositions(d: { avatars: AvatarView[]; gone: string[] }, nowMs: number) {
@@ -244,7 +299,13 @@ export class World {
   }
 
   /** The server's word wins: snap to it. */
-  applyCorrection(d: { x: number; y: number; room: string | null; seq: number; reason: string }) {
+  applyCorrection(d: {
+    x: number;
+    y: number;
+    room: string | null;
+    seq: number;
+    reason: string;
+  }) {
     if (!this.me) return;
     const prevRoom = this.me.room;
     this.me.x = d.x;
@@ -253,7 +314,8 @@ export class World {
     this.me.moving = false;
     this.me.seq = Math.max(this.me.seq, d.seq);
     this.emit({ kind: "corrected", reason: d.reason });
-    if (prevRoom !== d.room) this.emit({ kind: "room_changed", from: prevRoom, to: d.room });
+    if (prevRoom !== d.room)
+      this.emit({ kind: "room_changed", from: prevRoom, to: d.room });
   }
 
   /** Our predicted move crossed into or out of a room. */
@@ -265,7 +327,8 @@ export class World {
   }
 
   layoutChanged(fingerprint: string, url: string) {
-    if (fingerprint !== this.fingerprint) this.emit({ kind: "layout_changed", fingerprint, url });
+    if (fingerprint !== this.fingerprint)
+      this.emit({ kind: "layout_changed", fingerprint, url });
   }
 
   /** Interpolated position of a remote avatar at `nowMs`. */

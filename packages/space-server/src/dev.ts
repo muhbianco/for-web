@@ -118,7 +118,7 @@ const registry = new Registry({
   media: { hub, lk: devLk },
   // Refúgio (ADR 0009) ligado no servidor de dev, em memória.
   gameAvailable: () => true,
-  trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId),
+  rpg: { trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId), avatarJoined: (rt, userId) => rpg.avatarJoined(rt, userId) },
 });
 const gateway = new Gateway({
   auth,

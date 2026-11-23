@@ -104,6 +104,8 @@ interface Avatar {
   dirty: boolean;
   /** What the client last said about its call in this room (presence hint, ADR 0008). */
   report: (VoiceReport & { at: number }) | null;
+  /** Idle game: level and training, shown under the name to everyone (docs/espaco/jogo/ot). */
+  hero: { level: number; training: boolean } | null;
 }
 
 /** LiveKit's view of one admitted participant (sweeper, every 5 s). */
@@ -215,6 +217,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
   private readonly trainingAt = new Map<string, string>();
   /** Called when a trainer leaves the dummy (walked off, moved, evicted, dummy removed). */
   onTrainingLeft: ((userId: string) => void) | null = null;
+  /** Called when someone enters the map where the game is on (to show their hero's level). */
+  onAvatarJoined: ((userId: string) => void) | null = null;
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -457,6 +461,26 @@ export class SpaceRuntime implements MediaHost, TvHost {
   setTraining(userId: string, instanceId: string | null): void {
     if (instanceId === null) this.trainingAt.delete(userId);
     else this.trainingAt.set(userId, instanceId);
+    this.markHero(userId);
+  }
+
+  /** The hero's level under the name (null: no hero, nothing shown). */
+  setHeroLevel(userId: string, level: number | null): void {
+    const a = this.avatars.get(userId);
+    if (!a) return;
+    const hero = level === null ? null : { level, training: this.trainingAt.has(userId) };
+    if (JSON.stringify(hero) === JSON.stringify(a.hero)) return;
+    a.hero = hero;
+    a.dirty = true;
+  }
+
+  private markHero(userId: string): void {
+    const a = this.avatars.get(userId);
+    if (!a?.hero) return;
+    const training = this.trainingAt.has(userId);
+    if (a.hero.training === training) return;
+    a.hero = { ...a.hero, training };
+    a.dirty = true;
   }
 
   /** The avatar stands within one tile of the instance (the same reach as the prompt). */
@@ -478,6 +502,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const a = this.avatars.get(userId);
     if (a && !a.evicted && this.besideInstance(a, instanceId)) return;
     this.trainingAt.delete(userId);
+    this.markHero(userId);
     this.onTrainingLeft?.(userId);
   }
 
@@ -1154,6 +1179,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
       moving: a.moving,
       room: a.move.room,
       state: a.session ? (a.idle ? "idle" : "online") : "reconnecting",
+      ...(a.hero ? { hero: { ...a.hero } } : {}),
     };
   }
 
@@ -1213,6 +1239,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
         evicted: false,
         dirty: false,
         report: null,
+        hero: null,
       };
       this.avatars.set(user._id, a);
     }
@@ -1256,6 +1283,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (a.move.room) this.tv.entered(session, a.move.room);
     // Reconnected away from the dummy: the training that went on offline closes now.
     this.checkTraining(user._id);
+    // The hero's level under the name, where the game is on.
+    if (this.gameAvailable && this.decor.settings.game !== "off") this.onAvatarJoined?.(user._id);
     // A token for media this person already holds here (new tab, reconnect,
     // restart), or the reason they have none.
     this.media?.resume(user._id);
