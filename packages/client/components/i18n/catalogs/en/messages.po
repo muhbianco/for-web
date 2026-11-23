@@ -61,11 +61,24 @@ msgstr "{0, plural, one {# blocked message} other {# blocked messages}}"
 msgid "{0, plural, one {Drop a file} other {Drop # files}}"
 msgstr "{0, plural, one {Drop a file} other {Drop # files}}"
 
+#. placeholder {0}: level()
+#. placeholder {1}: pct()
+#: components/space/game/TrainingDialog.tsx
+msgid "{0} ({1}%)"
+msgstr "{0} ({1}%)"
+
 #. placeholder {0}: L().skill[h().training.skill]
 #. placeholder {1}: h().skills[h().training.skill].l
 #: components/space/game/GamePanel.tsx
 msgid "{0} {1}"
 msgstr "{0} {1}"
+
+#. placeholder {0}: L.skill[v().hero.training!.skill]
+#. placeholder {1}: v().p.skill?.level ?? 0
+#. placeholder {2}: percent(v().p.skill?.tries ?? 0, v().p.skill?.next ?? 0)
+#: components/space/game/TrainingChip.tsx
+msgid "{0} {1} · {2}%"
+msgstr "{0} {1} · {2}%"
 
 #. placeholder {0}: users() .slice(0, -1) .map((user) => user!.username) .join(", ")
 #. placeholder {1}: users().slice(-1)[0]!.username
@@ -222,6 +235,18 @@ msgstr "{0}'s timeout will be removed and they will be able to interact with the
 msgid "{device} Hz (não bate com {context} Hz)"
 msgstr "{device} Hz (não bate com {context} Hz)"
 
+#: components/space/game/rpgUi.ts
+msgid "{h} h"
+msgstr "{h} h"
+
+#: components/space/game/rpgUi.ts
+msgid "{h} h {m} min"
+msgstr "{h} h {m} min"
+
+#: components/space/game/rpgUi.ts
+msgid "{m} min"
+msgstr "{m} min"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{ms} ms/s"
 msgstr "{ms} ms/s"
@@ -347,6 +372,11 @@ msgstr "<0/> updated the group name to <1>{0}</1>"
 msgid "<0>Be careful!</0><1/>This is not the same as the link that was displayed:"
 msgstr "<0>Be careful!</0><1/>This is not the same as the link that was displayed:"
 
+#. placeholder {0}: duration(eta())
+#: components/space/game/TrainingDialog.tsx
+msgid "≈ {0} para o próximo nível"
+msgstr "≈ {0} para o próximo nível"
+
 #: components/space/DecorPanel.tsx
 msgid "1 hora"
 msgstr "1 hora"
@@ -405,6 +435,10 @@ msgstr "A TV está desligada."
 #: components/space/SmartTv.tsx
 msgid "A TV não aceitou o comando."
 msgstr "A TV não aceitou o comando."
+
+#: components/space/game/rpgUi.ts
+msgid "A vocação já foi escolhida."
+msgstr "A vocação já foi escolhida."
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
@@ -690,6 +724,7 @@ msgid "armadura {0}"
 msgstr "armadura {0}"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Arqueiro"
 msgstr "Arqueiro"
 
@@ -713,6 +748,10 @@ msgstr "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · a
 #: components/space/game/GamePanel.tsx
 msgid "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
 msgstr "Ataque {0} · armadura {1} · crítico {2}% · esquiva {3}% · bloqueio {4}%"
+
+#: components/space/game/rpgUi.ts
+msgid "Ataque à distância e um pouco de magia; treina distância."
+msgstr "Ataque à distância e um pouco de magia; treina distância."
 
 #: components/space/game/labels.ts
 msgid "ataque atinge mais um"
@@ -1096,6 +1135,7 @@ msgid "Categorias"
 msgstr "Categorias"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Cavaleiro"
 msgstr "Cavaleiro"
 
@@ -1221,6 +1261,10 @@ msgstr "Check your mail!"
 #: components/space/game/labels.ts
 msgid "Chefe"
 msgstr "Chefe"
+
+#: components/space/game/rpgUi.ts
+msgid "Chegue mais perto do dummy para treinar."
+msgstr "Chegue mais perto do dummy para treinar."
 
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Choose a username"
@@ -1445,6 +1489,10 @@ msgstr "Confirm"
 #: components/modal/modals/MFAFlow.tsx
 msgid "Confirm action"
 msgstr "Confirm action"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Confirmar"
+msgstr "Confirmar"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Connect"
@@ -1960,6 +2008,7 @@ msgid "Detalhe"
 msgstr "Detalhe"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Devagar: muitos comandos seguidos."
 msgstr "Devagar: muitos comandos seguidos."
 
@@ -2018,6 +2067,7 @@ msgid "Display users with this role separately in the member list"
 msgstr "Display users with this role separately in the member list"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Distância"
 msgstr "Distância"
 
@@ -2058,6 +2108,7 @@ msgid "Drugs or illegal goods"
 msgstr "Drugs or illegal goods"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Druida"
 msgstr "Druida"
 
@@ -2306,6 +2357,10 @@ msgstr "Equipado"
 msgid "Equipar"
 msgstr "Equipar"
 
+#: components/space/game/rpgUi.ts
+msgid "Escolha a vocação primeiro."
+msgstr "Escolha a vocação primeiro."
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
 msgstr "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
@@ -2351,6 +2406,7 @@ msgid "Esconder lista de salas"
 msgstr "Esconder lista de salas"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Escudo"
 msgstr "Escudo"
 
@@ -2365,8 +2421,13 @@ msgid "Espaço"
 msgstr "Espaço"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Espada"
 msgstr "Espada"
+
+#: components/space/game/rpgUi.ts
+msgid "Espada, machado ou maça e escudo; a vocação com mais vida."
+msgstr "Espada, machado ou maça e escudo; a vocação com mais vida."
 
 #: components/space/game/labels.ts
 msgid "Espinheiro"
@@ -2415,6 +2476,10 @@ msgstr "Esta sala não tem uma TV."
 #: components/space/SmartTv.tsx
 msgid "Esta sala tem um intervalo entre vídeos: tente de novo em {minutes} min."
 msgstr "Esta sala tem um intervalo entre vídeos: tente de novo em {minutes} min."
+
+#: components/space/game/rpgUi.ts
+msgid "Este dummy não está mais aqui."
+msgstr "Este dummy não está mais aqui."
 
 #: components/space/InteractionDialog.tsx
 msgid "Este objeto abre um site em outra aba:"
@@ -2507,6 +2572,7 @@ msgstr "Fans, street, other people talking."
 msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
 msgstr "Fecha a TV e para o som só para você; a sala continua assistindo"
 
+#: components/space/game/TrainingDialog.tsx
 #: components/space/InteractionDialog.tsx
 msgid "Fechar"
 msgstr "Fechar"
@@ -2541,6 +2607,7 @@ msgid "Feedback"
 msgstr "Feedback"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Feiticeiro"
 msgstr "Feiticeiro"
 
@@ -3084,6 +3151,10 @@ msgstr "lendário"
 msgid "Lendário"
 msgstr "Lendário"
 
+#: components/space/game/TrainingDialog.tsx
+msgid "Lento para a sua vocação"
+msgstr "Lento para a sua vocação"
+
 #: components/app/interface/settings/user/Native.tsx
 msgid "Let Muchat use its own custom titlebar."
 msgstr "Let Muchat use its own custom titlebar."
@@ -3210,10 +3281,12 @@ msgid "Luta contra {foes}: vitória em {0} s."
 msgstr "Luta contra {foes}: vitória em {0} s."
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Maça"
 msgstr "Maça"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Machado"
 msgstr "Machado"
 
@@ -3222,8 +3295,17 @@ msgid "Madeira"
 msgstr "Madeira"
 
 #: components/space/game/labels.ts
+#: components/space/game/rpgUi.ts
 msgid "Magia"
 msgstr "Magia"
+
+#: components/space/game/rpgUi.ts
+msgid "Magia de ataque. Pouca vida, muita mana; treina magia."
+msgstr "Magia de ataque. Pouca vida, muita mana; treina magia."
+
+#: components/space/game/rpgUi.ts
+msgid "Magia de gelo e terra e as melhores curas; treina magia."
+msgstr "Magia de gelo e terra e as melhores curas; treina magia."
 
 #: components/space/game/labels.ts
 msgid "Magia de outra classe."
@@ -3381,6 +3463,10 @@ msgstr "Members"
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Members can send one message every {0}."
 msgstr "Members can send one message every {0}."
+
+#: components/space/game/rpgUi.ts
+msgid "menos de 1 min"
+msgstr "menos de 1 min"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Menos processamento e mais qualidade de áudio. Para lugares silenciosos e bons microfones."
@@ -3695,6 +3781,10 @@ msgstr "Não foi possível carregar o player do YouTube neste aparelho (bloquead
 msgid "Não foi possível fazer isso agora."
 msgstr "Não foi possível fazer isso agora."
 
+#: components/space/game/rpgUi.ts
+msgid "Não foi possível fazer isso agora. Tente de novo."
+msgstr "Não foi possível fazer isso agora. Tente de novo."
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Natural"
 msgstr "Natural"
@@ -3831,6 +3921,14 @@ msgstr "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R
 #: components/space/game/labels.ts
 msgid "O herói está ferido: espere a vida voltar a 30%."
 msgstr "O herói está ferido: espere a vida voltar a 30%."
+
+#: components/space/game/TrainingDialog.tsx
+msgid "O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo."
+msgstr "O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo."
+
+#: components/space/game/rpgUi.ts
+msgid "O jogo está desligado neste servidor."
+msgstr "O jogo está desligado neste servidor."
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O Mercado Pago pede e-mail no apoio mensal."
@@ -4057,6 +4155,10 @@ msgstr "Para o som da TV só para você; a sala continua assistindo"
 msgid "Para onde?"
 msgstr "Para onde?"
 
+#: components/space/game/TrainingChip.tsx
+msgid "Parar"
+msgstr "Parar"
+
 #: components/space/MediaStage.tsx
 msgid "Parar de compartilhar"
 msgstr "Parar de compartilhar"
@@ -4065,6 +4167,10 @@ msgstr "Parar de compartilhar"
 #: components/space/SpacePage.tsx
 msgid "Parar de ouvir"
 msgstr "Parar de ouvir"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Parar de treinar"
+msgstr "Parar de treinar"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Parar o vídeo de outra pessoa e trocar antes do intervalo mínimo em qualquer sala"
@@ -4308,6 +4414,10 @@ msgstr "Pular"
 #: components/space/game/GamePanel.tsx
 msgid "Pular animação"
 msgstr "Pular animação"
+
+#: components/space/game/rpgUi.ts
+msgid "Punhos"
+msgstr "Punhos"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Qualidade"
@@ -4654,6 +4764,11 @@ msgstr "Reset Token"
 msgid "Responsibly disclosed security issues"
 msgstr "Responsibly disclosed security issues"
 
+#. placeholder {0}: duration(v().p.remainingMs)
+#: components/space/game/TrainingChip.tsx
+msgid "restam {0}"
+msgstr "restam {0}"
+
 #: components/space/MediaStage.tsx
 msgid "Restaurar o mapa"
 msgstr "Restaurar o mapa"
@@ -4734,6 +4849,16 @@ msgstr "sala {0} de {1}"
 #: components/space/SmartTv.tsx
 msgid "Sala vazia: a TV pausou"
 msgstr "Sala vazia: a TV pausou"
+
+#. placeholder {0}: duration(bankNow(hero()!, now()))
+#. placeholder {1}: TRAINING.maxBankMs / 3_600_000
+#: components/space/game/TrainingDialog.tsx
+msgid "Saldo de treino: {0} (até {1} h; volta a encher quando você não treina)."
+msgstr "Saldo de treino: {0} (até {1} h; volta a encher quando você não treina)."
+
+#: components/space/game/TrainingChip.tsx
+msgid "saldo esgotado"
+msgstr "saldo esgotado"
 
 #: components/space/DecorPanel.tsx
 msgid "Salvar"
@@ -4872,6 +4997,10 @@ msgstr "Sem intervalo"
 msgid "Sem permissão para compartilhar a tela aqui"
 msgstr "Sem permissão para compartilhar a tela aqui"
 
+#: components/space/game/rpgUi.ts
+msgid "Sem saldo de treino agora. Ele volta a encher enquanto você não treina."
+msgstr "Sem saldo de treino agora. Ele volta a encher enquanto você não treina."
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Send a short sound alert to a member in a voice channel"
 msgstr "Send a short sound alert to a member in a voice channel"
@@ -4937,6 +5066,11 @@ msgstr "Sent an attachment"
 #: components/ui/components/features/messaging/elements/MessageReply.tsx
 msgid "Sent multiple attachments"
 msgstr "Sent multiple attachments"
+
+#. placeholder {0}: L.vocation[v()].name
+#: components/space/game/TrainingDialog.tsx
+msgid "Ser {0}? A escolha é definitiva."
+msgstr "Ser {0}? A escolha é definitiva."
 
 #: components/modal/modals/ServerIdentity.tsx
 msgid "Server Avatar"
@@ -5010,6 +5144,10 @@ msgstr "Seu áudio"
 #: components/space/SpacePage.tsx
 msgid "Seu áudio está em outra aba ou outro servidor"
 msgstr "Seu áudio está em outra aba ou outro servidor"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Seu avatar também é um herói. Escolha a vocação dele para começar a treinar."
+msgstr "Seu avatar também é um herói. Escolha a vocação dele para começar a treinar."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Seu computador não está dando conta"
@@ -5624,6 +5762,16 @@ msgstr "Traditional (DD/MM/YYYY)"
 msgid "Travamentos"
 msgstr "Travamentos"
 
+#. placeholder {0}: L.skill[tr().skill]
+#. placeholder {1}: duration(Math.max(0, tr().budget_ms - (now() - tr().started_at)))
+#: components/space/game/TrainingDialog.tsx
+msgid "Treinando {0} aqui. Restam {1} de saldo."
+msgstr "Treinando {0} aqui. Restam {1} de saldo."
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Treinar"
+msgstr "Treinar"
+
 #. placeholder {0}: L().dummy[h().training.tier]
 #: components/space/game/GamePanel.tsx
 msgid "Treino no boneco ({0})"
@@ -6042,6 +6190,10 @@ msgstr "Você já tem um herói."
 msgid "Você não é membro deste servidor"
 msgstr "Você não é membro deste servidor"
 
+#: components/space/game/rpgUi.ts
+msgid "Você não pode usar este dummy aqui."
+msgstr "Você não pode usar este dummy aqui."
+
 #: components/space/game/labels.ts
 msgid "Você não tem mais desse item para colocar."
 msgstr "Você não tem mais desse item para colocar."
@@ -6088,6 +6240,7 @@ msgid "Voice detection could not start, so the microphone gate is using loudness
 msgstr "Voice detection could not start, so the microphone gate is using loudness only for this call."
 
 #: components/space/AudioCheck.tsx
+#: components/space/game/TrainingDialog.tsx
 #: components/space/Onboarding.tsx
 msgid "Voltar"
 msgstr "Voltar"
