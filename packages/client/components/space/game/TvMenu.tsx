@@ -1,4 +1,12 @@
-import { For, Show, createEffect, createSignal, on, onCleanup } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+} from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import type { GameWireEvent, RunState, SpaceView } from "@muchat/space-client";
@@ -76,8 +84,11 @@ export default function TvMenu(props: {
   }
 
   // O grupo muda por fora (alguém entrou, saiu, começou): o botão focado pode ter sumido.
+  // Em memos: as props leem o estado inteiro, que muda a cada atualização.
+  const lobbyNow = createMemo(() => props.lobby);
+  const vocationNow = createMemo(vocation);
   createEffect(
-    on([() => props.lobby, vocation], () => queueMicrotask(refocus), {
+    on([lobbyNow, vocationNow], () => queueMicrotask(refocus), {
       defer: true,
     }),
   );

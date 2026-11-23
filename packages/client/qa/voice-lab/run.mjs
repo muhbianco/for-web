@@ -75,6 +75,8 @@ const opts = {
    * another at 1× (continuous 30 fps animation), in the same page that talks.
    */
   gameLoad: !!args["game-load"],
+  // Etapa O6 do jogo idle: a tela da aventura (RunPanel) com um quadro por segundo.
+  runLoad: !!args["run-load"],
   /** Runs (and the Chromiums it starts) at BelowNormal, so the lab doesn't take the machine. */
   belowNormal: !!args["below-normal"],
   labEnv: typeof args["lab-env"] === "string" ? resolve(args["lab-env"]) : undefined,
@@ -251,6 +253,7 @@ async function main() {
   let firstSnapshot;
   let mediaLoad;
   let gameLoad;
+  let runLoad;
   try {
     const a = await connect(A, { url: tokens.url, token: tokens.pub.token }, true);
     log(`A conectado: ${a.localIdentity} em ${a.room}`);
@@ -285,6 +288,14 @@ async function main() {
         )
         .catch((e) => `jogo falhou: ${String(e?.message ?? e)}`);
       log(`carga do jogo em A: ${res}`);
+    }
+    if (opts.runLoad) {
+      const res = await A.page
+        .evaluate(async () =>
+          (await import("/qa/voice-lab/runLoad.tsx")).startRunLoad(),
+        )
+        .catch((e) => `corrida falhou: ${String(e?.message ?? e)}`);
+      log(`carga da corrida em A: ${res}`);
     }
     const b = await connect(B, { url: tokens.url, token: tokens.sub.token }, opts.bidir);
     log(`B conectado: ${b.localIdentity}`);
@@ -383,6 +394,12 @@ async function main() {
         .evaluate(() => window.__gameLoad?.stats() ?? null)
         .catch(() => null);
       log(`carga do jogo no fim: ${JSON.stringify(gameLoad)}`);
+    }
+    if (opts.runLoad) {
+      runLoad = await A.page
+        .evaluate(() => window.__runLoad?.stats() ?? null)
+        .catch(() => null);
+      log(`carga da corrida no fim: ${JSON.stringify(runLoad)}`);
     }
     log("parando e coletando áudio…");
     const [audioA, audioB] = await Promise.all([
@@ -527,6 +544,7 @@ async function main() {
       stats,
       mediaLoad,
       gameLoad,
+      runLoad,
     };
     writeFileSync(join(outDir, "report.json"), JSON.stringify(report, null, 2));
     writeFileSync(join(outDir, "timeline.json"), JSON.stringify(timeline));
@@ -577,7 +595,7 @@ function renderMarkdown(r) {
     `# Laboratório de voz — ${r.name}`,
     ``,
     `- Início: ${r.startedAt} · alvo: ${r.options.target} · LiveKit: ${r.livekitUrl} · sala: ${r.options.room}`,
-    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} game-load=${r.options.gameLoad ? `on (${r.gameLoad?.fights ?? "?"} lutas, ${r.gameLoad?.fps ?? "?"} fps)` : "—"}`,
+    `- Parâmetros: ns=${r.options.ns} gate=${r.options.gate ? "on" : "off"} sensibilidade=${r.options.sensitivity} vip=${r.options.vip} bidir=${r.options.bidir} netem=${r.options.netem ?? "—"}${r.options.netemAtSec ? ` (aos ${r.options.netemAtSec}s)` : ""} uplink-loss=${r.options.uplinkLoss ?? "—"} cpu-load=${r.options.cpuLoad} media-load=${r.options.mediaLoad ?? "—"} game-load=${r.options.gameLoad ? `on (${r.gameLoad?.fights ?? "?"} lutas, ${r.gameLoad?.fps ?? "?"} fps)` : "—"} run-load=${r.options.runLoad ? `on (${r.runLoad?.runs ?? "?"} corridas, ${r.runLoad?.frames ?? "?"} quadros, atualização máx ${r.runLoad?.updateMsMax ?? "?"} ms)` : "—"}`,
     `- Máquina: ${r.machine.cpuModel} (${r.machine.cpus} núcleos, ${r.machine.totalMemGb} GB) · janelas de 2 s: ${s.windows}`,
     ``,
     `## Caminho`,

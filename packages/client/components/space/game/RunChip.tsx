@@ -18,10 +18,15 @@ export default function RunChip(props: {
   onAct?: () => void;
 }) {
   const { t } = useLingui();
+  // A nossa em andamento, depois qualquer uma em andamento, depois as que acabaram.
   const pick = () => {
     const all = Object.values(props.runs);
+    const mine = (r: RunState) =>
+      r.run.members.some((m) => m.user_id === props.myId);
     return (
-      all.find((r) => r.run.members.some((m) => m.user_id === props.myId)) ??
+      all.find((r) => !r.end && mine(r)) ??
+      all.find((r) => !r.end) ??
+      all.find(mine) ??
       all[0] ??
       null
     );

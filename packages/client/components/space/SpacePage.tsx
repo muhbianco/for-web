@@ -133,11 +133,14 @@ function ServerSpace(props: { serverId: string }) {
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
 
-  // A dungeon group started in our room (stage O4): the room hears about it. The fight
-  // itself is stage O5. The dungeon's name comes with the game's chunk, not this page's.
+  // A dungeon group started in our room (stage O4): the room hears about it. The dungeon's
+  // name comes with the game's chunk, not this page's. Keyed on a memo: `ui()` changes on
+  // every patch, and without it this ran again each time (it closed the TV menu of whoever
+  // had run, as soon as it opened, and kept rewriting the notice).
+  const lobbyStartedN = createMemo(() => ui()?.lobbyStarted?.n ?? 0);
   createEffect(
     on(
-      () => ui()?.lobbyStarted?.n,
+      lobbyStartedN,
       (n) => {
         const started = untrack(() => ui()?.lobbyStarted);
         if (!n || !started) return;

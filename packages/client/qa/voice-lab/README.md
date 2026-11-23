@@ -57,6 +57,10 @@ node qa/voice-lab/run.mjs --target lab --name cpu --cpu-load 8
 # prioridade baixa (para comparar braços intercalados sem tomar a máquina)
 node qa/voice-lab/run.mjs --target lab --name jogo --game-load --below-normal
 
+# Jogo idle (docs/espaco/jogo/ot do muchat): a tela da aventura de verdade (RunPanel)
+# recebendo um quadro por segundo, uma corrida atrás da outra, com o painel aberto
+node qa/voice-lab/run.mjs --target lab --name corrida --run-load --below-normal
+
 # bidirecional, outros supressores, portão desligado
 node qa/voice-lab/run.mjs --target lab --name bidir --bidir
 node qa/voice-lab/run.mjs --target lab --name rnnoise --ns enhanced

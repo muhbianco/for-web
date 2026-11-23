@@ -637,7 +637,12 @@ export class SpaceView {
             : [],
           end: (d.end ?? null) as RpgRunEndView | null,
         };
-        this.patch({ runs: { ...this.state.runs, [run.id]: next } });
+        // Runs that ended go once another one arrives, unless their summary is open.
+        const runs: Record<string, RunState> = {};
+        for (const [id, r] of Object.entries(this.state.runs))
+          if (!r.end || id === this.state.runOpen?.id) runs[id] = r;
+        runs[run.id] = next;
+        this.patch({ runs });
         if (mine && !next.end) this.autoOpenRun(run.id);
         this.emitGame({ t: "rpg.run", d });
         return;
