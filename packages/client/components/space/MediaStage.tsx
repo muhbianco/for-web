@@ -70,8 +70,11 @@ export function useStageShares() {
  *   call's whole stage lives in this panel; nothing new is transmitted.
  * - "Smart TV": the room's TV (step 6).
  *
- * Closing the stage leaves the call in the floating mini card over the map
- * (compact mode): you keep walking and talking.
+ * Closing the stage leaves the call running with nothing over the map: the
+ * sidebar's voice dock keeps the controls, the "Palco" button (P) and the TV
+ * open it again, and whoever shares a screen stands out on the map (a click
+ * on them opens their screen here). The floating mini card is gone (Muchat,
+ * 23/11/2026: it always ended up over something).
  */
 export function MediaStage(props: {
   channel: Channel | undefined;
@@ -233,7 +236,7 @@ export function MediaStage(props: {
               content:
                 props.tab === "tv"
                   ? t`Fechar a TV (Esc): o som continua enquanto você estiver na sala`
-                  : t`Fechar o palco (Esc): a chamada segue no card flutuante`,
+                  : t`Fechar o palco (Esc): a chamada continua; o botão Palco abre de novo`,
             },
           }}
           onPress={props.onClose}

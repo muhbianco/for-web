@@ -179,6 +179,12 @@ msgstr ""
 msgid "{0} está apresentando · Assistir"
 msgstr ""
 
+#. placeholder {0}: who.name
+#. placeholder {1}: room.title
+#: components/space/SpacePage.tsx
+msgid "{0} está apresentando na sala {1}: entre lá para assistir."
+msgstr ""
+
 #. placeholder {0}: rejectedFiles.length
 #: src/interface/channels/text/Composition.tsx
 msgid "{0} files exceed the maximum size limit of {maxSizeFormatted} and were not uploaded."
@@ -950,6 +956,10 @@ msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Anel"
+msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "ao vivo"
 msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
@@ -1828,7 +1838,11 @@ msgid "Como andar"
 msgstr ""
 
 #: components/space/SpacePage.tsx
-msgid "compartilhando a tela"
+#~ msgid "compartilhando a tela"
+#~ msgstr ""
+
+#: components/space/SpacePage.tsx
+msgid "Compartilhando a tela"
 msgstr ""
 
 #: components/modal/modals/ScreenSharePicker.tsx
@@ -2818,6 +2832,11 @@ msgstr ""
 msgid "Entre em uma chamada para ver os números."
 msgstr ""
 
+#. placeholder {0}: who.name
+#: components/space/SpacePage.tsx
+msgid "Entre na chamada da sala para assistir à tela de {0}."
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Entre na sua conta para usar o espaço."
 msgstr ""
@@ -3154,8 +3173,12 @@ msgid "Fechar o palco"
 msgstr ""
 
 #: components/space/MediaStage.tsx
-msgid "Fechar o palco (Esc): a chamada segue no card flutuante"
+msgid "Fechar o palco (Esc): a chamada continua; o botão Palco abre de novo"
 msgstr ""
+
+#: components/space/MediaStage.tsx
+#~ msgid "Fechar o palco (Esc): a chamada segue no card flutuante"
+#~ msgstr ""
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Fechar o Refúgio"

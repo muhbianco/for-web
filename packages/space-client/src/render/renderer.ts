@@ -28,6 +28,17 @@ import { roomTitle } from "../list.ts";
 import type { World } from "../world.ts";
 import { textureFor } from "./atlas.ts";
 import { type FxArt, equippedSheet, fxCanvas, gearKey } from "./heroArt.ts";
+import {
+  type LiveFrame,
+  LIVE_BLUE,
+  LIVE_DEEP,
+  LIVE_FRAME_MS,
+  LIVE_RED,
+  LIVE_SCREEN,
+  LIVE_WAVE,
+  livePulse,
+  onSharer,
+} from "./liveFx.ts";
 import { characterSheet, DIRS, FRAMES, palette, SPRITE } from "./sprites.ts";
 import { type FloorLookup, CHUNK, chunksIn, drawChunk } from "./tiles.ts";
 import { heroLabel } from "../hero.ts";
@@ -66,10 +77,23 @@ interface AvatarSprite {
   frames: Texture[];
   /** Speaking ring at the feet (our own room's call only). */
   ring: Graphics;
-  /** Call indicators above the name: muted mic, deafened, sharing a screen. */
+  /** Call indicators above the name: muted mic, deafened. */
   badge: Graphics;
   /** What ring and badge show now, to redraw only on change. */
   indicators: string;
+  /** Sharing a screen (liveFx.ts): waves at the feet, behind the body. */
+  live: Graphics;
+  /** And the little live screen over the head. */
+  screen: Graphics;
+  sharing: boolean;
+  /** Mic or deafen badges are up: the screen floats above them. */
+  badged: boolean;
+  /** The still (reduced motion) picture is the one drawn now. */
+  liveStill: boolean;
+  /** Puts two sharers side by side out of step. */
+  seed: number;
+  /** The "AO VIVO" text on the screen (made the first time they share). */
+  liveTag: Text | null;
 }
 
 /** The gear a hero wears on the map: only while training at a dummy. */
@@ -89,13 +113,15 @@ function indicatorsKey(i: AvatarIndicators): string {
   return `${+i.muted}${+i.deaf}${+i.screen}${+i.speaking}`;
 }
 
-/** Pixel icons, 7×7 each, drawn into `g` left to right and centred on x = 0. */
+/**
+ * Pixel icons, 7×7 each, drawn into `g` left to right and centred on x = 0. A shared
+ * screen is no longer a badge: it is the live screen over the head (drawLive).
+ */
 function drawBadge(g: Graphics, i: AvatarIndicators, y: number) {
   g.clear();
-  const icons: Array<"mic" | "deaf" | "screen"> = [];
+  const icons: Array<"mic" | "deaf"> = [];
   if (i.muted) icons.push("mic");
   if (i.deaf) icons.push("deaf");
-  if (i.screen) icons.push("screen");
   if (!icons.length) return;
   const w = icons.length * 9 + 2;
   let x = -Math.round(w / 2);
@@ -110,22 +136,69 @@ function drawBadge(g: Graphics, i: AvatarIndicators, y: number) {
       g.rect(x + 3, y + 5, 1, 2).fill({ color: 0xff6b6b });
       for (let k = 0; k < 7; k++)
         g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
-    } else if (icon === "deaf") {
+    } else {
       // Headset with a slash: orange.
       g.rect(x + 1, y + 1, 5, 1).fill({ color: 0xffa94d });
       g.rect(x, y + 2, 1, 4).fill({ color: 0xffa94d });
       g.rect(x + 6, y + 2, 1, 4).fill({ color: 0xffa94d });
       for (let k = 0; k < 7; k++)
         g.rect(x + k, y + k, 1, 1).fill({ color: 0xffffff });
-    } else {
-      // Screen: blue frame with a stand.
-      g.rect(x, y, 7, 5).fill({ color: 0x74c0fc });
-      g.rect(x + 1, y + 1, 5, 3).fill({ color: 0x1c3a5e });
-      g.rect(x + 3, y + 5, 1, 1).fill({ color: 0x74c0fc });
-      g.rect(x + 2, y + 6, 3, 1).fill({ color: 0x74c0fc });
     }
     x += 9;
   }
+}
+
+/**
+ * Someone sharing a screen (liveFx.ts): light on the floor and waves leaving the feet,
+ * and a screen over the head (above the mic/deafen badges) showing a window, with an
+ * "AO VIVO" tag whose dot blinks like a camera's tally light.
+ */
+function drawLive(a: AvatarSprite, f: LiveFrame) {
+  const g = a.live;
+  g.clear();
+  g.ellipse(0, -2, 15, 6).fill({ color: LIVE_BLUE, alpha: 0.3 });
+  for (const w of f.waves)
+    g.ellipse(0, -2, w.rx, w.ry).stroke({
+      color: LIVE_WAVE,
+      width: 2,
+      alpha: w.alpha,
+    });
+  const s = a.screen;
+  s.clear();
+  const top = SPRITE * AVATAR_SCALE;
+  // Bottom of the stand: just over the name, or over the badges when there are any.
+  const bottom = (a.badged ? -top - 27 : -top - 17) + f.bob;
+  const w = LIVE_SCREEN.w;
+  const h = LIVE_SCREEN.h;
+  const mid = Math.floor(w / 2);
+  const x = -mid;
+  const y = bottom - 3 - h;
+  // Halo, frame and glass.
+  s.roundRect(x - 3, y - 3, w + 6, h + 6, 4).fill({
+    color: LIVE_BLUE,
+    alpha: 0.28,
+  });
+  s.roundRect(x, y, w, h, 2).fill({ color: LIVE_BLUE });
+  s.rect(x + 2, y + 2, w - 4, h - 4).fill({ color: LIVE_DEEP });
+  // A window being shown: a picture with its title bar, and lines of text.
+  s.rect(x + 4, y + 6, 10, 7).fill({ color: 0x9bd7ff });
+  s.rect(x + 4, y + 6, 10, 1).fill({ color: 0xffffff, alpha: 0.9 });
+  s.rect(x + 16, y + 7, 8, 1).fill({ color: 0x9bd7ff, alpha: 0.75 });
+  s.rect(x + 16, y + 9, 6, 1).fill({ color: 0x9bd7ff, alpha: 0.75 });
+  s.rect(x + 16, y + 11, 8, 1).fill({ color: 0x9bd7ff, alpha: 0.75 });
+  // Stand.
+  s.rect(x + mid - 1, y + h, 3, 2).fill({ color: LIVE_BLUE });
+  s.rect(x + mid - 5, y + h + 2, 11, 1).fill({ color: LIVE_BLUE });
+  // The "AO VIVO" tag over the top edge.
+  const tag = a.liveTag;
+  if (!tag) return;
+  const pw = Math.ceil(tag.width) + 11;
+  const ph = 8;
+  const px = -Math.round(pw / 2);
+  const py = y - 5;
+  s.roundRect(px, py, pw, ph, 4).fill({ color: LIVE_RED });
+  if (f.dot) s.circle(px + 4, py + ph / 2, 1.5).fill({ color: 0xffffff });
+  tag.position.set(px + 7, py + ph / 2);
 }
 
 /** What the editor wants drawn over the map this frame. */
@@ -619,8 +692,10 @@ export class Renderer {
       tag.position.set(0, -SPRITE * AVATAR_SCALE - 2);
       const ring = new Graphics();
       const badge = new Graphics();
+      const live = new Graphics();
+      const screen = new Graphics();
       const root = new Container();
-      root.addChild(ring, body, tag, badge);
+      root.addChild(live, ring, body, tag, badge, screen);
       this.scene.addChild(root);
       a = {
         palette: paletteIndex,
@@ -632,6 +707,13 @@ export class Renderer {
         ring,
         badge,
         indicators: "",
+        live,
+        screen,
+        sharing: false,
+        badged: false,
+        liveStill: false,
+        seed: seedOf(userId),
+        liveTag: null,
       };
       this.avatars.set(userId, a);
       this.dirty = true;
@@ -810,7 +892,70 @@ export class Renderer {
         .stroke({ color: 0x4ade80, width: 2, alpha: 0.95 });
     }
     drawBadge(a.badge, i, -SPRITE * AVATAR_SCALE - 24);
+    a.sharing = i.screen;
+    a.badged = i.muted || i.deaf;
+    if (i.screen && !a.liveTag) {
+      a.liveTag = new Text({
+        text: "AO VIVO",
+        style: {
+          fontFamily: "system-ui, sans-serif",
+          fontSize: 5.5,
+          fontWeight: "700",
+          fill: 0xffffff,
+        },
+        resolution: 6,
+      });
+      a.liveTag.anchor.set(0, 0.5);
+      a.root.addChild(a.liveTag);
+    }
+    if (a.liveTag) a.liveTag.visible = i.screen;
+    if (i.screen) {
+      // The still picture until the next animation frame (or for good, with reduced motion).
+      drawLive(a, livePulse(0, a.seed, true));
+      a.liveStill = true;
+    } else {
+      a.live.clear();
+      a.screen.clear();
+    }
     if (visible) this.dirty = true;
+  }
+
+  private liveAt = 0;
+
+  /**
+   * Moves the waves and the live dot of whoever shares a screen in view, at most every
+   * LIVE_FRAME_MS (liveFx.ts); nothing to do (and no frame) when nobody in view shares.
+   */
+  private animateLive(nowMs: number) {
+    const still = this.reducedMotion;
+    // A few ms of slack: at 60 Hz the third frame lands on 49.99 ms, not 50.
+    if (!still && nowMs - this.liveAt < LIVE_FRAME_MS - 4) return;
+    let drew = false;
+    for (const a of this.avatars.values()) {
+      if (!a.sharing || (still && a.liveStill)) continue;
+      const p = a.root.position;
+      if (!this.inView(p.x, p.y)) continue;
+      drawLive(a, livePulse(nowMs, a.seed, still));
+      a.liveStill = still;
+      drew = true;
+    }
+    if (!drew) return;
+    this.liveAt = nowMs;
+    this.dirty = true;
+  }
+
+  /** Who shares a screen at this map point (their body or the screen over them), frontmost first. */
+  sharerAt(x: number, y: number): string | null {
+    let hit: string | null = null;
+    let z = -Infinity;
+    for (const [id, a] of this.avatars) {
+      if (!a.sharing) continue;
+      const p = a.root.position;
+      if (!onSharer(x, y, p.x, p.y) || a.root.zIndex <= z) continue;
+      hit = id;
+      z = a.root.zIndex;
+    }
+    return hit;
   }
 
   /** World rect on screen (plus a margin for sprites and name tags), set each frame. */
@@ -1046,6 +1191,7 @@ export class Renderer {
         trainers.push({ userId: r.userId, x: p.x, y: p.y, hero: r.hero });
     }
     this.drawShots(world, nowMs, trainers);
+    this.animateLive(nowMs);
     for (const [id, a] of this.avatars) {
       if (seen.has(id)) continue;
       a.root.destroy({ children: true });

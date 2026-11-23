@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
+import { Graphics } from "pixi.js";
+
 import { Renderer } from "./renderer.ts";
 
 // 14/11/2026: closing one space (`app.destroy(true, { texture: true, … })`)
@@ -92,4 +94,73 @@ test("a hidden page keeps the frame owed and draws it on return", () => {
     if (had) g.document = saved;
     else delete g.document;
   }
+});
+
+// 23/11/2026: whoever shares a screen broadcasts on the map (liveFx.ts). The map is drawn
+// on demand to leave the CPU to the call, so the animation has a ceiling: at most one
+// frame every LIVE_FRAME_MS while a sharer is in view, none otherwise.
+type LiveInternals = Internals & {
+  animateLive(nowMs: number): void;
+  avatars: Map<string, unknown>;
+  view: { x0: number; y0: number; x1: number; y1: number };
+  reducedMotion: boolean;
+};
+
+function sharer(x: number, y: number) {
+  return {
+    sharing: true,
+    liveStill: true,
+    badged: false,
+    seed: 7,
+    liveTag: null,
+    live: new Graphics(),
+    screen: new Graphics(),
+    root: { position: { x, y } },
+  };
+}
+
+function oneSecond(i: LiveInternals, from = 0) {
+  for (let t = from; t <= from + 1000; t += 1000 / 60) {
+    i.animateLive(t);
+    i.present();
+  }
+}
+
+test("a sharer in view moves at most 20 times a second; out of view or gone, no frame", () => {
+  const { r, renders } = counting();
+  const i = r as unknown as LiveInternals;
+  Object.assign(i.view, { x0: -500, y0: -500, x1: 500, y1: 500 });
+  i.present();
+  const a = sharer(0, 0);
+  i.avatars.set("u1", a);
+  let before = renders();
+  oneSecond(i);
+  const frames = renders() - before;
+  assert.ok(frames >= 18 && frames <= 21, `${frames} frames in a second`);
+
+  a.root.position = { x: 5000, y: 0 };
+  before = renders();
+  oneSecond(i, 2000);
+  assert.equal(renders(), before, "out of view: nothing to draw");
+
+  a.root.position = { x: 0, y: 0 };
+  a.sharing = false;
+  before = renders();
+  oneSecond(i, 4000);
+  assert.equal(renders(), before, "nobody sharing: the map stays still");
+});
+
+test("reduced motion: the sharer is one still picture, drawn once", () => {
+  const { r, renders } = counting();
+  const i = r as unknown as LiveInternals;
+  Object.assign(i.view, { x0: -500, y0: -500, x1: 500, y1: 500 });
+  i.reducedMotion = true;
+  i.present();
+  const a = sharer(0, 0);
+  a.liveStill = false;
+  i.avatars.set("u1", a);
+  const before = renders();
+  oneSecond(i);
+  assert.equal(renders() - before, 1);
+  assert.equal(a.liveStill, true);
 });

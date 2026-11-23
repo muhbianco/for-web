@@ -23,11 +23,7 @@ import { useState } from "@revolt/state";
 import { SlideState } from "@revolt/ui/components/navigation/SlideDrawer";
 
 import { VoiceCallCardActiveRoom } from "./VoiceCallCardActiveRoom";
-import { VoiceCallCardPiP } from "./VoiceCallCardPiP";
 import { VoiceCallCardPreview } from "./VoiceCallCardPreview";
-
-type Mode = "floating" | "moving";
-type FloatType = "tl" | "tr" | "bl" | "br";
 
 type Info = {
   channel: Channel;
@@ -43,92 +39,41 @@ type Info = {
   inline?: boolean;
 };
 
-const PAD = 16,
-  PAD_X = `${PAD}px`,
-  PAD_Y = `${PAD + 56}px`;
-
 const callCardContext = createContext<(info?: Info) => void>();
 
-/** Voice call card context */
+/**
+ * Voice call card context. The card shows only where a page mounts it (a
+ * voice channel, the Espaço's stage) and in fullscreen; with no mount it is
+ * parked off screen. [Muchat] The floating mini card in a corner is gone
+ * (23/11/2026: dragged around, it always ended up over something): the
+ * sidebar's VoiceDock keeps mute, deafen, screen share and hang up within
+ * reach, and the call's audio lives in the voice context (RoomAudioManager),
+ * not in this card.
+ */
 export function VoiceCallCardContext(props: { children: JSX.Element }) {
   const voice = useVoice();
   const inCall = () => !!voice.channel();
 
-  const [mode, setMode] = createSignal<Mode>();
   const [info, setInfo] = createSignal<Info>();
 
-  let ref: HTMLDivElement | undefined,
-    events: AbortController | null,
-    pid = 0,
-    ofsX = 0,
-    ofsY = 0;
-
-  function mouseDown(e: PointerEvent) {
-    pid = e.pointerId;
-    if (mode() === "floating") {
-      const pos = ref!.getBoundingClientRect();
-      ofsX = e.clientX - pos.x;
-      ofsY = e.clientY - pos.y;
-      setMode("moving");
-      addEvents();
-    }
-  }
-
-  function mouseMove(e: PointerEvent) {
-    if (e.pointerId !== pid) return;
-    e.preventDefault();
-    const x = e.clientX - ofsX,
-      y = e.clientY - ofsY;
-    ref!.style.transform = `translate(${x}px, ${y}px)`;
-  }
-
-  function mouseUp(e: PointerEvent) {
-    if (e.pointerId !== pid) return;
-    const sty = ref!.style,
-      pos = ref!.getBoundingClientRect(),
-      left = e.clientX - ofsX + pos.width / 2 < innerWidth / 2,
-      top = e.clientY - ofsY + pos.height / 2 < innerHeight / 2;
-
-    sty.transition = "all .2s cubic-bezier(0, 1.5, 0.85, 0.8)";
-    setFloat(left ? (top ? "tl" : "bl") : top ? "tr" : "br");
-    //Reset CSS transition on next render pass
-    setTimeout(() => (sty.transition = ""), 1);
-    resetEvents();
-  }
-
-  function addEvents() {
-    if (events) return;
-    events = new AbortController();
-    const opt = { passive: false, signal: events.signal };
-    document.addEventListener("pointermove", mouseMove, opt);
-    document.addEventListener("pointerup", mouseUp, opt);
-  }
-
-  function resetEvents() {
-    events?.abort();
-    events = null;
-  }
+  let ref: HTMLDivElement | undefined;
 
   createEffect(() => {
     const inf = info();
     if (!ref) return;
     const sty = ref.style;
-    resetEvents();
 
     if (inf?.inline) {
       sty.transform = "translate(-10000px, 0)";
       sty.width = "";
       sty.height = "";
-      setMode();
       return;
     }
 
-    //Set mode based on state
     if (voice.layout() === "fullscreen") {
       sty.transform = ``;
       sty.width = `100%`;
       sty.height = "";
-      setMode();
     } else if (
       (voice.layout() === "expanded" ||
         (inf?.fill && voice.layout() !== "collapsed")) &&
@@ -138,42 +83,21 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
       sty.transform = `translate(${inf.parentRect.x}px, ${inf.parentRect.y}px)`;
       sty.width = `${inf.parentRect.width}px`;
       sty.height = `${inf.parentRect.height}px`;
-      setMode();
     } else if (inf?.pos && (!inf.drawer || inf.drawer === SlideState.SHOWN)) {
       sty.transform = `translate(${inf.pos.x}px, ${inf.pos.y}px)`;
       sty.width = `${inf.pos.width}px`;
       sty.height = voice.layout() === "collapsed" ? "56px" : "";
-      setMode();
-    } else if (!inCall()) {
+    } else {
+      // No mount on screen (in a call or not): parked to the right, from
+      // where it slides back when a page mounts it again.
       const y = inf?.pos.y ?? ref.getBoundingClientRect().y;
       sty.transform = `translate(${innerWidth + 50}px, ${y}px)`;
       sty.width = "";
       sty.height = "";
-      setMode();
-    } else if (!mode()) setFloat("tr");
+    }
   });
 
   const channel = () => info()?.channel;
-
-  function setFloat(float: FloatType) {
-    // The right and bottom corners leave the room a page asked for (see
-    // setFloatingInset); 0 when nobody asked, the card's place since always.
-    const sty = ref!.style,
-      x =
-        float[1] === "l"
-          ? PAD_X
-          : `max(${PAD_X}, calc(100vw - var(--flt-w) - ${PAD_X} - var(--flt-inset-right, 0px)))`,
-      y =
-        float[0] === "t"
-          ? PAD_Y
-          : `max(${PAD_Y}, calc(100vh - var(--flt-h) - ${PAD_Y} - var(--flt-inset-bottom, 0px)))`;
-    sty.transform = `translate(${x}, ${y})`;
-    sty.width = "";
-    sty.height = "";
-    setMode("floating");
-  }
-
-  onCleanup(resetEvents);
 
   onMount(() => {
     document
@@ -204,17 +128,9 @@ export function VoiceCallCardContext(props: { children: JSX.Element }) {
     <callCardContext.Provider value={setInfo}>
       {props.children}
       <Portal mount={document.getElementById("floating")! as HTMLDivElement}>
-        <Float
-          ref={ref}
-          mode={mode()}
-          onPointerDown={mouseDown}
-          fullscreen={voice.layout() === "fullscreen"}
-        >
+        <Float ref={ref} fullscreen={voice.layout() === "fullscreen"}>
           <Switch>
             <Match when={info()?.inline}>{null}</Match>
-            <Match when={mode() && inCall()}>
-              <VoiceCallCardPiP />
-            </Match>
             <Match when={channel()}>
               <VoiceCallCard
                 channel={channel()!}
@@ -240,59 +156,19 @@ const Float = styled("div", {
     touchAction: "none",
   },
   variants: {
-    mode: {
-      floating: { cursor: "grab" },
-      moving: {
-        cursor: "grabbing",
-        transition: "none",
-      },
-    },
     fullscreen: {
       true: {
         zIndex: 100,
         height: "100vh",
         top: 0,
-        // Width is set by floating logic in effect above
+        // Width is set by the effect above
       },
     },
   },
-  compoundVariants: [
-    {
-      mode: ["floating", "moving"],
-      css: {
-        "--flt-w": "300px",
-        "--flt-h": "170px",
-        width: "var(--flt-w)",
-        height: "var(--flt-h)",
-      },
-    },
-  ],
 });
 
 /**
- * Room a page keeps for itself at the window's right and bottom edges (the
- * Espaço's side panel), in px: the card in a right or bottom corner stays
- * clear of it. Set as CSS variables on #floating, so a card already in a
- * corner slides over as soon as the page changes them; `null` gives the room
- * back. Pages that never call this keep the card where it always was.
- */
-export function setFloatingInset(
-  inset: { right: number; bottom: number } | null,
-) {
-  const el = document.getElementById("floating");
-  if (!el) return;
-  const vars: Array<[string, number | undefined]> = [
-    ["--flt-inset-right", inset?.right],
-    ["--flt-inset-bottom", inset?.bottom],
-  ];
-  for (const [name, px] of vars) {
-    if (px && px > 0) el.style.setProperty(name, `${Math.round(px)}px`);
-    else el.style.removeProperty(name);
-  }
-}
-
-/**
- * 'Marker' to send position information for mounting the floating call card.
+ * 'Marker' to send position information for mounting the call card.
  * With `fill`, the card takes the whole parent element (the space's stage).
  */
 export function VoiceChannelCallCardMount(props: {

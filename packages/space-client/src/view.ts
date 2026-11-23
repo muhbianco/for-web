@@ -102,6 +102,11 @@ export interface SpaceUiState {
   /** Bumped when someone uses a TV object on the map (the app opens the TV). */
   tvOpenRequest: number;
   /**
+   * A click on someone sharing a screen (the live screen over their head): the app opens
+   * that screen on the stage. `n` grows on every click, so the same person twice counts.
+   */
+  watchRequest: { userId: string; n: number } | null;
+  /**
    * Refúgio (ADR 0009), from the snapshot: `available` = the operator switched
    * it on for this server; `enabled` = this person may play now. null = unknown.
    */
@@ -273,6 +278,7 @@ export class SpaceView {
       tv: null,
       tvError: null,
       tvOpenRequest: 0,
+      watchRequest: null,
       game: null,
       rpg: null,
       trainRequest: null,
@@ -826,6 +832,10 @@ export class SpaceView {
         this.editor.hover(p.x, p.y);
         return;
       }
+      // Someone sharing a screen is clickable (it opens their screen): the hand says so.
+      // On the map's element: PixiJS resets the canvas's own cursor to "inherit".
+      const cursor = this.renderer.sharerAt(p.x, p.y) ? "pointer" : "";
+      if (el.style.cursor !== cursor) el.style.cursor = cursor;
       // Hovering a room shows who is inside (tooltip), without walking there.
       const ix = this.world.ix;
       const region = ix ? regionAt(ix, p.x, p.y) : null;
@@ -857,12 +867,20 @@ export class SpaceView {
         this.interact();
         return;
       }
+      // A tap on someone sharing a screen opens it on the stage, instead of walking there.
+      const sharer = this.renderer.sharerAt(p.x, p.y);
+      if (sharer) {
+        const n = (this.state.watchRequest?.n ?? 0) + 1;
+        this.patch({ watchRequest: { userId: sharer, n } });
+        return;
+      }
       if (!this.mover.walkTo(p.x, p.y))
         this.patch({ announcement: "Não dá para chegar lá." });
     };
     const leave = () => {
       if (this.editor.state.enabled) this.editor.hover(-1e9, -1e9);
       if (this.state.hover) this.patch({ hover: null });
+      el.style.cursor = "";
     };
     const visibility = () => {
       // The renderer draws on demand and skips while hidden: repaint on return.

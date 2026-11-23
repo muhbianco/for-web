@@ -31,19 +31,15 @@ import {
 import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
-import { createResizeObserver } from "@solid-primitives/resize-observer";
-
 import { useClient } from "@revolt/client";
 import { useLocation, useParams } from "@revolt/routing";
 import { useVoice } from "@revolt/rtc";
 import { Button, IconButton } from "@revolt/ui";
-import { setFloatingInset } from "@revolt/ui/components/features/voice/callCard/VoiceCallCard";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
 import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
-import { floatingInset } from "./floatingInset";
 import { InteractionDialog } from "./InteractionDialog";
 import {
   type StageMode,
@@ -322,6 +318,39 @@ function ServerSpace(props: { serverId: string }) {
     setInvite(null);
   }
 
+  // A click on someone sharing a screen on the map (the live screen over their head)
+  // opens that screen here. Only screens of our call can show: someone presenting in
+  // another room, or before we join the call, gets a line saying where to go.
+  const watchRequest = createMemo(() => ui()?.watchRequest ?? null, null, {
+    equals: (a, b) => a?.n === b?.n,
+  });
+  createEffect(
+    on(
+      watchRequest,
+      (r) => {
+        if (!r) return;
+        const s = untrack(shares).find((x) => x.userId === r.userId);
+        if (s) {
+          watch(s.key);
+          return;
+        }
+        for (const w of untrack(ui)?.list ?? []) {
+          for (const room of w.rooms) {
+            const who = room.people.find((p) => p.userId === r.userId);
+            if (!who) continue;
+            setNotice(
+              room.here
+                ? t`Entre na chamada da sala para assistir à tela de ${who.name}.`
+                : t`${who.name} está apresentando na sala ${room.title}: entre lá para assistir.`,
+            );
+            return;
+          }
+        }
+      },
+      { defer: true },
+    ),
+  );
+
   // A screen starts in the room: with the stage open on the call, it goes to
   // focus; otherwise a "Fulano está apresentando · Assistir" chip appears.
   let seenShares = new Set<string>();
@@ -470,43 +499,6 @@ function ServerSpace(props: { serverId: string }) {
       "grid-template-areas": `"${areas.join(" ")}"`,
     };
   };
-
-  // The floating call card (a call's card in a corner) stays clear of the side
-  // panel: it used to sit on the room list and on the top of the Refúgio's
-  // scene, and took the clicks meant for them.
-  let body: HTMLDivElement | undefined;
-  const [bodyBox, setBodyBox] = createSignal<{
-    right: number;
-    bottom: number;
-    height: number;
-  }>();
-  const measureBody = () => {
-    if (!body?.isConnected) return;
-    const r = body.getBoundingClientRect();
-    setBodyBox({ right: r.right, bottom: r.bottom, height: r.height });
-  };
-  onMount(() => {
-    if (body) createResizeObserver(body, measureBody);
-    window.addEventListener("resize", measureBody);
-  });
-  createEffect(() => {
-    const grid = bodyBox();
-    setFloatingInset(
-      grid
-        ? floatingInset({
-            narrow: narrow(),
-            sideWidthPx: sideWidth(),
-            panelRowPct: panelRowPct(),
-            grid,
-            viewport: { width: innerWidth, height: innerHeight },
-          })
-        : null,
-    );
-  });
-  onCleanup(() => {
-    window.removeEventListener("resize", measureBody);
-    setFloatingInset(null);
-  });
 
   /** Page shortcuts that the map does not use (it takes WASD, arrows, E, +, −). */
   function pageKey(e: KeyboardEvent) {
@@ -776,7 +768,7 @@ function ServerSpace(props: { serverId: string }) {
           <Symbol>list</Symbol>
         </IconButton>
       </Bar>
-      <Body ref={body} style={gridStyle()}>
+      <Body style={gridStyle()}>
         {/*
           Two siblings, never one: the map canvas is appended by PixiJS to a
           native element with no JSX children, so Solid never rewrites it.
@@ -1143,9 +1135,12 @@ function PersonLine(props: { person: ListPerson }) {
         </Symbol>
       </Show>
       <Show when={v()?.screen}>
-        <Symbol size={14} aria-label={t`compartilhando a tela`}>
-          screen_share
-        </Symbol>
+        <LivePill title={t`Compartilhando a tela`}>
+          <Symbol size={12} aria-hidden="true">
+            screen_share
+          </Symbol>
+          {t`ao vivo`}
+        </LivePill>
       </Show>
     </PersonRow>
   );
@@ -1252,6 +1247,23 @@ const Body = styled("div", {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr)",
     "& > aside": { gridArea: "panel", minHeight: 0 },
+  },
+});
+
+/** Someone sharing a screen in the room list: louder than the other icons, like the map. */
+const LivePill = styled("span", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "3px",
+    padding: "0 6px 0 4px",
+    borderRadius: "999px",
+    fontSize: "0.78em",
+    fontWeight: 600,
+    lineHeight: "16px",
+    whiteSpace: "nowrap",
+    background: "var(--md-sys-color-error)",
+    color: "var(--md-sys-color-on-error)",
   },
 });
 
