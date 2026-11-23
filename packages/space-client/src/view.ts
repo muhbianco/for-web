@@ -36,6 +36,7 @@ import type {
 } from "@muchat/space-core/game/ot";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type EditorState, Editor } from "./editor.ts";
+import { myHeroOf } from "./hero.ts";
 import { type Prompt, nearestInteractive } from "./interact.ts";
 import {
   type ListWing,
@@ -668,9 +669,7 @@ export class SpaceView {
       case "rpg.state": {
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
         const hero = (d.hero ?? null) as RpgHeroView | null;
-        this.world.myHero = hero
-          ? { level: hero.level, training: hero.training !== null }
-          : null;
+        this.world.myHero = hero ? myHeroOf(hero) : null;
         this.renderer.invalidate();
         this.patch({
           rpg: {

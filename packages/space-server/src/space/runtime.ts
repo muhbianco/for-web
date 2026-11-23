@@ -2,6 +2,8 @@ import {
   applyDecorOp,
   applyMove,
   type AvatarLook,
+  type AvatarGear,
+  type AvatarHero,
   type AvatarView,
   CATALOG,
   cellIndex,
@@ -108,8 +110,20 @@ interface Avatar {
   /** What the client last said about its call in this room (presence hint, ADR 0008). */
   report: (VoiceReport & { at: number }) | null;
   /** Idle game: level and training, shown under the name to everyone (docs/espaco/jogo/ot). */
-  hero: { level: number; training: boolean } | null;
+  hero: AvatarHero | null;
+  /** What the game said the hero is (level, vocation, gear); `hero` adds the training to it. */
+  heroLook: HeroLook | null;
 }
+
+/** The hero as the idle game sees it, for the map. */
+export interface HeroLook {
+  level: number;
+  vocation: number;
+  gear: AvatarGear;
+}
+
+/** How far from the dummy a hero keeps training, inside the dummy's zone (tiles). */
+export const TRAIN_REACH_TILES = 5;
 
 /** LiveKit's view of one admitted participant (sweeper, every 5 s). */
 interface SeenInLiveKit {
@@ -590,27 +604,30 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.markHero(userId);
   }
 
-  /** The hero's level under the name (null: no hero, nothing shown). */
-  setHeroLevel(userId: string, level: number | null): void {
+  /** The hero under the name and, while training, what they wear (null: no hero, nothing shown). */
+  setHero(userId: string, look: HeroLook | null): void {
     const a = this.avatars.get(userId);
     if (!a) return;
-    const hero = level === null ? null : { level, training: this.trainingAt.has(userId) };
+    a.heroLook = look;
+    this.markHero(userId);
+  }
+
+  private markHero(userId: string): void {
+    const a = this.avatars.get(userId);
+    if (!a) return;
+    const look = a.heroLook;
+    const at = this.trainingAt.get(userId);
+    const hero: AvatarHero | null = !look ? null : at === undefined ? { level: look.level, training: false } : { level: look.level, training: true, at, vocation: look.vocation, gear: look.gear };
     if (JSON.stringify(hero) === JSON.stringify(a.hero)) return;
     a.hero = hero;
     a.dirty = true;
   }
 
-  private markHero(userId: string): void {
-    const a = this.avatars.get(userId);
-    if (!a?.hero) return;
-    const training = this.trainingAt.has(userId);
-    if (a.hero.training === training) return;
-    a.hero = { ...a.hero, training };
-    a.dirty = true;
-  }
-
-  /** The avatar stands within one tile of the instance (the same reach as the prompt). */
-  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" | "npc" = "train"): boolean {
+  /**
+   * The avatar stands within `reach` tiles of the instance (1: the same reach as the prompt).
+   * A longer reach also needs the avatar inside the instance's zone (no training through a wall).
+   */
+  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" | "npc" = "train", reach = 1): boolean {
     const inst = this.decor.items.find((i) => i.id === instanceId);
     const item = inst ? itemOf(CATALOG, inst.item) : undefined;
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
@@ -618,15 +635,16 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const rect = instanceRect(zone, item, inst);
     const tx = Math.floor(a.move.pos.x / this.map.tileSize);
     const ty = Math.floor(a.move.pos.y / this.map.tileSize);
-    return tx >= rect.x0 - 1 && tx <= rect.x1 + 1 && ty >= rect.y0 - 1 && ty <= rect.y1 + 1;
+    if (reach > 1 && !(tx >= zone.rect.x0 && tx <= zone.rect.x1 && ty >= zone.rect.y0 && ty <= zone.rect.y1)) return false;
+    return tx >= rect.x0 - reach && tx <= rect.x1 + reach && ty >= rect.y0 - reach && ty <= rect.y1 + reach;
   }
 
-  /** A trainer who is no longer beside their dummy (or gone) stops training. */
+  /** A trainer who left the dummy's zone or walked more than TRAIN_REACH_TILES away (or is gone) stops training. */
   private checkTraining(userId: string): void {
     const instanceId = this.trainingAt.get(userId);
     if (instanceId === undefined) return;
     const a = this.avatars.get(userId);
-    if (a && !a.evicted && this.besideInstance(a, instanceId)) return;
+    if (a && !a.evicted && this.besideInstance(a, instanceId, "train", TRAIN_REACH_TILES)) return;
     this.trainingAt.delete(userId);
     this.markHero(userId);
     this.onTrainingLeft?.(userId);
@@ -1366,6 +1384,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
         dirty: false,
         report: null,
         hero: null,
+        heroLook: null,
       };
       this.avatars.set(user._id, a);
     }

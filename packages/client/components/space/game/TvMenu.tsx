@@ -20,15 +20,17 @@ import {
 import { styled } from "styled-system/jsx";
 
 import { Button } from "@revolt/ui";
+import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { VocationPicker } from "./VocationPicker";
 import { useModalKeys } from "./modalKeys";
 import { duration, rpgLabels, vocationName } from "./rpgUi";
 
 /**
- * A TV com o jogo ligado (docs/espaco/jogo/ot, etapa O4): assistir (a Smart TV de sempre)
- * ou montar e entrar no grupo da dungeon. O servidor confere a presença na TV, a vocação, o
- * level mínimo e o tamanho do grupo.
+ * A TV com o jogo ligado (docs/espaco/jogo/ot): a tela inicial de uma Smart TV com os apps
+ * (pedido do dono, 23/11/2026). Music é a Smart TV de sempre (o vídeo da sala, ADR 0008);
+ * Idle Hunt é a dungeon (etapa O4): montar e entrar no grupo. O servidor confere a presença
+ * na TV, a vocação, o level mínimo e o tamanho do grupo.
  */
 export default function TvMenu(props: {
   view: SpaceView;
@@ -55,6 +57,18 @@ export default function TvMenu(props: {
   const mine = () =>
     props.lobby?.members.some((m) => m.user_id === props.myId) ?? false;
   const leader = () => props.lobby?.leader === props.myId;
+  // A tela inicial com os apps; o Idle Hunt abre o menu da dungeon.
+  const [app, setApp] = createSignal<"home" | "idle">("home");
+  const openIdle = () => {
+    setApp("idle");
+    queueMicrotask(refocus);
+  };
+  const idleStatus = () => {
+    if (props.run) return t`Dungeon em andamento`;
+    const l = props.lobby;
+    if (l) return t`Grupo se formando · ${l.members.length}/${l.max}`;
+    return t`Dungeons em grupo`;
+  };
 
   let pending: { id: string; done: () => void } | null = null;
   const off = props.view.onGame((e: GameWireEvent) => {
@@ -112,146 +126,186 @@ export default function TvMenu(props: {
         aria-modal="true"
         aria-labelledby="rpg-tv-title"
       >
-        <h2 id="rpg-tv-title" tabIndex={-1} ref={title}>
-          {props.request.title}
-        </h2>
-        <Row>
-          <Button variant="tonal" onPress={() => props.view.watchTv()}>
-            {t`Assistir na Smart TV`}
-          </Button>
-        </Row>
-        <Show when={props.run}>
-          {(r) => (
-            <Item>
-              <span>
-                <strong>{t`Dungeon em andamento`}</strong>{" "}
-                <Muted>
-                  {dungeonOf(r().run.dungeon)?.name ?? r().run.dungeon}
-                </Muted>
-              </span>
-              <Muted>
-                {r()
-                  .run.members.map((m) => m.name)
-                  .join(", ")}
-              </Muted>
-              <Button
-                size="xs"
-                variant="filled"
-                onPress={() => props.view.watchRun(r().run.id)}
-              >
-                {t`Assistir`}
-              </Button>
-            </Item>
-          )}
+        <Head>
+          <Show when={app() === "idle"}>
+            <Back
+              type="button"
+              aria-label={t`Voltar aos apps`}
+              onClick={() => {
+                setApp("home");
+                queueMicrotask(refocus);
+              }}
+            >
+              <Symbol size={20}>arrow_back</Symbol>
+            </Back>
+          </Show>
+          <h2 id="rpg-tv-title" tabIndex={-1} ref={title}>
+            {app() === "idle" ? t`Idle Hunt` : props.request.title}
+          </h2>
+        </Head>
+        <Show when={app() === "home"}>
+          <Apps role="list" aria-label={t`Apps da TV`}>
+            <AppTile
+              type="button"
+              role="listitem"
+              data-app="music"
+              onClick={() => props.view.watchTv()}
+            >
+              <Symbol size={36}>music_note</Symbol>
+              <strong>{t`Music`}</strong>
+              <Muted>{t`O vídeo ou a música da sala, para todos`}</Muted>
+            </AppTile>
+            <AppTile
+              type="button"
+              role="listitem"
+              data-app="idle"
+              onClick={openIdle}
+            >
+              <Symbol size={36}>swords</Symbol>
+              <strong>{t`Idle Hunt`}</strong>
+              <Muted>{idleStatus()}</Muted>
+            </AppTile>
+          </Apps>
         </Show>
-        <h3>{t`Dungeon em grupo`}</h3>
-        <Show
-          when={vocation() !== 0}
-          fallback={
-            <VocationPicker
-              busy={busy()}
-              onChoose={(v) => send("rpg.vocation", { vocation: v })}
-            />
-          }
-        >
+        <Show when={app() === "idle"}>
+          <Show when={props.run}>
+            {(r) => (
+              <Item>
+                <span>
+                  <strong>{t`Dungeon em andamento`}</strong>{" "}
+                  <Muted>
+                    {dungeonOf(r().run.dungeon)?.name ?? r().run.dungeon}
+                  </Muted>
+                </span>
+                <Muted>
+                  {r()
+                    .run.members.map((m) => m.name)
+                    .join(", ")}
+                </Muted>
+                <Button
+                  size="xs"
+                  variant="filled"
+                  onPress={() => props.view.watchRun(r().run.id)}
+                >
+                  {t`Assistir`}
+                </Button>
+              </Item>
+            )}
+          </Show>
+          <h3>{t`Dungeon em grupo`}</h3>
           <Show
-            when={props.lobby}
+            when={vocation() !== 0}
             fallback={
-              <>
-                <Muted>{t`Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar.`}</Muted>
-                <For each={DUNGEONS}>
-                  {(d) => {
-                    const tooLow = () => (props.hero?.level ?? 0) < d.minLevel;
-                    return (
-                      <Item>
-                        <span>
-                          <strong>{d.name}</strong>{" "}
-                          <Muted>{t`level ${d.minLevel}+ · confortável a partir do ${d.recommendedLevel}`}</Muted>
-                        </span>
-                        <Muted>{d.blurb}</Muted>
+              <VocationPicker
+                busy={busy()}
+                onChoose={(v) => send("rpg.vocation", { vocation: v })}
+              />
+            }
+          >
+            <Show
+              when={props.lobby}
+              fallback={
+                <>
+                  <Muted>{t`Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar.`}</Muted>
+                  <For each={DUNGEONS}>
+                    {(d) => {
+                      const tooLow = () =>
+                        (props.hero?.level ?? 0) < d.minLevel;
+                      return (
+                        <Item>
+                          <span>
+                            <strong>{d.name}</strong>{" "}
+                            <Muted>{t`level ${d.minLevel}+ · confortável a partir do ${d.recommendedLevel}`}</Muted>
+                          </span>
+                          <Muted>{d.blurb}</Muted>
+                          <Button
+                            size="xs"
+                            variant={tooLow() ? "tonal" : "filled"}
+                            isDisabled={busy() || tooLow()}
+                            onPress={() =>
+                              send("rpg.lobby.create", {
+                                tv: props.request.instance,
+                                dungeon: d.id,
+                              })
+                            }
+                          >
+                            {t`Montar grupo`}
+                          </Button>
+                        </Item>
+                      );
+                    }}
+                  </For>
+                </>
+              }
+            >
+              {(lobby) => (
+                <>
+                  <p>
+                    <strong>
+                      {dungeonOf(lobby().dungeon)?.name ?? lobby().dungeon}
+                    </strong>{" "}
+                    <Muted>
+                      {t`${lobby().members.length}/${lobby().max} · fecha em ${duration(Math.max(0, lobby().expires_at - Date.now()))}`}
+                    </Muted>
+                  </p>
+                  <Members>
+                    <For each={lobby().members}>
+                      {(m) => (
+                        <li>
+                          {m.name}
+                          {m.user_id === lobby().leader
+                            ? ` ${t`(líder)`}`
+                            : ""}{" "}
+                          <Muted>{t`${vocationName(m.vocation)} · Nv ${m.level}`}</Muted>
+                        </li>
+                      )}
+                    </For>
+                  </Members>
+                  <Show when={bonusPct() > 0}>
+                    <Muted>{t`Bônus de experiência do grupo: +${bonusPct()}% (cresce com vocações diferentes).`}</Muted>
+                  </Show>
+                  <Row>
+                    <Show when={leader()}>
+                      <Button
+                        variant="filled"
+                        isDisabled={busy()}
+                        onPress={() =>
+                          send("rpg.lobby.start", {}, props.onClose)
+                        }
+                      >
+                        {t`Começar`}
+                      </Button>
+                    </Show>
+                    <Show
+                      when={mine()}
+                      fallback={
                         <Button
-                          size="xs"
-                          variant={tooLow() ? "tonal" : "filled"}
-                          isDisabled={busy() || tooLow()}
+                          variant="filled"
+                          isDisabled={
+                            busy() || lobby().members.length >= lobby().max
+                          }
                           onPress={() =>
-                            send("rpg.lobby.create", {
+                            send("rpg.lobby.join", {
                               tv: props.request.instance,
-                              dungeon: d.id,
                             })
                           }
                         >
-                          {t`Montar grupo`}
+                          {t`Entrar no grupo`}
                         </Button>
-                      </Item>
-                    );
-                  }}
-                </For>
-              </>
-            }
-          >
-            {(lobby) => (
-              <>
-                <p>
-                  <strong>
-                    {dungeonOf(lobby().dungeon)?.name ?? lobby().dungeon}
-                  </strong>{" "}
-                  <Muted>
-                    {t`${lobby().members.length}/${lobby().max} · fecha em ${duration(Math.max(0, lobby().expires_at - Date.now()))}`}
-                  </Muted>
-                </p>
-                <Members>
-                  <For each={lobby().members}>
-                    {(m) => (
-                      <li>
-                        {m.name}
-                        {m.user_id === lobby().leader
-                          ? ` ${t`(líder)`}`
-                          : ""}{" "}
-                        <Muted>{t`${vocationName(m.vocation)} · Nv ${m.level}`}</Muted>
-                      </li>
-                    )}
-                  </For>
-                </Members>
-                <Show when={bonusPct() > 0}>
-                  <Muted>{t`Bônus de experiência do grupo: +${bonusPct()}% (cresce com vocações diferentes).`}</Muted>
-                </Show>
-                <Row>
-                  <Show when={leader()}>
-                    <Button
-                      variant="filled"
-                      isDisabled={busy()}
-                      onPress={() => send("rpg.lobby.start", {}, props.onClose)}
+                      }
                     >
-                      {t`Começar`}
-                    </Button>
-                  </Show>
-                  <Show
-                    when={mine()}
-                    fallback={
                       <Button
-                        variant="filled"
-                        isDisabled={
-                          busy() || lobby().members.length >= lobby().max
-                        }
-                        onPress={() =>
-                          send("rpg.lobby.join", { tv: props.request.instance })
-                        }
+                        variant="text"
+                        isDisabled={busy()}
+                        onPress={() => send("rpg.lobby.leave", {})}
                       >
-                        {t`Entrar no grupo`}
+                        {leader() ? t`Cancelar grupo` : t`Sair do grupo`}
                       </Button>
-                    }
-                  >
-                    <Button
-                      variant="text"
-                      isDisabled={busy()}
-                      onPress={() => send("rpg.lobby.leave", {})}
-                    >
-                      {leader() ? t`Cancelar grupo` : t`Sair do grupo`}
-                    </Button>
-                  </Show>
-                </Row>
-              </>
-            )}
+                    </Show>
+                  </Row>
+                </>
+              )}
+            </Show>
           </Show>
         </Show>
         <Show when={error()}>
@@ -295,6 +349,69 @@ const Card = styled("div", {
     "& h2": { margin: 0, fontSize: "1.15rem", outline: "none" },
     "& h3": { margin: 0, fontSize: "1rem" },
     "& p": { margin: 0, lineHeight: 1.5 },
+  },
+});
+
+const Head = styled("div", {
+  base: { display: "flex", alignItems: "center", gap: "8px" },
+});
+
+const Back = styled("button", {
+  base: {
+    display: "grid",
+    placeItems: "center",
+    width: "32px",
+    height: "32px",
+    border: "none",
+    borderRadius: "999px",
+    background: "var(--md-sys-color-surface-container)",
+    color: "inherit",
+    cursor: "pointer",
+  },
+});
+
+/** A tela inicial: os apps em ladrilhos grandes, como numa Smart TV. */
+const Apps = styled("div", {
+  base: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gap: "12px",
+    padding: "12px",
+    borderRadius: "14px",
+    background: "linear-gradient(160deg, #1b1d2a, #11121a)",
+  },
+});
+
+const AppTile = styled("button", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: "6px",
+    minHeight: "120px",
+    padding: "14px",
+    border: "2px solid transparent",
+    borderRadius: "12px",
+    color: "#f4f5fa",
+    cursor: "pointer",
+    textAlign: "start",
+    transition: "transform 120ms ease, border-color 120ms ease",
+    "& > span": { color: "rgba(244, 245, 250, 0.75)" },
+    '&[data-app="music"]': {
+      background: "linear-gradient(135deg, #8a2be2, #ff4f8b)",
+    },
+    '&[data-app="idle"]': {
+      background: "linear-gradient(135deg, #2c6e49, #c9a227)",
+    },
+    "&:hover, &:focus-visible": {
+      borderColor: "#ffffff",
+      transform: "scale(1.03)",
+      outline: "none",
+    },
+    "@media (prefers-reduced-motion: reduce)": {
+      transition: "none",
+      "&:hover, &:focus-visible": { transform: "none" },
+    },
   },
 });
 

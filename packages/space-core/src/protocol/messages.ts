@@ -430,7 +430,28 @@ export interface AvatarView {
   room: string | null;
   state: "online" | "idle" | "reconnecting";
   /** Idle game (docs/espaco/jogo/ot): the hero's level and whether they train at a dummy. */
-  hero?: { level: number; training: boolean };
+  hero?: AvatarHero;
+}
+
+/** What a hero wears, as item ids of the idle game (the map draws it while they train). */
+export interface AvatarGear {
+  weapon?: string;
+  shield?: string;
+  head?: string;
+  body?: string;
+  legs?: string;
+  feet?: string;
+  ammo?: string;
+}
+
+/** The hero under an avatar; while training, also the dummy, the vocation and the gear. */
+export interface AvatarHero {
+  level: number;
+  training: boolean;
+  /** The dummy instance they train at (the map throws the attack at it). */
+  at?: string;
+  vocation?: number;
+  gear?: AvatarGear;
 }
 
 /**

@@ -262,13 +262,15 @@ test("dummy: sair de perto, ser tirado do Espaço ou o dummy sumir encerram o tr
   const ana = enter(rt, ANA, "Ana");
   const dummy = await placeDummy(rt, ana, "dummy-1");
   rt.setTraining(ANA, "dummy-1");
-  // Andar em volta do dummy (dentro de 1 tile) não encerra.
+  // Andar em volta do dummy e se afastar até 5 tiles, na mesma zona, não encerra.
   moveTo(rt, ANA, dummy.tx, dummy.ty + 1);
-  assert.deepEqual(left, []);
-  assert.ok(rt.isTrainingAt(ANA, "dummy-1"));
-  // Afastar encerra uma vez.
   moveTo(rt, ANA, dummy.tx + 4, dummy.ty);
   moveTo(rt, ANA, dummy.tx + 5, dummy.ty);
+  assert.deepEqual(left, []);
+  assert.ok(rt.isTrainingAt(ANA, "dummy-1"));
+  // Mais longe encerra uma vez.
+  moveTo(rt, ANA, dummy.tx + 6, dummy.ty);
+  moveTo(rt, ANA, dummy.tx + 7, dummy.ty);
   assert.deepEqual(left, [ANA]);
   assert.equal(rt.isTrainingAt(ANA, "dummy-1"), false);
   // O dummy removido pelo editor encerra quem treinava nele.
@@ -297,7 +299,7 @@ test("dummy: desconectar não encerra (segue como o treino offline); reconectar 
   enter(rt, ANA, "Ana");
   assert.deepEqual(left, []);
   // Longe dali, a próxima reentrada encerra.
-  moveTo(rt, ANA, dummy.tx + 6, dummy.ty);
+  moveTo(rt, ANA, dummy.tx + 7, dummy.ty);
   assert.deepEqual(left, [ANA]);
 });
 
@@ -317,7 +319,11 @@ test("herói no avatar: level e treino chegam aos outros; quem entra com o jogo 
   assert.deepEqual(joined, [ANA]);
   const cai = enter(rt, "01JCA100000000000000000000", "Cai");
   rt.tick();
-  rt.setHeroLevel(ANA, 7);
+  rt.setHero(ANA, {
+    level: 7,
+    vocation: 4,
+    gear: { weapon: "espada-curta", shield: "escudo-de-tabuas" },
+  });
   rt.tick();
   const seen = () =>
     (
@@ -333,9 +339,16 @@ test("herói no avatar: level e treino chegam aos outros; quem entra com o jogo 
   moveTo(rt, ANA, dummy.tx, dummy.ty + 1);
   rt.setTraining(ANA, "dummy-1");
   rt.tick();
-  assert.deepEqual(seen(), { level: 7, training: true });
-  // Afastou: o "treinando" some para os outros.
-  moveTo(rt, ANA, dummy.tx + 5, dummy.ty);
+  assert.deepEqual(seen(), {
+    level: 7,
+    training: true,
+    at: "dummy-1",
+    vocation: 4,
+    gear: { weapon: "espada-curta", shield: "escudo-de-tabuas" },
+  });
+  // Afastou demais: o "treinando" some para os outros.
+  moveTo(rt, ANA, dummy.tx + 6, dummy.ty);
+  moveTo(rt, ANA, dummy.tx + 7, dummy.ty);
   rt.tick();
   assert.deepEqual(seen(), { level: 7, training: false });
 });

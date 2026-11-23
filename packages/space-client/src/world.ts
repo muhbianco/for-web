@@ -1,4 +1,5 @@
 import {
+  type AvatarHero,
   type AvatarView,
   type CompiledMap,
   type CompiledMapWire,
@@ -53,8 +54,8 @@ export interface Remote {
   dir: Direction;
   moving: boolean;
   samples: Array<{ t: number; x: number; y: number }>;
-  /** Idle game: level and training, shown under the name (docs/espaco/jogo/ot). */
-  hero: { level: number; training: boolean } | null;
+  /** Idle game: level and training under the name; while training, the dummy and the gear. */
+  hero: AvatarHero | null;
 }
 
 export type WorldEvent =
@@ -83,8 +84,8 @@ export type WorldEvent =
  * position. Pure state with no DOM, so it runs under node:test.
  */
 export class World {
-  /** Our own hero (from `rpg.state`): its level and training under our name. */
-  myHero: { level: number; training: boolean } | null = null;
+  /** Our own hero (from `rpg.state`): level and training under our name, and the gear. */
+  myHero: AvatarHero | null = null;
   map: CompiledMap | null = null;
   ix: MapIndex | null = null;
   zones: ZoneIndex | null = null;
@@ -287,7 +288,7 @@ export class World {
     r.state = a.state;
     r.dir = a.dir;
     r.moving = a.moving;
-    r.hero = a.hero ? { level: a.hero.level, training: a.hero.training } : null;
+    r.hero = a.hero ? { ...a.hero } : null;
     r.samples.push({ t: nowMs, x: a.x, y: a.y });
     if (r.samples.length > MAX_SAMPLES)
       r.samples.splice(0, r.samples.length - MAX_SAMPLES);

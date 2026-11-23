@@ -72,8 +72,10 @@ class FakeHost implements RpgHost {
     else this.training.set(userId, instanceId);
   }
   readonly levels = new Map<string, number | null>();
-  setHeroLevel(userId: string, level: number | null) {
-    this.levels.set(userId, level);
+  readonly looks = new Map<string, unknown>();
+  setHero(userId: string, look: { level: number } | null) {
+    this.levels.set(userId, look?.level ?? null);
+    this.looks.set(userId, look);
   }
   tvNear = true;
   readonly lobbies = new LobbyHub();

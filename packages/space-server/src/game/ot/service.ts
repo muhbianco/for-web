@@ -19,7 +19,7 @@ import {
   simulateRun,
 } from "@muchat/space-core/game/ot";
 
-import type { NpcKind } from "@muchat/space-core";
+import type { AvatarGear, NpcKind } from "@muchat/space-core";
 
 import type { Log } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
@@ -35,6 +35,7 @@ import {
   changeHeroCoins,
   discardHeroItem,
   equipHero,
+  heroLook,
   heroRunSnapshot,
   inRun,
   markRun,
@@ -84,8 +85,11 @@ export interface RpgHost {
   /** O runtime ainda vê a pessoa treinando neste dummy. */
   isTrainingAt(userId: string, instanceId: string): boolean;
   setTraining(userId: string, instanceId: string | null): void;
-  /** The hero's level under the person's name on the map (null: no hero). */
-  setHeroLevel(userId: string, level: number | null): void;
+  /** The hero under the person's name on the map and what they wear (null: no hero). */
+  setHero(
+    userId: string,
+    look: { level: number; vocation: number; gear: AvatarGear } | null,
+  ): void;
   sessionOf(userId: string): SessionPort | null;
   displayName(userId: string): string;
   /** A TV numa sala, ao lado da pessoa, dentro da sala (etapa O4). */
@@ -296,7 +300,7 @@ export class RpgService {
       userId,
       async () => {
         const doc = await this.load(userId);
-        host.setHeroLevel(userId, doc ? doc.level : null);
+        host.setHero(userId, doc ? heroLook(doc) : null);
       },
       () => undefined,
     );
@@ -967,7 +971,7 @@ export class RpgService {
     host: RpgHost | null,
   ) {
     // O level sob o nome acompanha o herói (quem tem herói aparece com ele).
-    if (doc) host?.setHeroLevel(doc._id, doc.level);
+    if (doc) host?.setHero(doc._id, heroLook(doc));
     if (!session) return;
     const ev: RpgStateEvent = {
       v: 1,

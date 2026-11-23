@@ -270,6 +270,32 @@ export function staminaNow(d: RpgHeroDoc, now: number): number {
   return regenStamina(d.stamina, Math.max(0, (now - d.stamina_at) / 1000));
 }
 
+/** O herói no avatar do mapa: level, vocação e o que veste (o mapa desenha enquanto treina). */
+export function heroLook(d: RpgHeroDoc): {
+  level: number;
+  vocation: number;
+  gear: {
+    weapon?: string;
+    shield?: string;
+    head?: string;
+    body?: string;
+    legs?: string;
+    feet?: string;
+    ammo?: string;
+  };
+} {
+  const g = gearOf(d.inv);
+  const gear: ReturnType<typeof heroLook>["gear"] = {};
+  if (g.weapon) gear.weapon = g.weapon;
+  if (g.shield) gear.shield = g.shield;
+  if (g.armor.cabeca) gear.head = g.armor.cabeca;
+  if (g.armor.corpo) gear.body = g.armor.corpo;
+  if (g.armor.pernas) gear.legs = g.armor.pernas;
+  if (g.armor.pes) gear.feet = g.armor.pes;
+  if (g.ammo) gear.ammo = g.ammo;
+  return { level: d.level, vocation: d.vocation, gear };
+}
+
 /** O herói como entra na corrida: skills, inventário e stamina de agora. */
 export function heroRunSnapshot(
   d: RpgHeroDoc,
