@@ -5,5 +5,6 @@ export * from "./data.ts";
 export * from "./loot.ts";
 export * from "./party.ts";
 export * from "./progression.ts";
+export * from "./protocol.ts";
 export * from "./stamina.ts";
 export * from "./training.ts";

@@ -156,6 +156,10 @@ const ITEMS: DecorItem[] = [
   def({ id: "podium", name: "Púlpito", category: "equipment", rotations: 4, variants: WOOD }),
   def({ id: "drum-kit", name: "Bateria", category: "equipment", w: 2, h: 2, tags: ["música"] }),
   def({ id: "guitar-stand", name: "Guitarra no suporte", category: "equipment", variants: ["vermelho", "preto", "sunburst"], tags: ["música"] }),
+  // Treino do jogo idle (docs/espaco/jogo/ot): o herói ao lado treina a skill escolhida.
+  def({ id: "dummy-wood", name: "Boneco de madeira", category: "equipment", interaction: "train", description: "Fique ao lado e use para o seu herói treinar enquanto você conversa.", tags: ["treino", "dummy", "boneco", "jogo"] }),
+  def({ id: "dummy-target", name: "Alvo de treino", category: "equipment", interaction: "train", description: "Alvo para treinar distância e magia; também serve para as armas.", tags: ["treino", "dummy", "alvo", "jogo"] }),
+  def({ id: "dummy-mannequin", name: "Manequim de combate", category: "equipment", rotations: 4, interaction: "train", description: "Manequim de armadura para treinar golpes.", tags: ["treino", "dummy", "manequim", "jogo"] }),
 
   // ---- Especiais ------------------------------------------------------------
   def({ id: "portal-pad", name: "Portal", category: "special", layer: "rug", solid: false, interaction: "teleport", variants: NEON, description: "Leva para outro ambiente ao interagir." }),

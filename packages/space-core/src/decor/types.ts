@@ -33,7 +33,8 @@ export type Rotation = 0 | 1 | 2 | 3;
  * next to the instance and interacts; the server only stores and validates the
  * configuration (and performs `teleport`, which moves the avatar).
  */
-export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv";
+/** `train`: dummy de treino do jogo idle (docs/espaco/jogo/ot): o herói treina ao lado dele. */
+export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train";
 
 export interface InteractionConfig {
   /** Shown as the prompt and dialog title. */

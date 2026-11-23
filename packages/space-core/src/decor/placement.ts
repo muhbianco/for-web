@@ -96,6 +96,9 @@ export function validateConfig(item: DecorItem, config: InteractionConfig | unde
     case "tv":
       // The Smart TV needs no configuration: what it plays is the room's session.
       return config.url === undefined && config.text === undefined && config.target === undefined;
+    case "train":
+      // A training dummy only takes a title (what the prompt shows).
+      return config.url === undefined && config.text === undefined && config.target === undefined;
     default:
       return true;
   }

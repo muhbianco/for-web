@@ -3,8 +3,10 @@ import http from "node:http";
 
 import { Close, defaultPalette, MAX_FRAME_BYTES, parseCommand, ProfilePatch, TICK_HZ } from "@muchat/space-core";
 import { parseGameCommand } from "@muchat/space-core/game";
+import { parseRpgCommand } from "@muchat/space-core/game/ot";
 import { type WebSocket, WebSocketServer } from "ws";
 
+import type { RpgService } from "../game/ot/service.ts";
 import type { GameService } from "../game/service.ts";
 import type { Log } from "../log.ts";
 import type { StoatAuth, StoatMembers } from "../stoat/api.ts";
@@ -46,6 +48,8 @@ export interface GatewayDeps {
   rateLimit?: { rate: number; burst: number };
   /** Refúgio (ADR 0009); without it every game command answers game_disabled. */
   game?: GameService;
+  /** Idle game (docs/espaco/jogo/ot); without it every rpg command answers game_disabled. */
+  rpg?: RpgService;
 }
 
 class Session implements SessionPort {
@@ -161,6 +165,16 @@ export class Gateway {
         if (s.mode === "observe") return s.send({ v: 1, t: "error", re, d: { code: "not_allowed" } });
         if (!this.deps.game) return s.send({ v: 1, t: "error", re, d: { code: "game_disabled" } });
         return this.deps.game.handle(s, s.runtime, game.cmd);
+      }
+      // Idle game (docs/espaco/jogo/ot): same gate, own prefix.
+      const rpg = text.includes('"rpg.') ? parseRpgCommand(text) : null;
+      if (rpg) {
+        if (!s.runtime) return s.close(Close.Protocol, "hello expected");
+        if (!rpg.ok) return s.send({ v: 1, t: "error", d: { code: "invalid_message" } });
+        const re = rpg.cmd.id;
+        if (s.mode === "observe") return s.send({ v: 1, t: "error", re, d: { code: "not_allowed" } });
+        if (!this.deps.rpg) return s.send({ v: 1, t: "error", re, d: { code: "game_disabled" } });
+        return this.deps.rpg.handle(s, s.runtime, rpg.cmd);
       }
       const parsed = parseCommand(text);
       if (!parsed.ok) {

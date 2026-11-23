@@ -208,6 +208,14 @@ export class SpaceRuntime implements MediaHost, TvHost {
   /** Operator switch for Refúgio on this server (ADR 0009). */
   readonly gameAvailable: boolean;
 
+  /**
+   * Idle game (docs/espaco/jogo/ot): who trains at which dummy here. The hero document
+   * holds the authoritative session; this only notices when the avatar walks away.
+   */
+  private readonly trainingAt = new Map<string, string>();
+  /** Called when a trainer leaves the dummy (walked off, moved, evicted, dummy removed). */
+  onTrainingLeft: ((userId: string) => void) | null = null;
+
   get layoutFingerprint(): string {
     return this.map.fingerprint;
   }
@@ -381,6 +389,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const before = a.move.room;
     a.move = { ...a.move, pos: { x: Math.round(pos.x), y: Math.round(pos.y) }, room };
     a.dirty = true;
+    this.checkTraining(a.userId);
     if (before !== room) {
       a.report = null;
       this.presenceDirty = true;
@@ -422,6 +431,54 @@ export class SpaceRuntime implements MediaHost, TvHost {
   private setDecor(state: DecorState) {
     this.decor = state;
     this.installSolid();
+    // A dummy someone trains at was removed or moved: those trainers stop.
+    for (const userId of [...this.trainingAt.keys()]) this.checkTraining(userId);
+  }
+
+  // ---- idle game: training dummies (docs/espaco/jogo/ot) -----------------------
+
+  /** A training dummy: exists, is a dummy, the person may use it and stands next to it. */
+  trainSpot(viewer: Viewer, instanceId: string): { ok: true; zone: string } | { ok: false; code: string; reason?: string } {
+    const a = this.avatars.get(viewer.user._id);
+    if (!a || !a.session) return { ok: false, code: "not_allowed" };
+    const inst = this.decor.items.find((i) => i.id === instanceId);
+    const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+    const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
+    if (!inst || !item || !zone || item.interaction !== "train") return { ok: false, code: "not_found" };
+    if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
+    if (!this.besideInstance(a, instanceId)) return { ok: false, code: "not_allowed", reason: "too_far" };
+    return { ok: true, zone: inst.zone };
+  }
+
+  isTrainingAt(userId: string, instanceId: string): boolean {
+    return this.trainingAt.get(userId) === instanceId;
+  }
+
+  setTraining(userId: string, instanceId: string | null): void {
+    if (instanceId === null) this.trainingAt.delete(userId);
+    else this.trainingAt.set(userId, instanceId);
+  }
+
+  /** The avatar stands within one tile of the instance (the same reach as the prompt). */
+  private besideInstance(a: Avatar, instanceId: string): boolean {
+    const inst = this.decor.items.find((i) => i.id === instanceId);
+    const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+    const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
+    if (!inst || !item || !zone || item.interaction !== "train") return false;
+    const rect = instanceRect(zone, item, inst);
+    const tx = Math.floor(a.move.pos.x / this.map.tileSize);
+    const ty = Math.floor(a.move.pos.y / this.map.tileSize);
+    return tx >= rect.x0 - 1 && tx <= rect.x1 + 1 && ty >= rect.y0 - 1 && ty <= rect.y1 + 1;
+  }
+
+  /** A trainer who is no longer beside their dummy (or gone) stops training. */
+  private checkTraining(userId: string): void {
+    const instanceId = this.trainingAt.get(userId);
+    if (instanceId === undefined) return;
+    const a = this.avatars.get(userId);
+    if (a && !a.evicted && this.besideInstance(a, instanceId)) return;
+    this.trainingAt.delete(userId);
+    this.onTrainingLeft?.(userId);
   }
 
   /**
@@ -1197,6 +1254,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.sendPresence(session);
     // Back inside a room (reconnect, new tab, restart): its TV where it is now.
     if (a.move.room) this.tv.entered(session, a.move.room);
+    // Reconnected away from the dummy: the training that went on offline closes now.
+    this.checkTraining(user._id);
     // A token for media this person already holds here (new tab, reconnect,
     // restart), or the reason they have none.
     this.media?.resume(user._id);
@@ -1222,6 +1281,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (!a || a.evicted) return;
     a.evicted = true;
     a.session = null;
+    this.checkTraining(userId);
     a.disconnectedAt = Number.NEGATIVE_INFINITY;
     a.dirty = true;
     this.presenceDirty = true;
@@ -1243,6 +1303,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const before = a.move.room;
     a.move = out.state;
     a.dirty = true;
+    this.checkTraining(a.userId);
     // Walking in or out is the only thing that moves media between rooms.
     if (a.move.room !== before) {
       a.report = null;

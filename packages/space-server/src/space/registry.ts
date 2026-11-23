@@ -29,6 +29,7 @@ export class Registry implements RuntimeRegistry {
   private readonly media: { hub: MediaHub; lk: LiveKitAdmin } | undefined;
   /** Operator switch for Refúgio (ADR 0009); off everywhere when absent. */
   private readonly gameAvailable: (serverId: string) => boolean;
+  private readonly trainingLeft: ((runtime: SpaceRuntime, userId: string) => void) | undefined;
 
   constructor(deps: {
     cache: StoatCache;
@@ -47,6 +48,8 @@ export class Registry implements RuntimeRegistry {
     media?: { hub: MediaHub; lk: LiveKitAdmin };
     /** SPACE_GAME_SERVERS (ADR 0009): servers where Refúgio may be played. */
     gameAvailable?: (serverId: string) => boolean;
+    /** Idle game (docs/espaco/jogo/ot): a trainer left their dummy in this runtime. */
+    trainingLeft?: (runtime: SpaceRuntime, userId: string) => void;
   }) {
     this.cache = deps.cache;
     this.store = deps.store;
@@ -61,6 +64,7 @@ export class Registry implements RuntimeRegistry {
     this.everyServer = deps.everyServer ?? deps.enabled === undefined;
     this.media = deps.media;
     this.gameAvailable = deps.gameAvailable ?? (() => false);
+    this.trainingLeft = deps.trainingLeft;
     deps.cache.on((change) => {
       switch (change.kind) {
         case "structure": {
@@ -119,6 +123,10 @@ export class Registry implements RuntimeRegistry {
         media: this.media,
         gameAvailable: this.gameAvailable(serverId),
       });
+      if (this.trainingLeft) {
+        const left = this.trainingLeft;
+        rt.onTrainingLeft = (userId) => left(rt, userId);
+      }
       p = rt.init().then(() => {
         this.live.set(serverId, rt);
         return rt;

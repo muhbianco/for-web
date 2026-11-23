@@ -6,6 +6,8 @@
 import { Redis } from "ioredis";
 import { MongoClient } from "mongodb";
 
+import { MongoRpgStore } from "./game/ot/store.ts";
+import { RpgService, ratesFromEnv } from "./game/ot/service.ts";
 import { GameService } from "./game/service.ts";
 import { MongoGameStore } from "./game/store.ts";
 import { gameSwitch } from "./game/switch.ts";
@@ -114,6 +116,8 @@ async function main() {
   // environment: env() throws when a variable is missing, and this process
   // grants the rooms' voice.
   const game = gameSwitch(process.env.SPACE_GAME_SERVERS);
+  // Idle game (docs/espaco/jogo/ot): same switch; rates are the operator's, read the same way.
+  const rpg = new RpgService({ store: new MongoRpgStore(mongo), log, rates: ratesFromEnv(process.env.SPACE_GAME_RATES) });
   // The sweeper's view of LiveKit feeds presence (ADR 0008); the registry
   // exists only after media starts, hence the late binding.
   let onSnapshot: Parameters<typeof startMedia>[0] = () => undefined;
@@ -128,6 +132,7 @@ async function main() {
     enabled,
     everyServer,
     gameAvailable: game.available,
+    trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId),
     media: media ? { hub: media.hub, lk: media.lk } : undefined,
   });
   onSnapshot = (rooms, failed) => {
@@ -185,6 +190,7 @@ async function main() {
     runtimes: registry,
     profiles: new MongoProfileStore(mongo),
     game: new GameService({ store: new MongoGameStore(mongo), log }),
+    rpg,
     allowedOrigins: env("SPACE_ALLOWED_ORIGINS", "https://chat.muhbianco.com.br").split(",").map((s) => s.trim()),
     log,
     ready: (): Record<string, boolean> =>
