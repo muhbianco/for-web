@@ -61,6 +61,20 @@ export function rpgLabels() {
       return t`Escolha a vocação primeiro.`;
     if (code === "rpg_invalid" && reason === "vocation_set")
       return t`A vocação já foi escolhida.`;
+    if (code === "rpg_invalid" && reason === "tv_busy")
+      return t`Já tem um grupo se formando nesta TV. Entre nele ou espere.`;
+    if (code === "rpg_invalid" && reason === "in_lobby")
+      return t`Você já está em outro grupo. Saia dele primeiro.`;
+    if (code === "rpg_invalid" && reason === "full")
+      return t`O grupo está cheio.`;
+    if (code === "rpg_invalid" && reason === "level")
+      return t`Seu herói ainda não tem o level mínimo desta dungeon.`;
+    if (code === "rpg_invalid" && reason === "no_lobby")
+      return t`Esse grupo não existe mais.`;
+    if (code === "rpg_invalid" && reason === "not_leader")
+      return t`Só quem montou o grupo pode começar.`;
+    if (code === "rpg_invalid" && reason === "expired")
+      return t`O tempo do grupo acabou. Monte de novo.`;
     return t`Não foi possível fazer isso agora. Tente de novo.`;
   };
   return { vocation, skill, error };

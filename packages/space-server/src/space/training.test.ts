@@ -1,7 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { type DecorInstance, Perm, tileCenter } from "@muchat/space-core";
+import {
+  type DecorInstance,
+  CATALOG,
+  instanceRect,
+  itemOf,
+  Perm,
+  roomZoneKey,
+  tileCenter,
+} from "@muchat/space-core";
 
 import { silentLog } from "../log.ts";
 import { StoatCache } from "../stoat/cache.ts";
@@ -312,8 +320,14 @@ test("herói no avatar: level e treino chegam aos outros; quem entra com o jogo 
   rt.setHeroLevel(ANA, 7);
   rt.tick();
   const seen = () =>
-    (cai.last("avatar.positions")?.d as { avatars: Array<{ user_id: string; hero?: { level: number; training: boolean } }> })
-      .avatars.find((a) => a.user_id === ANA)?.hero;
+    (
+      cai.last("avatar.positions")?.d as {
+        avatars: Array<{
+          user_id: string;
+          hero?: { level: number; training: boolean };
+        }>;
+      }
+    ).avatars.find((a) => a.user_id === ANA)?.hero;
   assert.deepEqual(seen(), { level: 7, training: false });
   const dummy = await placeDummy(rt, ana, "dummy-1");
   moveTo(rt, ANA, dummy.tx, dummy.ty + 1);
@@ -324,4 +338,124 @@ test("herói no avatar: level e treino chegam aos outros; quem entra com o jogo 
   moveTo(rt, ANA, dummy.tx + 5, dummy.ty);
   rt.tick();
   assert.deepEqual(seen(), { level: 7, training: false });
+});
+
+type RtInternals = {
+  avatars: Map<string, unknown>;
+  zones: { byKey: Map<string, import("@muchat/space-core").Zone> };
+  place: (
+    a: unknown,
+    pos: { x: number; y: number },
+    room: string | null,
+  ) => void;
+};
+
+/** A TV que o tema pôs na sala aberta e um tile ao lado dela, dentro da sala. */
+function tvOfPub(rt: SpaceRuntime) {
+  const inst = rt.decorState.items.find(
+    (i) =>
+      i.zone === roomZoneKey(PUB) &&
+      itemOf(CATALOG, i.item)?.interaction === "tv",
+  )!;
+  const zone = (rt as unknown as RtInternals).zones.byKey.get(inst.zone)!;
+  const rect = instanceRect(zone, itemOf(CATALOG, inst.item)!, inst);
+  return { id: inst.id, beside: { tx: rect.x0, ty: rect.y1 + 1 } };
+}
+
+function placeAt(
+  rt: SpaceRuntime,
+  userId: string,
+  tile: { tx: number; ty: number },
+  room: string | null,
+) {
+  const i = rt as unknown as RtInternals;
+  i.place(i.avatars.get(userId), tileCenter(tile), room);
+}
+
+const lobbyEvents = (s: FakeSession) =>
+  s.of("rpg.lobby").map(
+    (e) =>
+      e.d as {
+        tv: string;
+        lobby: { members: Array<{ user_id: string }> } | null;
+        ended?: string;
+      },
+  );
+const lobbyMember = (id: string, name: string) => ({
+  user_id: id,
+  name,
+  vocation: 4 as const,
+  level: 5,
+});
+
+test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; sair da sala ou desconectar tira do grupo", async () => {
+  let now = 1_000;
+  const rt = new SpaceRuntime({
+    serverId: SRV,
+    cache: makeCache(),
+    store: new MemoryAssignmentStore(),
+    decorStore: new MemoryDecorStore(),
+    log: silentLog,
+    now: () => now,
+  });
+  await rt.init();
+  const ana = enter(rt, ANA, "Ana");
+  const bia = enter(rt, "01JB1A00000000000000000000", "Bia");
+  const cai = enter(rt, "01JCA100000000000000000000", "Cai");
+  const tv = tvOfPub(rt);
+  // Fora da sala: longe.
+  assert.deepEqual(rt.tvSpot(ana.viewer, tv.id), {
+    ok: false,
+    code: "not_allowed",
+    reason: "too_far",
+  });
+  placeAt(rt, ANA, tv.beside, PUB);
+  assert.deepEqual(rt.tvSpot(ana.viewer, tv.id), { ok: true, room: PUB });
+  assert.deepEqual(rt.tvSpot(ana.viewer, "nada"), {
+    ok: false,
+    code: "not_found",
+  });
+  // Bia já está na sala quando Ana cria: recebe; Cai (fora) não.
+  placeAt(rt, "01JB1A00000000000000000000", tv.beside, PUB);
+  assert.equal(
+    rt.lobbyCreate(tv.id, PUB, "cripta-do-musgo", lobbyMember(ANA, "Ana")).ok,
+    true,
+  );
+  assert.equal(lobbyEvents(bia).at(-1)?.lobby?.members.length, 1);
+  assert.equal(lobbyEvents(cai).length, 0);
+  // Cai entra na sala: recebe o grupo que já existe.
+  placeAt(rt, "01JCA100000000000000000000", tv.beside, PUB);
+  assert.equal(lobbyEvents(cai).at(-1)?.tv, tv.id);
+  // Bia entra e depois sai da sala: sai do grupo, e quem fica vê.
+  assert.equal(
+    rt.lobbyJoin(tv.id, lobbyMember("01JB1A00000000000000000000", "Bia")).ok,
+    true,
+  );
+  assert.equal(lobbyEvents(ana).at(-1)?.lobby?.members.length, 2);
+  placeAt(rt, "01JB1A00000000000000000000", rt.map.spawns[0]!, null);
+  assert.equal(rt.lobbies.of("01JB1A00000000000000000000"), undefined);
+  assert.deepEqual(
+    lobbyEvents(ana)
+      .at(-1)
+      ?.lobby?.members.map((m) => m.user_id),
+    [ANA],
+  );
+  // A líder desconecta: o grupo é cancelado para quem está na sala.
+  rt.leave(ana);
+  assert.equal(rt.lobbies.get(tv.id), undefined);
+  assert.equal(lobbyEvents(cai).at(-1)?.ended, "cancelled");
+  // Prazo: Cai cria, ninguém começa, o tick depois de 5 min encerra.
+  assert.equal(
+    rt.lobbyCreate(
+      tv.id,
+      PUB,
+      "cripta-do-musgo",
+      lobbyMember("01JCA100000000000000000000", "Cai"),
+    ).ok,
+    true,
+  );
+  now += 5 * 60 * 1000;
+  rt.tick();
+  assert.equal(rt.lobbies.get(tv.id), undefined);
+  assert.equal(lobbyEvents(cai).at(-1)?.ended, "expired");
 });

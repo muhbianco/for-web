@@ -63,6 +63,9 @@ const GamePanel = lazy(() => import("./game/GamePanel"));
  */
 const TrainingDialog = lazy(() => import("./game/TrainingDialog"));
 const TrainingChip = lazy(() => import("./game/TrainingChip"));
+/** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
+const TvMenu = lazy(() => import("./game/TvMenu"));
+const LobbyChip = lazy(() => import("./game/LobbyChip"));
 
 const STAGE_MODE_KEY = "muchat.space.stageMode";
 
@@ -126,6 +129,34 @@ function ServerSpace(props: { serverId: string }) {
   );
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
+
+  // A dungeon group started in our room (stage O4): the room hears about it. The fight
+  // itself is stage O5. The dungeon's name comes with the game's chunk, not this page's.
+  createEffect(
+    on(
+      () => ui()?.lobbyStarted?.n,
+      (n) => {
+        const started = untrack(() => ui()?.lobbyStarted);
+        if (!n || !started) return;
+        // Who went in leaves the TV menu (the leader's closes on the answer already).
+        const me = client().user?.id;
+        if (
+          me &&
+          started.members.some((m) => m.user_id === me) &&
+          untrack(ui)?.tvMenu
+        ) {
+          untrack(view)?.closeTvMenu();
+          host?.focus();
+        }
+        const names = started.members.map((m) => m.name).join(", ");
+        void import("@muchat/space-core/game/ot").then((m) => {
+          const dungeon = m.dungeonOf(started.dungeon)?.name ?? started.dungeon;
+          setNotice(t`O grupo de ${names} entrou na dungeon ${dungeon}.`);
+        });
+      },
+      { defer: true },
+    ),
+  );
   // Media stage (screens, the room's TV): only in a room, only when opened.
   const [stageOpen, setStageOpen] = createSignal(false);
   const [stageTab, setStageTab] = createSignal<StageTab>("call");
@@ -612,6 +643,24 @@ function ServerSpace(props: { serverId: string }) {
             </Suspense>
           )}
         </Show>
+        <Show
+          when={
+            view() && Object.keys(ui()?.lobbies ?? {}).length > 0
+              ? ui()!.lobbies
+              : null
+          }
+        >
+          {(lobbies) => (
+            <Suspense>
+              <LobbyChip
+                view={view()!}
+                lobbies={lobbies()}
+                myId={client().user?.id ?? null}
+                onAct={() => host?.focus()}
+              />
+            </Suspense>
+          )}
+        </Show>
         <Show when={ui()?.prompt && !ui()?.editor.enabled}>
           {(_) => (
             <PromptChip type="button" onClick={() => view()?.interact()}>
@@ -750,6 +799,23 @@ function ServerSpace(props: { serverId: string }) {
                   host?.focus();
                 }}
               />
+            </Match>
+            <Match when={view() && ui()?.tvMenu}>
+              {(request) => (
+                <Suspense>
+                  <TvMenu
+                    view={view()!}
+                    request={request()}
+                    hero={ui()?.rpg?.hero ?? null}
+                    lobby={ui()?.lobbies[request().instance] ?? null}
+                    myId={client().user?.id ?? null}
+                    onClose={() => {
+                      view()?.closeTvMenu();
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
             </Match>
             <Match when={view() && ui()?.trainRequest}>
               {(request) => (

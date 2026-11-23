@@ -1,6 +1,7 @@
 import {
   type Rates,
   type RpgCommand,
+  type RpgLobbyMember,
   type RpgStateEvent,
   DEFAULT_RATES,
 } from "@muchat/space-core/game/ot";
@@ -20,6 +21,7 @@ import {
   stopTraining,
   trainingExpired,
 } from "./hero.ts";
+import { type LobbyResult, lobbyView } from "./lobby.ts";
 import type { RpgStore } from "./store.ts";
 
 /** O que o jogo idle precisa do Espaço em que a pessoa está; o SpaceRuntime implementa. */
@@ -37,6 +39,21 @@ export interface RpgHost {
   /** The hero's level under the person's name on the map (null: no hero). */
   setHeroLevel(userId: string, level: number | null): void;
   sessionOf(userId: string): SessionPort | null;
+  displayName(userId: string): string;
+  /** A TV numa sala, ao lado da pessoa, dentro da sala (etapa O4). */
+  tvSpot(
+    viewer: Viewer,
+    tv: string,
+  ): { ok: true; room: string } | { ok: false; code: string; reason?: string };
+  lobbyCreate(
+    tv: string,
+    room: string,
+    dungeon: string,
+    member: RpgLobbyMember,
+  ): LobbyResult;
+  lobbyJoin(tv: string, member: RpgLobbyMember): LobbyResult;
+  lobbyLeave(userId: string): void;
+  lobbyStart(userId: string): LobbyResult;
 }
 
 /** Comandos por pessoa (além do balde de 20/s da conexão), como no Refúgio. */
@@ -169,7 +186,11 @@ export class RpgService {
       });
 
     // Reenvio de um comando já aplicado (reconexão): devolve o estado, não age de novo.
-    if (cmd.t !== "rpg.open" && this.recent.get(userId)?.includes(cmd.id)) {
+    if (
+      cmd.t !== "rpg.open" &&
+      !cmd.t.startsWith("rpg.lobby.") &&
+      this.recent.get(userId)?.includes(cmd.id)
+    ) {
       return this.push(session, await this.load(userId), cmd.id, host);
     }
 
@@ -190,7 +211,8 @@ export class RpgService {
             : { ok: false, reason: "no_training" },
         );
         if (cur.training) host.setTraining(userId, null);
-        if (out && "doc" in out) return this.push(session, out.doc, cmd.id, host);
+        if (out && "doc" in out)
+          return this.push(session, out.doc, cmd.id, host);
         return this.push(session, await this.load(userId), cmd.id, host);
       }
       case "rpg.vocation": {
@@ -226,11 +248,62 @@ export class RpgService {
             : { ok: false, reason: "no_training" },
         );
         host.setTraining(userId, null);
-        if (!out) return this.push(session, await this.load(userId), cmd.id, host);
+        if (!out)
+          return this.push(session, await this.load(userId), cmd.id, host);
         if ("reason" in out)
           return this.push(session, await this.load(userId), cmd.id, host);
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
+      }
+      case "rpg.lobby.create":
+      case "rpg.lobby.join": {
+        const spot = host.tvSpot(session.viewer, cmd.d.tv);
+        if (!spot.ok) return fail(spot.code, spot.reason);
+        const hero = await this.load(userId);
+        if (!hero || hero.vocation === 0)
+          return fail("rpg_invalid", "no_vocation");
+        const member: RpgLobbyMember = {
+          user_id: userId,
+          name: host.displayName(userId),
+          vocation: hero.vocation,
+          level: hero.level,
+        };
+        const res =
+          cmd.t === "rpg.lobby.create"
+            ? host.lobbyCreate(cmd.d.tv, spot.room, cmd.d.dungeon, member)
+            : host.lobbyJoin(cmd.d.tv, member);
+        if (!res.ok) return fail("rpg_invalid", res.reason);
+        return session.send({
+          v: 1,
+          t: "rpg.lobby",
+          re: cmd.id,
+          d: { tv: res.lobby.tv, lobby: lobbyView(res.lobby) },
+        });
+      }
+      case "rpg.lobby.leave": {
+        host.lobbyLeave(userId);
+        return session.send({
+          v: 1,
+          t: "rpg.lobby",
+          re: cmd.id,
+          d: { tv: "", lobby: null },
+        });
+      }
+      case "rpg.lobby.start": {
+        // A dungeon em si é a etapa O5: aqui a sala fecha e o grupo é anunciado na sala do mapa.
+        const res = host.lobbyStart(userId);
+        if (!res.ok) return fail("rpg_invalid", res.reason);
+        return session.send({
+          v: 1,
+          t: "rpg.lobby",
+          re: cmd.id,
+          d: {
+            tv: res.lobby.tv,
+            lobby: null,
+            ended: "started",
+            started: { dungeon: res.lobby.dungeon, members: res.lobby.members },
+          },
+        });
       }
     }
   }

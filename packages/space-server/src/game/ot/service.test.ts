@@ -5,6 +5,7 @@ import type { RpgCommand, RpgHeroView } from "@muchat/space-core/game/ot";
 
 import { silentLog } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
+import { LobbyHub } from "./lobby.ts";
 import { type RpgHost, RpgService, ratesFromEnv } from "./service.ts";
 import { MemoryRpgStore } from "./store.ts";
 
@@ -60,6 +61,34 @@ class FakeHost implements RpgHost {
   readonly levels = new Map<string, number | null>();
   setHeroLevel(userId: string, level: number | null) {
     this.levels.set(userId, level);
+  }
+  tvNear = true;
+  readonly lobbies = new LobbyHub();
+  displayName(userId: string) {
+    return userId === "U1" ? "Ana" : "Bia";
+  }
+  tvSpot(_v: Viewer, tv: string) {
+    if (tv === "nope") return { ok: false as const, code: "not_found" };
+    return this.tvNear
+      ? { ok: true as const, room: "R1" }
+      : { ok: false as const, code: "not_allowed", reason: "too_far" };
+  }
+  lobbyCreate(
+    tv: string,
+    room: string,
+    dungeon: string,
+    member: Parameters<LobbyHub["create"]>[3],
+  ) {
+    return this.lobbies.create(tv, room, dungeon, member, 0);
+  }
+  lobbyJoin(tv: string, member: Parameters<LobbyHub["join"]>[1]) {
+    return this.lobbies.join(tv, member);
+  }
+  lobbyLeave(userId: string) {
+    this.lobbies.leave(userId);
+  }
+  lobbyStart(userId: string) {
+    return this.lobbies.start(userId, 1);
   }
   sessionOf(userId: string) {
     return this.sessions.get(userId) ?? null;
@@ -220,4 +249,69 @@ test("o level do herói vai para o avatar: ao mudar e quando a pessoa entra", as
   svc.avatarJoined(host, "U1");
   await svc.idle("U1");
   assert.equal(host.levels.get("U1"), 1);
+});
+
+test("grupo na TV: exige vocação e estar ao lado; cria, outra pessoa entra, só o líder começa", async () => {
+  const { s: ana, host, send, svc } = await setup();
+  const a = await send("rpg.lobby.create", {
+    tv: "tv1",
+    dungeon: "cripta-do-musgo",
+  });
+  assert.deepEqual(ana.errors(a), [
+    { code: "rpg_invalid", reason: "no_vocation" },
+  ]);
+  await send("rpg.vocation", { vocation: 4 });
+  host.tvNear = false;
+  const b = await send("rpg.lobby.create", {
+    tv: "tv1",
+    dungeon: "cripta-do-musgo",
+  });
+  assert.deepEqual(ana.errors(b), [{ code: "not_allowed", reason: "too_far" }]);
+  host.tvNear = true;
+  const c = await send("rpg.lobby.create", {
+    tv: "tv1",
+    dungeon: "galerias-afogadas",
+  });
+  assert.deepEqual(ana.errors(c), [{ code: "rpg_invalid", reason: "level" }]);
+  await send("rpg.lobby.create", { tv: "tv1", dungeon: "cripta-do-musgo" });
+  assert.equal(host.lobbies.get("tv1")?.leader, "U1");
+  assert.deepEqual(
+    host.lobbies.get("tv1")?.members.map((m) => [m.name, m.vocation, m.level]),
+    [["Ana", 4, 1]],
+  );
+  // Bia (outra conta) entra pelo mesmo serviço.
+  const biaViewer = {
+    user: { _id: "U2", username: "bia", display_name: "Bia" },
+    member: null,
+  } as unknown as Viewer;
+  const bia = new FakeSession(biaViewer);
+  svc.handle(bia, host, {
+    v: 1,
+    id: "b1",
+    t: "rpg.vocation",
+    d: { vocation: 3 },
+  } as RpgCommand);
+  await svc.idle("U2");
+  svc.handle(bia, host, {
+    v: 1,
+    id: "b2",
+    t: "rpg.lobby.join",
+    d: { tv: "tv1" },
+  } as RpgCommand);
+  await svc.idle("U2");
+  assert.deepEqual(
+    host.lobbies.get("tv1")?.members.map((m) => m.user_id),
+    ["U1", "U2"],
+  );
+  svc.handle(bia, host, { v: 1, id: "b3", t: "rpg.lobby.start" } as RpgCommand);
+  await svc.idle("U2");
+  assert.deepEqual(bia.errors("b3"), [
+    { code: "rpg_invalid", reason: "not_leader" },
+  ]);
+  await send("rpg.lobby.start");
+  assert.equal(host.lobbies.get("tv1"), undefined);
+  const started = ana.events.filter((e) => e.t === "rpg.lobby").at(-1)!.d as {
+    ended?: string;
+  };
+  assert.equal(started.ended, "started");
 });

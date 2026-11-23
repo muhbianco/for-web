@@ -54,11 +54,48 @@ export const RpgTrainStopCmd = z.object({
   d: z.object({}).strict().optional(),
 });
 
+/** Cria a sala de preparação na TV `tv` para a dungeon (a pessoa tem de estar ao lado da TV). */
+export const RpgLobbyCreateCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lobby.create"),
+  d: z
+    .object({
+      tv: z.string().min(1).max(40),
+      dungeon: z.string().min(1).max(40),
+    })
+    .strict(),
+});
+
+/** Entra no grupo da TV `tv` (ao lado dela). */
+export const RpgLobbyJoinCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lobby.join"),
+  d: z.object({ tv: z.string().min(1).max(40) }).strict(),
+});
+
+/** Sai do grupo (o líder saindo cancela). */
+export const RpgLobbyLeaveCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lobby.leave"),
+  d: z.object({}).strict().optional(),
+});
+
+/** O líder começa a dungeon. */
+export const RpgLobbyStartCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lobby.start"),
+  d: z.object({}).strict().optional(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
   RpgTrainStartCmd,
   RpgTrainStopCmd,
+  RpgLobbyCreateCmd,
+  RpgLobbyJoinCmd,
+  RpgLobbyLeaveCmd,
+  RpgLobbyStartCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -122,4 +159,38 @@ export interface RpgStateEvent {
   t: "rpg.state";
   re?: string;
   d: { server_now: number; rev: number; hero: RpgHeroView | null };
+}
+
+/** Um membro do grupo como a sala vê. */
+export interface RpgLobbyMember {
+  user_id: string;
+  name: string;
+  vocation: VocationId;
+  level: number;
+}
+
+/** A sala de preparação de uma TV. */
+export interface RpgLobbyView {
+  tv: string;
+  room: string;
+  dungeon: string;
+  leader: string;
+  members: RpgLobbyMember[];
+  max: number;
+  expires_at: number;
+}
+
+/**
+ * Estado da sala de uma TV, para quem está na sala do mapa: `lobby` null = não há grupo ali.
+ * `started` vem uma vez, quando o líder começa (a dungeon em si é a etapa O5).
+ */
+export interface RpgLobbyEvent {
+  v: 1;
+  t: "rpg.lobby";
+  d: {
+    tv: string;
+    lobby: RpgLobbyView | null;
+    ended?: "started" | "cancelled" | "expired";
+    started?: { dungeon: string; members: RpgLobbyMember[] };
+  };
 }

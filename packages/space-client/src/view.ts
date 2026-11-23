@@ -24,7 +24,11 @@ import {
 const clampPos = (s: number) =>
   Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
 
-import type { RpgHeroView } from "@muchat/space-core/game/ot";
+import type {
+  RpgHeroView,
+  RpgLobbyMember,
+  RpgLobbyView,
+} from "@muchat/space-core/game/ot";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type EditorState, Editor } from "./editor.ts";
 import { type Prompt, nearestInteractive } from "./interact.ts";
@@ -101,11 +105,21 @@ export interface SpaceUiState {
   rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
   /** Someone used a training dummy on the map: the app opens the training dialog. */
   trainRequest: { instance: string; title: string; n: number } | null;
+  /** Someone used a TV with the game on: the app shows "watch" or "dungeon". */
+  tvMenu: { instance: string; title: string; n: number } | null;
+  /** Dungeon groups at the TVs of our room (stage O4), by TV instance. */
+  lobbies: Record<string, RpgLobbyView>;
+  /** The last group that started in our room (the app tells the room). */
+  lobbyStarted: {
+    dungeon: string;
+    members: RpgLobbyMember[];
+    n: number;
+  } | null;
 }
 
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
-  t: "game.state" | "game.fight" | "rpg.state" | "error";
+  t: "game.state" | "game.fight" | "rpg.state" | "rpg.lobby" | "error";
   re?: string;
   d: Record<string, unknown>;
 };
@@ -226,6 +240,9 @@ export class SpaceView {
       game: null,
       rpg: null,
       trainRequest: null,
+      tvMenu: null,
+      lobbies: {},
+      lobbyStarted: null,
     };
   }
 
@@ -342,6 +359,8 @@ export class SpaceView {
       switch (e.kind) {
         case "room_changed":
           if (e.local) v.media?.roomChanged(e.to);
+          // The groups shown are our room's; the server sends the new room's on entry.
+          if (Object.keys(v.state.lobbies).length) v.patch({ lobbies: {} });
           v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
           v.syncTv();
           break;
@@ -538,6 +557,42 @@ export class SpaceView {
           d,
         });
         return;
+      case "rpg.lobby": {
+        if (typeof e.re === "string") this.gameCommands.delete(e.re);
+        const tv = typeof d.tv === "string" ? d.tv : "";
+        const lobbies = { ...this.state.lobbies };
+        const lobby = (d.lobby ?? null) as RpgLobbyView | null;
+        if (lobby && lobby.room === this.world.me?.room)
+          lobbies[lobby.tv] = lobby;
+        else if (tv) delete lobbies[tv];
+        else if (d.lobby === null && typeof e.re === "string") {
+          // Our own "leave": drop the group we were in.
+          for (const [k, l] of Object.entries(lobbies))
+            if (l.members.some((m) => m.user_id === this.world.me?.userId))
+              delete lobbies[k];
+        }
+        const started =
+          d.ended === "started" && d.started
+            ? (d.started as { dungeon: string; members: RpgLobbyMember[] })
+            : null;
+        this.patch({
+          lobbies,
+          ...(started
+            ? {
+                lobbyStarted: {
+                  ...started,
+                  n: (this.state.lobbyStarted?.n ?? 0) + 1,
+                },
+              }
+            : {}),
+        });
+        this.emitGame({
+          t: "rpg.lobby",
+          re: typeof e.re === "string" ? e.re : undefined,
+          d,
+        });
+        return;
+      }
       case "rpg.state": {
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
         const hero = (d.hero ?? null) as RpgHeroView | null;
@@ -830,6 +885,17 @@ export class SpaceView {
       return;
     }
     if (p.item.interaction === "tv") {
+      // With the idle game on, the TV also starts dungeons (stage O4): the app asks which.
+      if (this.state.game?.enabled) {
+        this.patch({
+          tvMenu: {
+            instance: p.inst.id,
+            title: p.label,
+            n: (this.state.tvMenu?.n ?? 0) + 1,
+          },
+        });
+        return;
+      }
       // The room's Smart TV: the app opens it on the media stage.
       this.patch({ tvOpenRequest: this.state.tvOpenRequest + 1 });
       return;
@@ -855,6 +921,16 @@ export class SpaceView {
   }
 
   /** The app closed the training dialog (docs/espaco/jogo/ot). */
+  /** The app closed the TV menu (stage O4). */
+  closeTvMenu() {
+    if (this.state.tvMenu) this.patch({ tvMenu: null });
+  }
+
+  /** "Watch" from the TV menu: the Smart TV as before. */
+  watchTv() {
+    this.patch({ tvMenu: null, tvOpenRequest: this.state.tvOpenRequest + 1 });
+  }
+
   closeTrainRequest() {
     if (this.state.trainRequest) this.patch({ trainRequest: null });
   }

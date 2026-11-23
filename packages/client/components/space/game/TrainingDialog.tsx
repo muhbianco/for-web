@@ -12,6 +12,8 @@ import { styled } from "styled-system/jsx";
 
 import { Button } from "@revolt/ui";
 
+import { VocationPicker } from "./VocationPicker";
+import { useModalKeys } from "./modalKeys";
 import {
   bankNow,
   duration,
@@ -36,7 +38,13 @@ export default function TrainingDialog(props: {
   const L = rpgLabels();
   const [busy, setBusy] = createSignal(false);
   const [error, setError] = createSignal<string | null>(null);
-  const [confirmVoc, setConfirmVoc] = createSignal<1 | 2 | 3 | 4 | null>(null);
+  let card: HTMLDivElement | undefined;
+  let title: HTMLHeadingElement | undefined;
+  const refocus = useModalKeys(
+    () => card,
+    () => title,
+    () => props.onClose(),
+  );
   const hero = () => props.rpg?.hero ?? null;
   const vocation = () => hero()?.vocation ?? 0;
   const now = () =>
@@ -49,6 +57,7 @@ export default function TrainingDialog(props: {
     const p = pending;
     pending = null;
     setBusy(false);
+    queueMicrotask(refocus);
     if (e.t === "error") {
       const d = e.d as { code?: string; reason?: string };
       setError(L.error(d.code ?? "internal", d.reason));
@@ -66,7 +75,7 @@ export default function TrainingDialog(props: {
   }
 
   const chooseVocation = (v: 1 | 2 | 3 | 4) =>
-    send("rpg.vocation", { vocation: v }, () => setConfirmVoc(null));
+    send("rpg.vocation", { vocation: v }, () => undefined);
   const train = (skill: TrainingSkill) =>
     send(
       "rpg.train.start",
@@ -88,57 +97,18 @@ export default function TrainingDialog(props: {
       }}
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
-      <Card role="dialog" aria-modal="true" aria-labelledby="rpg-train-title">
-        <h2 id="rpg-train-title">{props.request.title}</h2>
+      <Card
+        ref={card}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="rpg-train-title"
+      >
+        <h2 id="rpg-train-title" tabIndex={-1} ref={title}>
+          {props.request.title}
+        </h2>
         <Show
           when={vocation() !== 0}
-          fallback={
-            <>
-              <p>{t`Seu avatar também é um herói. Escolha a vocação dele para começar a treinar.`}</p>
-              <Show
-                when={confirmVoc()}
-                fallback={
-                  <Choices>
-                    <For each={[4, 3, 1, 2] as const}>
-                      {(v) => (
-                        <Choice
-                          type="button"
-                          disabled={busy()}
-                          onClick={() => setConfirmVoc(v)}
-                        >
-                          <strong>{L.vocation[v].name}</strong>
-                          <Muted>{L.vocation[v].blurb}</Muted>
-                        </Choice>
-                      )}
-                    </For>
-                  </Choices>
-                }
-              >
-                {(v) => (
-                  <>
-                    <p>
-                      {t`Ser ${L.vocation[v()].name}? A escolha é definitiva.`}
-                    </p>
-                    <Row>
-                      <Button
-                        variant="filled"
-                        isDisabled={busy()}
-                        onPress={() => chooseVocation(v())}
-                      >
-                        {t`Confirmar`}
-                      </Button>
-                      <Button
-                        variant="text"
-                        onPress={() => setConfirmVoc(null)}
-                      >
-                        {t`Voltar`}
-                      </Button>
-                    </Row>
-                  </>
-                )}
-              </Show>
-            </>
-          }
+          fallback={<VocationPicker busy={busy()} onChoose={chooseVocation} />}
         >
           <Show
             when={trainingHere()}
@@ -248,29 +218,8 @@ const Card = styled("div", {
     background: "var(--md-sys-color-surface-container-high)",
     color: "var(--md-sys-color-on-surface)",
     overflow: "auto",
-    "& h2": { margin: 0, fontSize: "1.15rem" },
+    "& h2": { margin: 0, fontSize: "1.15rem", outline: "none" },
     "& p": { margin: 0, lineHeight: 1.5 },
-  },
-});
-
-const Choices = styled("div", {
-  base: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" },
-});
-
-const Choice = styled("button", {
-  base: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    textAlign: "start",
-    padding: "10px 12px",
-    borderRadius: "12px",
-    border: "1px solid var(--md-sys-color-outline-variant)",
-    background: "var(--md-sys-color-surface-container)",
-    color: "inherit",
-    cursor: "pointer",
-    "&:hover": { borderColor: "var(--md-sys-color-primary)" },
-    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
   },
 });
 

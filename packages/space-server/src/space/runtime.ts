@@ -53,7 +53,9 @@ import {
   type ZoneIndex,
   zonesOf,
 } from "@muchat/space-core";
+import type { RpgLobbyMember } from "@muchat/space-core/game/ot";
 
+import { type Lobby, type LobbyResult, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
 import type { Log } from "../log.ts";
 import type { LiveKitAdmin, ParticipantLite } from "../media/ports.ts";
 import type { StoatCache } from "../stoat/cache.ts";
@@ -219,6 +221,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
   onTrainingLeft: ((userId: string) => void) | null = null;
   /** Called when someone enters the map where the game is on (to show their hero's level). */
   onAvatarJoined: ((userId: string) => void) | null = null;
+  /** Idle game: the TVs' preparation rooms (docs/espaco/jogo/ot, stage O4). */
+  readonly lobbies = new LobbyHub();
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -398,6 +402,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
       a.report = null;
       this.presenceDirty = true;
       if (room && a.session) this.tv.entered(a.session, room);
+      this.lobbyRoomChanged(a.userId, room);
     }
     a.session?.send({ v: 1, t: "avatar.correction", d: { x: a.move.pos.x, y: a.move.pos.y, room, seq: a.move.seq, reason: "moved" } });
     if (before !== room) this.media?.sync(a.userId, "refresh");
@@ -437,6 +442,89 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.installSolid();
     // A dummy someone trains at was removed or moved: those trainers stop.
     for (const userId of [...this.trainingAt.keys()]) this.checkTraining(userId);
+    // A TV with a preparation room was removed: the room ends.
+    for (const tv of this.lobbies.tvs()) {
+      if (state.items.some((i) => i.id === tv)) continue;
+      const lobby = this.lobbies.dropTv(tv);
+      if (lobby) this.broadcastLobby(lobby.tv, lobby.room, null, { ended: "cancelled" });
+    }
+  }
+
+  // ---- idle game: dungeon groups at the TVs (docs/espaco/jogo/ot, stage O4) -----
+
+  /** A TV in a room, usable by the person, who stands next to it inside that room. */
+  tvSpot(viewer: Viewer, tv: string): { ok: true; room: string } | { ok: false; code: string; reason?: string } {
+    const a = this.avatars.get(viewer.user._id);
+    if (!a || !a.session) return { ok: false, code: "not_allowed" };
+    const inst = this.decor.items.find((i) => i.id === tv);
+    const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+    const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
+    if (!inst || !item || !zone || item.interaction !== "tv" || zone.kind !== "room" || !zone.roomId)
+      return { ok: false, code: "not_found" };
+    if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
+    if (a.move.room !== zone.roomId || !this.besideInstance(a, tv, "tv"))
+      return { ok: false, code: "not_allowed", reason: "too_far" };
+    return { ok: true, room: zone.roomId };
+  }
+
+  lobbyCreate(tv: string, room: string, dungeon: string, member: RpgLobbyMember): LobbyResult {
+    const res = this.lobbies.create(tv, room, dungeon, member, this.now());
+    if (res.ok) this.broadcastLobby(tv, room, res.lobby, {}, member.user_id);
+    return res;
+  }
+
+  lobbyJoin(tv: string, member: RpgLobbyMember): LobbyResult {
+    const res = this.lobbies.join(tv, member);
+    if (res.ok) this.broadcastLobby(tv, res.lobby.room, res.lobby, {}, member.user_id);
+    return res;
+  }
+
+  lobbyLeave(userId: string): void {
+    const out = this.lobbies.leave(userId);
+    if (!out) return;
+    this.broadcastLobby(out.lobby.tv, out.lobby.room, out.ended ? null : out.lobby, out.ended ? { ended: out.ended } : {});
+  }
+
+  lobbyStart(userId: string): LobbyResult {
+    const res = this.lobbies.start(userId, this.now());
+    if (res.ok) {
+      this.broadcastLobby(res.lobby.tv, res.lobby.room, null, {
+        ended: "started",
+        started: { dungeon: res.lobby.dungeon, members: res.lobby.members.map((m) => ({ ...m })) },
+      });
+      this.log.info("rpg lobby started", {
+        server: this.serverId,
+        room: res.lobby.room,
+        tv: res.lobby.tv,
+        dungeon: res.lobby.dungeon,
+        members: res.lobby.members.length,
+      });
+    }
+    return res;
+  }
+
+  /** The person walked into another room: out of a group elsewhere; the new room's groups shown. */
+  private lobbyRoomChanged(userId: string, room: string | null) {
+    const mine = this.lobbies.of(userId);
+    if (mine && mine.room !== room) this.lobbyLeave(userId);
+    const a = this.avatars.get(userId);
+    if (room && a?.session) this.sendLobbiesTo(a.session, room);
+  }
+
+  private sendLobbiesTo(session: SessionPort, room: string) {
+    for (const l of this.lobbies.inRoom(room)) session.send({ v: 1, t: "rpg.lobby", d: { tv: l.tv, lobby: lobbyView(l) } });
+  }
+
+  /** The TV's group to everyone in its room (whoever acted gets it as the command's answer). */
+  private broadcastLobby(
+    tv: string,
+    room: string,
+    lobby: Lobby | null,
+    extra: { ended?: "started" | "cancelled" | "expired"; started?: { dungeon: string; members: RpgLobbyMember[] } },
+    exceptUserId?: string,
+  ) {
+    const event = { v: 1, t: "rpg.lobby", d: { tv, lobby: lobby ? lobbyView(lobby) : null, ...extra } };
+    for (const s of this.sessionsIn(room)) if (s.viewer.user._id !== exceptUserId) s.send(event);
   }
 
   // ---- idle game: training dummies (docs/espaco/jogo/ot) -----------------------
@@ -484,11 +572,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
   }
 
   /** The avatar stands within one tile of the instance (the same reach as the prompt). */
-  private besideInstance(a: Avatar, instanceId: string): boolean {
+  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" = "train"): boolean {
     const inst = this.decor.items.find((i) => i.id === instanceId);
     const item = inst ? itemOf(CATALOG, inst.item) : undefined;
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
-    if (!inst || !item || !zone || item.interaction !== "train") return false;
+    if (!inst || !item || !zone || item.interaction !== kind) return false;
     const rect = instanceRect(zone, item, inst);
     const tx = Math.floor(a.move.pos.x / this.map.tileSize);
     const ty = Math.floor(a.move.pos.y / this.map.tileSize);
@@ -1281,6 +1369,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.sendPresence(session);
     // Back inside a room (reconnect, new tab, restart): its TV where it is now.
     if (a.move.room) this.tv.entered(session, a.move.room);
+    if (a.move.room) this.sendLobbiesTo(session, a.move.room);
     // Reconnected away from the dummy: the training that went on offline closes now.
     this.checkTraining(user._id);
     // The hero's level under the name, where the game is on.
@@ -1298,6 +1387,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
     a.disconnectedAt = this.now();
     a.dirty = true;
     this.presenceDirty = true;
+    // Disconnected while preparing a dungeon: out of the group.
+    this.lobbyLeave(a.userId);
   }
 
   /**
@@ -1311,6 +1402,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     a.evicted = true;
     a.session = null;
     this.checkTraining(userId);
+    this.lobbyLeave(userId);
     a.disconnectedAt = Number.NEGATIVE_INFINITY;
     a.dirty = true;
     this.presenceDirty = true;
@@ -1340,6 +1432,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
       this.media?.sync(a.userId, "entry");
       // The room's TV as it is now (the newcomer joins the session in progress).
       if (a.move.room) this.tv.entered(session, a.move.room);
+      this.lobbyRoomChanged(a.userId, a.move.room);
     }
     if (out.kind === "accepted") {
       a.dir = cmd.dir;
@@ -1389,6 +1482,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (removed.length) this.presenceDirty = true;
     this.flushPresence();
     this.tv.tick();
+    for (const lobby of this.lobbies.expire(now)) this.broadcastLobby(lobby.tv, lobby.room, null, { ended: "expired" });
     const dirty = [...this.avatars.values()].filter((a) => a.dirty);
     if (dirty.length === 0 && removed.length === 0) return;
     for (const viewerAvatar of this.avatars.values()) {
