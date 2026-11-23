@@ -77,15 +77,23 @@ export default function RunPanel(props: {
     };
     motion?.addEventListener?.("change", onMotion);
     const me = props.myId;
-    import("@muchat/space-client/game")
-      .then(({ DungeonScene }) =>
-        DungeonScene.mount(host!, {
+    // Cada passo numa tarefa própria. No começo da corrida o painel abre junto com o resto da
+    // mensagem do servidor; o import, o init do Pixi e a primeira corrida resolvem em
+    // microtarefas e caíam na mesma tarefa, que passava de 50 ms no laboratório (59–71 ms).
+    nextTask()
+      .then(() => import("@muchat/space-client/game"))
+      .then(async ({ DungeonScene }) => {
+        if (!alive) return null;
+        const s = await DungeonScene.mount(host!, {
           reducedMotion: !!motion?.matches,
           me,
-        }),
-      )
+        });
+        await nextTask();
+        return s;
+      })
       .then(
         (s) => {
+          if (!s) return;
           if (!alive) return s.destroy();
           mounted = s;
           setScene(s);
@@ -335,6 +343,11 @@ export default function RunPanel(props: {
       </Live>
     </Panel>
   );
+}
+
+/** Cede ao laço de eventos: o que vem depois roda numa tarefa nova. */
+function nextTask(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }
 
 function pct(v: number, max: number): number {

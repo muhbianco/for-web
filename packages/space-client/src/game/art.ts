@@ -15,7 +15,8 @@ function canvas(w: number, h: number): { c: HTMLCanvasElement; ctx: Ctx } {
   const c = document.createElement("canvas");
   c.width = w;
   c.height = h;
-  const ctx = c.getContext("2d")!;
+  // Canvas na memória (não na GPU): o contorno lê os pixels, e ler de um canvas acelerado trava a GPU.
+  const ctx = c.getContext("2d", { willReadFrequently: true })!;
   ctx.imageSmoothingEnabled = false;
   return { c, ctx };
 }

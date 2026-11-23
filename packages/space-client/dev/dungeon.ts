@@ -169,4 +169,34 @@ setInterval(() => {
     scene?.show(run, frameAt(sec), null);
   },
   scene: () => scene,
+  /** Mede `n` montagens: init do Pixi, primeira corrida (show) e primeiro desenho, e as tarefas longas. */
+  measure: async (n = 5) => {
+    const longs: number[] = [];
+    const obs = new PerformanceObserver((l) => {
+      for (const e of l.getEntries()) longs.push(Math.round(e.duration));
+    });
+    obs.observe({ type: "longtask" });
+    paused = true;
+    const out: { mount: number; show: number; firstDraw: number; longs: number[] }[] = [];
+    for (let i = 0; i < n; i++) {
+      scene?.destroy();
+      scene = null;
+      await new Promise((r) => setTimeout(r, 300));
+      const before = longs.length;
+      const t0 = performance.now();
+      const s = await DungeonScene.mount($("scene"), { reducedMotion: reduced, me: "u4" });
+      const t1 = performance.now();
+      s.show(run, frameAt(sec), null);
+      const t2 = performance.now();
+      await new Promise((r) => requestAnimationFrame(() => r(null)));
+      await new Promise((r) => setTimeout(r, 0));
+      const t3 = performance.now();
+      scene = s;
+      await new Promise((r) => setTimeout(r, 300));
+      out.push({ mount: Math.round(t1 - t0), show: Math.round(t2 - t1), firstDraw: Math.round(t3 - t2), longs: longs.slice(before) });
+    }
+    obs.disconnect();
+    paused = false;
+    return out;
+  },
 };

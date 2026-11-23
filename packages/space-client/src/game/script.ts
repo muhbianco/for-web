@@ -144,6 +144,11 @@ export const ELEMENT_COLOR: Readonly<Record<Element | "cura", number>> = {
   cura: 0x63e68a,
 };
 
+/** Moedas caem como moedas, não como saco: "moedas" hoje, "moeda-de-ouro/platina/cristal" na O7. */
+export function isCoins(item: string): boolean {
+  return item.startsWith("moeda");
+}
+
 const ELEMENTS = new Set<string>(["fisico", "fogo", "gelo", "energia", "terra", "morte", "sagrado"]);
 const isElement = (s: string): s is Element => ELEMENTS.has(s);
 
@@ -218,6 +223,12 @@ export function planSecond(p: PlanInput): Plan {
   };
 
   for (const raw of p.events) {
+    if (raw.k === "deixado") {
+      // Etapa O7: o que não coube em ninguém fica no corpo (o saco aparece nele do mesmo jeito).
+      const item = (raw as { item?: unknown }).item;
+      if (corpse) push({ k: "loot", at: corpse.at + 100, on: corpse.who, coins: typeof item === "string" && isCoins(item) }, 150);
+      continue;
+    }
     const e = raw as RunEvent;
     switch (e.k) {
       case "golpe": {
@@ -294,7 +305,7 @@ export function planSecond(p: PlanInput): Plan {
         break;
       }
       case "loot": {
-        if (corpse) push({ k: "loot", at: corpse.at + 100, on: corpse.who, coins: e.item === "moedas" }, 150);
+        if (corpse) push({ k: "loot", at: corpse.at + 100, on: corpse.who, coins: isCoins(e.item) }, 150);
         break;
       }
       default:

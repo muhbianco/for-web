@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { addExperience, bestGear, DUNGEONS, expForLevel, MONSTER_BASE, type RunHero, simulateRun, type SkillId, START, stageMonsters, type VocationId, VOCATIONS } from "@muchat/space-core/game/ot";
 
-import { afterHit, type Cue, fitName, frameStep, heroGear, heroSpots, isRanged, monsterSpots, planSecond, ROOM_H, ROOM_W, roomCleared, SECOND_MS, TILE } from "./script.ts";
+import { afterHit, type Cue, fitName, frameStep, heroGear, heroSpots, isCoins, isRanged, monsterSpots, planSecond, ROOM_H, ROOM_W, roomCleared, SECOND_MS, TILE } from "./script.ts";
 
 function hero(vocation: VocationId, level: number, skill: number, ml: number, owned: string[] = []): RunHero {
   const voc = VOCATIONS[vocation];
@@ -124,6 +124,34 @@ test("tipo de evento desconhecido (poção, flecha das etapas seguintes) passa b
     ["lunge", "hit"],
   );
   assert.deepEqual(planSecond({ events: [{ k: "novo" }], gears, vocations: [4], monsters: [] }), { cues: [], end: 0 });
+});
+
+test("saque: moedas de qualquer tipo viram moedas; o que ficou no corpo (O7) também deixa o saco", () => {
+  const gears = [heroGear("espada-larga", null)];
+  const p = planSecond({
+    events: [
+      { k: "golpe", a: 0, b: 100, v: 30, bl: "none" },
+      { k: "abate", b: 100, exp: 5 },
+      { k: "loot", a: 0, item: "moeda-de-ouro", n: 3 },
+      { k: "deixado", a: 0, item: "espada-de-ferro", n: 1 },
+      { k: "municao", a: 0 },
+      { k: "gasto", a: 0, item: "anel" },
+    ] as unknown as { k: string }[],
+    gears,
+    vocations: [4],
+    monsters: ["rato-do-musgo"],
+  });
+  const loot = p.cues.filter((c) => c.k === "loot") as { on: number; coins: boolean }[];
+  assert.deepEqual(
+    loot.map((l) => [l.on, l.coins]),
+    [
+      [100, true],
+      [100, false],
+    ],
+  );
+  assert.equal(isCoins("moedas"), true);
+  assert.equal(isCoins("moeda-de-cristal"), true);
+  assert.equal(isCoins("espada-de-ferro"), false);
 });
 
 test("vida mostrada: dano tira, cura põe, bloqueio não mexe, nos limites", () => {

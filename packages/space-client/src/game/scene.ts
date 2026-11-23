@@ -116,6 +116,8 @@ interface Floater {
   y: number;
 }
 
+/** Cede ao laço de eventos: o que vem depois roda numa tarefa nova. */
+const nextTask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 const easeOut = (k: number) => 1 - (1 - k) * (1 - k);
 const clamp01 = (k: number) => Math.max(0, Math.min(1, k));
 const lerp = (a: number, b: number, k: number) => a + (b - a) * k;
@@ -186,7 +188,15 @@ export class DungeonScene {
   }
 
   private async init(host: HTMLElement) {
-    await this.app.init({
+    // O contexto WebGL numa tarefa própria: criá-lo custou ~30 ms no laboratório, e somado ao init
+    // do Pixi (na mesma tarefa da mensagem que abre o painel) passava dos 50 ms de tarefa longa.
+    // Os atributos são os que o Pixi pediria; sem WebGL2, o Pixi cria o contexto sozinho.
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("webgl2", { alpha: false, premultipliedAlpha: true, antialias: false, stencil: true, preserveDrawingBuffer: false, powerPreference: "default" });
+    await nextTask();
+    const ready = this.app.init({
+      canvas,
+      ...(context ? { context } : {}),
       width: Math.max(1, host.clientWidth),
       height: Math.max(1, host.clientHeight),
       background: "#0f1015",
@@ -196,11 +206,27 @@ export class DungeonScene {
       roundPixels: true,
       autoStart: false,
     });
+    try {
+      await ready;
+    } catch (err) {
+      // O Pixi não chegou a adotar o contexto: solta aqui, senão ele fica preso até o GC.
+      context?.getExtension("WEBGL_lose_context")?.loseContext();
+      throw err;
+    }
     // Quem desenha é o tick() desta cena, e só quando algo mudou.
     this.app.ticker.stop();
     this.app.ticker.remove(this.app.render, this.app);
     this.app.canvas.setAttribute("aria-hidden", "true");
     this.app.canvas.style.display = "block";
+    // Aquecimento numa tarefa própria: o primeiro desenho de um contexto novo compila os shaders do
+    // Pixi (o primeiro quadro da corrida levava 37 ms no laboratório). Um desenho de 1 px faz isso
+    // aqui, e o primeiro quadro da corrida só sobe as texturas.
+    await nextTask();
+    const warm = new Container();
+    warm.addChild(new Sprite(Texture.WHITE), new Graphics().rect(0, 0, 1, 1).fill({ color: 0xffffff }));
+    this.app.stage.addChild(warm);
+    this.app.render();
+    warm.destroy({ children: true });
     host.appendChild(this.app.canvas);
     this.host = host;
     this.units.sortableChildren = true;
