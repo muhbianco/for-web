@@ -1,4 +1,4 @@
-import type { Element } from "./items.ts";
+import { type Element, GOLD } from "./items.ts";
 import type { LootEntry } from "./loot.ts";
 
 /**
@@ -38,7 +38,7 @@ export interface MonsterDef {
 }
 
 const coins = (chance: number, countMax: number): LootEntry => ({
-  item: "moedas",
+  item: GOLD,
   chance,
   countMax,
   stackable: true,
@@ -48,6 +48,12 @@ const drop = (item: string, chance: number): LootEntry => ({
   chance,
   countMax: 1,
   stackable: false,
+});
+const stack = (item: string, chance: number, countMax: number): LootEntry => ({
+  item,
+  chance,
+  countMax,
+  stackable: true,
 });
 
 const melee = (min: number, max: number): MonsterAttack => ({
@@ -107,6 +113,9 @@ const LIST: readonly MonsterDef[] = [
       coins(70_000, 10),
       drop("espada-de-ferro", 1_500),
       drop("elmo-de-ferro", 2_000),
+      stack("flecha", 8_000, 10),
+      drop("mochila", 1_000),
+      drop("amuleto-do-escudeiro", 800),
     ],
   },
   {
@@ -143,6 +152,11 @@ const LIST: readonly MonsterDef[] = [
       drop("besta-leve", 8_000),
       drop("varinha-de-brasa", 8_000),
       drop("bastao-de-raiz", 8_000),
+      stack("flecha", 30_000, 30),
+      drop("mochila", 20_000),
+      drop("anel-do-folego", 5_000),
+      drop("amuleto-do-escudeiro", 8_000),
+      drop("amuleto-de-musgo", 4_000),
     ],
   },
 
@@ -156,7 +170,11 @@ const LIST: readonly MonsterDef[] = [
     defense: 8,
     attacks: [melee(0, 20)],
     elements: { gelo: 20, fogo: -10, energia: -10 },
-    loot: [coins(80_000, 12), drop("botas-de-viajante", 2_500)],
+    loot: [
+      coins(80_000, 12),
+      drop("botas-de-viajante", 2_500),
+      stack("virote", 6_000, 10),
+    ],
   },
   {
     id: "troll-do-lodo",
@@ -167,7 +185,12 @@ const LIST: readonly MonsterDef[] = [
     defense: 6,
     attacks: [melee(0, 15)],
     elements: { terra: 15, fogo: -5 },
-    loot: [coins(70_000, 10), drop("calca-de-malha", 2_000)],
+    loot: [
+      coins(70_000, 10),
+      drop("calca-de-malha", 2_000),
+      drop("anel-do-lenhador", 800),
+      drop("anel-do-martelo", 800),
+    ],
   },
   {
     id: "serpente-da-comporta",
@@ -193,6 +216,10 @@ const LIST: readonly MonsterDef[] = [
       coins(85_000, 20),
       drop("cota-de-malha", 2_500),
       drop("manto-azul", 2_500),
+      stack("flecha", 6_000, 12),
+      drop("anel-do-gume", 800),
+      drop("pingente-de-folha", 1_200),
+      drop("amuleto-de-geada", 800),
     ],
   },
   {
@@ -228,6 +255,12 @@ const LIST: readonly MonsterDef[] = [
       drop("arco-composto", 10_000),
       drop("varinha-de-geada", 12_000),
       drop("manto-azul", 10_000),
+      stack("flecha", 30_000, 40),
+      stack("virote", 20_000, 30),
+      drop("anel-de-seiva", 8_000),
+      drop("anel-da-firmeza", 4_000),
+      drop("amuleto-de-geada", 10_000),
+      drop("mochila", 15_000),
     ],
   },
 
@@ -241,7 +274,12 @@ const LIST: readonly MonsterDef[] = [
     defense: 15,
     attacks: [melee(0, 55)],
     elements: { fisico: 10, fogo: 20, energia: -15 },
-    loot: [coins(90_000, 40), drop("elmo-de-aco", 2_000)],
+    loot: [
+      coins(90_000, 40),
+      drop("elmo-de-aco", 2_000),
+      drop("talisma-de-cobre", 1_500),
+      stack("virote-perfurante", 5_000, 10),
+    ],
   },
   {
     id: "brasa-viva",
@@ -263,7 +301,12 @@ const LIST: readonly MonsterDef[] = [
       },
     ],
     elements: { fogo: 100, gelo: -20, energia: 20 },
-    loot: [coins(85_000, 35), drop("varinha-ardente", 1_500)],
+    loot: [
+      coins(85_000, 35),
+      drop("varinha-ardente", 1_500),
+      drop("colar-de-escamas", 2_000),
+      drop("amuleto-de-lava", 1_000),
+    ],
   },
   {
     id: "martelador",
@@ -278,6 +321,8 @@ const LIST: readonly MonsterDef[] = [
       coins(90_000, 60),
       drop("placa-de-ferreiro", 1_500),
       drop("cajado-de-pedra", 1_500),
+      stack("flecha-afiada", 6_000, 12),
+      drop("anel-da-firmeza", 1_000),
     ],
   },
   {
@@ -314,6 +359,12 @@ const LIST: readonly MonsterDef[] = [
       drop("arco-de-guerra", 10_000),
       drop("varinha-ardente", 12_000),
       drop("cajado-de-pedra", 12_000),
+      stack("flecha-afiada", 30_000, 40),
+      stack("virote-perfurante", 25_000, 30),
+      drop("amuleto-de-lava", 10_000),
+      drop("pingente-de-raio", 6_000),
+      drop("amuleto-de-pedra", 3_000),
+      drop("anel-de-seiva", 6_000),
     ],
   },
 ];

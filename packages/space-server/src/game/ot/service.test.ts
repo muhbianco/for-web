@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import type { RpgCommand, RpgHeroView } from "@muchat/space-core/game/ot";
+import {
+  type RpgCommand,
+  type RpgHeroView,
+  coinValue,
+} from "@muchat/space-core/game/ot";
 
 import { silentLog } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
@@ -421,7 +425,10 @@ test("corrida: fecha no fim uma vez só, com a recompensa gravada no início", a
   assert.equal(after.run, null);
   const reward = run!.rewards[0];
   assert.equal(after.experience, before!.experience + (reward?.exp ?? 0));
-  assert.equal(after.gold, before!.gold + (reward?.gold ?? 0));
+  assert.equal(
+    coinValue(after.inv),
+    coinValue(before!.inv) + (reward?.gold ?? 0),
+  );
   assert.equal(after.stamina, before!.stamina - Math.ceil(run!.seconds / 60));
   const end = ana.events.filter((e) => e.t === "rpg.run").at(-1)!.d as {
     end?: { outcome: string; members: { user_id: string; reward: unknown }[] };
@@ -439,7 +446,7 @@ test("corrida: fecha no fim uma vez só, com a recompensa gravada no início", a
   await second.svc.tickRuns();
   const again = (await store.get("U1"))!;
   assert.equal(again.experience, after.experience);
-  assert.equal(again.gold, after.gold);
+  assert.equal(coinValue(again.inv), coinValue(after.inv));
   assert.equal(again.stamina, after.stamina);
 });
 

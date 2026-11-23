@@ -1,9 +1,8 @@
-import type { HitCap } from "./combat.ts";
-import type { VocationId } from "./data.ts";
+import type { SkillId, VocationId } from "./data.ts";
 
 /**
- * Itens do jogo idle (docs/espaco/jogo/ot, etapa O5). Nomes e itens são nossos; os números
- * ficam na faixa dos itens iniciais do TFS (items.xml, weapons.xml) para as fórmulas de
+ * Itens do jogo idle (docs/espaco/jogo/ot, etapas O5 e O7). Nomes e itens são nossos; os
+ * números ficam na faixa dos itens do TFS (items.xml, weapons.xml) para as fórmulas de
  * combate darem o mesmo ritmo.
  */
 
@@ -16,8 +15,44 @@ export type Element =
   | "gelo"
   | "sagrado"
   | "morte";
+export const ELEMENTS: readonly Element[] = [
+  "fisico",
+  "energia",
+  "terra",
+  "fogo",
+  "gelo",
+  "sagrado",
+  "morte",
+];
 
-export type Slot = "arma" | "escudo" | "cabeca" | "corpo" | "pernas" | "pes";
+/**
+ * Os 10 lugares do corpo [TFS creature.h slots_t, 1 a 10]: cabeça, colar, mochila, corpo,
+ * as duas mãos, pernas, pés, anel e munição. A mão da arma e a do escudo [nosso: no TFS
+ * qualquer mão serve para qualquer um; aqui cada coisa tem a sua].
+ */
+export type Slot =
+  | "cabeca"
+  | "colar"
+  | "mochila"
+  | "corpo"
+  | "arma"
+  | "escudo"
+  | "pernas"
+  | "pes"
+  | "anel"
+  | "municao";
+export const SLOTS: readonly Slot[] = [
+  "cabeca",
+  "colar",
+  "mochila",
+  "corpo",
+  "arma",
+  "escudo",
+  "pernas",
+  "pes",
+  "anel",
+  "municao",
+];
 export const ARMOR_SLOTS = ["cabeca", "corpo", "pernas", "pes"] as const;
 export type ArmorSlot = (typeof ARMOR_SLOTS)[number];
 
@@ -29,6 +64,9 @@ export type WeaponKind =
   | "distancia"
   | "varinha";
 
+/** Tipo de munição [TFS ammoType: arrow, bolt]. */
+export type AmmoType = "flecha" | "virote";
+
 export interface ItemDef {
   id: string;
   name: string;
@@ -38,20 +76,40 @@ export interface ItemDef {
   attack?: number;
   defense?: number;
   armor?: number;
-  /** Teto de acerto da arma de distância [TFS weapons.cpp:681-690]. */
-  hitCap?: HitCap;
+  /** Usa as duas mãos: não cabe escudo [TFS slotType two-handed]. */
+  twoHanded?: true;
+  /** No arco e na besta, a munição que atiram; na munição, o tipo dela [TFS ammoType]. */
+  ammo?: AmmoType;
+  /** Teto de acerto da munição [TFS maxHitChance; 75, 90 e 100 usam as tabelas]. */
+  maxHitChance?: number;
+  /** Acerto a mais do arco, somado ao da munição [TFS hitChance do arco]. */
+  hitChance?: number;
   /** Varinha: dano elemental fixo por tiro e mana por tiro [TFS weapons.xml <wand>]. */
   wand?: { element: Element; min: number; max: number; mana: number };
+  /** Bolsa e mochila: quantos espaços [TFS containerSize]. */
+  container?: number;
+  /** Cargas de quem absorve dano: uma por golpe absorvido [TFS charges, player.cpp:2021-2028]. */
+  charges?: number;
+  /** Segundos de uso do anel [TFS duration]; [nosso] só corre na dungeon. */
+  duration?: number;
+  /** Skill a mais enquanto veste [TFS skillSword, skillAxe, skillClub]. */
+  skillBonus?: Readonly<Partial<Record<SkillId, number>>>;
+  /** % do dano que some, por elemento [TFS absorbPercent*]; negativo = dano a mais. */
+  absorb?: Readonly<Partial<Record<Element, number>>>;
+  /** Vida e mana a cada `ticksMs` enquanto veste [TFS healthGain/manaGain/healthTicks]. */
+  regen?: { health: number; mana: number; ticksMs: number };
   minLevel?: number;
   /** Vocações base que usam; sem a lista, todas. */
   vocations?: readonly VocationId[];
   /** Peso em centésimos de oz [TFS items.xml `weight`]. */
   weight: number;
-  /** Valor em moedas: o que não cabe na mochila é vendido por isso na saída [nosso]. */
+  /** Valor em moedas de ouro (o mercador paga por ele na etapa O8; 0: não compra). */
   value: number;
   stackable?: boolean;
-  /** Do kit da vocação: todo herói tem, não pesa, não cai. */
+  /** Do kit da vocação: todo herói ganha ao escolher a vocação. */
   starter?: boolean;
+  /** Quantos do kit (munição). */
+  starterCount?: number;
 }
 
 const KNIGHT: readonly VocationId[] = [4];
@@ -61,15 +119,68 @@ const DRUID: readonly VocationId[] = [2];
 const MAGES: readonly VocationId[] = [1, 2];
 const FRONT: readonly VocationId[] = [3, 4];
 
+/** Os elementos que o TFS chama de "magic" [TFS items.cpp:1155-1163]. */
+const magic = (pct: number): Partial<Record<Element, number>> => ({
+  energia: pct,
+  fogo: pct,
+  terra: pct,
+  gelo: pct,
+  sagrado: pct,
+  morte: pct,
+});
+
+/** As três moedas [TFS const.h ITEM_GOLD_COIN, ITEM_PLATINUM_COIN, ITEM_CRYSTAL_COIN]. */
+export const GOLD = "moeda-de-ouro";
+export const PLATINUM = "moeda-de-platina";
+export const CRYSTAL = "moeda-de-cristal";
+/** Da menor para a maior; cada uma vale 100 da anterior [TFS change_gold.lua]. */
+export const COINS: readonly string[] = [GOLD, PLATINUM, CRYSTAL];
+
 const LIST: readonly ItemDef[] = [
-  // Moedas: vão direto para a bolsa de ouro do herói.
+  // Moedas: 0,10 oz cada [TFS items.xml 2148, 2152, 2160], pilha de até 100.
   {
-    id: "moedas",
-    name: "Moedas",
+    id: GOLD,
+    name: "Moeda de ouro",
     slot: null,
-    weight: 0,
+    weight: 10,
     value: 1,
     stackable: true,
+  },
+  {
+    id: PLATINUM,
+    name: "Moeda de platina",
+    slot: null,
+    weight: 10,
+    value: 100,
+    stackable: true,
+  },
+  {
+    id: CRYSTAL,
+    name: "Moeda de cristal",
+    slot: null,
+    weight: 10,
+    value: 10_000,
+    stackable: true,
+  },
+
+  // Recipientes [TFS items.xml 1987 bag, 1988 backpack]. A bolsa é a do primeiro dia
+  // [TFS first_items.lua].
+  {
+    id: "bolsa",
+    name: "Bolsa",
+    slot: "mochila",
+    container: 8,
+    weight: 800,
+    value: 0,
+    starter: true,
+  },
+  {
+    id: "mochila",
+    name: "Mochila",
+    slot: "mochila",
+    container: 20,
+    weight: 1800,
+    value: 0,
   },
 
   // Kit de cada vocação [nosso]. A varinha do kit não gasta mana: o herói começa no level 1,
@@ -120,17 +231,33 @@ const LIST: readonly ItemDef[] = [
     value: 0,
     starter: true,
   },
+  // Arco e besta não têm ataque próprio: o dano vem da munição [TFS items.xml 2456, 2455;
+  // weapons.cpp:839-849].
   {
     id: "arco-de-caca",
     name: "Arco de caça",
     slot: "arma",
     kind: "distancia",
-    attack: 25,
-    hitCap: 90,
+    twoHanded: true,
+    ammo: "flecha",
     vocations: PALADIN,
     weight: 3100,
     value: 0,
     starter: true,
+  },
+  {
+    id: "flecha",
+    name: "Flecha",
+    slot: "municao",
+    ammo: "flecha",
+    attack: 25,
+    maxHitChance: 91,
+    vocations: PALADIN,
+    weight: 70,
+    value: 0,
+    stackable: true,
+    starter: true,
+    starterCount: 100,
   },
   {
     id: "varinha-de-faiscas",
@@ -189,6 +316,187 @@ const LIST: readonly ItemDef[] = [
     weight: 900,
     value: 0,
     starter: true,
+  },
+
+  // Munição a mais [TFS items.xml 2543 bolt, 7364 sniper arrow, 7363 piercing bolt;
+  // weapons.xml: gasta uma por tiro, `removecount`].
+  {
+    id: "virote",
+    name: "Virote",
+    slot: "municao",
+    ammo: "virote",
+    attack: 30,
+    maxHitChance: 87,
+    vocations: PALADIN,
+    weight: 80,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "flecha-afiada",
+    name: "Flecha afiada",
+    slot: "municao",
+    ammo: "flecha",
+    attack: 28,
+    maxHitChance: 100,
+    minLevel: 20,
+    vocations: PALADIN,
+    weight: 70,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "virote-perfurante",
+    name: "Virote perfurante",
+    slot: "municao",
+    ammo: "virote",
+    attack: 33,
+    maxHitChance: 87,
+    minLevel: 25,
+    vocations: PALADIN,
+    weight: 80,
+    value: 0,
+    stackable: true,
+  },
+
+  // Colares [TFS items.xml 2200, 2198, 2201, 2161, 7887-7890, 2197]: absorvem e gastam carga.
+  {
+    id: "amuleto-do-escudeiro",
+    name: "Amuleto do escudeiro",
+    slot: "colar",
+    absorb: { fisico: 6 },
+    charges: 250,
+    weight: 550,
+    value: 100,
+  },
+  {
+    id: "pingente-de-folha",
+    name: "Pingente de folha",
+    slot: "colar",
+    absorb: { fisico: 5, ...magic(5) },
+    charges: 50,
+    weight: 270,
+    value: 100,
+  },
+  {
+    id: "colar-de-escamas",
+    name: "Colar de escamas",
+    slot: "colar",
+    absorb: { fogo: 8 },
+    charges: 200,
+    weight: 630,
+    value: 100,
+  },
+  {
+    id: "talisma-de-cobre",
+    name: "Talismã de cobre",
+    slot: "colar",
+    absorb: { energia: 10 },
+    charges: 200,
+    weight: 290,
+    value: 100,
+  },
+  {
+    id: "amuleto-de-musgo",
+    name: "Amuleto de musgo",
+    slot: "colar",
+    absorb: { terra: 20, fogo: -10 },
+    charges: 200,
+    weight: 500,
+    value: 1_500,
+  },
+  {
+    id: "amuleto-de-geada",
+    name: "Amuleto de geada",
+    slot: "colar",
+    absorb: { gelo: 20, energia: -10 },
+    charges: 200,
+    weight: 500,
+    value: 1_500,
+  },
+  {
+    id: "amuleto-de-lava",
+    name: "Amuleto de lava",
+    slot: "colar",
+    absorb: { fogo: 20, gelo: -10 },
+    charges: 200,
+    weight: 500,
+    value: 1_500,
+  },
+  {
+    id: "pingente-de-raio",
+    name: "Pingente de raio",
+    slot: "colar",
+    absorb: { energia: 20, terra: -10 },
+    charges: 200,
+    weight: 500,
+    value: 1_500,
+  },
+  {
+    id: "amuleto-de-pedra",
+    name: "Amuleto de pedra",
+    slot: "colar",
+    absorb: { fisico: 80, morte: 80 },
+    charges: 5,
+    weight: 700,
+    value: 500,
+  },
+
+  // Anéis [TFS items.xml 2205 ativo do 2168, 2216 do 2214, 2210-2212, 2164]: o tempo corre
+  // enquanto veste; o de cargas gasta como o colar.
+  {
+    id: "anel-do-folego",
+    name: "Anel do fôlego",
+    slot: "anel",
+    regen: { health: 2, mana: 8, ticksMs: 6000 },
+    duration: 1200,
+    weight: 80,
+    value: 50,
+  },
+  {
+    id: "anel-de-seiva",
+    name: "Anel de seiva",
+    slot: "anel",
+    regen: { health: 6, mana: 24, ticksMs: 6000 },
+    duration: 450,
+    weight: 80,
+    value: 100,
+  },
+  {
+    id: "anel-do-gume",
+    name: "Anel do gume",
+    slot: "anel",
+    skillBonus: { espada: 4 },
+    duration: 1800,
+    weight: 90,
+    value: 100,
+  },
+  {
+    id: "anel-do-lenhador",
+    name: "Anel do lenhador",
+    slot: "anel",
+    skillBonus: { machado: 4 },
+    duration: 1800,
+    weight: 90,
+    value: 100,
+  },
+  {
+    id: "anel-do-martelo",
+    name: "Anel do martelo",
+    slot: "anel",
+    skillBonus: { maca: 4 },
+    duration: 1800,
+    weight: 90,
+    value: 100,
+  },
+  {
+    id: "anel-da-firmeza",
+    name: "Anel da firmeza",
+    slot: "anel",
+    absorb: { fisico: 20, ...magic(20) },
+    charges: 20,
+    weight: 100,
+    value: 250,
   },
 
   // Cripta do Musgo (level 1+).
@@ -266,9 +574,8 @@ const LIST: readonly ItemDef[] = [
     name: "Besta leve",
     slot: "arma",
     kind: "distancia",
-    attack: 30,
-    hitCap: 100,
-    minLevel: 6,
+    twoHanded: true,
+    ammo: "virote",
     vocations: PALADIN,
     weight: 4000,
     value: 80,
@@ -369,16 +676,18 @@ const LIST: readonly ItemDef[] = [
     weight: 1300,
     value: 40,
   },
+  // [TFS items.xml 7438 elvish bow: acerto +5, sem ataque].
   {
     id: "arco-composto",
     name: "Arco composto",
     slot: "arma",
     kind: "distancia",
-    attack: 35,
-    hitCap: 90,
+    twoHanded: true,
+    ammo: "flecha",
+    hitChance: 5,
     minLevel: 15,
     vocations: PALADIN,
-    weight: 3500,
+    weight: 3900,
     value: 200,
   },
   {
@@ -470,16 +779,19 @@ const LIST: readonly ItemDef[] = [
     weight: 4200,
     value: 250,
   },
+  // [TFS items.xml 8855 composite hornbow: ataque 3, acerto +2].
   {
     id: "arco-de-guerra",
     name: "Arco de guerra",
     slot: "arma",
     kind: "distancia",
-    attack: 42,
-    hitCap: 90,
+    twoHanded: true,
+    ammo: "flecha",
+    attack: 3,
+    hitChance: 2,
     minLevel: 25,
     vocations: PALADIN,
-    weight: 4000,
+    weight: 5200,
     value: 600,
   },
   {
@@ -514,10 +826,13 @@ export function itemDef(id: string): ItemDef | undefined {
   return ITEMS[id];
 }
 
-/** O kit de uma vocação base (o que todo herói dela tem sem ganhar). */
+/** O kit de uma vocação base (o que todo herói dela ganha ao escolher a vocação). */
 export function starterKit(base: VocationId): ItemDef[] {
   return LIST.filter(
-    (i) => i.starter && (!i.vocations || i.vocations.includes(base)),
+    (i) =>
+      i.starter &&
+      i.slot !== "mochila" &&
+      (!i.vocations || i.vocations.includes(base)),
   );
 }
 
@@ -530,4 +845,16 @@ export function canUse(
   if (item.slot === null) return false;
   if (item.vocations && !item.vocations.includes(base)) return false;
   return level >= (item.minLevel ?? 0);
+}
+
+/** Por que não pode usar: "vocation", "level" ou null (pode). */
+export function cannotUse(
+  item: ItemDef,
+  base: VocationId,
+  level: number,
+): "not_equipment" | "vocation" | "level" | null {
+  if (item.slot === null) return "not_equipment";
+  if (item.vocations && !item.vocations.includes(base)) return "vocation";
+  if (level < (item.minLevel ?? 0)) return "level";
+  return null;
 }

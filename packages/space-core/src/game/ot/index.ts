@@ -3,6 +3,7 @@
 export * from "./combat.ts";
 export * from "./data.ts";
 export * from "./dungeons.ts";
+export * from "./inventory.ts";
 export * from "./items.ts";
 export * from "./loot.ts";
 export * from "./monsters.ts";

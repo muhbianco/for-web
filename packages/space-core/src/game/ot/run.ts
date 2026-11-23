@@ -4,10 +4,10 @@ import {
   type BloodState,
   type FightMode,
   ATTACK_FACTOR,
+  ammoHitChance,
   blockHit,
   defenseFactor,
   distanceDamage,
-  distanceHitChance,
   distanceHits,
   distanceSkillPoint,
   freshBlood,
@@ -30,13 +30,24 @@ import {
 } from "./data.ts";
 import { type Dungeon, dungeonOf } from "./dungeons.ts";
 import {
-  type ArmorSlot,
+  type Gear,
+  type Inventory,
+  type ItemStack,
+  addGold,
+  addItem,
+  cloneInventory,
+  equipItem,
+  unequipItem,
+} from "./inventory.ts";
+import {
+  type AmmoType,
   type Element,
   type ItemDef,
+  type Slot,
   ARMOR_SLOTS,
+  GOLD,
   canUse,
   itemDef,
-  starterKit,
 } from "./items.ts";
 import { rollLoot } from "./loot.ts";
 import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
@@ -46,9 +57,9 @@ import { type SpellDef, spellRange, spellsFor } from "./spells.ts";
 import { STAMINA, staminaMultiplier } from "./stamina.ts";
 
 /**
- * A corrida da dungeon (docs/espaco/jogo/ot, etapa O5). O servidor calcula a corrida inteira
- * quando o líder começa: não há escolha no meio (é idle), então nada depende do que o app
- * manda depois. A simulação anda de segundo em segundo, no ritmo do OT (ataque a cada 2 s,
+ * A corrida da dungeon (docs/espaco/jogo/ot, etapas O5 e O7). O servidor calcula a corrida
+ * inteira quando o líder começa: não há escolha no meio (é idle), então nada depende do que o
+ * app manda depois. A simulação anda de segundo em segundo, no ritmo do OT (ataque a cada 2 s,
  * 2 bloqueios por segundo, magias por intervalo), e usa as fórmulas de combat.ts. O app
  * recebe um quadro por segundo, quando o segundo chega.
  *
@@ -57,7 +68,11 @@ import { STAMINA, staminaMultiplier } from "./stamina.ts";
  *   no primeiro monstro vivo da sala; monstros corpo a corpo escolhem um cavaleiro se houver;
  * - os heróis lutam no modo equilibrado e estão sempre "atacando há pouco" (fator de defesa);
  * - quem morre fica fora até o fim; vida e mana se recuperam pelo ritmo da vocação (comida);
- * - level, vida e skills não mudam no meio da corrida: o ganho entra no fim.
+ * - level, vida e skills não mudam no meio da corrida: o ganho entra no fim;
+ * - etapa O7: o loot entra direto na mochila de quem leva, se couber (o que não cabe fica no
+ *   corpo, como no OT); quando a munição do lugar acaba, o herói repõe da mochila; a pilha de
+ *   100 moedas vira a moeda de cima (inventory.ts changeFullStacks); o tempo do anel só corre
+ *   aqui dentro.
  */
 
 export const RUN = {
@@ -71,17 +86,10 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 1,
+  engine: 2,
 } as const;
 
 // ---- equipamento -------------------------------------------------------------
-
-/** O que o herói veste na corrida: ids de itens. */
-export interface Gear {
-  weapon: string | null;
-  shield: string | null;
-  armor: Partial<Record<ArmorSlot, string>>;
-}
 
 /** Skill que a arma usa [TFS Player::getWeaponSkill]; varinha e sem arma de distância: punhos. */
 function weaponSkill(item: ItemDef | null, skills: Record<SkillId, number>) {
@@ -98,13 +106,17 @@ function weaponSkill(item: ItemDef | null, skills: Record<SkillId, number>) {
   }
 }
 
-/** Dano médio esperado por golpe, para escolher a melhor arma [nosso]. */
+/**
+ * Dano médio esperado por golpe, para escolher a melhor arma [nosso]. Arco e besta contam com
+ * a munição `ammo` (sem ela, 0: o arco sem munição não atira [TFS Player::getWeapon]).
+ */
 export function weaponScore(
   item: ItemDef,
   voc: Vocation,
   level: number,
   skills: Record<SkillId, number>,
   manaMax: number,
+  ammo: ItemDef | null = null,
 ): number {
   const factor = ATTACK_FACTOR[RUN.fightMode];
   switch (item.kind) {
@@ -117,13 +129,19 @@ export function weaponScore(
         2
       );
     case "distancia": {
+      if (item.ammo && (!ammo || ammo.ammo !== item.ammo)) return 0;
+      const attack = (ammo?.attack ?? 0) + (item.attack ?? 0);
       const max =
-        maxWeaponDamage(level, skills.distancia, item.attack ?? 0, factor) *
+        maxWeaponDamage(level, skills.distancia, attack, factor) *
         voc.distDamage;
-      const chance = distanceHitChance(
-        skills.distancia,
-        RUN.archerDistance,
-        item.hitCap ?? 75,
+      const chance = Math.min(
+        100,
+        ammoHitChance(
+          skills.distancia,
+          RUN.archerDistance,
+          ammo?.maxHitChance ?? item.maxHitChance ?? 75,
+          ammo ? (item.hitChance ?? 0) : 0,
+        ),
       );
       return ((Math.ceil(level * 0.2) + max) / 2) * (chance / 100);
     }
@@ -138,50 +156,94 @@ export function weaponScore(
 }
 
 /**
- * O melhor do kit e da mochila [nosso]: a arma de maior dano esperado com as skills de hoje,
- * o escudo de maior defesa (só o cavaleiro: o arco usa as duas mãos e o mago não tem escudo
- * nesta etapa) e, em cada peça, a maior armadura.
+ * "Escolher o melhor sozinho" (etapa O7) [nosso]: o maior recipiente, a arma de maior dano
+ * esperado com as skills de hoje (o arco com a melhor munição que houver), o escudo de maior
+ * defesa (o cavaleiro; com arma de duas mãos, nenhum), a maior armadura de cada peça e a
+ * munição da arma. Colar e anel ficam como a pessoa deixou: gastam carga e tempo.
  */
-export function bestGear(
+export function autoEquip(
+  inv: Inventory,
   vocation: VocationId,
   level: number,
   skills: Record<SkillId, number>,
   manaMax: number,
-  owned: readonly string[],
-): Gear {
+): void {
   const voc = VOCATIONS[vocation];
   const base = voc.base;
-  const items: ItemDef[] = [...starterKit(base)];
-  for (const id of owned) {
-    const it = itemDef(id);
-    if (it && !items.includes(it)) items.push(it);
-  }
-  const usable = items.filter((i) => canUse(i, base, level));
-  const pick = (slot: string, score: (i: ItemDef) => number) => {
-    let best: ItemDef | null = null;
-    let bestScore = -Infinity;
-    for (const i of usable) {
-      if (i.slot !== slot) continue;
-      const s = score(i);
-      if (s > bestScore || (s === bestScore && best && i.id < best.id)) {
-        best = i;
+  const usable = (s: ItemStack | undefined): ItemDef | null => {
+    const d = s ? itemDef(s.item) : undefined;
+    return d && canUse(d, base, level) ? d : null;
+  };
+  /** A pilha da mochila que é melhor que a vestida (empate: fica a vestida, depois o menor id). */
+  const better = (
+    slot: Slot,
+    score: (d: ItemDef) => number,
+  ): ItemStack | null => {
+    const cur = usable(inv.equip[slot]);
+    let bestScore = cur ? score(cur) : -Infinity;
+    let bestId = cur ? "" : "￿";
+    let pick: ItemStack | null = null;
+    for (const x of inv.pack) {
+      const d = usable(x);
+      if (!d || d.slot !== slot) continue;
+      const s = score(d);
+      if (s > bestScore || (s === bestScore && !cur && d.id < bestId)) {
+        pick = x;
         bestScore = s;
+        bestId = d.id;
       }
     }
+    return pick;
+  };
+  const wear = (x: ItemStack | null) => {
+    if (!x) return;
+    const i = inv.pack.indexOf(x);
+    if (i >= 0) equipItem(inv, base, level, i);
+  };
+  const ammoFor = (type: AmmoType | undefined): ItemDef | null => {
+    if (!type) return null;
+    let best: ItemDef | null = null;
+    const key = (x: ItemDef) => (x.attack ?? 0) * 1000 + (x.maxHitChance ?? 0);
+    const look = (s: ItemStack | undefined) => {
+      const d = usable(s);
+      if (!d || d.slot !== "municao" || d.ammo !== type) return;
+      if (
+        !best ||
+        key(d) > key(best) ||
+        (key(d) === key(best) && d.id < best.id)
+      )
+        best = d;
+    };
+    look(inv.equip.municao);
+    for (const x of inv.pack) look(x);
     return best;
   };
-  const weapon = pick(
+
+  wear(better("mochila", (d) => d.container ?? 0));
+  const weapon = better(
     "arma",
-    (i) =>
-      weaponScore(i, voc, level, skills, manaMax) * 1000 + (i.defense ?? 0),
+    (d) =>
+      weaponScore(d, voc, level, skills, manaMax, ammoFor(d.ammo)) * 1000 +
+      (d.defense ?? 0),
   );
-  const shield = base === 4 ? pick("escudo", (i) => i.defense ?? 0) : null;
-  const armor: Gear["armor"] = {};
-  for (const slot of ARMOR_SLOTS) {
-    const it = pick(slot, (i) => i.armor ?? 0);
-    if (it) armor[slot] = it.id;
+  if (weapon) {
+    // A arma de duas mãos não entra com escudo: o escudo vai para a mochila antes.
+    const two = itemDef(weapon.item)?.twoHanded;
+    if (!two || !inv.equip.escudo || unequipItem(inv, "escudo").ok)
+      wear(weapon);
   }
-  return { weapon: weapon?.id ?? null, shield: shield?.id ?? null, armor };
+  const w = usable(inv.equip.arma);
+  if (!w?.twoHanded && base === 4)
+    wear(better("escudo", (d) => d.defense ?? 0));
+  for (const s of ARMOR_SLOTS) wear(better(s, (d) => d.armor ?? 0));
+  // A munição da arma: a melhor que houver, a maior pilha dela.
+  const ammo = ammoFor(w?.ammo);
+  if (ammo && inv.equip.municao?.item !== ammo.id) {
+    let pick: ItemStack | null = null;
+    for (const x of inv.pack)
+      if (x.item === ammo.id && (!pick || x.count > pick.count)) pick = x;
+    wear(pick);
+  }
 }
 
 // ---- simulação ---------------------------------------------------------------
@@ -226,7 +288,11 @@ export interface RunHero {
   magicLevel: number;
   /** Stamina no início, em minutos: decide o multiplicador e o loot. */
   stamina: number;
+  /** O que veste (derivado de `inv`, para a sala ver). */
   gear: Gear;
+  /** Etapa O7: o inventário e a capacidade em oz. */
+  inv: Inventory;
+  cap: number;
 }
 
 export type RunOutcome = "vitoria" | "derrota" | "retirada";
@@ -242,7 +308,13 @@ export type RunEvent =
   | { k: "abate"; b: number; exp: number }
   | { k: "queda"; b: number }
   | { k: "loot"; a: number; item: string; n: number }
-  | { k: "sala"; st: number };
+  | { k: "sala"; st: number }
+  /** Etapa O7: o arco ficou sem munição (uma vez por corrida). */
+  | { k: "municao"; a: number }
+  /** Etapa O7: não coube na mochila de ninguém e ficou no corpo. */
+  | { k: "deixado"; a: number; item: string; n: number }
+  /** Etapa O7: o anel ou o colar acabou (tempo ou cargas). */
+  | { k: "gasto"; a: number; item: string };
 
 /** O estado no fim de um segundo: vida e mana dos heróis, vida dos monstros da sala. */
 export interface RunFrame {
@@ -262,10 +334,18 @@ export interface RunMemberResult {
   tries: Partial<Record<SkillId, number>>;
   /** Mana gasta crua (antes da taxa de magia). */
   manaSpent: number;
+  /** O que entrou na mochila (moedas à parte, em ouro). */
   loot: { item: string; count: number }[];
   gold: number;
   damage: number;
   healing: number;
+  /** Etapa O7: o que ficou no corpo por falta de espaço ou de capacidade. */
+  left: { item: string; count: number }[];
+  /** Etapa O7: munição gasta e anéis ou colares que acabaram. */
+  spent: { item: string; count: number }[];
+  /** Etapa O7: o inventário no fim, com o loot (vivo) e sem ele (caiu: só o gasto). */
+  inv: Inventory;
+  invBare: Inventory;
 }
 
 export interface RunResult {
@@ -290,8 +370,13 @@ interface HeroRt {
   mana: number;
   blocks: number;
   alive: boolean;
+  /** As duas cópias do inventário: com o loot e só com o gasto. */
+  inv: Inventory;
+  bare: Inventory;
   weapon: ItemDef | null;
   hasShield: boolean;
+  /** Skills de agora: as do herói mais o anel. */
+  sk: Record<SkillId, number>;
   defense: number;
   armor: number;
   nextAttack: number;
@@ -302,6 +387,9 @@ interface HeroRt {
   cooldown: Map<string, number>;
   healGroup: number;
   attackGroup: number;
+  /** A munição do último tiro (a reposição procura a mesma primeiro). */
+  lastAmmo: string | null;
+  noAmmo: boolean;
   res: RunMemberResult;
 }
 
@@ -343,19 +431,20 @@ export function lootReceiver(
 /** Defesa do herói [TFS player.cpp:367-396]: o escudo manda; sem escudo, a arma; sem arma, os punhos (7). */
 function heroDefense(
   h: RunHero,
+  skills: Record<SkillId, number>,
   weapon: ItemDef | null,
   shield: ItemDef | null,
 ) {
   const voc = VOCATIONS[h.vocation];
-  let skill = h.skills.punhos;
+  let skill = skills.punhos;
   let value = 7;
   if (weapon) {
     value = weapon.defense ?? 0;
-    skill = weaponSkill(weapon, h.skills);
+    skill = weaponSkill(weapon, skills);
   }
   if (shield) {
     value = shield.defense ?? 0;
-    skill = h.skills.escudo;
+    skill = skills.escudo;
   }
   return playerDefense(
     skill,
@@ -380,6 +469,36 @@ function monsterElement(
   return out <= 0 ? { damage: 0, type: "armor" } : { damage: out, type };
 }
 
+/** Gasta uma unidade da munição `id`: do lugar e, se ele esvaziar, repõe da mochila [nosso]. */
+function takeAmmo(inv: Inventory, id: string): void {
+  const slot = inv.equip.municao;
+  if (slot && slot.item === id) {
+    slot.count--;
+    if (slot.count > 0) return;
+    delete inv.equip.municao;
+    const i = inv.pack.findIndex((x) => x.item === id);
+    if (i >= 0) {
+      inv.equip.municao = inv.pack[i]!;
+      inv.pack.splice(i, 1);
+    }
+    return;
+  }
+  const i = inv.pack.findIndex((x) => x.item === id);
+  if (i < 0) return;
+  inv.pack[i]!.count--;
+  if (inv.pack[i]!.count <= 0) inv.pack.splice(i, 1);
+}
+
+function addTo(
+  list: { item: string; count: number }[],
+  item: string,
+  n: number,
+) {
+  const prev = list.find((l) => l.item === item);
+  if (prev) prev.count += n;
+  else list.push({ item, count: n });
+}
+
 export function simulateRun(input: RunInput): RunResult {
   const dungeon: Dungeon | undefined = dungeonOf(input.dungeon);
   if (!dungeon) throw new Error(`unknown dungeon ${input.dungeon}`);
@@ -388,14 +507,10 @@ export function simulateRun(input: RunInput): RunResult {
 
   const heroes: HeroRt[] = input.heroes.map((h, i) => {
     const voc = VOCATIONS[h.vocation];
-    const weapon = h.gear.weapon ? (itemDef(h.gear.weapon) ?? null) : null;
-    const shield = h.gear.shield ? (itemDef(h.gear.shield) ?? null) : null;
-    const pieces = ARMOR_SLOTS.map(
-      (s) => (h.gear.armor[s] && itemDef(h.gear.armor[s]!)?.armor) || 0,
-    );
+    const inv = cloneInventory(h.inv);
     const known = spellsFor(voc.base, h.level);
     const byLevel = (a: SpellDef, b: SpellDef) => b.level - a.level;
-    return {
+    const rt: HeroRt = {
       i,
       h,
       voc,
@@ -403,10 +518,13 @@ export function simulateRun(input: RunInput): RunResult {
       mana: h.manaMax,
       blocks: 2,
       alive: true,
-      weapon,
-      hasShield: shield !== null,
-      defense: heroDefense(h, weapon, shield),
-      armor: playerArmor(pieces, voc),
+      inv,
+      bare: cloneInventory(h.inv),
+      weapon: null,
+      hasShield: false,
+      sk: { ...h.skills },
+      defense: 0,
+      armor: 0,
       nextAttack: 0,
       blood: freshBlood(),
       heals: known.filter((s) => s.kind === "cura").sort(byLevel),
@@ -415,6 +533,8 @@ export function simulateRun(input: RunInput): RunResult {
       cooldown: new Map(),
       healGroup: 0,
       attackGroup: 0,
+      lastAmmo: inv.equip.municao?.item ?? null,
+      noAmmo: false,
       res: {
         dead: false,
         exp: 0,
@@ -424,9 +544,48 @@ export function simulateRun(input: RunInput): RunResult {
         gold: 0,
         damage: 0,
         healing: 0,
+        left: [],
+        spent: [],
+        inv,
+        invBare: inv,
       },
     };
+    rt.res.invBare = rt.bare;
+    refresh(rt);
+    return rt;
   });
+
+  /** Arma, escudo, armadura e skills a partir do que está vestido (o anel pode acabar). */
+  function refresh(h: HeroRt) {
+    const eq = h.inv.equip;
+    h.weapon = eq.arma ? (itemDef(eq.arma.item) ?? null) : null;
+    const shield = eq.escudo ? (itemDef(eq.escudo.item) ?? null) : null;
+    h.hasShield = shield !== null;
+    const pieces = ARMOR_SLOTS.map(
+      (s) => (eq[s] && itemDef(eq[s]!.item)?.armor) || 0,
+    );
+    h.armor = playerArmor(pieces, h.voc);
+    h.sk = { ...h.h.skills };
+    const ring = eq.anel ? itemDef(eq.anel.item) : undefined;
+    if (ring?.skillBonus)
+      for (const [k, v] of Object.entries(ring.skillBonus) as [
+        SkillId,
+        number,
+      ][])
+        h.sk[k] += v;
+    h.defense = heroDefense(h.h, h.sk, h.weapon, shield);
+  }
+
+  /** O anel ou o colar acabou: sai das duas cópias. */
+  function wearOut(h: HeroRt, slot: "anel" | "colar") {
+    const item = h.inv.equip[slot]?.item;
+    if (!item) return;
+    delete h.inv.equip[slot];
+    delete h.bare.equip[slot];
+    addTo(h.res.spent, item, 1);
+    ev.push({ k: "gasto", a: h.i, item });
+    if (slot === "anel") refresh(h);
+  }
 
   let monsters: MonsterRt[] = [];
   const frames: RunFrame[] = [];
@@ -504,16 +663,35 @@ export function simulateRun(input: RunInput): RunResult {
     for (const entry of m.def.loot) {
       const n = rollLoot(rng, entry, input.rateLoot);
       if (n <= 0) continue;
-      if (entry.item === "moedas") {
-        owner.res.gold += n;
-        ev.push({ k: "loot", a: owner.i, item: entry.item, n });
+      if (entry.item === GOLD) {
+        const got = addGold(owner.inv, owner.h.cap, n);
+        if (got > 0) {
+          owner.res.gold += got;
+          ev.push({ k: "loot", a: owner.i, item: GOLD, n: got });
+        }
+        if (got < n) {
+          addTo(owner.res.left, GOLD, n - got);
+          ev.push({ k: "deixado", a: owner.i, item: GOLD, n: n - got });
+        }
         continue;
       }
-      const to = heroes[lootReceiver(entry.item, alive, m.dmgBy, owner.i)]!;
-      const prev = to.res.loot.find((l) => l.item === entry.item);
-      if (prev) prev.count += n;
-      else to.res.loot.push({ item: entry.item, count: n });
-      ev.push({ k: "loot", a: to.i, item: entry.item, n });
+      // Quem pode usar leva; se não couber nele, o dono do corpo; se não couber em ninguém,
+      // fica no corpo [TFS: o que não cabe não sai do corpo].
+      const first = heroes[lootReceiver(entry.item, alive, m.dmgBy, owner.i)]!;
+      let rest = n;
+      for (const to of first === owner ? [owner] : [first, owner]) {
+        const got = addItem(to.inv, to.h.cap, entry.item, rest);
+        if (got > 0) {
+          addTo(to.res.loot, entry.item, got);
+          ev.push({ k: "loot", a: to.i, item: entry.item, n: got });
+        }
+        rest -= got;
+        if (rest <= 0) break;
+      }
+      if (rest > 0) {
+        addTo(owner.res.left, entry.item, rest);
+        ev.push({ k: "deixado", a: owner.i, item: entry.item, n: rest });
+      }
     }
   }
 
@@ -521,11 +699,36 @@ export function simulateRun(input: RunInput): RunResult {
     return monsters.find((m) => m.alive) ?? null;
   }
 
+  /**
+   * A munição para o tiro: a do lugar, se é do tipo do arco; senão a primeira da mochila desse
+   * tipo (a mesma do último tiro antes), que vai para o lugar [nosso: o jogador repõe à mão].
+   */
+  function readyAmmo(h: HeroRt, type: AmmoType): ItemDef | null {
+    const base = h.voc.base;
+    const slot = h.inv.equip.municao;
+    const cur = slot ? itemDef(slot.item) : undefined;
+    if (cur && cur.ammo === type && canUse(cur, base, h.h.level)) return cur;
+    const fits = (x: ItemStack) => {
+      const d = itemDef(x.item);
+      return !!d && d.ammo === type && canUse(d, base, h.h.level);
+    };
+    let i = h.lastAmmo
+      ? h.inv.pack.findIndex((x) => x.item === h.lastAmmo && fits(x))
+      : -1;
+    if (i < 0) i = h.inv.pack.findIndex(fits);
+    if (i < 0) return null;
+    const id = h.inv.pack[i]!.item;
+    if (!equipItem(h.inv, base, h.h.level, i).ok) return null;
+    const j = h.bare.pack.findIndex((x) => x.item === id);
+    if (j >= 0) equipItem(h.bare, base, h.h.level, j);
+    return itemDef(id) ?? null;
+  }
+
   function heroWeaponAttack(h: HeroRt, m: MonsterRt) {
     const w = h.weapon;
     const striker = {
       level: h.h.level,
-      skill: weaponSkill(w, h.h.skills),
+      skill: weaponSkill(w, h.sk),
       attack: w?.attack ?? 7,
       mode: RUN.fightMode,
       voc: h.voc,
@@ -547,11 +750,31 @@ export function simulateRun(input: RunInput): RunResult {
       return;
     }
     if (w?.kind === "distancia") {
-      // Distância [TFS weapons.cpp:673-899]: acerta pela tabela; passa só pela armadura.
-      const chance = distanceHitChance(
-        h.h.skills.distancia,
+      // Arco e besta atiram a munição: sem ela, não há arma [TFS player.cpp:229-239]; o ataque é
+      // o dela mais o do arco [TFS weapons.cpp:839-849]; cada tiro, certo ou não, gasta um
+      // [TFS weapons.xml removecount, weapons.cpp:452-458].
+      let ammo: ItemDef | null = null;
+      if (w.ammo) {
+        ammo = readyAmmo(h, w.ammo);
+        if (!ammo) {
+          if (!h.noAmmo) {
+            h.noAmmo = true;
+            ev.push({ k: "municao", a: h.i });
+          }
+          return;
+        }
+        h.lastAmmo = ammo.id;
+        takeAmmo(h.inv, ammo.id);
+        takeAmmo(h.bare, ammo.id);
+        addTo(h.res.spent, ammo.id, 1);
+      }
+      striker.attack = (ammo?.attack ?? 0) + (w.attack ?? 0);
+      // Acerta pela chance da munição mais a do arco [TFS weapons.cpp:673-776]; passa só pela armadura.
+      const chance = ammoHitChance(
+        h.sk.distancia,
         RUN.archerDistance,
-        w.hitCap ?? 75,
+        ammo?.maxHitChance ?? w.maxHitChance ?? 75,
+        ammo ? (w.hitChance ?? 0) : 0,
       );
       if (!distanceHits(rng, chance)) {
         ev.push({
@@ -623,9 +846,9 @@ export function simulateRun(input: RunInput): RunResult {
     const hero = {
       level: h.h.level,
       magicLevel: h.h.magicLevel,
-      weaponSkill: weaponSkill(h.weapon, h.h.skills),
+      weaponSkill: weaponSkill(h.weapon, h.sk),
       weaponAttack: h.weapon?.attack ?? 7,
-      distance: h.h.skills.distancia,
+      distance: h.sk.distancia,
     };
     if (tMs >= h.healGroup) {
       // Cura num companheiro: o mais ferido abaixo de 40% [nosso].
@@ -714,6 +937,28 @@ export function simulateRun(input: RunInput): RunResult {
     return t;
   }
 
+  /**
+   * Colar e anel absorvem parte do dano que passou pela defesa e pela armadura, e cada golpe
+   * absorvido gasta uma carga [TFS player.cpp:1997-2029, colar (2) antes do anel (9)].
+   */
+  function absorb(h: HeroRt, el: Element, damage: number): number {
+    let d = damage;
+    for (const slot of ["colar", "anel"] as const) {
+      const x = h.inv.equip[slot];
+      const def = x ? itemDef(x.item) : undefined;
+      const pct = def?.absorb?.[el] ?? 0;
+      if (!x || pct === 0) continue;
+      d -= Math.ceil(d * (pct / 100));
+      if (x.charges !== undefined) {
+        x.charges--;
+        const y = h.bare.equip[slot];
+        if (y?.charges !== undefined) y.charges--;
+        if (x.charges <= 0) wearOut(h, slot);
+      }
+    }
+    return Math.max(0, d);
+  }
+
   function hurtHero(m: MonsterRt, h: HeroRt, at: MonsterAttack) {
     const raw = normalRandom(rng, at.min, at.max);
     const melee = at.kind === "melee";
@@ -735,7 +980,11 @@ export function simulateRun(input: RunInput): RunResult {
       h.blood = o.state;
       addTries(h, "escudo", o.shieldTries);
     }
-    const real = Math.min(h.hp, b.damage);
+    const dealt =
+      b.type === "none" && b.damage > 0
+        ? absorb(h, at.element, b.damage)
+        : b.damage;
+    const real = Math.min(h.hp, dealt);
     h.hp -= real;
     if (melee)
       ev.push({
@@ -792,6 +1041,26 @@ export function simulateRun(input: RunInput): RunResult {
     }
   }
 
+  /** O anel no dedo: o tempo corre e a regeneração dele entra [TFS items.xml duration, healthGain]. */
+  function ringTick(h: HeroRt, s: number) {
+    const x = h.inv.equip.anel;
+    const def = x ? itemDef(x.item) : undefined;
+    if (!x || !def) return;
+    if (
+      def.regen &&
+      s % Math.max(1, Math.round(def.regen.ticksMs / 1000)) === 0
+    ) {
+      h.hp = Math.min(h.h.healthMax, h.hp + def.regen.health);
+      h.mana = Math.min(h.h.manaMax, h.mana + def.regen.mana);
+    }
+    if (x.duration !== undefined) {
+      x.duration--;
+      const y = h.bare.equip.anel;
+      if (y?.duration !== undefined) y.duration--;
+      if (x.duration <= 0) wearOut(h, "anel");
+    }
+  }
+
   let st = 0;
   let pendingAt = -1;
   let outcome: RunOutcome = "retirada";
@@ -810,6 +1079,7 @@ export function simulateRun(input: RunInput): RunResult {
           h.hp = Math.min(h.h.healthMax, h.hp + h.voc.hpAmount);
         if (s % h.voc.manaTicks === 0)
           h.mana = Math.min(h.h.manaMax, h.mana + h.voc.manaAmount);
+        ringTick(h, s);
       }
     }
     if (pendingAt === s) {
@@ -880,7 +1150,8 @@ export function runStaminaCost(seconds: number): number {
  * O que o herói leva: nada se caiu (decisão do dono, 23/11/2026: a morte perde só a
  * recompensa daquela dungeon). Experiência × taxa × bônus de level baixo × stamina
  * [TFS default_onGainExperience.lua]; tentativas × taxa de skill e mana × taxa de magia
- * [TFS onGainSkillTries/rateMagic].
+ * [TFS onGainSkillTries/rateMagic]. O loot e as moedas já estão no inventário do resultado
+ * (`inv`); aqui vão para o resumo.
  */
 export function runReward(
   hero: RunHero,

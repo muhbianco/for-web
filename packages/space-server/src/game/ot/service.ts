@@ -26,6 +26,9 @@ import {
   type RpgHeroDoc,
   type RpgOutcome,
   applyVocation,
+  changeHeroCoins,
+  discardHeroItem,
+  equipHero,
   heroRunSnapshot,
   inRun,
   markRun,
@@ -35,9 +38,11 @@ import {
   RPG_DOC_MAX_BYTES,
   rpgDocBytes,
   rpgHeroView,
+  setAutoEquip,
   startTraining,
   stopTraining,
   trainingExpired,
+  unequipHero,
 } from "./hero.ts";
 import { type Lobby, type LobbyResult, lobbyView } from "./lobby.ts";
 import {
@@ -422,6 +427,31 @@ export class RpgService {
           d: { tv: "", lobby: null },
         });
       }
+      case "rpg.equip":
+      case "rpg.unequip":
+      case "rpg.auto":
+      case "rpg.coins":
+      case "rpg.discard": {
+        // Inventário (etapa O7): fora da dungeon; a pilha tem de ser a que o app viu.
+        const out = await this.mutate(userId, false, (d) => {
+          switch (cmd.t) {
+            case "rpg.equip":
+              return equipHero(d, cmd.d.index, cmd.d.item, now);
+            case "rpg.unequip":
+              return unequipHero(d, cmd.d.slot, now);
+            case "rpg.auto":
+              return setAutoEquip(d, cmd.d.on, now);
+            case "rpg.coins":
+              return changeHeroCoins(d, cmd.d.index, cmd.d.item, now);
+            case "rpg.discard":
+              return discardHeroItem(d, cmd.d.index, cmd.d.item, now);
+          }
+        });
+        if (!out) return fail("rpg_invalid", "no_vocation");
+        if ("reason" in out) return fail("rpg_invalid", out.reason);
+        this.remember(userId, cmd.id);
+        return this.push(session, out.doc, cmd.id, host);
+      }
       case "rpg.lobby.start": {
         const started = await this.startRun(host, userId);
         if (!started.ok) return fail(started.code, started.reason);
@@ -692,10 +722,31 @@ export class RpgService {
       for (let i = 0; i < doc.heroes.length; i++) {
         const userId = doc.heroes[i]!.userId;
         await this.inQueue(userId, async () => {
+          // Corrida da etapa O7: o inventário do fim vem do resultado; da O5, não há.
+          const res = doc.results[i];
+          const start = doc.heroes[i]?.inv;
+          const after =
+            start && res?.inv && res.invBare
+              ? { start, alive: res.inv, bare: res.invBare }
+              : null;
+          let mismatch = false;
           const out = await this.mutate(userId, false, (d) => {
-            const r = settleRun(d, doc._id, doc.rewards[i] ?? null, cost, now);
+            const r = settleRun(
+              d,
+              doc._id,
+              doc.rewards[i] ?? null,
+              cost,
+              now,
+              after,
+            );
+            if (r.ok) mismatch = r.settled.invMismatch;
             return r.ok ? { ok: true } : r;
           });
+          if (mismatch)
+            this.log.warn("rpg run inventory changed during run", {
+              run: doc._id,
+              user: userId,
+            });
           if (out && "doc" in out)
             this.push(host?.sessionOf(userId) ?? null, out.doc, undefined, host);
         });
@@ -709,6 +760,8 @@ export class RpgService {
           return {
             user_id: h.userId,
             dead: doc.results[i]?.dead ?? false,
+            spent: doc.results[i]?.spent ?? [],
+            left: doc.results[i]?.left ?? [],
             reward: r
               ? {
                   exp: r.exp,

@@ -2,7 +2,9 @@ import { z } from "zod";
 
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../../protocol/messages.ts";
 import type { SkillId, VocationId } from "./data.ts";
-import type { Gear, RunFrame, RunOutcome } from "./run.ts";
+import type { Gear, Inventory } from "./inventory.ts";
+import { type Slot, SLOTS } from "./items.ts";
+import type { RunFrame, RunOutcome } from "./run.ts";
 import { type TrainingSkill, TRAINING_SKILLS } from "./training.ts";
 
 /**
@@ -88,6 +90,50 @@ export const RpgLobbyStartCmd = z.object({
   d: z.object({}).strict().optional(),
 });
 
+// ---- inventário (etapa O7) ----------------------------------------------------
+// Os comandos que apontam uma pilha da mochila levam o índice e o id do item: se a mochila
+// mudou entre a tela e o comando, o servidor recusa ("changed") em vez de mexer em outra.
+
+const packRef = {
+  index: z.number().int().min(0).max(39),
+  item: z.string().min(1).max(40),
+};
+
+/** Veste o item da mochila (troca com o que estava no lugar). */
+export const RpgEquipCmd = z.object({
+  ...env,
+  t: z.literal("rpg.equip"),
+  d: z.object(packRef).strict(),
+});
+
+/** Tira do corpo para a mochila. */
+export const RpgUnequipCmd = z.object({
+  ...env,
+  t: z.literal("rpg.unequip"),
+  d: z.object({ slot: z.enum(SLOTS as [Slot, ...Slot[]]) }).strict(),
+});
+
+/** Liga ou desliga "escolher o melhor sozinho". */
+export const RpgAutoCmd = z.object({
+  ...env,
+  t: z.literal("rpg.auto"),
+  d: z.object({ on: z.boolean() }).strict(),
+});
+
+/** Usa a pilha de moedas: 100 viram 1 da de cima, ou 1 vira 100 da de baixo. */
+export const RpgCoinsCmd = z.object({
+  ...env,
+  t: z.literal("rpg.coins"),
+  d: z.object(packRef).strict(),
+});
+
+/** Joga fora a pilha da mochila. */
+export const RpgDiscardCmd = z.object({
+  ...env,
+  t: z.literal("rpg.discard"),
+  d: z.object(packRef).strict(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
@@ -97,6 +143,11 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgLobbyJoinCmd,
   RpgLobbyLeaveCmd,
   RpgLobbyStartCmd,
+  RpgEquipCmd,
+  RpgUnequipCmd,
+  RpgAutoCmd,
+  RpgCoinsCmd,
+  RpgDiscardCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -153,13 +204,17 @@ export interface RpgHeroView {
   training: RpgTrainingView | null;
   /** Taxas do servidor em vigor (skill e magia multiplicam as tentativas). */
   rates: { exp: number; skill: number; magic: number; loot: number };
-  /** Moedas (etapa O5). */
+  /** Etapa O7: os 10 lugares do corpo e a mochila (o conteúdo do recipiente vestido). */
+  inventory: Inventory;
+  /** Espaços do recipiente vestido. */
+  pack_size: number;
+  /** Peso de tudo, em centésimos de oz; a capacidade é `cap` em oz. */
+  weight: number;
+  /** Valor das moedas que carrega, em ouro. */
   gold: number;
-  /** A mochila: o que caiu nas dungeons (o kit da vocação não entra). */
-  bag: { item: string; count: number }[];
-  /** Peso da mochila, em centésimos de oz; a capacidade é `cap` em oz. */
-  bag_weight: number;
-  /** O que o herói vestiria agora numa dungeon (o melhor do kit e da mochila). */
+  /** "Escolher o melhor sozinho" (arma, escudo, armaduras, mochila e munição). */
+  auto_equip: boolean;
+  /** O que veste agora (o mesmo que entra na dungeon). */
   gear: Gear;
   /** Na dungeon agora: até quando. */
   run: { id: string; dungeon: string; ends_at: number } | null;
@@ -234,6 +289,10 @@ export interface RpgRunEndView {
   members: {
     user_id: string;
     dead: boolean;
+    /** Etapa O7: munição gasta e anéis ou colares que acabaram (mesmo quem caiu). */
+    spent?: { item: string; count: number }[];
+    /** Etapa O7: o que não coube e ficou no corpo. */
+    left?: { item: string; count: number }[];
     reward: {
       exp: number;
       gold: number;

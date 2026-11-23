@@ -177,6 +177,23 @@ export function distanceHitChance(
   }
 }
 
+/**
+ * Chance de acerto do tiro com munição [TFS weapons.cpp:673-776]: teto 75, 90 ou 100 usa a
+ * tabela; outro teto vale como chance fixa (a flecha, 91); o acerto do arco soma por cima.
+ */
+export function ammoHitChance(
+  skill: number,
+  distance: number,
+  maxHitChance: number,
+  bowHitChance = 0,
+): number {
+  const base =
+    maxHitChance === 75 || maxHitChance === 90 || maxHitChance === 100
+      ? distanceHitChance(skill, distance, maxHitChance)
+      : maxHitChance;
+  return base + bowHitChance;
+}
+
 /** O golpe à distância acerta? `chance >= uniforme(1, 100)` [TFS weapons.cpp:780]. */
 export function distanceHits(rng: Rng, chance: number): boolean {
   return chance >= uniformRandom(rng, 1, 100);

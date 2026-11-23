@@ -1,4 +1,5 @@
 import {
+  type Inventory,
   type MagicState,
   type Rates,
   type RpgHeroView,
@@ -6,36 +7,53 @@ import {
   type RunReward,
   type SkillId,
   type SkillState,
+  type Slot,
   type TrainingBank,
   type TrainingSession,
   type TrainingSkill,
   type VocationId,
   addExperience,
+  addGold,
+  addItem,
   addManaSpent,
   addSkillTries,
+  autoEquip,
   bankAfter,
   bankNow,
-  bestGear,
+  changeCoins,
+  cloneInventory,
+  coinValue,
+  discardItem,
+  equipItem,
   freshSkill,
+  gearOf,
+  inventoryKey,
+  inventoryWeight,
   itemDef,
+  newStack,
+  packSize,
   regenStamina,
   reqMana,
   reqSkillTries,
   settleSession,
   SKILLS,
+  STACK_MAX,
   STAMINA,
   START,
   startSession,
+  starterInventory,
   TRAINING,
+  unequipItem,
+  validInventory,
   VOCATIONS,
 } from "@muchat/space-core/game/ot";
 
 /**
  * O herói do jogo idle (docs/espaco/jogo/ot) no servidor: um por conta, criado no primeiro
- * uso. O Refúgio do ADR 0009 fica no `game_heroes`; este mora em `rpg_heroes` e começa do
- * zero (decisão do dono, 23/11/2026).
+ * uso, em `rpg_heroes`. Versão 2 (etapa O7): o inventário do OT no lugar da bolsa de moedas e
+ * da lista de itens da etapa O5.
  */
-export const RPG_VERSION = 1;
+export const RPG_VERSION = 2;
 
 /** O treino aberto: a sessão das regras mais onde ele acontece. */
 export interface RpgTraining extends TrainingSession {
@@ -71,11 +89,17 @@ export interface RpgHeroDoc {
   stamina: number;
   bank: TrainingBank;
   training: RpgTraining | null;
-  /** Etapa O5: moedas, a mochila, quando a stamina foi acertada e a corrida em andamento. */
-  gold: number;
-  bag: { item: string; count: number }[];
+  /** Quando a stamina foi acertada e a corrida em andamento (etapa O5). */
   stamina_at: number;
   run: RpgRunMark | null;
+  /** Etapa O7: o que veste e a mochila; "escolher o melhor sozinho". */
+  inv: Inventory;
+  auto_equip: boolean;
+}
+
+/** A bolsa do primeiro dia [TFS first_items.lua]. */
+function firstBag(): Inventory {
+  return { equip: { mochila: newStack(itemDef("bolsa")!) }, pack: [] };
 }
 
 /** Herói novo [TFS schema.sql: level 1, vida 150, mana 0, cap 400, saldo de treino e stamina cheios]. */
@@ -99,20 +123,79 @@ export function newRpgHero(userId: string, now: number): RpgHeroDoc {
     stamina: STAMINA.max,
     bank: { ms: TRAINING.maxBankMs, at: now },
     training: null,
-    gold: 0,
-    bag: [],
     stamina_at: now,
     run: null,
+    inv: firstBag(),
+    auto_equip: true,
   };
 }
 
-/** Herói gravado antes da etapa O5: os campos novos com o valor de partida. */
+function skillLevels(d: { skills: Record<SkillId, SkillState> }) {
+  const out = {} as Record<SkillId, number>;
+  for (const k of SKILLS) out[k] = d.skills[k].level;
+  return out;
+}
+
+/** Espaços guardados para as moedas na conversão (ouro, platina e cristal). */
+const MIGRATE_COIN_SLOTS = 3;
+
+/**
+ * Herói da etapa O5 para o inventário da O7 [nosso]: o kit vestido com uma mochila de 20
+ * (para nada se perder na troca da lista sem limite pela mochila com espaços), os itens que
+ * tinha, os de mais valor primeiro, e as moedas. O que não couber nos espaços vira moedas
+ * pelo valor, como a venda da saída da O5.
+ */
+function migrateInventory(x: RpgHeroDoc & { gold?: unknown; bag?: unknown }) {
+  if (x.vocation === 0) {
+    x.inv = firstBag();
+    return;
+  }
+  const inv = starterInventory(VOCATIONS[x.vocation].base, "mochila");
+  let gold = typeof x.gold === "number" && x.gold > 0 ? Math.floor(x.gold) : 0;
+  const old = (Array.isArray(x.bag) ? x.bag : []) as {
+    item: unknown;
+    count: unknown;
+  }[];
+  const items = old
+    .filter(
+      (b): b is { item: string; count: number } =>
+        typeof b?.item === "string" &&
+        !!itemDef(b.item) &&
+        Number.isInteger(b.count) &&
+        (b.count as number) > 0,
+    )
+    .sort(
+      (a, b) =>
+        itemDef(b.item)!.value - itemDef(a.item)!.value ||
+        (a.item < b.item ? -1 : a.item > b.item ? 1 : 0),
+    );
+  const room = () => inv.pack.length < packSize(inv) - MIGRATE_COIN_SLOTS;
+  for (const b of items) {
+    const def = itemDef(b.item)!;
+    for (let k = 0; k < b.count; k++) {
+      const merge = def.stackable
+        ? inv.pack.some((p) => p.item === def.id && p.count < STACK_MAX)
+        : false;
+      if ((merge || room()) && addItem(inv, Infinity, def.id, 1) === 1)
+        continue;
+      gold += def.value;
+    }
+  }
+  addGold(inv, Infinity, gold);
+  autoEquip(inv, x.vocation, x.level, skillLevels(x), x.mana_max);
+  x.inv = inv;
+}
+
+/** Herói gravado antes (etapas O2–O5): os campos novos com o valor de partida. */
 export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
-  const x = d as Partial<RpgHeroDoc> & RpgHeroDoc;
-  if (typeof x.gold !== "number") x.gold = 0;
-  if (!Array.isArray(x.bag)) x.bag = [];
+  const x = d as RpgHeroDoc & { gold?: unknown; bag?: unknown };
   if (typeof x.stamina_at !== "number") x.stamina_at = x.updated_at ?? 0;
   if (x.run === undefined) x.run = null;
+  if (!validInventory(x.inv)) migrateInventory(x);
+  if (typeof x.auto_equip !== "boolean") x.auto_equip = true;
+  delete x.gold;
+  delete x.bag;
+  x.v = RPG_VERSION;
   return x;
 }
 
@@ -127,26 +210,13 @@ export function staminaNow(d: RpgHeroDoc, now: number): number {
   return regenStamina(d.stamina, Math.max(0, (now - d.stamina_at) / 1000));
 }
 
-/** Peso da mochila em centésimos de oz [TFS items.xml weight]. */
-export function bagWeight(bag: readonly { item: string; count: number }[]): number {
-  let w = 0;
-  for (const b of bag) w += (itemDef(b.item)?.weight ?? 0) * b.count;
-  return w;
-}
-
-function skillLevels(d: RpgHeroDoc): Record<SkillId, number> {
-  const out = {} as Record<SkillId, number>;
-  for (const k of SKILLS) out[k] = d.skills[k].level;
-  return out;
-}
-
-/** O herói como entra na corrida: skills de agora, o melhor equipamento, a stamina de agora. */
+/** O herói como entra na corrida: skills, inventário e stamina de agora. */
 export function heroRunSnapshot(
   d: RpgHeroDoc,
   name: string,
   now: number,
 ): RunHero {
-  const skills = skillLevels(d);
+  const inv = cloneInventory(d.inv);
   return {
     userId: d._id,
     name,
@@ -154,16 +224,12 @@ export function heroRunSnapshot(
     level: d.level,
     healthMax: d.health_max,
     manaMax: d.mana_max,
-    skills,
+    skills: skillLevels(d),
     magicLevel: d.magic.level,
     stamina: staminaNow(d, now),
-    gear: bestGear(
-      d.vocation,
-      d.level,
-      skills,
-      d.mana_max,
-      d.bag.map((b) => b.item),
-    ),
+    gear: gearOf(inv),
+    inv,
+    cap: d.cap,
   };
 }
 
@@ -193,19 +259,26 @@ export function unmarkRun(d: RpgHeroDoc, id: string): RpgOutcome {
   return { ok: true };
 }
 
-/** O que o fechamento da corrida fez no herói, para o app contar. */
+/** O que o fechamento da corrida fez no herói, para o app contar e para o log. */
 export interface RunSettled {
   levelBefore: number;
   levelAfter: number;
-  kept: { item: string; count: number }[];
-  /** Não coube na mochila e virou moedas [nosso]. */
-  sold: { item: string; count: number; gold: number }[];
+  /** O inventário mudou desde o começo (não deveria: os comandos esperam a corrida). */
+  invMismatch: boolean;
+}
+
+/** O inventário do fim da corrida (etapa O7): o de partida, com o loot e só com o gasto. */
+export interface RunInventories {
+  start: Inventory;
+  alive: Inventory;
+  bare: Inventory;
 }
 
 /**
  * Fecha a corrida no herói, uma vez só: a marca tem de ser desta corrida. Gasta a stamina do
- * tempo na dungeon e, se ele não caiu, credita experiência, tentativas, mana, moedas e loot
- * (o que passa da capacidade é vendido na saída).
+ * tempo na dungeon; o inventário fica como a corrida deixou (com o loot se ele não caiu, só
+ * com o gasto se caiu); se não caiu, credita experiência, tentativas e mana. Corrida da etapa
+ * O5 (sem inventário): o loot e as moedas entram no que couber.
  */
 export function settleRun(
   d: RpgHeroDoc,
@@ -213,69 +286,150 @@ export function settleRun(
   reward: RunReward | null,
   staminaCost: number,
   now: number,
+  after: RunInventories | null = null,
 ): { ok: true; settled: RunSettled } | { ok: false; reason: string } {
   if (d.run?.id !== id) return { ok: false, reason: "not_in_run" };
   const voc = VOCATIONS[d.vocation];
   const settled: RunSettled = {
     levelBefore: d.level,
     levelAfter: d.level,
-    kept: [],
-    sold: [],
+    invMismatch: false,
   };
   d.stamina = Math.max(0, d.stamina - staminaCost);
   d.stamina_at = now;
   d.run = null;
-  if (!reward) return { ok: true, settled };
-  const lv = addExperience(
-    voc,
-    {
-      level: d.level,
-      experience: d.experience,
-      healthMax: d.health_max,
-      manaMax: d.mana_max,
-      cap: d.cap,
-    },
-    reward.exp,
-  );
-  d.level = lv.level;
-  d.experience = lv.experience;
-  d.health_max = lv.healthMax;
-  d.mana_max = lv.manaMax;
-  d.cap = lv.cap;
-  settled.levelAfter = lv.level;
-  for (const [k, n] of Object.entries(reward.tries) as [SkillId, number][])
-    d.skills[k] = addSkillTries(voc, k, d.skills[k], n);
-  d.magic = addManaSpent(voc, d.magic, reward.manaSpent);
-  d.gold += reward.gold;
-  const capacity = d.cap * 100;
-  for (const l of reward.loot) {
-    const def = itemDef(l.item);
-    if (!def) continue;
-    const w = def.weight * l.count;
-    if (bagWeight(d.bag) + w <= capacity) {
-      const prev = d.bag.find((b) => b.item === l.item);
-      if (prev) prev.count += l.count;
-      else d.bag.push({ item: l.item, count: l.count });
-      settled.kept.push({ ...l });
-    } else {
-      const gold = def.value * l.count;
-      d.gold += gold;
-      settled.sold.push({ ...l, gold });
-    }
+  if (after) {
+    if (inventoryKey(d.inv) === inventoryKey(after.start))
+      d.inv = cloneInventory(reward ? after.alive : after.bare);
+    else settled.invMismatch = true;
+  } else if (reward) {
+    for (const l of reward.loot) addItem(d.inv, d.cap, l.item, l.count);
+    addGold(d.inv, d.cap, reward.gold);
   }
+  if (reward) {
+    const lv = addExperience(
+      voc,
+      {
+        level: d.level,
+        experience: d.experience,
+        healthMax: d.health_max,
+        manaMax: d.mana_max,
+        cap: d.cap,
+      },
+      reward.exp,
+    );
+    d.level = lv.level;
+    d.experience = lv.experience;
+    d.health_max = lv.healthMax;
+    d.mana_max = lv.manaMax;
+    d.cap = lv.cap;
+    settled.levelAfter = lv.level;
+    for (const [k, n] of Object.entries(reward.tries) as [SkillId, number][])
+      d.skills[k] = addSkillTries(voc, k, d.skills[k], n);
+    d.magic = addManaSpent(voc, d.magic, reward.manaSpent);
+  }
+  if (d.auto_equip)
+    autoEquip(d.inv, d.vocation, d.level, skillLevels(d), d.mana_max);
   return { ok: true, settled };
 }
 
 export type RpgOutcome = { ok: true } | { ok: false; reason: string };
 
-/** Escolhe a vocação, só uma vez [TFS: a escolha é definitiva]. */
+/** Escolhe a vocação, só uma vez [TFS: a escolha é definitiva]; o kit dela vem junto. */
 export function applyVocation(d: RpgHeroDoc, vocation: VocationId): RpgOutcome {
   if (d.vocation !== 0) return { ok: false, reason: "vocation_set" };
   if (vocation < 1 || vocation > 4)
     return { ok: false, reason: "bad_vocation" };
   d.vocation = vocation;
+  const kit = starterInventory(VOCATIONS[vocation].base);
+  // O que já estava na bolsa continua (o herói sem vocação não ganha nada, mas por garantia).
+  for (const x of d.inv.pack) kit.pack.push({ ...x });
+  d.inv = kit;
+  if (d.auto_equip)
+    autoEquip(d.inv, d.vocation, d.level, skillLevels(d), d.mana_max);
   return { ok: true };
 }
+
+// ---- inventário (etapa O7) ---------------------------------------------------
+
+/** Lugares que o "escolher o melhor sozinho" cuida: mexer neles à mão desliga o automático. */
+const AUTO_SLOTS: readonly Slot[] = [
+  "arma",
+  "escudo",
+  "cabeca",
+  "corpo",
+  "pernas",
+  "pes",
+  "mochila",
+  "municao",
+];
+
+function invGuard(d: RpgHeroDoc, now: number): RpgOutcome | null {
+  if (d.vocation === 0) return { ok: false, reason: "no_vocation" };
+  if (inRun(d, now)) return { ok: false, reason: "in_run" };
+  return null;
+}
+
+/** A pilha `index` ainda é a que o app viu? */
+function samePack(d: RpgHeroDoc, index: number, item: string): RpgOutcome | null {
+  return d.inv.pack[index]?.item === item
+    ? null
+    : { ok: false, reason: "changed" };
+}
+
+export function equipHero(
+  d: RpgHeroDoc,
+  index: number,
+  item: string,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now) ?? samePack(d, index, item);
+  if (g) return g;
+  const slot = itemDef(item)?.slot ?? null;
+  const r = equipItem(d.inv, VOCATIONS[d.vocation].base, d.level, index);
+  if (r.ok && slot && AUTO_SLOTS.includes(slot)) d.auto_equip = false;
+  return r;
+}
+
+export function unequipHero(d: RpgHeroDoc, slot: Slot, now: number): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const r = unequipItem(d.inv, slot);
+  if (r.ok && AUTO_SLOTS.includes(slot)) d.auto_equip = false;
+  return r;
+}
+
+export function setAutoEquip(d: RpgHeroDoc, on: boolean, now: number): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  d.auto_equip = on;
+  if (on) autoEquip(d.inv, d.vocation, d.level, skillLevels(d), d.mana_max);
+  return { ok: true };
+}
+
+export function changeHeroCoins(
+  d: RpgHeroDoc,
+  index: number,
+  item: string,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now) ?? samePack(d, index, item);
+  if (g) return g;
+  return changeCoins(d.inv, d.cap, index);
+}
+
+export function discardHeroItem(
+  d: RpgHeroDoc,
+  index: number,
+  item: string,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now) ?? samePack(d, index, item);
+  if (g) return g;
+  return discardItem(d.inv, index);
+}
+
+// ---- treino ------------------------------------------------------------------
 
 /** Credita o que o treino aberto rendeu até `now` (sem fechar). Devolve se algo mudou. */
 export function creditTraining(
@@ -395,16 +549,12 @@ export function rpgHeroView(
         }
       : null,
     rates: { ...rates },
-    gold: d.gold,
-    bag: d.bag.map((b) => ({ ...b })),
-    bag_weight: bagWeight(d.bag),
-    gear: bestGear(
-      d.vocation,
-      d.level,
-      skillLevels(d),
-      d.mana_max,
-      d.bag.map((b) => b.item),
-    ),
+    inventory: cloneInventory(d.inv),
+    pack_size: packSize(d.inv),
+    weight: inventoryWeight(d.inv),
+    gold: coinValue(d.inv),
+    auto_equip: d.auto_equip,
+    gear: gearOf(d.inv),
     run: inRun(d, now) && d.run ? { ...d.run } : null,
   };
 }
