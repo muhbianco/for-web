@@ -304,6 +304,16 @@ msgstr ""
 msgid "{a} acertou {b}: {0}"
 msgstr ""
 
+#. placeholder {0}: ev.v
+#: components/space/game/runUi.ts
+msgid "{a} bebeu {item}: +{0}"
+msgstr ""
+
+#. placeholder {0}: ev.v
+#: components/space/game/runUi.ts
+msgid "{a} bebeu {item}: +{0} de mana"
+msgstr ""
+
 #: components/space/game/runUi.ts
 msgid "{a} errou {b}"
 msgstr ""
@@ -629,6 +639,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "A luta ainda passa: {0} s."
 #~ msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "a melhor que tiver"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "A mochila está cheia."
@@ -2141,6 +2155,10 @@ msgstr ""
 #~ msgid "crítico +{0}%"
 #~ msgstr ""
 
+#: components/space/game/itemUi.ts
+msgid "Cura {a} a {b} de vida"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Cura abaixo de (%)"
 #~ msgstr ""
@@ -2402,6 +2420,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/bots/MyBots.tsx
 msgid "Developer Documentation"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Devolve {a} a {b} de mana"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -3729,6 +3751,14 @@ msgstr ""
 msgid "limitada por"
 msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Limite da poção de mana"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Limite da poção de vida"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Linha de frente: muita vida, armadura e escudo; parte do dano volta como vida."
 #~ msgstr ""
@@ -3889,6 +3919,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "mana +{0}"
 #~ msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Mana abaixo de"
+msgstr ""
 
 #. placeholder {0}: m.name
 #: components/space/game/RunPanel.tsx
@@ -4390,6 +4424,15 @@ msgstr ""
 msgid "Não foi possível fazer isso agora. Tente de novo."
 msgstr ""
 
+#. placeholder {0}: skipped().map(itemName).join(", ")
+#: components/space/game/HeroSheet.tsx
+msgid "Não pega no loot: {0}."
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Não pegar mais no loot"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Natural"
 msgstr ""
@@ -4513,6 +4556,10 @@ msgstr ""
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Notifications"
 msgstr "Notificări"
+
+#: components/space/game/HeroSheet.tsx
+msgid "nunca"
+msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "O banco não pesa. Sacar só funciona se as moedas couberem na mochila."
@@ -5015,6 +5062,10 @@ msgstr ""
 #~ msgid "Poção abaixo de (%)"
 #~ msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Poções na dungeon"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Posição do vídeo"
 msgstr ""
@@ -5102,6 +5153,14 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Punhos"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Qual poção de mana"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Qual poção de vida"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
@@ -6628,6 +6687,10 @@ msgstr ""
 msgid "Um vídeo por vez; intervalo de {0} min entre vídeos nesta sala."
 msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Uma poção por segundo, como no OT. Compre no mercador; o frasco vazio volta para a mochila."
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Uma vez"
 msgstr ""
@@ -6928,6 +6991,10 @@ msgstr ""
 #~ msgid "vida +{0}"
 #~ msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Vida abaixo de"
+msgstr ""
+
 #. placeholder {0}: def?.name ?? x.id
 #. placeholder {0}: m.name
 #: components/space/game/RunPanel.tsx
@@ -7100,6 +7167,10 @@ msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "Voltar 10 segundos"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+msgid "Voltar a pegar no loot"
 msgstr ""
 
 #: components/space/SpacePage.tsx
