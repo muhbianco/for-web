@@ -42,6 +42,10 @@ msgstr "dddd [at] LT"
 msgid "(changes are being saved…)"
 msgstr "(changes are being saved…)"
 
+#: components/space/game/TvMenu.tsx
+msgid "(líder)"
+msgstr "(líder)"
+
 #. placeholder {0}: s().unlock
 #: components/space/game/GamePanel.tsx
 msgid "(nível {0})"
@@ -60,6 +64,12 @@ msgstr "{0, plural, one {# blocked message} other {# blocked messages}}"
 #: components/ui/components/utils/files/FileDropAnywhereCollector.tsx
 msgid "{0, plural, one {Drop a file} other {Drop # files}}"
 msgstr "{0, plural, one {Drop a file} other {Drop # files}}"
+
+#. placeholder {0}: L.vocation[m.vocation as 1 | 2 | 3 | 4]?.name ?? ""
+#. placeholder {1}: m.level
+#: components/space/game/TvMenu.tsx
+msgid "{0} · Nv {1}"
+msgstr "{0} · Nv {1}"
 
 #. placeholder {0}: level()
 #. placeholder {1}: pct()
@@ -162,6 +172,14 @@ msgstr "{0} made {1} the new group owner"
 msgid "{0} min"
 msgstr "{0} min"
 
+#. placeholder {0}: leaderName()
+#. placeholder {1}: dungeonOf(l.dungeon)?.name ?? l.dungeon
+#. placeholder {2}: l.members.length
+#. placeholder {3}: l.max
+#: components/space/game/LobbyChip.tsx
+msgid "{0} monta um grupo na TV: {1} · {2}/{3}"
+msgstr "{0} monta um grupo na TV: {1} · {2}/{3}"
+
 #. placeholder {0}: here()
 #: components/space/SpaceSidebarEntry.tsx
 msgid "{0} pessoas no Espaço"
@@ -230,6 +248,13 @@ msgstr "{0}'s roles"
 #: components/modal/modals/RemoveTimeout.tsx
 msgid "{0}'s timeout will be removed and they will be able to interact with the server again."
 msgstr "{0}'s timeout will be removed and they will be able to interact with the server again."
+
+#. placeholder {0}: lobby().members.length
+#. placeholder {1}: lobby().max
+#. placeholder {2}: duration(Math.max(0, lobby().expires_at - Date.now()))
+#: components/space/game/TvMenu.tsx
+msgid "{0}/{1} · fecha em {2}"
+msgstr "{0}/{1} · fecha em {2}"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{device} Hz (não bate com {context} Hz)"
@@ -736,6 +761,10 @@ msgstr "Assign lower-ranked roles to lower-ranking members"
 msgid "Assign Roles"
 msgstr "Assign Roles"
 
+#: components/space/game/TvMenu.tsx
+msgid "Assistir na Smart TV"
+msgstr "Assistir na Smart TV"
+
 #: components/space/DecorPanel.tsx
 msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
 msgstr "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
@@ -942,6 +971,11 @@ msgstr "Bola de fogo"
 msgid "Boneco {0} ({1})"
 msgstr "Boneco {0} ({1})"
 
+#. placeholder {0}: bonusPct()
+#: components/space/game/TvMenu.tsx
+msgid "Bônus de experiência do grupo: +{0}% (cresce com vocações diferentes)."
+msgstr "Bônus de experiência do grupo: +{0}% (cresce com vocações diferentes)."
+
 #: components/app/interface/channels/text/Message.tsx
 msgid "Bot"
 msgstr "Bot"
@@ -1113,6 +1147,10 @@ msgstr "Cancel your discover request and remove it from the review queue"
 #: components/space/game/GamePanel.tsx
 msgid "Cancelar"
 msgstr "Cancelar"
+
+#: components/space/game/TvMenu.tsx
+msgid "Cancelar grupo"
+msgstr "Cancelar grupo"
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Cannot delete account until servers are deleted or transferred"
@@ -1413,6 +1451,11 @@ msgstr "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas 
 msgid "Combate"
 msgstr "Combate"
 
+#: components/space/game/LobbyChip.tsx
+#: components/space/game/TvMenu.tsx
+msgid "Começar"
+msgstr "Começar"
+
 #: components/space/game/GamePanel.tsx
 msgid "Começar a iniciação"
 msgstr "Começar a iniciação"
@@ -1490,7 +1533,7 @@ msgstr "Confirm"
 msgid "Confirm action"
 msgstr "Confirm action"
 
-#: components/space/game/TrainingDialog.tsx
+#: components/space/game/VocationPicker.tsx
 msgid "Confirmar"
 msgstr "Confirmar"
 
@@ -2112,6 +2155,10 @@ msgstr "Drugs or illegal goods"
 msgid "Druida"
 msgstr "Druida"
 
+#: components/space/game/TvMenu.tsx
+msgid "Dungeon em grupo"
+msgstr "Dungeon em grupo"
+
 #: components/space/DecorPanel.tsx
 msgid "Duplicar"
 msgstr "Duplicar"
@@ -2313,6 +2360,10 @@ msgstr "Enter your preferred username."
 msgid "Entrar no espaço"
 msgstr "Entrar no espaço"
 
+#: components/space/game/TvMenu.tsx
+msgid "Entrar no grupo"
+msgstr "Entrar no grupo"
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Entre em uma chamada para ver os números."
 msgstr "Entre em uma chamada para ver os números."
@@ -2457,6 +2508,10 @@ msgstr "Esse caminho não está ao alcance."
 msgid "Esse degrau ainda está trancado: vença o chefe do anterior."
 msgstr "Esse degrau ainda está trancado: vença o chefe do anterior."
 
+#: components/space/game/rpgUi.ts
+msgid "Esse grupo não existe mais."
+msgstr "Esse grupo não existe mais."
+
 #: components/space/game/labels.ts
 msgid "Esse item não é da sua classe."
 msgstr "Esse item não é da sua classe."
@@ -2573,6 +2628,7 @@ msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
 msgstr "Fecha a TV e para o som só para você; a sala continua assistindo"
 
 #: components/space/game/TrainingDialog.tsx
+#: components/space/game/TvMenu.tsx
 #: components/space/InteractionDialog.tsx
 msgid "Fechar"
 msgstr "Fechar"
@@ -2804,6 +2860,13 @@ msgstr "Grants {0} permissions and denies {1} permissions"
 msgid "Group Name"
 msgstr "Group Name"
 
+#. placeholder {0}: dungeonOf(l().dungeon)?.name ?? l().dungeon
+#. placeholder {1}: l().members.length
+#. placeholder {2}: l().max
+#: components/space/game/LobbyChip.tsx
+msgid "Grupo: {0} · {1}/{2}"
+msgstr "Grupo: {0} · {1}/{2}"
+
 #: components/space/game/GamePanel.tsx
 msgid "Guardar"
 msgstr "Guardar"
@@ -3011,6 +3074,10 @@ msgstr "Item não encontrado."
 msgid "Já tem algo nesse lugar."
 msgstr "Já tem algo nesse lugar."
 
+#: components/space/game/rpgUi.ts
+msgid "Já tem um grupo se formando nesta TV. Entre nele ou espere."
+msgstr "Já tem um grupo se formando nesta TV. Entre nele ou espere."
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Janela"
 msgstr "Janela"
@@ -3162,6 +3229,12 @@ msgstr "Let Muchat use its own custom titlebar."
 #: components/space/DecorPanel.tsx
 msgid "Leva para"
 msgstr "Leva para"
+
+#. placeholder {0}: d.minLevel
+#. placeholder {1}: d.recommendedLevel
+#: components/space/game/TvMenu.tsx
+msgid "level {0}+ · confortável a partir do {1}"
+msgstr "level {0}+ · confortável a partir do {1}"
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Libera 30 dias de VIP."
@@ -3627,6 +3700,14 @@ msgstr "Monochrome"
 msgid "Monospace Font"
 msgstr "Monospace Font"
 
+#: components/space/game/TvMenu.tsx
+msgid "Montar grupo"
+msgstr "Montar grupo"
+
+#: components/space/game/TvMenu.tsx
+msgid "Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar."
+msgstr "Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar."
+
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "More Contrast"
 msgstr "More Contrast"
@@ -3918,6 +3999,14 @@ msgstr "O boneco chegou ao limite: colete para não perder treino."
 msgid "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R$ 20 libera 30 dias de tela em 1080p e 60 fps, câmera em 1080p e áudio melhor. Apoios seguidos somam os prazos."
 msgstr "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R$ 20 libera 30 dias de tela em 1080p e 60 fps, câmera em 1080p e áudio melhor. Apoios seguidos somam os prazos."
 
+#: components/space/SpacePage.tsx
+msgid "O grupo de {names} entrou na dungeon {dungeon}."
+msgstr "O grupo de {names} entrou na dungeon {dungeon}."
+
+#: components/space/game/rpgUi.ts
+msgid "O grupo está cheio."
+msgstr "O grupo está cheio."
+
 #: components/space/game/labels.ts
 msgid "O herói está ferido: espere a vida voltar a 30%."
 msgstr "O herói está ferido: espere a vida voltar a 30%."
@@ -3961,6 +4050,10 @@ msgstr "O Refúgio está desligado neste servidor."
 #: components/space/DecorPanel.tsx
 msgid "O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão \"Aventura\". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
 msgstr "O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão \"Aventura\". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
+
+#: components/space/game/rpgUi.ts
+msgid "O tempo do grupo acabou. Monte de novo."
+msgstr "O tempo do grupo acabou. Monte de novo."
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo"
@@ -4836,9 +4929,17 @@ msgstr "Roles with No Overrides"
 msgid "Roupa"
 msgstr "Roupa"
 
+#: components/space/game/LobbyChip.tsx
+msgid "Sair"
+msgstr "Sair"
+
 #: components/space/MediaStage.tsx
 msgid "Sair da tela cheia"
 msgstr "Sair da tela cheia"
+
+#: components/space/game/TvMenu.tsx
+msgid "Sair do grupo"
+msgstr "Sair do grupo"
 
 #. placeholder {0}: run().row + 1
 #. placeholder {1}: run().map.length
@@ -5068,7 +5169,7 @@ msgid "Sent multiple attachments"
 msgstr "Sent multiple attachments"
 
 #. placeholder {0}: L.vocation[v()].name
-#: components/space/game/TrainingDialog.tsx
+#: components/space/game/VocationPicker.tsx
 msgid "Ser {0}? A escolha é definitiva."
 msgstr "Ser {0}? A escolha é definitiva."
 
@@ -5146,12 +5247,20 @@ msgid "Seu áudio está em outra aba ou outro servidor"
 msgstr "Seu áudio está em outra aba ou outro servidor"
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Seu avatar também é um herói. Escolha a vocação dele para começar a treinar."
-msgstr "Seu avatar também é um herói. Escolha a vocação dele para começar a treinar."
+#~ msgid "Seu avatar também é um herói. Escolha a vocação dele para começar a treinar."
+#~ msgstr "Seu avatar também é um herói. Escolha a vocação dele para começar a treinar."
+
+#: components/space/game/VocationPicker.tsx
+msgid "Seu avatar também é um herói. Escolha a vocação dele para começar."
+msgstr "Seu avatar também é um herói. Escolha a vocação dele para começar."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Seu computador não está dando conta"
 msgstr "Seu computador não está dando conta"
+
+#: components/space/game/rpgUi.ts
+msgid "Seu herói ainda não tem o level mínimo desta dungeon."
+msgstr "Seu herói ainda não tem o level mínimo desta dungeon."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Seu microfone processado está saindo com silêncio"
@@ -5262,6 +5371,10 @@ msgstr "Só dá para se retirar num descanso."
 #: components/space/InteractionDialog.tsx
 msgid "Só páginas https podem ser mostradas aqui."
 msgstr "Só páginas https podem ser mostradas aqui."
+
+#: components/space/game/rpgUi.ts
+msgid "Só quem montou o grupo pode começar."
+msgstr "Só quem montou o grupo pode começar."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "software"
@@ -6182,6 +6295,10 @@ msgstr "Você está apresentando"
 msgid "Você está fora do áudio da sala"
 msgstr "Você está fora do áudio da sala"
 
+#: components/space/game/rpgUi.ts
+msgid "Você já está em outro grupo. Saia dele primeiro."
+msgstr "Você já está em outro grupo. Saia dele primeiro."
+
 #: components/space/game/labels.ts
 msgid "Você já tem um herói."
 msgstr "Você já tem um herói."
@@ -6240,7 +6357,7 @@ msgid "Voice detection could not start, so the microphone gate is using loudness
 msgstr "Voice detection could not start, so the microphone gate is using loudness only for this call."
 
 #: components/space/AudioCheck.tsx
-#: components/space/game/TrainingDialog.tsx
+#: components/space/game/VocationPicker.tsx
 #: components/space/Onboarding.tsx
 msgid "Voltar"
 msgstr "Voltar"
