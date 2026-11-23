@@ -477,3 +477,34 @@ test("corrida: volta depois de reinício com os mesmos quadros e fecha na hora",
   assert.equal((await env.store.get("U2"))?.run, null);
   assert.equal(env.runStore.docs.get(run!._id)?.status, "settled");
 });
+
+test("inventário pelo serviço: veste, recusa a pilha que mudou e a dungeon; o fim grava o inventário da corrida", async () => {
+  const env = setup();
+  const { s, send, store, svc, clock } = env;
+  await send("rpg.vocation", { vocation: 4 });
+  const i = s.lastHero()!.inventory.pack.findIndex((x) => x.item === "porrete");
+  const bad = await send("rpg.equip", { index: i, item: "espada-curta" });
+  assert.deepEqual(s.errors(bad), [{ code: "rpg_invalid", reason: "changed" }]);
+  await send("rpg.equip", { index: i, item: "porrete" });
+  assert.equal(s.lastHero()?.inventory.equip.arma?.item, "porrete");
+  assert.equal(s.lastHero()?.auto_equip, false);
+  await send("rpg.auto", { on: true });
+  assert.equal(s.lastHero()?.auto_equip, true);
+  await startedRun(env);
+  const [run] = svc.activeRuns();
+  const u = await send("rpg.unequip", { slot: "pes" });
+  assert.deepEqual(s.errors(u), [{ code: "rpg_invalid", reason: "in_run" }]);
+  clock.set(run!.ends_at);
+  await svc.tickRuns();
+  const after = (await store.get("U1"))!;
+  const res = run!.results[0]!;
+  const expected = run!.rewards[0] ? res.inv : res.invBare;
+  // O automático só troca de lugar: as mesmas coisas, nas mesmas quantidades.
+  const totals = (inv: typeof expected) => {
+    const m = new Map<string, number>();
+    for (const x of [...Object.values(inv.equip), ...inv.pack])
+      if (x) m.set(x.item, (m.get(x.item) ?? 0) + x.count);
+    return [...m.entries()].sort();
+  };
+  assert.deepEqual(totals(after.inv), totals(expected));
+});

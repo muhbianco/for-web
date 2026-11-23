@@ -16,6 +16,7 @@ import {
   coins,
   feedLine,
   isMajor,
+  itemList,
   outcomeLabel,
   stageName,
 } from "./runUi";
@@ -181,10 +182,28 @@ export default function RunPanel(props: {
                   run().members.find((x) => x.user_id === m.user_id)?.name ??
                   "";
                 const r = m.reward;
+                // Etapa O7: o que gastou (até quem caiu) e o que ficou no corpo.
+                const spent = itemList(m.spent ?? []);
+                const left = itemList(m.left ?? []);
+                const extra = (
+                  <>
+                    <Show when={spent}>
+                      <Muted style={{ display: "block" }}>
+                        {t`Gastou: ${spent}.`}
+                      </Muted>
+                    </Show>
+                    <Show when={left}>
+                      <Muted style={{ display: "block" }}>
+                        {t`Ficou no corpo (sem espaço): ${left}.`}
+                      </Muted>
+                    </Show>
+                  </>
+                );
                 if (!r)
                   return (
                     <li>
                       {t`${name}: caiu e perdeu a recompensa desta dungeon.`}
+                      {extra}
                     </li>
                   );
                 const items = r.loot
@@ -201,6 +220,7 @@ export default function RunPanel(props: {
                     {items
                       ? t`${name}: +${exp} de experiência, ${gold}, ${items}.`
                       : t`${name}: +${exp} de experiência, ${gold}.`}
+                    {extra}
                   </li>
                 );
               }}

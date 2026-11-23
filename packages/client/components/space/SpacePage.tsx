@@ -58,6 +58,7 @@ import { SmartTv } from "./SmartTv";
  */
 const TrainingDialog = lazy(() => import("./game/TrainingDialog"));
 const TrainingChip = lazy(() => import("./game/TrainingChip"));
+const HeroSheet = lazy(() => import("./game/HeroSheet"));
 /** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
 const TvMenu = lazy(() => import("./game/TvMenu"));
 const LobbyChip = lazy(() => import("./game/LobbyChip"));
@@ -127,6 +128,8 @@ function ServerSpace(props: { serverId: string }) {
   );
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
+  // The hero sheet (game stage O7): equipment, backpack, coins.
+  const [heroOpen, setHeroOpen] = createSignal(false);
 
   // A dungeon group started in our room (stage O4): the room hears about it. The dungeon's
   // name comes with the game's chunk, not this page's. Keyed on a memo: `ui()` changes on
@@ -615,6 +618,17 @@ function ServerSpace(props: { serverId: string }) {
             </Button>
           )}
         </Show>
+        <Show when={view() && (ui()?.rpg?.hero?.vocation ?? 0) !== 0}>
+          <PromptChip
+            type="button"
+            data-quiet=""
+            aria-pressed={heroOpen()}
+            onClick={() => setHeroOpen(!heroOpen())}
+          >
+            <Symbol size={16}>shield_person</Symbol>
+            {t`Herói`}
+          </PromptChip>
+        </Show>
         <Show when={view() && ui()?.rpg?.hero?.training ? ui()!.rpg : null}>
           {(rpg) => (
             <Suspense>
@@ -804,6 +818,29 @@ function ServerSpace(props: { serverId: string }) {
                     myId={client().user?.id ?? null}
                     onClose={() => {
                       view()?.closeTvMenu();
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
+            </Match>
+            <Match
+              when={
+                heroOpen() && view() && ui()?.rpg?.hero ? ui()!.rpg : null
+              }
+            >
+              {(rpg) => (
+                <Suspense>
+                  <HeroSheet
+                    view={view()!}
+                    rpg={rpg()}
+                    name={
+                      client().user?.displayName ??
+                      client().user?.username ??
+                      ""
+                    }
+                    onClose={() => {
+                      setHeroOpen(false);
                       host?.focus();
                     }}
                   />

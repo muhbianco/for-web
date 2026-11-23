@@ -3,6 +3,7 @@ import {
   type RpgRunFeedItem,
   type RpgRunView,
   type RunOutcome,
+  COINS,
   dungeonOf,
   itemDef,
   MONSTER_BASE,
@@ -68,7 +69,7 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
     }
     case "loot": {
       const a = name(ev.a);
-      if (ev.item === "moedas") {
+      if (ev.item === "moedas" || COINS.includes(ev.item)) {
         const c = coins(ev.n);
         return t`${a} pegou ${c}`;
       }
@@ -80,19 +81,59 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
       const stage = stageName(run.dungeon, ev.st);
       return t`Sala ${n}: ${stage}`;
     }
+    case "municao": {
+      const a = name(ev.a);
+      return t`${a} ficou sem munição`;
+    }
+    case "deixado": {
+      const a = name(ev.a);
+      if (COINS.includes(ev.item)) {
+        const c = coins(ev.n);
+        return t`Não coube: ${c} ficaram no corpo (${a})`;
+      }
+      const item = itemDef(ev.item)?.name ?? ev.item;
+      return ev.n > 1
+        ? t`Não coube: ${ev.n}× ${item} ficaram no corpo (${a})`
+        : t`Não coube: ${item} ficou no corpo (${a})`;
+    }
+    case "gasto": {
+      const a = name(ev.a);
+      const item = itemDef(ev.item)?.name ?? ev.item;
+      return t`${item} de ${a} se desfez`;
+    }
+    default:
+      return "";
   }
 }
 
 /** Eventos que pesam (aparecem com destaque no registro). */
 export function isMajor(ev: RpgRunFeedItem): boolean {
   return (
-    ev.k === "abate" || ev.k === "queda" || ev.k === "loot" || ev.k === "sala"
+    ev.k === "abate" ||
+    ev.k === "queda" ||
+    ev.k === "loot" ||
+    ev.k === "sala" ||
+    ev.k === "municao" ||
+    ev.k === "deixado"
   );
 }
 
-/** "1 moeda", "12 moedas". */
+/** Moedas em ouro: "1 de ouro", "1.234 de ouro". */
 export function coins(n: number): string {
-  return n === 1 ? t`1 moeda` : t`${n} moedas`;
+  const v = n.toLocaleString();
+  return t`${v} de ouro`;
+}
+
+/** "3× Flecha, Anel do gume" */
+export function itemList(
+  list: readonly { item: string; count: number }[],
+): string {
+  return list
+    .map((l) => {
+      const name = itemDef(l.item)?.name ?? l.item;
+      return l.count > 1 ? `${l.count}× ${name}` : name;
+    })
+    .join(", ");
 }
 
 /** "1:05" */
