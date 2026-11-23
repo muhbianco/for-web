@@ -108,6 +108,9 @@ class FakeHost implements RpgHost {
   lobbyOf(userId: string) {
     return this.lobbies.of(userId);
   }
+  allLobbies() {
+    return this.lobbies.tvs().flatMap((tv) => this.lobbies.get(tv) ?? []);
+  }
   /** Todas as sessões estão na sala R1. */
   readonly runSends: Array<{ room: string; ev: Record<string, unknown> }> = [];
   sendRun(room: string, userIds: readonly string[], ev: Record<string, unknown>) {
@@ -680,4 +683,40 @@ test("dungeon começa: quem treinava para de treinar também no mapa (a marca n�
   assert.equal(svc.activeRuns().length, 1);
   assert.equal(host.training.has("U1"), false, "a líder");
   assert.equal(host.training.has("U2"), false, "quem entrou no grupo");
+});
+
+test("quadro do Idle Hunt: partidas rodando e grupos abertos no Espaço; assistir de outra sala", async () => {
+  const env = await startedRun();
+  const { svc, host, clock } = env;
+  const caio = new FakeSession({
+    user: { _id: "U3", username: "caio", display_name: "Caio" },
+    member: null,
+  } as unknown as Viewer);
+  host.sessions.set("U3", caio);
+  const caioSend = async (id: string, t: RpgCommand["t"], d?: Record<string, unknown>) => {
+    svc.handle(caio, host, { v: 1, id, t, ...(d ? { d } : {}) } as RpgCommand);
+    await svc.idle("U3");
+  };
+  await caioSend("c1", "rpg.vocation", { vocation: 2 });
+  await caioSend("c2", "rpg.lobby.create", { tv: "tv2", dungeon: "cripta-do-musgo" });
+  await caioSend("c3", "rpg.board");
+  const board = caio.events.find((e) => e.t === "rpg.board" && e.re === "c3")!.d as {
+    lobbies: { tv: string; members: { name: string }[] }[];
+    runs: { id: string; dungeon: string; members: { name: string }[] }[];
+  };
+  const [run] = svc.activeRuns();
+  assert.deepEqual(
+    board.runs.map((r) => [r.id, r.dungeon, r.members.map((m) => m.name)]),
+    [[run!._id, "cripta-do-musgo", ["Ana", "Bia"]]],
+  );
+  assert.deepEqual(board.lobbies.map((l) => l.tv), ["tv2"]);
+  // Assistir: a corrida inteira até agora, e "sem partida" para o que não existe.
+  await caioSend("c4", "rpg.run.watch", { id: run!._id });
+  const snap = caio.events.find((e) => e.t === "rpg.run" && e.re === "c4");
+  assert.ok(snap, "a partida chega para quem assiste");
+  await caioSend("c5", "rpg.run.watch", { id: "nada" });
+  assert.deepEqual(caio.errors("c5"), [{ code: "rpg_invalid", reason: "no_run" }]);
+  clock.advance(2_000);
+  await svc.tickRuns();
+  assert.ok(caio.events.some((e) => e.t === "rpg.run.tick"));
 });

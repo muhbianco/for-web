@@ -26,6 +26,7 @@ const clampPos = (s: number) =>
   Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
 
 import type {
+  RpgBoardRun,
   RpgHeroView,
   RpgLobbyMember,
   RpgLobbyView,
@@ -132,6 +133,8 @@ export interface SpaceUiState {
   runs: Record<string, RunState>;
   /** The app shows the adventure panel of this run. */
   runOpen: { id: string; n: number } | null;
+  /** The game menu's board: groups forming at the TVs of this space and runs going on. */
+  board: { lobbies: RpgLobbyView[]; runs: RpgBoardRun[]; at: number } | null;
 }
 
 /** A dungeon run as the app follows it: the last second and the recent log. */
@@ -278,6 +281,7 @@ export class SpaceView {
       lobbyStarted: null,
       runs: {},
       runOpen: null,
+      board: null,
     };
   }
 
@@ -643,7 +647,20 @@ export class SpaceView {
         runs[run.id] = next;
         this.patch({ runs });
         if (mine && !next.end) this.autoOpenRun(run.id);
-        this.emitGame({ t: "rpg.run", d });
+        const re = typeof e.re === "string" ? e.re : undefined;
+        if (re) this.gameCommands.delete(re);
+        this.emitGame({ t: "rpg.run", re, d });
+        return;
+      }
+      case "rpg.board": {
+        if (typeof e.re === "string") this.gameCommands.delete(e.re);
+        this.patch({
+          board: {
+            lobbies: Array.isArray(d.lobbies) ? (d.lobbies as RpgLobbyView[]) : [],
+            runs: Array.isArray(d.runs) ? (d.runs as RpgBoardRun[]) : [],
+            at: Date.now(),
+          },
+        });
         return;
       }
       case "rpg.run.tick": {
@@ -1010,6 +1027,16 @@ export class SpaceView {
   /** The app closed the TV menu (stage O4). */
   closeTvMenu() {
     if (this.state.tvMenu) this.patch({ tvMenu: null });
+  }
+
+  /** Asks the server for the game menu's board (groups forming, runs going on). */
+  requestBoard() {
+    this.gameSend("rpg.board");
+  }
+
+  /** Whether this app already receives the run (it left from this room, or we watch it). */
+  knowsRun(id: string): boolean {
+    return !!this.state.runs[id];
   }
 
   /** Show a dungeon run (the chip, the TV menu). */

@@ -821,11 +821,13 @@ function ServerSpace(props: { serverId: string }) {
                     request={request()}
                     hero={ui()?.rpg?.hero ?? null}
                     lobby={ui()?.lobbies[request().instance] ?? null}
-                    run={
-                      Object.values(ui()?.runs ?? {}).find(
-                        (r) => r.run.tv === request().instance && !r.end,
-                      ) ?? null
-                    }
+                    board={ui()?.board ?? null}
+                    roomTitle={(roomId) => {
+                      for (const w of ui()?.list ?? [])
+                        for (const r of w.rooms)
+                          if (r.roomId === roomId) return r.title;
+                      return null;
+                    }}
                     myId={client().user?.id ?? null}
                     onClose={() => {
                       view()?.closeTvMenu();

@@ -1,5 +1,6 @@
 import type { VocationId } from "./data.ts";
 import {
+  type AmmoType,
   type ItemDef,
   type Slot,
   ARMOR_SLOTS,
@@ -360,6 +361,25 @@ export function gearOf(inv: Inventory): Gear {
     ammo: ammo?.item ?? null,
     ammoCount,
   };
+}
+
+/**
+ * A arma de distância sem munição para ela (acabou, ou só tem a de outro tipo: flecha com a
+ * besta): devolve o tipo que falta; null se não falta (ou a arma não usa munição).
+ */
+export function missingAmmo(
+  inv: Inventory,
+  base: VocationId,
+  level: number,
+): AmmoType | null {
+  const w = inv.equip.arma ? itemDef(inv.equip.arma.item) : undefined;
+  if (!w?.ammo) return null;
+  const fits = (s: ItemStack | undefined) => {
+    const d = s ? itemDef(s.item) : undefined;
+    return !!d && d.ammo === w.ammo && d.slot === "municao" && cannotUse(d, base, level) === null;
+  };
+  if (fits(inv.equip.municao) || inv.pack.some(fits)) return null;
+  return w.ammo;
 }
 
 /** Chave canônica (ordem fixa de lugares e campos), para comparar dois inventários. */

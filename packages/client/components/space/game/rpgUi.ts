@@ -69,6 +69,8 @@ export function rpgLabels() {
       return t`O grupo está cheio.`;
     if (code === "rpg_invalid" && reason === "level")
       return t`Seu herói ainda não tem o level mínimo desta dungeon.`;
+    if (code === "rpg_invalid" && reason === "no_run")
+      return t`Essa partida já acabou.`;
     if (code === "rpg_invalid" && reason === "no_lobby")
       return t`Esse grupo não existe mais.`;
     if (code === "rpg_invalid" && reason === "not_leader")

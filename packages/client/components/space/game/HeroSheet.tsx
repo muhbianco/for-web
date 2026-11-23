@@ -14,6 +14,7 @@ import {
   cannotUse,
   expForLevel,
   itemDef,
+  missingAmmo,
   potionDefs,
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
@@ -138,6 +139,11 @@ export default function HeroSheet(props: {
     return t`${used} de ${cap} oz`;
   };
   const gold = () => (hero()?.gold ?? 0).toLocaleString();
+  // Arco ou besta sem a munição dele (acabou, ou é a de outro tipo): na dungeon, punhos.
+  const ammoGap = () => {
+    const h = hero();
+    return h ? missingAmmo(inv(), base(), h.level) : null;
+  };
   // Poções (etapa O9): quantas carrega de cada e a escolha de quando beber.
   const supplies = () => hero()?.supplies ?? DEFAULT_SUPPLIES;
   const carried = (id: string) =>
@@ -220,6 +226,15 @@ export default function HeroSheet(props: {
           </span>
         </Stats>
 
+        <Show when={ammoGap()}>
+          {(type) => (
+            <Notice role="alert">
+              {type() === "virote"
+                ? t`A arma atira virotes e você não tem nenhum: na dungeon o herói luta com os punhos. Compre virotes no mercador ou vista um arco.`
+                : t`A arma atira flechas e você não tem nenhuma: na dungeon o herói luta com os punhos. Compre flechas no mercador ou vista uma besta.`}
+            </Notice>
+          )}
+        </Show>
         <Show when={inRun()}>
           <Notice role="status">
             {t`Na dungeon: o inventário volta quando a corrida acabar.`}

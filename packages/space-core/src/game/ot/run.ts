@@ -92,7 +92,9 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 4,
+  engine: 5,
+  /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
+  stallMs: 60_000,
 } as const;
 
 // ---- equipamento -------------------------------------------------------------
@@ -345,7 +347,9 @@ export type RunEvent =
   /** Etapa O9: poção bebida; `v` é o que entrou (vida, ou mana com `mana`). */
   | { k: "pocao"; a: number; item: string; v: number; mana?: true }
   /** O cavaleiro desafiou: `n` monstros presos nele [TFS challenge.lua]. */
-  | { k: "desafio"; a: number; n: number };
+  | { k: "desafio"; a: number; n: number }
+  /** Ninguém feriu um monstro por RUN.stallMs: o grupo se retira [nosso]. */
+  | { k: "impasse" };
 
 /** O estado no fim de um segundo: vida e mana dos heróis, vida dos monstros da sala. */
 export interface RunFrame {
@@ -633,6 +637,9 @@ export function simulateRun(input: RunInput): RunResult {
 
   let monsters: MonsterRt[] = [];
   const frames: RunFrame[] = [];
+  /** O segundo de agora e o último em que um herói feriu um monstro (o impasse). */
+  let nowMs = 0;
+  let lastHitMs = 0;
   let ev: RunEvent[] = [];
 
   const living = () => heroes.filter((h) => h.alive);
@@ -666,11 +673,13 @@ export function simulateRun(input: RunInput): RunResult {
       };
     });
     ev.push({ k: "sala", st });
+    lastHitMs = tMs;
   }
 
   /** Dano no monstro; mata e paga quando zera. */
   function hurtMonster(h: HeroRt, m: MonsterRt, damage: number) {
     const real = Math.min(m.hp, damage);
+    if (real > 0) lastHitMs = nowMs;
     m.hp -= real;
     m.dmgBy[h.i]! += real;
     h.res.damage += real;
@@ -875,7 +884,11 @@ export function simulateRun(input: RunInput): RunResult {
       // Arco e besta atiram a munição: sem ela, não há arma [TFS player.cpp:229-239]; o ataque é
       // o dela mais o do arco [TFS weapons.cpp:839-849]; cada tiro, certo ou não, gasta um
       // [TFS weapons.xml removecount, weapons.cpp:452-458].
+      // Sem a munição do arco (acabou, ou é a de outro tipo), o herói luta com os punhos:
+      // arma de distância sem munição não conta como arma [TFS player.cpp:229-239,
+      // getWeapon → nullptr → punhos]. [nosso] Ele chega perto para bater.
       let ammo: ItemDef | null = null;
+      let fists = false;
       if (w.ammo) {
         ammo = readyAmmo(h, w.ammo);
         if (!ammo) {
@@ -883,13 +896,15 @@ export function simulateRun(input: RunInput): RunResult {
             h.noAmmo = true;
             ev.push({ k: "municao", a: h.i });
           }
-          return;
+          fists = true;
+        } else {
+          h.lastAmmo = ammo.id;
+          takeAmmo(h.inv, ammo.id);
+          takeAmmo(h.bare, ammo.id);
+          addTo(h.res.spent, ammo.id, 1);
         }
-        h.lastAmmo = ammo.id;
-        takeAmmo(h.inv, ammo.id);
-        takeAmmo(h.bare, ammo.id);
-        addTo(h.res.spent, ammo.id, 1);
       }
+      if (!fists) {
       striker.attack = (ammo?.attack ?? 0) + (w.attack ?? 0);
       // Acerta pela chance da munição mais a do arco [TFS weapons.cpp:673-776]; passa só pela armadura.
       const chance = ammoHitChance(
@@ -931,6 +946,9 @@ export function simulateRun(input: RunInput): RunResult {
       });
       hurtMonster(h, m, r.damage);
       return;
+      }
+      striker.skill = h.sk.punhos;
+      striker.attack = 7;
     }
     // Corpo a corpo [TFS weapons.cpp:613-628, 568-574]: defesa e armadura do alvo.
     const skill: SkillId =
@@ -1251,6 +1269,7 @@ export function simulateRun(input: RunInput): RunResult {
   let s = 0;
   for (; s < RUN.maxSeconds; s++) {
     const tMs = s * 1000;
+    nowMs = tMs;
     if (s > 0) {
       // Um bloqueio a mais por segundo, até 2 [TFS creature.cpp:132-135]; vida e mana pelo
       // ritmo da vocação [TFS vocations.xml gainhpticks/gainmanaticks].
@@ -1289,6 +1308,11 @@ export function simulateRun(input: RunInput): RunResult {
     }
     const ended = living().length === 0;
     const cleared = pendingAt < 0 && !monsters.some((m) => m.alive);
+    // [nosso] Ninguém consegue ferir os monstros (arma sem munição, armadura alta demais):
+    // em vez de esperar os 20 min, o grupo se retira, como quem desiste da caçada.
+    const stalled =
+      !ended && !cleared && pendingAt < 0 && tMs - lastHitMs >= RUN.stallMs;
+    if (stalled) ev.push({ k: "impasse" });
     frames.push({
       s,
       st,
@@ -1300,6 +1324,10 @@ export function simulateRun(input: RunInput): RunResult {
     ev = [];
     if (ended) {
       outcome = "derrota";
+      break;
+    }
+    if (stalled) {
+      outcome = "retirada";
       break;
     }
     if (cleared) {

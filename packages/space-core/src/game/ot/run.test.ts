@@ -289,8 +289,8 @@ test("recompensa: quem caiu não leva nada; taxa, bônus de level baixo e stamin
   assert.equal(runStaminaCost(60), 1);
 });
 
-test("quem não morre nem vence sai pela retirada aos 20 min", () => {
-  // Um cavaleiro de punhos e vida enorme contra o Guardião: não cai e não derruba.
+test("impasse [nosso]: 60 s sem ferir nenhum monstro, o grupo se retira (antes eram 20 min)", () => {
+  // Um cavaleiro de punhos e vida enorme contra o Guardião (armadura 25): não cai e não fere.
   const tank = hero(4, 1, 10, { healthMax: 10_000_000 });
   const r = run("forja-rachada", [
     {
@@ -300,10 +300,24 @@ test("quem não morre nem vence sai pela retirada aos 20 min", () => {
     },
   ]);
   assert.equal(r.outcome, "retirada");
-  assert.equal(r.seconds, RUN.maxSeconds);
-  assert.equal(r.frames.length, RUN.maxSeconds);
+  assert.equal(r.seconds, RUN.stallMs / 1000 + 1);
+  assert.ok(r.frames.at(-1)!.e.some((e) => e.k === "impasse"));
   const reward = runReward(tank, r.members[0]!, r.outcome, DEFAULT_RATES);
   assert.ok(reward, "quem se retira vivo fica com o que ganhou");
+});
+
+test("besta com flecha (munição de outro tipo) luta com os punhos [TFS getWeapon sem munição]", () => {
+  const a = hero(3, 9, 30);
+  // O caso de produção (23/11/2026): a besta vestida à mão, flechas no lugar da munição.
+  a.inv.equip.arma = { item: "besta-leve", count: 1 };
+  a.gear = { ...a.gear, weapon: "besta-leve" };
+  const r = run("cripta-do-musgo", [a], 4);
+  const hits = r.frames.flatMap((f) => f.e).filter((e) => e.k === "golpe" && e.a === 0);
+  assert.ok(hits.length > 0, "bate com os punhos");
+  assert.ok(r.frames.some((f) => f.e.some((e) => e.k === "municao" && e.a === 0)), "avisa");
+  assert.ok((r.members[0]!.tries.punhos ?? 0) > 0, "treina punhos, como no OT");
+  assert.equal(r.members[0]!.spent.length, 0, "nenhuma flecha gasta");
+  assert.notEqual(r.seconds, RUN.maxSeconds, "não fica preso até o fim");
 });
 
 // Guardas do balanceamento medido em 23/11/2026 (muchat/docs/espaco/jogo/ot): uma mudança

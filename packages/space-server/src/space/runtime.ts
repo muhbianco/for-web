@@ -531,6 +531,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
     }
   }
 
+  /** Every group forming at a TV of this space (the game menu's board). */
+  allLobbies(): Lobby[] {
+    return this.lobbies.tvs().flatMap((tv) => this.lobbies.get(tv) ?? []);
+  }
+
   lobbyOf(userId: string): Lobby | undefined {
     return this.lobbies.of(userId);
   }

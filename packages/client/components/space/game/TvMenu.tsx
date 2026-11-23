@@ -9,12 +9,18 @@ import {
 } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
-import type { GameWireEvent, RunState, SpaceView } from "@muchat/space-client";
+import type {
+  GameWireEvent,
+  SpaceUiState,
+  SpaceView,
+} from "@muchat/space-client";
 import {
   type RpgHeroView,
   type RpgLobbyView,
   DUNGEONS,
+  VOCATIONS,
   dungeonOf,
+  missingAmmo,
   sharedMultiplier,
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
@@ -37,8 +43,10 @@ export default function TvMenu(props: {
   request: { instance: string; title: string };
   hero: RpgHeroView | null;
   lobby: RpgLobbyView | null;
-  /** A corrida que saiu desta TV e ainda não acabou (etapa O5). */
-  run: RunState | null;
+  /** O quadro do Espaço: grupos se formando e partidas rodando (o menu pede de 5 em 5 s). */
+  board: SpaceUiState["board"];
+  /** O nome de uma sala pelo id (a lista de salas do app); null se a pessoa não a vê. */
+  roomTitle: (roomId: string) => string | null;
   myId: string | null;
   onClose: () => void;
 }) {
@@ -63,8 +71,41 @@ export default function TvMenu(props: {
     setApp("idle");
     queueMicrotask(refocus);
   };
+  // Enquanto o menu está aberto, o quadro (grupos e partidas do Espaço) se atualiza.
+  props.view.requestBoard();
+  const boardTimer = setInterval(() => props.view.requestBoard(), 5000);
+  onCleanup(() => clearInterval(boardTimer));
+  const runs = () => props.board?.runs ?? [];
+  const otherLobbies = () =>
+    (props.board?.lobbies ?? []).filter((l) => l.tv !== props.request.instance);
+  const where = (roomId: string) => props.roomTitle(roomId) ?? t`outra sala`;
+  const names = (members: { name: string }[]) =>
+    members.map((m) => m.name).join(", ");
+  // Arco ou besta sem a munição dele: na dungeon o herói luta com os punhos.
+  const ammoGap = () => {
+    const h = props.hero;
+    if (!h || h.vocation === 0) return null;
+    return missingAmmo(h.inventory, VOCATIONS[h.vocation].base, h.level);
+  };
+  const clockOf = (startedAt: number, endsAt: number) => {
+    const total = Math.max(1, Math.round((endsAt - startedAt) / 1000));
+    const now = Math.min(
+      total,
+      Math.max(0, Math.round((Date.now() - startedAt) / 1000)),
+    );
+    const f = (s: number) =>
+      `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    return `${f(now)} / ${f(total)}`;
+  };
+  // Assistir: a partida desta sala já chega sozinha; a de outra sala, o servidor passa a mandar.
+  const watch = (id: string) => {
+    if (props.view.knowsRun(id)) return props.view.watchRun(id);
+    send("rpg.run.watch", { id }, () => props.view.watchRun(id));
+  };
   const idleStatus = () => {
-    if (props.run) return t`Dungeon em andamento`;
+    const n = runs().length;
+    if (n === 1) return t`1 partida rolando`;
+    if (n > 1) return t`${n} partidas rolando`;
     const l = props.lobby;
     if (l) return t`Grupo se formando · ${l.members.length}/${l.max}`;
     return t`Dungeons em grupo`;
@@ -168,29 +209,52 @@ export default function TvMenu(props: {
           </Apps>
         </Show>
         <Show when={app() === "idle"}>
-          <Show when={props.run}>
-            {(r) => (
-              <Item>
-                <span>
-                  <strong>{t`Dungeon em andamento`}</strong>{" "}
-                  <Muted>
-                    {dungeonOf(r().run.dungeon)?.name ?? r().run.dungeon}
-                  </Muted>
-                </span>
-                <Muted>
-                  {r()
-                    .run.members.map((m) => m.name)
-                    .join(", ")}
-                </Muted>
-                <Button
-                  size="xs"
-                  variant="filled"
-                  onPress={() => props.view.watchRun(r().run.id)}
-                >
-                  {t`Assistir`}
-                </Button>
-              </Item>
+          <Show when={ammoGap()}>
+            {(type) => (
+              <ErrorText role="alert">
+                {type() === "virote"
+                  ? t`Sua arma atira virotes e você não tem nenhum: na dungeon o herói luta com os punhos.`
+                  : t`Sua arma atira flechas e você não tem nenhuma: na dungeon o herói luta com os punhos.`}
+              </ErrorText>
             )}
+          </Show>
+          <Show when={runs().length > 0}>
+            <h3>{t`Partidas rolando`}</h3>
+            <For each={runs()}>
+              {(r) => (
+                <Item data-run={r.id}>
+                  <span>
+                    <strong>{dungeonOf(r.dungeon)?.name ?? r.dungeon}</strong>{" "}
+                    <Muted>{where(r.room)}</Muted>{" "}
+                    <Muted>{clockOf(r.started_at, r.ends_at)}</Muted>
+                  </span>
+                  <Muted>{names(r.members)}</Muted>
+                  <Button
+                    size="xs"
+                    variant="filled"
+                    isDisabled={busy()}
+                    onPress={() => watch(r.id)}
+                  >
+                    {t`Assistir`}
+                  </Button>
+                </Item>
+              )}
+            </For>
+          </Show>
+          <Show when={otherLobbies().length > 0}>
+            <h3>{t`Grupos em outras TVs`}</h3>
+            <For each={otherLobbies()}>
+              {(l) => (
+                <Item data-lobby={l.tv}>
+                  <span>
+                    <strong>{dungeonOf(l.dungeon)?.name ?? l.dungeon}</strong>{" "}
+                    <Muted>{`${l.members.length}/${l.max}`}</Muted>
+                  </span>
+                  <Muted>{names(l.members)}</Muted>
+                  <Muted>{t`Para entrar, vá até a TV de ${where(l.room)}.`}</Muted>
+                </Item>
+              )}
+            </For>
           </Show>
           <h3>{t`Dungeon em grupo`}</h3>
           <Show

@@ -8,6 +8,8 @@ import {
   type RpgRunEvent,
   type RpgRunFeedItem,
   type RpgRunTickEvent,
+  type RpgBoardEvent,
+  type RpgBoardRun,
   type RpgRunView,
   type RpgStateEvent,
   type RunResult,
@@ -108,6 +110,8 @@ export interface RpgHost {
   lobbyStart(userId: string): LobbyResult;
   /** O grupo em que a pessoa está, sem mexer nele (para validar antes de começar). */
   lobbyOf(userId: string): Lobby | undefined;
+  /** Todos os grupos se formando nas TVs deste Espaço (o quadro do menu). */
+  allLobbies(): Lobby[];
   /** Para todos na sala do mapa e para estas pessoas onde estiverem (uma vez cada). */
   sendRun(room: string, userIds: readonly string[], ev: Record<string, unknown>): void;
 }
@@ -117,8 +121,14 @@ const FEED_MAX = 40;
 /** Uma corrida que não conseguiu fechar tenta de novo depois disto. */
 const SETTLE_RETRY_MS = 30_000;
 
+/** Quantos itens o quadro mostra, e quantas pessoas podem assistir uma partida de longe. */
+const BOARD_MAX = 30;
+const WATCHERS_MAX = 64;
+
 interface ActiveRun {
   doc: RpgRunDoc;
+  /** Quem assiste de outra sala (recebe os quadros como quem corre). */
+  watchers: Set<string>;
   /** Os quadros, refeitos da semente; null se as regras mudaram desde o início. */
   result: RunResult | null;
   /** O último segundo já enviado. */
@@ -236,7 +246,7 @@ export class RpgService {
       };
       this.hostOf(run.doc.server)?.sendRun(
         run.doc.room,
-        run.doc.heroes.map((h) => h.userId),
+        [...run.doc.heroes.map((h) => h.userId), ...run.watchers],
         ev as unknown as Record<string, unknown>,
       );
     }
@@ -536,6 +546,44 @@ export class RpgService {
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
       }
+      case "rpg.board": {
+        const runs: RpgBoardRun[] = [];
+        for (const r of this.active.values()) {
+          if (r.doc.server !== host.serverId || runs.length >= BOARD_MAX) continue;
+          runs.push({
+            id: r.doc._id,
+            dungeon: r.doc.dungeon,
+            room: r.doc.room,
+            tv: r.doc.tv,
+            started_at: r.doc.started_at,
+            ends_at: r.doc.ends_at,
+            members: r.doc.heroes.map((h) => ({
+              user_id: h.userId,
+              name: h.name,
+              vocation: h.vocation,
+              level: h.level,
+            })),
+          });
+        }
+        const lobbies = host.allLobbies().slice(0, BOARD_MAX).map(lobbyView);
+        const ev: RpgBoardEvent = {
+          v: 1,
+          t: "rpg.board",
+          re: cmd.id,
+          d: { lobbies, runs },
+        };
+        return session.send(ev as unknown as Record<string, unknown>);
+      }
+      case "rpg.run.watch": {
+        const run = this.active.get(cmd.d.id);
+        if (!run || run.doc.server !== host.serverId || run.settling)
+          return fail("rpg_invalid", "no_run");
+        if (run.watchers.size < WATCHERS_MAX) run.watchers.add(userId);
+        return session.send({
+          ...(this.runSnapshot(run) as unknown as Record<string, unknown>),
+          re: cmd.id,
+        });
+      }
       case "rpg.bank.transfer": {
         const spot = host.npcSpot(session.viewer, cmd.d.npc, "banqueiro");
         if (!spot.ok) return fail(spot.code, spot.reason);
@@ -732,7 +780,14 @@ export class RpgService {
   }
 
   private activate(doc: RpgRunDoc, result: RunResult | null, sent: number) {
-    const run: ActiveRun = { doc, result, sent, settling: false, nextTry: 0 };
+    const run: ActiveRun = {
+      doc,
+      result,
+      sent,
+      settling: false,
+      nextTry: 0,
+      watchers: new Set(),
+    };
     this.active.set(doc._id, run);
     if (!this.ticker && this.autoTick) {
       this.ticker = setInterval(() => void this.tickRuns(), 1000);
@@ -886,7 +941,7 @@ export class RpgService {
       };
       host?.sendRun(
         doc.room,
-        doc.heroes.map((h) => h.userId),
+        [...doc.heroes.map((h) => h.userId), ...run.watchers],
         this.runSnapshot(run, end) as unknown as Record<string, unknown>,
       );
       this.log.info("rpg run settled", {

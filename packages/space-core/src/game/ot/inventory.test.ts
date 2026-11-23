@@ -171,3 +171,15 @@ test("dinheiro como no OT: moedas das maiores para as menores; pagar devolve o t
     full.pack.push({ item: "elmo-de-ferro", count: 1 });
   assert.equal(addMoney(full, 1_000, 250), 250);
 });
+
+test("munição que falta: a besta com flecha, o arco sem flecha; varinha e espada não usam", async () => {
+  const { missingAmmo } = await import("./inventory.ts");
+  const inv = starterInventory(3);
+  assert.equal(missingAmmo(inv, 3, 9), null, "arco com as flechas do kit");
+  inv.equip.arma = { item: "besta-leve", count: 1 };
+  assert.equal(missingAmmo(inv, 3, 9), "virote");
+  addItem(inv, 1_000, "virote", 10);
+  assert.equal(missingAmmo(inv, 3, 9), null, "o virote na mochila serve (o herói repõe)");
+  const k = starterInventory(4);
+  assert.equal(missingAmmo(k, 4, 1), null);
+});

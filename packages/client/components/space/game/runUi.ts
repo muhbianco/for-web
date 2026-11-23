@@ -86,8 +86,10 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
     }
     case "municao": {
       const a = name(ev.a);
-      return t`${a} ficou sem munição`;
+      return t`${a} está sem munição para a arma: luta com os punhos`;
     }
+    case "impasse":
+      return t`Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira`;
     case "deixado": {
       const a = name(ev.a);
       if (COINS.includes(ev.item)) {
@@ -131,6 +133,7 @@ export function isMajor(ev: RpgRunFeedItem): boolean {
     ev.k === "sala" ||
     ev.k === "desafio" ||
     ev.k === "municao" ||
+    ev.k === "impasse" ||
     ev.k === "deixado"
   );
 }

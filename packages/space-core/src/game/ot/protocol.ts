@@ -216,6 +216,22 @@ export const RpgLootSkipCmd = z.object({
   d: z.object({ item: z.string().min(1).max(40), skip: z.boolean() }).strict(),
 });
 
+// ---- o quadro do Idle Hunt -----------------------------------------------------
+
+/** Os grupos abertos nas TVs do Espaço e as partidas rodando (o menu do jogo pede). */
+export const RpgBoardCmd = z.object({
+  ...env,
+  t: z.literal("rpg.board"),
+  d: z.object({}).strict().optional(),
+});
+
+/** Assistir uma partida que saiu de outra sala (a sala da TV já recebe sem pedir). */
+export const RpgRunWatchCmd = z.object({
+  ...env,
+  t: z.literal("rpg.run.watch"),
+  d: z.object({ id: z.string().min(1).max(64) }).strict(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
@@ -238,6 +254,8 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgPromoteCmd,
   RpgSuppliesCmd,
   RpgLootSkipCmd,
+  RpgBoardCmd,
+  RpgRunWatchCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -415,6 +433,25 @@ export interface RpgRunEvent {
     feed: RpgRunFeedItem[];
     end?: RpgRunEndView;
   };
+}
+
+/** Uma partida rodando, para a lista do menu. */
+export interface RpgBoardRun {
+  id: string;
+  dungeon: string;
+  room: string;
+  tv: string;
+  started_at: number;
+  ends_at: number;
+  members: RpgLobbyMember[];
+}
+
+/** O quadro: os grupos que estão se formando e as partidas rodando neste Espaço. */
+export interface RpgBoardEvent {
+  v: 1;
+  t: "rpg.board";
+  re?: string;
+  d: { lobbies: RpgLobbyView[]; runs: RpgBoardRun[] };
 }
 
 /** Os segundos que passaram desde o último envio (normalmente um). */

@@ -328,8 +328,12 @@ msgid "{a} errou {b}"
 msgstr "{a} errou {b}"
 
 #: components/space/game/runUi.ts
-msgid "{a} ficou sem munição"
-msgstr "{a} ficou sem munição"
+msgid "{a} está sem munição para a arma: luta com os punhos"
+msgstr "{a} está sem munição para a arma: luta com os punhos"
+
+#: components/space/game/runUi.ts
+#~ msgid "{a} ficou sem munição"
+#~ msgstr "{a} ficou sem munição"
 
 #. placeholder {0}: ev.v
 #: components/space/game/runUi.ts
@@ -433,6 +437,10 @@ msgstr "{n} espaços"
 #: components/space/game/runUi.ts
 #~ msgid "{n} moedas"
 #~ msgstr "{n} moedas"
+
+#: components/space/game/TvMenu.tsx
+msgid "{n} partidas rolando"
+msgstr "{n} partidas rolando"
 
 #. placeholder {0}: r.gold
 #: components/space/game/RunPanel.tsx
@@ -606,6 +614,10 @@ msgstr "1 hora"
 #~ msgid "1 moeda"
 #~ msgstr "1 moeda"
 
+#: components/space/game/TvMenu.tsx
+msgid "1 partida rolando"
+msgstr "1 partida rolando"
+
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "1 person reacted"
 msgstr "1 person reacted"
@@ -617,6 +629,14 @@ msgstr "12 hours"
 #: components/app/interface/settings/user/Language.tsx
 msgid "24 hours"
 msgstr "24 hours"
+
+#: components/space/game/HeroSheet.tsx
+msgid "A arma atira flechas e você não tem nenhuma: na dungeon o herói luta com os punhos. Compre flechas no mercador ou vista uma besta."
+msgstr "A arma atira flechas e você não tem nenhuma: na dungeon o herói luta com os punhos. Compre flechas no mercador ou vista uma besta."
+
+#: components/space/game/HeroSheet.tsx
+msgid "A arma atira virotes e você não tem nenhum: na dungeon o herói luta com os punhos. Compre virotes no mercador ou vista um arco."
+msgstr "A arma atira virotes e você não tem nenhum: na dungeon o herói luta com os punhos. Compre virotes no mercador ou vista um arco."
 
 #: components/space/game/runUi.ts
 msgid "A armadura de {b} segurou {a}"
@@ -2538,7 +2558,6 @@ msgid "Druida"
 msgstr "Druida"
 
 #: components/space/game/RunPanel.tsx
-#: components/space/game/TvMenu.tsx
 msgid "Dungeon em andamento"
 msgstr "Dungeon em andamento"
 
@@ -2929,6 +2948,10 @@ msgstr "Espada, machado ou maça e escudo; a vocação com mais vida."
 #: components/space/game/itemUi.ts
 msgid "Essa arma usa as duas mãos: tire o escudo antes (ou a arma, para pôr o escudo)."
 msgstr "Essa arma usa as duas mãos: tire o escudo antes (ou a arma, para pôr o escudo)."
+
+#: components/space/game/rpgUi.ts
+msgid "Essa partida já acabou."
+msgstr "Essa partida já acabou."
 
 #: components/space/game/NpcDialog.tsx
 msgid "Essa pessoa ainda não escolheu a vocação."
@@ -3347,6 +3370,10 @@ msgstr "Grupo se formando · {0}/{1}"
 #: components/space/game/LobbyChip.tsx
 msgid "Grupo: {0} · {1}/{2}"
 msgstr "Grupo: {0} · {1}/{2}"
+
+#: components/space/game/TvMenu.tsx
+msgid "Grupos em outras TVs"
+msgstr "Grupos em outras TVs"
 
 #: components/space/game/NpcDialog.tsx
 msgid "Guarda suas moedas sem peso e transfere para quem está no Espaço."
@@ -4514,6 +4541,10 @@ msgstr "New to the server"
 msgid "Nickname"
 msgstr "Nickname"
 
+#: components/space/game/runUi.ts
+msgid "Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira"
+msgstr "Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira"
+
 #. placeholder {0}: h().level
 #. placeholder {0}: props.item.ilvl
 #: components/space/game/GamePanel.tsx
@@ -4840,6 +4871,10 @@ msgstr "Output Volume"
 msgid "Outra pessoa mexeu na TV ao mesmo tempo; a TV mostra o que ficou valendo."
 msgstr "Outra pessoa mexeu na TV ao mesmo tempo; a TV mostra o que ficou valendo."
 
+#: components/space/game/TvMenu.tsx
+msgid "outra sala"
+msgstr "outra sala"
+
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Overview"
@@ -4872,6 +4907,11 @@ msgstr "Palco da sala: telas compartilhadas e a chamada (P)"
 #: components/space/MediaStage.tsx
 msgid "Palco de mídia"
 msgstr "Palco de mídia"
+
+#. placeholder {0}: where(l.room)
+#: components/space/game/TvMenu.tsx
+msgid "Para entrar, vá até a TV de {0}."
+msgstr "Para entrar, vá até a TV de {0}."
 
 #: components/space/SpacePage.tsx
 msgid "Para o som da TV só para você; a sala continua assistindo"
@@ -4921,6 +4961,10 @@ msgstr "Pardon User"
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Partial Outage"
 msgstr "Partial Outage"
+
+#: components/space/game/TvMenu.tsx
+msgid "Partidas rolando"
+msgstr "Partidas rolando"
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Partir"
@@ -6228,6 +6272,14 @@ msgstr "Strength"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Strong (noisy place)"
 msgstr "Strong (noisy place)"
+
+#: components/space/game/TvMenu.tsx
+msgid "Sua arma atira flechas e você não tem nenhuma: na dungeon o herói luta com os punhos."
+msgstr "Sua arma atira flechas e você não tem nenhuma: na dungeon o herói luta com os punhos."
+
+#: components/space/game/TvMenu.tsx
+msgid "Sua arma atira virotes e você não tem nenhum: na dungeon o herói luta com os punhos."
+msgstr "Sua arma atira virotes e você não tem nenhum: na dungeon o herói luta com os punhos."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Sua conexão de descida está com problema"
