@@ -314,6 +314,15 @@ msgstr ""
 msgid "{a} bebeu {item}: +{0} de mana"
 msgstr ""
 
+#. placeholder {0}: ev.n
+#: components/space/game/runUi.ts
+msgid "{a} desafiou {0} monstros: eles ficam no cavaleiro"
+msgstr ""
+
+#: components/space/game/runUi.ts
+msgid "{a} desafiou o monstro: ele fica no cavaleiro"
+msgstr ""
+
 #: components/space/game/runUi.ts
 msgid "{a} errou {b}"
 msgstr ""
