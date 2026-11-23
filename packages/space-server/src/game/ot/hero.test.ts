@@ -314,3 +314,83 @@ test("inventário: equipar, tirar, automático, trocar moedas e jogar fora; nada
   assert.deepEqual(unequipHero(d, "pes", 1), { ok: false, reason: "in_run" });
   assert.deepEqual(setAutoEquip(d, false, 1), { ok: false, reason: "in_run" });
 });
+
+test("NPCs: compra paga das moedas e do banco; venda pelo valor; depósito e saque; promoção no 20", async () => {
+  const {
+    bankDeposit,
+    bankWithdraw,
+    buyFromMerchant,
+    promoteHero,
+    sellToMerchant,
+  } = await import("./hero.ts");
+  const d = newRpgHero("u1", 0);
+  applyVocation(d, 3);
+  assert.deepEqual(buyFromMerchant(d, "flecha", 100, 0), {
+    ok: false,
+    reason: "no_money",
+  });
+  d.inv.pack.unshift({ item: "moeda-de-platina", count: 2 });
+  // 50 flechas a 2: paga com as 2 platinas e recebe 100 de troco.
+  assert.deepEqual(buyFromMerchant(d, "flecha", 50, 0), { ok: true });
+  assert.equal(coinValue(d.inv), 100);
+  assert.deepEqual(buyFromMerchant(d, "espada-de-ferro", 1, 0), {
+    ok: false,
+    reason: "not_sold",
+  });
+  // Do banco quando falta: 100 em moedas + 100 do banco pagam 100 flechas (200).
+  d.bank_gold = 150;
+  assert.deepEqual(buyFromMerchant(d, "flecha", 100, 0), { ok: true });
+  assert.equal(coinValue(d.inv), 0);
+  assert.equal(d.bank_gold, 150 - 100);
+  // Venda: o mercador paga o valor; o kit ele não compra.
+  d.inv.pack.unshift({ item: "besta-leve", count: 1 });
+  assert.deepEqual(sellToMerchant(d, 0, "besta-leve", 1, 0), { ok: true });
+  assert.equal(coinValue(d.inv), 80);
+  const bow = d.inv.equip.arma!;
+  d.inv.pack.unshift(bow);
+  delete d.inv.equip.arma;
+  assert.deepEqual(sellToMerchant(d, 0, "arco-de-caca", 1, 0), {
+    ok: false,
+    reason: "not_bought",
+  });
+  // Banco: depositar tudo, sacar parte.
+  assert.deepEqual(bankDeposit(d, 0, 0), { ok: true });
+  assert.equal(coinValue(d.inv), 0);
+  assert.equal(d.bank_gold, 130);
+  assert.deepEqual(bankWithdraw(d, 200, 0), { ok: false, reason: "no_money" });
+  assert.deepEqual(bankWithdraw(d, 30, 0), { ok: true });
+  assert.equal(coinValue(d.inv), 30);
+  assert.equal(d.bank_gold, 100);
+  // Promoção: level 20 e 20.000.
+  assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "level" });
+  d.level = 20;
+  assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "no_money" });
+  d.bank_gold = 19_970;
+  assert.deepEqual(promoteHero(d, 0), { ok: true });
+  assert.equal(d.vocation, 7, "o arqueiro vira caçador");
+  assert.equal(d.bank_gold + coinValue(d.inv), 0);
+  assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "promoted" });
+});
+
+test("transferência: sai do saldo para a fila; crédito uma vez só; devolução se o destino sumiu", async () => {
+  const { transferIn, transferOut, transferSettled } = await import("./hero.ts");
+  const a = newRpgHero("A", 0);
+  applyVocation(a, 4);
+  const b = newRpgHero("B", 0);
+  applyVocation(b, 1);
+  const t = { id: "t1", to: "B", amount: 500, at: 0 };
+  assert.deepEqual(transferOut(a, t, 0), { ok: false, reason: "no_money" });
+  a.bank_gold = 600;
+  assert.deepEqual(transferOut(a, { ...t, to: "A" }, 0), { ok: false, reason: "self" });
+  assert.deepEqual(transferOut(a, t, 0), { ok: true });
+  assert.equal(a.bank_gold, 100);
+  assert.equal(a.outbox.length, 1);
+  transferIn(b, t);
+  transferIn(b, t);
+  assert.equal(b.bank_gold, 500, "a mesma transferência não credita duas vezes");
+  assert.deepEqual(transferSettled(a, "t1", false), { ok: true });
+  assert.equal(a.outbox.length, 0);
+  transferOut(a, { ...t, id: "t2", amount: 100 }, 0);
+  transferSettled(a, "t2", true);
+  assert.equal(a.bank_gold, 100, "destino sem herói: volta");
+});

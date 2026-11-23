@@ -10,11 +10,12 @@ import {
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
-import { rpgLabels } from "./rpgUi";
+import { rpgLabels, vocationName } from "./rpgUi";
 import {
   clock,
   coins,
   feedLine,
+  huntLine,
   isMajor,
   itemList,
   outcomeLabel,
@@ -98,8 +99,7 @@ export default function RunPanel(props: {
                         {m.name}
                         {m.user_id === props.myId ? ` ${t`(você)`}` : ""}{" "}
                         <Muted>
-                          {L.vocation[m.vocation as 1 | 2 | 3 | 4]?.name ?? ""}{" "}
-                          · Nv {m.level}
+                          {vocationName(m.vocation)} · Nv {m.level}
                         </Muted>
                       </span>
                       <Bar
@@ -185,8 +185,10 @@ export default function RunPanel(props: {
                 // Etapa O7: o que gastou (até quem caiu) e o que ficou no corpo.
                 const spent = itemList(m.spent ?? []);
                 const left = itemList(m.left ?? []);
+                const hunt = huntLine(run(), m);
                 const extra = (
                   <>
+                    <Muted style={{ display: "block" }}>{hunt}</Muted>
                     <Show when={spent}>
                       <Muted style={{ display: "block" }}>
                         {t`Gastou: ${spent}.`}

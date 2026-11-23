@@ -23,7 +23,7 @@ import { Button } from "@revolt/ui";
 
 import { VocationPicker } from "./VocationPicker";
 import { useModalKeys } from "./modalKeys";
-import { duration, rpgLabels } from "./rpgUi";
+import { duration, rpgLabels, vocationName } from "./rpgUi";
 
 /**
  * A TV com o jogo ligado (docs/espaco/jogo/ot, etapa O4): assistir (a Smart TV de sempre)
@@ -207,7 +207,7 @@ export default function TvMenu(props: {
                         {m.user_id === lobby().leader
                           ? ` ${t`(líder)`}`
                           : ""}{" "}
-                        <Muted>{t`${L.vocation[m.vocation as 1 | 2 | 3 | 4]?.name ?? ""} · Nv ${m.level}`}</Muted>
+                        <Muted>{t`${vocationName(m.vocation)} · Nv ${m.level}`}</Muted>
                       </li>
                     )}
                   </For>

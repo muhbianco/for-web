@@ -15,10 +15,12 @@ import {
   addExperience,
   addGold,
   addItem,
+  addMoney,
   addManaSpent,
   addSkillTries,
   autoEquip,
   bankAfter,
+  cannotPromote,
   bankNow,
   changeCoins,
   cloneInventory,
@@ -30,8 +32,13 @@ import {
   inventoryKey,
   inventoryWeight,
   itemDef,
+  merchantBuys,
+  merchantOffer,
+  MONEY_MAX,
   newStack,
   packSize,
+  payCoins,
+  PROMOTION,
   regenStamina,
   reqMana,
   reqSkillTries,
@@ -95,7 +102,26 @@ export interface RpgHeroDoc {
   /** Etapa O7: o que veste e a mochila; "escolher o melhor sozinho". */
   inv: Inventory;
   auto_equip: boolean;
+  /** Etapa O8: saldo do banco em ouro [TFS players.balance]. */
+  bank_gold: number;
+  /** Transferências que saíram do saldo e ainda não chegaram (entregues pelo serviço). */
+  outbox: RpgTransfer[];
+  /** As últimas transferências recebidas (a entrega repetida não credita duas vezes). */
+  inbox: string[];
 }
+
+/** Uma transferência do banco a caminho de `to`. */
+export interface RpgTransfer {
+  id: string;
+  to: string;
+  amount: number;
+  at: number;
+}
+
+/** Quantas transferências recebidas o herói lembra. */
+export const INBOX_KEEP = 64;
+/** Quantas transferências podem esperar entrega ao mesmo tempo. */
+export const OUTBOX_MAX = 16;
 
 /** A bolsa do primeiro dia [TFS first_items.lua]. */
 function firstBag(): Inventory {
@@ -127,6 +153,9 @@ export function newRpgHero(userId: string, now: number): RpgHeroDoc {
     run: null,
     inv: firstBag(),
     auto_equip: true,
+    bank_gold: 0,
+    outbox: [],
+    inbox: [],
   };
 }
 
@@ -193,6 +222,9 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (x.run === undefined) x.run = null;
   if (!validInventory(x.inv)) migrateInventory(x);
   if (typeof x.auto_equip !== "boolean") x.auto_equip = true;
+  if (typeof x.bank_gold !== "number" || !(x.bank_gold >= 0)) x.bank_gold = 0;
+  if (!Array.isArray(x.outbox)) x.outbox = [];
+  if (!Array.isArray(x.inbox)) x.inbox = [];
   delete x.gold;
   delete x.bag;
   x.v = RPG_VERSION;
@@ -429,6 +461,160 @@ export function discardHeroItem(
   return discardItem(d.inv, index);
 }
 
+// ---- NPCs (etapa O8) -----------------------------------------------------------
+
+/**
+ * Paga `amount` como o NPC do OT cobra [TFS player.lua removeTotalMoney]: das moedas que
+ * carrega e, se faltar, do banco. O troco que não couber na mochila vai para o banco [nosso;
+ * no OT cai no chão]. Recusa sem mexer em nada se não tem.
+ */
+function payTotal(d: RpgHeroDoc, inv: Inventory, amount: number): boolean {
+  const carried = coinValue(inv);
+  if (amount <= carried) {
+    d.bank_gold += payCoins(inv, d.cap, amount)!;
+    return true;
+  }
+  if (amount > carried + d.bank_gold) return false;
+  payCoins(inv, d.cap, carried);
+  d.bank_gold -= amount - carried;
+  return true;
+}
+
+/** Compra do mercador: o item tem de caber (espaço e capacidade) antes de pagar. */
+export function buyFromMerchant(
+  d: RpgHeroDoc,
+  item: string,
+  count: number,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const offer = merchantOffer(item);
+  if (!offer) return { ok: false, reason: "not_sold" };
+  const trial = cloneInventory(d.inv);
+  if (addItem(trial, d.cap, item, count) !== count)
+    return { ok: false, reason: "no_room" };
+  const bank = d.bank_gold;
+  if (!payTotal(d, trial, offer.price * count)) {
+    d.bank_gold = bank;
+    return { ok: false, reason: "no_money" };
+  }
+  d.inv = trial;
+  return { ok: true };
+}
+
+/** Venda ao mercador pelo valor do item; o dinheiro entra como moedas (o que não couber, no banco). */
+export function sellToMerchant(
+  d: RpgHeroDoc,
+  index: number,
+  item: string,
+  count: number,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now) ?? samePack(d, index, item);
+  if (g) return g;
+  const price = merchantBuys(item);
+  if (price === null) return { ok: false, reason: "not_bought" };
+  const x = d.inv.pack[index]!;
+  if (count > x.count) return { ok: false, reason: "not_enough" };
+  x.count -= count;
+  if (x.count <= 0) d.inv.pack.splice(index, 1);
+  d.bank_gold += addMoney(d.inv, d.cap, price * count);
+  return { ok: true };
+}
+
+/** Depósito [TFS player.lua depositMoney]: `amount` 0 deposita todas as moedas. */
+export function bankDeposit(
+  d: RpgHeroDoc,
+  amount: number,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const value = amount === 0 ? coinValue(d.inv) : amount;
+  if (value <= 0) return { ok: false, reason: "no_money" };
+  const change = payCoins(d.inv, d.cap, value);
+  if (change === null) return { ok: false, reason: "no_money" };
+  d.bank_gold += value + change;
+  return { ok: true };
+}
+
+/** Saque [TFS player.lua withdrawMoney]: só se as moedas couberem inteiras. */
+export function bankWithdraw(
+  d: RpgHeroDoc,
+  amount: number,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  if (amount <= 0 || amount > d.bank_gold)
+    return { ok: false, reason: "no_money" };
+  const trial = cloneInventory(d.inv);
+  if (addMoney(trial, d.cap, amount) > 0) return { ok: false, reason: "no_room" };
+  d.inv = trial;
+  d.bank_gold -= amount;
+  return { ok: true };
+}
+
+/**
+ * Tira do saldo e põe a transferência na fila de saída, no mesmo documento: se o processo cair
+ * antes da entrega, ela continua lá e é entregue depois [TFS player.lua transferMoneyTo].
+ */
+export function transferOut(
+  d: RpgHeroDoc,
+  t: RpgTransfer,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  if (t.to === d._id) return { ok: false, reason: "self" };
+  if (t.amount <= 0 || t.amount > MONEY_MAX || t.amount > d.bank_gold)
+    return { ok: false, reason: "no_money" };
+  if (d.outbox.length >= OUTBOX_MAX) return { ok: false, reason: "busy" };
+  d.bank_gold -= t.amount;
+  d.outbox.push({ ...t });
+  return { ok: true };
+}
+
+/** Credita uma transferência, uma vez só (a mesma `id` de novo não muda nada). */
+export function transferIn(d: RpgHeroDoc, t: RpgTransfer): RpgOutcome {
+  if (d.inbox.includes(t.id)) return { ok: true };
+  d.bank_gold += t.amount;
+  d.inbox.push(t.id);
+  while (d.inbox.length > INBOX_KEEP) d.inbox.shift();
+  return { ok: true };
+}
+
+/** Tira da fila de saída a transferência entregue; `refund` devolve ao saldo (destino sumiu). */
+export function transferSettled(
+  d: RpgHeroDoc,
+  id: string,
+  refund: boolean,
+): RpgOutcome {
+  const i = d.outbox.findIndex((t) => t.id === id);
+  if (i < 0) return { ok: false, reason: "not_found" };
+  const [t] = d.outbox.splice(i, 1);
+  if (refund) d.bank_gold += t!.amount;
+  return { ok: true };
+}
+
+/** Promoção [TFS promotion.lua: level 20, 20.000 de ouro, das moedas e do banco]. */
+export function promoteHero(d: RpgHeroDoc, now: number): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const why = cannotPromote(d.vocation, d.level);
+  if (why) return { ok: false, reason: why };
+  const trial = cloneInventory(d.inv);
+  const bank = d.bank_gold;
+  if (!payTotal(d, trial, PROMOTION.cost)) {
+    d.bank_gold = bank;
+    return { ok: false, reason: "no_money" };
+  }
+  d.inv = trial;
+  d.vocation = VOCATIONS[d.vocation].promotion!;
+  return { ok: true };
+}
+
 // ---- treino ------------------------------------------------------------------
 
 /** Credita o que o treino aberto rendeu até `now` (sem fechar). Devolve se algo mudou. */
@@ -553,6 +739,7 @@ export function rpgHeroView(
     pack_size: packSize(d.inv),
     weight: inventoryWeight(d.inv),
     gold: coinValue(d.inv),
+    bank_gold: d.bank_gold,
     auto_equip: d.auto_equip,
     gear: gearOf(d.inv),
     run: inRun(d, now) && d.run ? { ...d.run } : null,

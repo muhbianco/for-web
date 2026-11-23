@@ -188,6 +188,37 @@ export function addGold(inv: Inventory, cap: number, n: number): number {
 }
 
 /**
+ * Põe `value` em ouro como moedas, das maiores para as menores [TFS Game::addMoney]. Devolve o
+ * valor que não coube (no OT cai no chão; quem chama decide: banco ou recusa).
+ */
+export function addMoney(inv: Inventory, cap: number, value: number): number {
+  let left = value;
+  for (let c = COINS.length - 1; c >= 0; c--) {
+    const worth = itemDef(COINS[c]!)?.value ?? 0;
+    if (worth <= 0) continue;
+    const n = Math.floor(left / worth);
+    if (n <= 0) continue;
+    left -= addItem(inv, cap, COINS[c]!, n) * worth;
+  }
+  return left;
+}
+
+/**
+ * Paga `amount` com as moedas que carrega e recebe o troco nas maiores [TFS Player::removeMoney
+ * e Game::addMoney]. Devolve o troco que não coube (vai para o banco) ou null se não tem.
+ */
+export function payCoins(
+  inv: Inventory,
+  cap: number,
+  amount: number,
+): number | null {
+  const total = coinValue(inv);
+  if (amount < 0 || total < amount) return null;
+  inv.pack = inv.pack.filter((x) => !COINS.includes(x.item));
+  return addMoney(inv, cap, total - amount);
+}
+
+/**
  * Usar uma pilha de moedas [TFS change_gold.lua]: 100 viram 1 da moeda de cima; senão, 1
  * vira 100 da de baixo (e o ouro não desce).
  */

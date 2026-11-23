@@ -1346,7 +1346,56 @@ export const ART: Record<string, ArtDef> = {
       );
     },
   },
+  // NPCs do jogo idle (etapa O8): uma pessoa de manto com o símbolo do ofício. Estáticos.
+  "npc-mercador": {
+    tall: 1,
+    draw(g) {
+      npcFigure(g, "#3f8a52", "#e7c39a");
+      // Avental e a sacola de couro.
+      rect(g, 6, g.top + 2, 4, 6, "#8a5a32");
+      rect(g, 11, g.top + 4, 3, 4, OUTLINE);
+      rect(g, 12, g.top + 5, 1, 2, "#a0703f");
+    },
+  },
+  "npc-banqueiro": {
+    tall: 1,
+    draw(g) {
+      npcFigure(g, "#2f4f8f", "#e7c39a");
+      // A moeda de ouro no peito.
+      disc(g, 8, g.top + 4, 2, OUTLINE);
+      disc(g, 8, g.top + 4, 1, "#f4c542");
+      dot(g, 8, g.top + 4, "#fff2b0");
+    },
+  },
+  "npc-mestre": {
+    tall: 1,
+    draw(g) {
+      npcFigure(g, "#6a3fa0", "#e7c39a");
+      // O cajado com a pedra.
+      rect(g, 13, g.top - 6, 1, 18, OUTLINE);
+      rect(g, 13, g.top - 5, 1, 16, "#8a5a32");
+      disc(g, 13, g.top - 7, 1, "#7fd8ff");
+    },
+  },
 };
+
+/** Uma pessoa de manto vista de frente, com cabeça, braços e a barra do manto. */
+function npcFigure(g: G, robe: string, skin: string) {
+  block(g, 4, g.top + 11, 8, 2, 2, shade(robe, -0.35));
+  rect(g, 4, g.top - 1, 8, 13, OUTLINE);
+  rect(g, 5, g.top, 6, 11, robe);
+  rect(g, 5, g.top, 1, 11, shade(robe, 0.2));
+  rect(g, 5, g.top + 10, 6, 1, shade(robe, -0.3));
+  rect(g, 3, g.top + 1, 2, 6, OUTLINE);
+  rect(g, 11, g.top + 1, 2, 6, OUTLINE);
+  rect(g, 3, g.top + 6, 2, 1, skin);
+  rect(g, 11, g.top + 6, 2, 1, skin);
+  disc(g, 8, g.top - 4, 3, OUTLINE);
+  disc(g, 8, g.top - 4, 2, skin);
+  rect(g, 6, g.top - 7, 5, 2, shade(robe, -0.2));
+  dot(g, 7, g.top - 4, DARKER);
+  dot(g, 9, g.top - 4, DARKER);
+}
 
 /** Fallback for an id without art yet: a labelled crate, so the editor still works. */
 export const FALLBACK_ART: ArtDef = {

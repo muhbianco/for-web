@@ -56,6 +56,14 @@ class FakeHost implements RpgHost {
       ? { ok: true as const, zone: "room:R1" }
       : { ok: false as const, code: "not_allowed", reason: "too_far" };
   }
+  /** NPCs: "nope" não existe; "longe" fica longe; o tipo vem do prefixo ("banqueiro-1"). */
+  npcSpot(_v: Viewer, instanceId: string, kind: string) {
+    if (instanceId === "nope" || !instanceId.startsWith(kind))
+      return { ok: false as const, code: "not_found" };
+    if (instanceId.endsWith("longe"))
+      return { ok: false as const, code: "not_allowed", reason: "too_far" };
+    return { ok: true as const };
+  }
   isTrainingAt(userId: string, instanceId: string) {
     return this.training.get(userId) === instanceId;
   }
@@ -507,4 +515,139 @@ test("inventário pelo serviço: veste, recusa a pilha que mudou e a dungeon; o 
     return [...m.entries()].sort();
   };
   assert.deepEqual(totals(after.inv), totals(expected));
+});
+
+/** Põe ouro no banco direto no banco de dados (como se tivesse caçado). */
+async function fund(store: MemoryRpgStore, id: string, gold: number) {
+  const d = (await store.get(id))!;
+  d.bank_gold = gold;
+  assert.ok(await store.save({ ...d, rev: d.rev + 1 }, d.rev));
+}
+
+function biaIn(host: FakeHost) {
+  const bia = new FakeSession({
+    user: { _id: "U2", username: "bia", display_name: "Bia" },
+    member: null,
+  } as unknown as Viewer);
+  host.sessions.set("U2", bia);
+  return bia;
+}
+
+async function settleAll(svc: RpgService) {
+  for (let i = 0; i < 4; i++) {
+    await svc.idle("U1");
+    await svc.idle("U2");
+  }
+}
+
+test("NPCs pelo serviço: o NPC certo e ao lado; compra, banco e transferência entregue uma vez", async () => {
+  const first = setup();
+  await first.send("rpg.vocation", { vocation: 3 });
+  const bia0 = biaIn(first.host);
+  first.svc.handle(bia0, first.host, {
+    v: 1,
+    id: "b1",
+    t: "rpg.vocation",
+    d: { vocation: 2 },
+  } as RpgCommand);
+  await first.svc.idle("U2");
+  await fund(first.store, "U1", 1_000);
+  // Outro processo, com o banco já atualizado.
+  const env = setup({ store: first.store, runStore: first.runStore });
+  const { s: ana, send, store, svc, host } = env;
+  const far = await send("rpg.shop.buy", {
+    npc: "mercador-longe",
+    item: "flecha",
+    count: 10,
+  });
+  assert.deepEqual(ana.errors(far), [
+    { code: "not_allowed", reason: "too_far" },
+  ]);
+  const wrong = await send("rpg.shop.buy", {
+    npc: "banqueiro-1",
+    item: "flecha",
+    count: 10,
+  });
+  assert.deepEqual(ana.errors(wrong), [{ code: "not_found" }]);
+  await send("rpg.shop.buy", { npc: "mercador-1", item: "flecha", count: 100 });
+  assert.equal(ana.lastHero()?.bank_gold, 800);
+  await send("rpg.bank.withdraw", { npc: "banqueiro-1", amount: 300 });
+  assert.equal(ana.lastHero()?.gold, 300);
+  assert.equal(ana.lastHero()?.bank_gold, 500);
+  // Transferência: só para quem está no Espaço agora.
+  const nobody = await send("rpg.bank.transfer", {
+    npc: "banqueiro-1",
+    amount: 100,
+    to: "U2",
+  });
+  assert.deepEqual(ana.errors(nobody), [
+    { code: "rpg_invalid", reason: "not_here" },
+  ]);
+  const bia = biaIn(host);
+  const self = await send("rpg.bank.transfer", {
+    npc: "banqueiro-1",
+    amount: 100,
+    to: "U1",
+  });
+  assert.deepEqual(ana.errors(self), [{ code: "rpg_invalid", reason: "self" }]);
+  await send("rpg.bank.transfer", { npc: "banqueiro-1", amount: 200, to: "U2" });
+  await settleAll(svc);
+  assert.equal((await store.get("U2"))?.bank_gold, 200);
+  const a = (await store.get("U1"))!;
+  assert.equal(a.bank_gold, 300);
+  assert.deepEqual(a.outbox, [], "entregue, sai da fila");
+  assert.equal(bia.lastHero()?.bank_gold, 200, "quem recebe vê na hora");
+});
+
+test("transferência: duas cruzadas não travam; caída no meio é entregue na volta, uma vez só", async () => {
+  const first = setup();
+  await first.send("rpg.vocation", { vocation: 4 });
+  const bia0 = biaIn(first.host);
+  first.svc.handle(bia0, first.host, {
+    v: 1,
+    id: "b1",
+    t: "rpg.vocation",
+    d: { vocation: 1 },
+  } as RpgCommand);
+  await first.svc.idle("U2");
+  await fund(first.store, "U1", 500);
+  await fund(first.store, "U2", 500);
+  const env = setup({ store: first.store, runStore: first.runStore });
+  const { store, svc, host } = env;
+  const bia = biaIn(host);
+  // Ao mesmo tempo, uma para a outra.
+  svc.handle(env.s, host, {
+    v: 1,
+    id: "x1",
+    t: "rpg.bank.transfer",
+    d: { npc: "banqueiro-1", amount: 100, to: "U2" },
+  } as RpgCommand);
+  svc.handle(bia, host, {
+    v: 1,
+    id: "x2",
+    t: "rpg.bank.transfer",
+    d: { npc: "banqueiro-1", amount: 300, to: "U1" },
+  } as RpgCommand);
+  await settleAll(svc);
+  assert.equal((await store.get("U1"))?.bank_gold, 700);
+  assert.equal((await store.get("U2"))?.bank_gold, 300);
+  // Caiu entre o débito e o crédito: a transferência ficou na fila de saída.
+  const a = (await store.get("U1"))!;
+  a.bank_gold -= 50;
+  a.outbox = [{ id: "caiu", to: "U2", amount: 50, at: 0 }];
+  assert.ok(await store.save({ ...a, rev: a.rev + 1 }, a.rev));
+  const next = setup({ store, runStore: env.runStore });
+  await next.send("rpg.open");
+  await settleAll(next.svc);
+  assert.equal((await store.get("U2"))?.bank_gold, 350);
+  assert.deepEqual((await store.get("U1"))?.outbox, []);
+  // A mesma fila de novo (se a baixa tivesse falhado): não credita duas vezes.
+  const b = (await store.get("U1"))!;
+  b.outbox = [{ id: "caiu", to: "U2", amount: 50, at: 0 }];
+  assert.ok(await store.save({ ...b, rev: b.rev + 1 }, b.rev));
+  const again = setup({ store, runStore: env.runStore });
+  await again.send("rpg.open");
+  await settleAll(again.svc);
+  assert.equal((await store.get("U2"))?.bank_gold, 350);
+  assert.equal((await store.get("U1"))?.bank_gold, 650);
 });

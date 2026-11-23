@@ -1,15 +1,18 @@
 import { t } from "@lingui/core/macro";
 import {
+  type RpgRunEndView,
   type RpgRunFeedItem,
   type RpgRunView,
   type RunOutcome,
   COINS,
   dungeonOf,
   itemDef,
+  merchantBuys,
   MONSTER_BASE,
   monsterDef,
   spellDef,
   stageMonsters,
+  supplyPrice,
 } from "@muchat/space-core/game/ot";
 
 /**
@@ -134,6 +137,40 @@ export function itemList(
       return l.count > 1 ? `${l.count}× ${name}` : name;
     })
     .join(", ");
+}
+
+/**
+ * O analisador da caçada (etapa O8) [OTClient game_analyser]: experiência por hora, o loot
+ * pelo que o mercador paga, o gasto pelo preço de repor e o saldo.
+ */
+export function huntStats(
+  run: RpgRunView,
+  m: RpgRunEndView["members"][number],
+): { expH: number; loot: number; supplies: number; balance: number } {
+  const hours = Math.max(1, (run.ends_at - run.started_at) / 1000) / 3600;
+  const r = m.reward;
+  let loot = r?.gold ?? 0;
+  for (const l of r?.loot ?? []) loot += (merchantBuys(l.item) ?? 0) * l.count;
+  let supplies = 0;
+  for (const s of m.spent ?? []) supplies += supplyPrice(s.item) * s.count;
+  return {
+    expH: Math.round((r?.exp ?? 0) / hours),
+    loot,
+    supplies,
+    balance: loot - supplies,
+  };
+}
+
+export function huntLine(
+  run: RpgRunView,
+  m: RpgRunEndView["members"][number],
+): string {
+  const h = huntStats(run, m);
+  const expH = h.expH.toLocaleString();
+  const loot = h.loot.toLocaleString();
+  const sup = h.supplies.toLocaleString();
+  const bal = (h.balance >= 0 ? "+" : "") + h.balance.toLocaleString();
+  return t`${expH} de experiência por hora · loot ${loot} · gasto ${sup} · saldo ${bal}`;
 }
 
 /** "1:05" */

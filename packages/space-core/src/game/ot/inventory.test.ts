@@ -148,3 +148,26 @@ test("colar e anel nascem com cargas e tempo cheios; a chave compara inventário
   );
   assert.ok(!validInventory({ equip: {}, pack: "x" }));
 });
+
+test("dinheiro como no OT: moedas das maiores para as menores; pagar devolve o troco [TFS Game::addMoney, removeMoney]", async () => {
+  const { addMoney, payCoins } = await import("./inventory.ts");
+  const inv = bag();
+  assert.equal(addMoney(inv, 1_000, 12_345), 0);
+  const by = (id: string) =>
+    inv.pack.filter((x) => x.item === id).reduce((n, x) => n + x.count, 0);
+  assert.deepEqual(
+    [by("moeda-de-cristal"), by("moeda-de-platina"), by("moeda-de-ouro")],
+    [1, 23, 45],
+  );
+  // Pagar 30 com o que carrega: o troco volta nas maiores.
+  assert.equal(payCoins(inv, 1_000, 30), 0);
+  assert.equal(coinValue(inv), 12_315);
+  assert.equal(by("moeda-de-ouro"), 15);
+  assert.equal(payCoins(inv, 1_000, 99_999), null, "não tem");
+  assert.equal(coinValue(inv), 12_315, "recusa sem mexer");
+  // Sem espaço: o que não coube volta para quem chamou.
+  const full = bag();
+  for (let i = 0; i < 8; i++)
+    full.pack.push({ item: "elmo-de-ferro", count: 1 });
+  assert.equal(addMoney(full, 1_000, 250), 250);
+});

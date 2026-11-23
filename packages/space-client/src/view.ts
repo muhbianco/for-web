@@ -6,6 +6,7 @@ import {
   type DecorSettings,
   type DecorState,
   type InteractionConfig,
+  type NpcKind,
   type ProfilePatch,
   type ProfileView,
   type TvRights,
@@ -109,6 +110,13 @@ export interface SpaceUiState {
   rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
   /** Someone used a training dummy on the map: the app opens the training dialog. */
   trainRequest: { instance: string; title: string; n: number } | null;
+  /** We used an NPC of the idle game (stage O8): the app opens its dialog. */
+  npcRequest: {
+    instance: string;
+    title: string;
+    npc: NpcKind;
+    n: number;
+  } | null;
   /** Someone used a TV with the game on: the app shows "watch" or "dungeon". */
   tvMenu: { instance: string; title: string; n: number } | null;
   /** Dungeon groups at the TVs of our room (stage O4), by TV instance. */
@@ -263,6 +271,7 @@ export class SpaceView {
       game: null,
       rpg: null,
       trainRequest: null,
+      npcRequest: null,
       tvMenu: null,
       lobbies: {},
       lobbyStarted: null,
@@ -967,6 +976,18 @@ export class SpaceView {
       this.patch({ tvOpenRequest: this.state.tvOpenRequest + 1 });
       return;
     }
+    if (p.item.interaction === "npc" && p.item.npc) {
+      // An NPC of the idle game (stage O8): merchant, banker or the vocation master.
+      this.patch({
+        npcRequest: {
+          instance: p.inst.id,
+          title: p.label,
+          npc: p.item.npc,
+          n: (this.state.npcRequest?.n ?? 0) + 1,
+        },
+      });
+      return;
+    }
     if (p.item.interaction === "train") {
       // A training dummy (docs/espaco/jogo/ot): the app asks vocation and skill.
       this.patch({
@@ -1037,6 +1058,10 @@ export class SpaceView {
   /** "Watch" from the TV menu: the Smart TV as before. */
   watchTv() {
     this.patch({ tvMenu: null, tvOpenRequest: this.state.tvOpenRequest + 1 });
+  }
+
+  closeNpcRequest() {
+    if (this.state.npcRequest) this.patch({ npcRequest: null });
   }
 
   closeTrainRequest() {

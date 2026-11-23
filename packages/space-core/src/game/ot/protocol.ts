@@ -5,6 +5,7 @@ import type { SkillId, VocationId } from "./data.ts";
 import type { Gear, Inventory } from "./inventory.ts";
 import { type Slot, SLOTS } from "./items.ts";
 import type { RunFrame, RunOutcome } from "./run.ts";
+import { MONEY_MAX } from "./shops.ts";
 import { type TrainingSkill, TRAINING_SKILLS } from "./training.ts";
 
 /**
@@ -134,6 +135,64 @@ export const RpgDiscardCmd = z.object({
   d: z.object(packRef).strict(),
 });
 
+// ---- NPCs (etapa O8) -----------------------------------------------------------
+// Todos levam o NPC da sala (`npc`, a instância da decoração): o servidor confere que ele é
+// do tipo certo e que o herói está ao lado.
+
+const npc = z.string().min(1).max(40);
+const money = z.number().int().min(0).max(MONEY_MAX);
+
+/** Compra do mercador: `count` unidades do item (empilhável) ou itens (um espaço cada). */
+export const RpgShopBuyCmd = z.object({
+  ...env,
+  t: z.literal("rpg.shop.buy"),
+  d: z
+    .object({
+      npc,
+      item: z.string().min(1).max(40),
+      count: z.number().int().min(1).max(100),
+    })
+    .strict(),
+});
+
+/** Venda ao mercador: `count` da pilha `index` (o item confere que é a mesma). */
+export const RpgShopSellCmd = z.object({
+  ...env,
+  t: z.literal("rpg.shop.sell"),
+  d: z
+    .object({ npc, ...packRef, count: z.number().int().min(1).max(100) })
+    .strict(),
+});
+
+/** Depósito no banqueiro (`amount` 0: todas as moedas que carrega). */
+export const RpgBankDepositCmd = z.object({
+  ...env,
+  t: z.literal("rpg.bank.deposit"),
+  d: z.object({ npc, amount: money }).strict(),
+});
+
+export const RpgBankWithdrawCmd = z.object({
+  ...env,
+  t: z.literal("rpg.bank.withdraw"),
+  d: z.object({ npc, amount: money.min(1) }).strict(),
+});
+
+/** Transferência do saldo do banco para `to` (alguém que está no Espaço e tem vocação). */
+export const RpgBankTransferCmd = z.object({
+  ...env,
+  t: z.literal("rpg.bank.transfer"),
+  d: z
+    .object({ npc, amount: money.min(1), to: z.string().min(1).max(64) })
+    .strict(),
+});
+
+/** Promoção no mestre das vocações. */
+export const RpgPromoteCmd = z.object({
+  ...env,
+  t: z.literal("rpg.promote"),
+  d: z.object({ npc }).strict(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
@@ -148,6 +207,12 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgAutoCmd,
   RpgCoinsCmd,
   RpgDiscardCmd,
+  RpgShopBuyCmd,
+  RpgShopSellCmd,
+  RpgBankDepositCmd,
+  RpgBankWithdrawCmd,
+  RpgBankTransferCmd,
+  RpgPromoteCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -212,6 +277,8 @@ export interface RpgHeroView {
   weight: number;
   /** Valor das moedas que carrega, em ouro. */
   gold: number;
+  /** Etapa O8: saldo no banco, em ouro (não pesa). */
+  bank_gold: number;
   /** "Escolher o melhor sozinho" (arma, escudo, armaduras, mochila e munição). */
   auto_equip: boolean;
   /** O que veste agora (o mesmo que entra na dungeon). */

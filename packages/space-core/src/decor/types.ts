@@ -34,7 +34,11 @@ export type Rotation = 0 | 1 | 2 | 3;
  * configuration (and performs `teleport`, which moves the avatar).
  */
 /** `train`: dummy de treino do jogo idle (docs/espaco/jogo/ot): o herói treina ao lado dele. */
-export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train";
+/** `npc`: NPC do jogo idle (etapa O8): mercador, banqueiro ou mestre das vocações. */
+export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc";
+
+/** Os NPCs do jogo idle (etapa O8). */
+export type NpcKind = "mercador" | "banqueiro" | "mestre";
 
 export interface InteractionConfig {
   /** Shown as the prompt and dialog title. */
@@ -70,6 +74,8 @@ export interface DecorItem {
   tags?: readonly string[];
   /** The room's Smart TV (ADR 0008): only works inside a room, needs no configuration. */
   smartTv?: boolean;
+  /** `npc` items: which NPC of the idle game this is (stage O8). */
+  npc?: NpcKind;
 }
 
 export interface DecorInstance {

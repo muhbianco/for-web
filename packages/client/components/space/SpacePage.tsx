@@ -59,6 +59,7 @@ import { SmartTv } from "./SmartTv";
 const TrainingDialog = lazy(() => import("./game/TrainingDialog"));
 const TrainingChip = lazy(() => import("./game/TrainingChip"));
 const HeroSheet = lazy(() => import("./game/HeroSheet"));
+const NpcDialog = lazy(() => import("./game/NpcDialog"));
 /** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
 const TvMenu = lazy(() => import("./game/TvMenu"));
 const LobbyChip = lazy(() => import("./game/LobbyChip"));
@@ -130,6 +131,16 @@ function ServerSpace(props: { serverId: string }) {
   const [notice, setNotice] = createSignal("");
   // The hero sheet (game stage O7): equipment, backpack, coins.
   const [heroOpen, setHeroOpen] = createSignal(false);
+  // Who is in the space now, for the banker's transfer (stage O8): the rooms' people, not us.
+  const npcPeople = createMemo(() => {
+    const me = client().user?.id;
+    const seen = new Map<string, string>();
+    for (const w of ui()?.list ?? [])
+      for (const r of w.rooms)
+        for (const p of r.people)
+          if (p.userId !== me && !seen.has(p.userId)) seen.set(p.userId, p.name);
+    return [...seen].map(([id, name]) => ({ id, name }));
+  });
 
   // A dungeon group started in our room (stage O4): the room hears about it. The dungeon's
   // name comes with the game's chunk, not this page's. Keyed on a memo: `ui()` changes on
@@ -841,6 +852,22 @@ function ServerSpace(props: { serverId: string }) {
                     }
                     onClose={() => {
                       setHeroOpen(false);
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
+            </Match>
+            <Match when={view() && ui()?.npcRequest}>
+              {(request) => (
+                <Suspense>
+                  <NpcDialog
+                    view={view()!}
+                    request={request()}
+                    rpg={ui()?.rpg ?? null}
+                    people={npcPeople()}
+                    onClose={() => {
+                      view()?.closeNpcRequest();
                       host?.focus();
                     }}
                   />

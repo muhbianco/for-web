@@ -11,6 +11,7 @@ export * from "./party.ts";
 export * from "./progression.ts";
 export * from "./protocol.ts";
 export * from "./run.ts";
+export * from "./shops.ts";
 export * from "./spells.ts";
 export * from "./stamina.ts";
 export * from "./training.ts";

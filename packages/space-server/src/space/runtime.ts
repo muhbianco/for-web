@@ -25,6 +25,7 @@ import {
   itemOf,
   type MapIndex,
   type MoveState,
+  type NpcKind,
   parseFloorRef,
   parseManagedRoomName,
   Perm,
@@ -567,6 +568,18 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return { ok: true, zone: inst.zone };
   }
 
+  /** An NPC of the idle game (stage O8): exists, is that NPC, the person may use it and stands next to it. */
+  npcSpot(viewer: Viewer, instanceId: string, kind: NpcKind): { ok: true } | { ok: false; code: string; reason?: string } {
+    const a = this.avatars.get(viewer.user._id);
+    if (!a || !a.session) return { ok: false, code: "not_allowed" };
+    const inst = this.decor.items.find((i) => i.id === instanceId);
+    const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+    if (!inst || !item || item.interaction !== "npc" || item.npc !== kind) return { ok: false, code: "not_found" };
+    if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
+    if (!this.besideInstance(a, instanceId, "npc")) return { ok: false, code: "not_allowed", reason: "too_far" };
+    return { ok: true };
+  }
+
   isTrainingAt(userId: string, instanceId: string): boolean {
     return this.trainingAt.get(userId) === instanceId;
   }
@@ -597,7 +610,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
   }
 
   /** The avatar stands within one tile of the instance (the same reach as the prompt). */
-  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" = "train"): boolean {
+  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" | "npc" = "train"): boolean {
     const inst = this.decor.items.find((i) => i.id === instanceId);
     const item = inst ? itemOf(CATALOG, inst.item) : undefined;
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;

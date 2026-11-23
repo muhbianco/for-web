@@ -19,13 +19,19 @@ import {
   simulateRun,
 } from "@muchat/space-core/game/ot";
 
+import type { NpcKind } from "@muchat/space-core";
+
 import type { Log } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
 import { TokenBucket } from "../../ws/ratelimit.ts";
 import {
   type RpgHeroDoc,
   type RpgOutcome,
+  type RpgTransfer,
   applyVocation,
+  bankDeposit,
+  bankWithdraw,
+  buyFromMerchant,
   changeHeroCoins,
   discardHeroItem,
   equipHero,
@@ -34,6 +40,8 @@ import {
   markRun,
   newRpgHero,
   normalizeHero,
+  promoteHero,
+  sellToMerchant,
   settleRun,
   RPG_DOC_MAX_BYTES,
   rpgDocBytes,
@@ -42,6 +50,9 @@ import {
   startTraining,
   stopTraining,
   trainingExpired,
+  transferIn,
+  transferOut,
+  transferSettled,
   unequipHero,
 } from "./hero.ts";
 import { type Lobby, type LobbyResult, lobbyView } from "./lobby.ts";
@@ -62,6 +73,12 @@ export interface RpgHost {
     viewer: Viewer,
     instanceId: string,
   ): { ok: true; zone: string } | { ok: false; code: string; reason?: string };
+  /** O NPC `instanceId` existe, é do tipo `kind`, a pessoa pode usá-lo e está ao lado (etapa O8). */
+  npcSpot(
+    viewer: Viewer,
+    instanceId: string,
+    kind: NpcKind,
+  ): { ok: true } | { ok: false; code: string; reason?: string };
   /** O runtime ainda vê a pessoa treinando neste dummy. */
   isTrainingAt(userId: string, instanceId: string): boolean;
   setTraining(userId: string, instanceId: string | null): void;
@@ -123,6 +140,8 @@ export class RpgService {
   private readonly queues = new Map<string, Promise<void>>();
   private readonly buckets = new Map<string, TokenBucket>();
   private readonly recent = new Map<string, string[]>();
+  /** Transferências sendo entregues agora (etapa O8): a mesma não sai duas vezes ao mesmo tempo. */
+  private readonly delivering = new Set<string>();
   private readonly runStore: RunStore;
   private readonly autoTick: boolean;
   private readonly active = new Map<string, ActiveRun>();
@@ -451,6 +470,78 @@ export class RpgService {
         if ("reason" in out) return fail("rpg_invalid", out.reason);
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
+      }
+      case "rpg.shop.buy":
+      case "rpg.shop.sell":
+      case "rpg.bank.deposit":
+      case "rpg.bank.withdraw":
+      case "rpg.promote": {
+        // NPCs (etapa O8): o certo para o comando, ao lado do herói.
+        const kind: NpcKind = cmd.t.startsWith("rpg.shop.")
+          ? "mercador"
+          : cmd.t === "rpg.promote"
+            ? "mestre"
+            : "banqueiro";
+        const spot = host.npcSpot(session.viewer, cmd.d.npc, kind);
+        if (!spot.ok) return fail(spot.code, spot.reason);
+        const before = await this.load(userId);
+        const out = await this.mutate(userId, false, (d) => {
+          switch (cmd.t) {
+            case "rpg.shop.buy":
+              return buyFromMerchant(d, cmd.d.item, cmd.d.count, now);
+            case "rpg.shop.sell":
+              return sellToMerchant(
+                d,
+                cmd.d.index,
+                cmd.d.item,
+                cmd.d.count,
+                now,
+              );
+            case "rpg.bank.deposit":
+              return bankDeposit(d, cmd.d.amount, now);
+            case "rpg.bank.withdraw":
+              return bankWithdraw(d, cmd.d.amount, now);
+            case "rpg.promote":
+              return promoteHero(d, now);
+          }
+        });
+        if (!out) return fail("rpg_invalid", "no_vocation");
+        if ("reason" in out) return fail("rpg_invalid", out.reason);
+        this.remember(userId, cmd.id);
+        if (cmd.t === "rpg.promote")
+          this.log.info("rpg promoted", {
+            server: host.serverId,
+            user: userId,
+            from: before?.vocation,
+            to: out.doc.vocation,
+          });
+        return this.push(session, out.doc, cmd.id, host);
+      }
+      case "rpg.bank.transfer": {
+        const spot = host.npcSpot(session.viewer, cmd.d.npc, "banqueiro");
+        if (!spot.ok) return fail(spot.code, spot.reason);
+        if (cmd.d.to === userId) return fail("rpg_invalid", "self");
+        // [nosso] Para quem está neste Espaço agora (o OT manda pelo nome, a qualquer um).
+        if (!host.sessionOf(cmd.d.to)) return fail("rpg_invalid", "not_here");
+        // [TFS bank.lua] Não vai para quem ainda não tem vocação.
+        const target = await this.load(cmd.d.to);
+        if (!target || target.vocation === 0)
+          return fail("rpg_invalid", "no_hero");
+        const t: RpgTransfer = {
+          id: randomUUID(),
+          to: cmd.d.to,
+          amount: cmd.d.amount,
+          at: now,
+        };
+        const out = await this.mutate(userId, false, (d) =>
+          transferOut(d, t, now),
+        );
+        if (!out) return fail("rpg_invalid", "no_vocation");
+        if ("reason" in out) return fail("rpg_invalid", out.reason);
+        this.remember(userId, cmd.id);
+        this.push(session, out.doc, cmd.id, host);
+        this.deliver(out.doc, host);
+        return;
       }
       case "rpg.lobby.start": {
         const started = await this.startRun(host, userId);
@@ -791,6 +882,52 @@ export class RpgService {
     }
   }
 
+  /**
+   * Entrega as transferências da fila de saída de `sender` (etapa O8). O crédito roda na fila
+   * de quem recebe e a baixa na de quem enviou, cada um sem esperar o outro (duas transferências
+   * cruzadas não travam). O crédito é por `id` (uma vez só); se o processo cair no meio, a
+   * próxima leitura de quem enviou entrega de novo. Destino sem herói: o dinheiro volta.
+   */
+  private deliver(sender: RpgHeroDoc, host: RpgHost | null = null): void {
+    for (const t of sender.outbox) {
+      if (this.delivering.has(t.id)) continue;
+      this.delivering.add(t.id);
+      const done = () => this.delivering.delete(t.id);
+      this.enqueue(
+        t.to,
+        async () => {
+          const got = await this.mutate(t.to, false, (d) => transferIn(d, t));
+          if (got === null && (await this.load(t.to, true))) {
+            // Conflito de gravação que não passou: fica na fila para a próxima leitura.
+            done();
+            return;
+          }
+          if (got && "reason" in got) throw new Error(`transfer in: ${got.reason}`);
+          const refund = got === null;
+          if (got && host) this.push(host.sessionOf(t.to), got.doc, undefined, host);
+          this.enqueue(
+            sender._id,
+            async () => {
+              const out = await this.mutate(sender._id, false, (d) =>
+                transferSettled(d, t.id, refund),
+              );
+              done();
+              if (out && "doc" in out && host)
+                this.push(host.sessionOf(sender._id), out.doc, undefined, host);
+              this.log.info("rpg transfer", {
+                id: t.id,
+                amount: t.amount,
+                refund,
+              });
+            },
+            done,
+          );
+        },
+        done,
+      );
+    }
+  }
+
   /** Roda `fn` na fila de outra pessoa e devolve o resultado (erros sobem para quem chamou). */
   private inQueue<T>(userId: string, fn: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
@@ -845,6 +982,8 @@ export class RpgService {
     const raw = await this.store.get(userId);
     const doc = raw ? normalizeHero(raw) : null;
     if (doc) this.keep(doc);
+    // Transferência que ficou a caminho (o processo caiu): entrega agora, sem esperar.
+    if (doc && doc.outbox.length > 0) this.deliver(doc);
     else this.cache.delete(userId);
     return doc ? structuredClone(doc) : null;
   }

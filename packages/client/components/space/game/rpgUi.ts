@@ -84,6 +84,30 @@ export function rpgLabels() {
   return { vocation, skill, error };
 }
 
+/** Nome de qualquer vocação, com as promovidas (etapa O8). */
+export function vocationName(v: number): string {
+  switch (v) {
+    case 1:
+      return t`Feiticeiro`;
+    case 2:
+      return t`Druida`;
+    case 3:
+      return t`Arqueiro`;
+    case 4:
+      return t`Cavaleiro`;
+    case 5:
+      return t`Arquimago`;
+    case 6:
+      return t`Ancião`;
+    case 7:
+      return t`Caçador`;
+    case 8:
+      return t`Campeão`;
+    default:
+      return t`Aprendiz`;
+  }
+}
+
 /** Skills que a vocação treina bem (as outras andam devagar demais). */
 export function mainSkills(v: VocationId): readonly TrainingSkill[] {
   const base = VOCATIONS[v].base;

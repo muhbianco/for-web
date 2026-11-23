@@ -28,7 +28,7 @@ import {
   slotLabels,
 } from "./itemUi";
 import { useModalKeys } from "./modalKeys";
-import { percent, rpgLabels } from "./rpgUi";
+import { percent, rpgLabels, vocationName } from "./rpgUi";
 
 /** O corpo como no OT: colar, cabeça e mochila; arma, corpo e escudo; anel, pernas e munição; pés. */
 const DOLL: readonly (Slot | null)[] = [
@@ -79,8 +79,6 @@ export default function HeroSheet(props: {
   const inv = () => hero()?.inventory ?? { equip: {}, pack: [] };
   const base = () => VOCATIONS[hero()?.vocation ?? 0].base;
   const inRun = () => !!hero()?.run;
-  const vocationName = (b: number) =>
-    b >= 1 && b <= 4 ? L.vocation[b as 1 | 2 | 3 | 4].name : "";
 
   // Uma resposta por comando: estado (sucesso) ou erro, pelo `re`.
   let pending: { id: string } | null = null;
@@ -192,6 +190,10 @@ export default function HeroSheet(props: {
           </span>
           <span title={t`Valor das moedas que carrega`}>
             <Symbol size={16}>toll</Symbol> {gold()}
+          </span>
+          <span title={t`Saldo no banco (não pesa)`}>
+            <Symbol size={16}>account_balance</Symbol>{" "}
+            {(hero()?.bank_gold ?? 0).toLocaleString()}
           </span>
         </Stats>
 
