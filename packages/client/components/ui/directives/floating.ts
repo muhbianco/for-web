@@ -128,30 +128,21 @@ export function floating(element: HTMLElement, accessor: Accessor<Props>) {
     trigger("contextMenu");
   }
 
-  let isTouching = false,
-    tTmr: NodeJS.Timeout | undefined;
-
   /**
-   * Handle mouse entering
+   * Handle the pointer entering: tooltips are for the mouse only. A tap fires
+   * the emulated mouseenter after the touch ends (later than any short window),
+   * and on a phone the tooltip then stayed on screen over the next buttons
+   * (the Espaço stage on tablets, 23/11/2026).
    */
-  function onMouseEnter() {
-    if (!isTouching) trigger("tooltip", true);
+  function onPointerEnter(event: PointerEvent) {
+    if (event.pointerType === "mouse") trigger("tooltip", true);
   }
 
   /**
-   * Handle mouse leaving
+   * Handle the pointer leaving
    */
-  function onMouseLeave() {
+  function onPointerLeave() {
     trigger("tooltip", false);
-  }
-
-  function onTouch() {
-    isTouching = true;
-    clearTimeout(tTmr);
-    tTmr = setTimeout(() => {
-      isTouching = false;
-      tTmr = undefined;
-    }, 100);
   }
 
   createEffect(
@@ -179,16 +170,12 @@ export function floating(element: HTMLElement, accessor: Accessor<Props>) {
               ? tooltip.content
               : tooltip!.aria!;
 
-          element.addEventListener("mouseenter", onMouseEnter);
-          element.addEventListener("mouseleave", onMouseLeave);
-          element.addEventListener("touchstart", onTouch);
-          element.addEventListener("touchend", onTouch);
+          element.addEventListener("pointerenter", onPointerEnter);
+          element.addEventListener("pointerleave", onPointerLeave);
 
           onCleanup(() => {
-            element.removeEventListener("mouseenter", onMouseEnter);
-            element.removeEventListener("mouseleave", onMouseLeave);
-            element.addEventListener("touchstart", onTouch);
-            element.addEventListener("touchend", onTouch);
+            element.removeEventListener("pointerenter", onPointerEnter);
+            element.removeEventListener("pointerleave", onPointerLeave);
           });
         }
       },

@@ -533,6 +533,13 @@ const Head = styled("div", {
 
 const Close = styled("button", {
   base: {
+    // A finger needs room: 44 px on touch screens.
+    "@media (pointer: coarse)": {
+      minWidth: "44px",
+      minHeight: "44px",
+      display: "inline-grid",
+      placeItems: "center",
+    },
     border: "none",
     background: "transparent",
     color: "inherit",
@@ -565,6 +572,7 @@ const Tabs = styled("div", { base: { display: "flex", gap: "6px" } });
 
 const TabBtn = styled("button", {
   base: {
+    "@media (pointer: coarse)": { minHeight: "40px", paddingInline: "16px" },
     border: "1px solid var(--md-sys-color-outline-variant)",
     background: "transparent",
     color: "inherit",
@@ -592,6 +600,14 @@ const ShopRow = styled("div", {
     borderRadius: "10px",
     background: "var(--md-sys-color-surface-container)",
     "& > span": { display: "flex", flexDirection: "column" },
+    // A phone: the name (and its warning) on its own line, quantity and
+    // button below it, instead of a name squeezed into a sliver.
+    "@media (max-width: 520px)": {
+      gridTemplateColumns: "auto auto 1fr",
+      "& > :nth-child(2)": { gridColumn: "2 / -1" },
+      "& > :nth-child(3)": { gridColumn: "2" },
+      "& > :nth-child(4)": { gridColumn: "3", justifySelf: "end" },
+    },
   },
 });
 
@@ -603,6 +619,7 @@ const Qty = styled("input", {
     border: "1px solid var(--md-sys-color-outline-variant)",
     background: "var(--md-sys-color-surface-container-highest)",
     color: "inherit",
+    "@media (pointer: coarse)": { minHeight: "44px", width: "76px" },
   },
 });
 
@@ -618,6 +635,9 @@ const Field = styled("label", {
       border: "1px solid var(--md-sys-color-outline-variant)",
       background: "var(--md-sys-color-surface-container-highest)",
       color: "inherit",
+    },
+    "@media (pointer: coarse)": {
+      "& select, & input": { minHeight: "44px" },
     },
   },
 });

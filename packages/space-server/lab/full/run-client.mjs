@@ -12,13 +12,22 @@ import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CLIENT = join(HERE, "..", "..", "..", "client");
+// --lab-dir <path> (or FULL_LAB_DIR): the lab folder with .wsl-ip and
+// state.local.json, when it was set up in another worktree.
+const at = process.argv.indexOf("--lab-dir");
+if (at >= 0) process.env.FULL_LAB_DIR = process.argv[at + 1];
 // Who the app opens as (FULL_LAB_USER=ana|bia|caio): the dev build signs in
 // with the session the seed created (VITE_TOKEN), no password typed anywhere.
 // One person per origin: for several people at once use qa/full-lab/pilot.mjs.
 // Without FULL_LAB_USER the app asks for login (the pilot logs each person in).
 const who = process.env.FULL_LAB_USER;
 const u = who
-  ? JSON.parse(readFileSync(join(HERE, "state.local.json"), "utf8")).users[who]
+  ? JSON.parse(
+      readFileSync(
+        join(process.env.FULL_LAB_DIR ?? HERE, "state.local.json"),
+        "utf8",
+      ),
+    ).users[who]
   : null;
 
 // FULL_LAB_MODE=preview serves the production build (dist/, made with
@@ -42,6 +51,9 @@ const child = spawn(
       VITE_DEV_HOST: "localhost:5173",
       VITE_API_URL: "http://localhost:5173/api",
       VITE_HOST: "localhost:5173",
+      // The mobile audit (qa/full-lab/mobile-audit.mjs) drives the view through
+      // window.__spaceView; production builds never set it.
+      VITE_SPACE_TEST_HOOKS: "1",
       ...(u
         ? {
             VITE_TOKEN: u.token,

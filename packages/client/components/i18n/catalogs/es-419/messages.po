@@ -1452,6 +1452,10 @@ msgstr ""
 msgid "Can't get discover request status right now"
 msgstr ""
 
+#: components/space/SpacePage.tsx
+msgid "Canais do servidor"
+msgstr ""
+
 #: components/auth/src/flows/FlowLogin.tsx
 #: components/modal/modals/AddBot.tsx
 #: components/modal/modals/BanMember.tsx

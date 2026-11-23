@@ -256,6 +256,11 @@ const VoiceCallControls = styled("div", {
     display: "flex",
     flexShrink: 0,
     overflow: "hidden",
+    // [Muchat] A narrow card (a phone, the Espaço's stage beside the map):
+    // the status and the layout buttons go to their own line instead of
+    // pushing the call buttons out of the card.
+    flexWrap: "wrap",
+    justifyContent: "center",
   },
 });
 
@@ -274,6 +279,7 @@ const VoiceCallControlHolder = styled("div", {
       true: {
         justifyContent: "flex-start",
         overflow: "hidden",
+        minWidth: 0,
       },
     },
     right: {

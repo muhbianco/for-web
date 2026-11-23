@@ -34,6 +34,8 @@ import { styled } from "styled-system/jsx";
 import { useClient } from "@revolt/client";
 import { useLocation, useParams } from "@revolt/routing";
 import { useVoice } from "@revolt/rtc";
+import { useState } from "@revolt/state";
+import { LAYOUT_SECTIONS } from "@revolt/state/stores/Layout";
 import { Button, IconButton } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
@@ -96,6 +98,24 @@ function useNarrow() {
 }
 
 /**
+ * Phones (portrait, or landscape with little height): the map fills the page,
+ * the room list and decoration are sheets over it, the stage opens over the
+ * whole map and the actions (hero, use, watch, TV) sit at the bottom, within
+ * thumb reach (23/11/2026: "mobile tá impossível"). Tablets keep the layout of
+ * the computer, with bigger touch targets.
+ */
+function useCompact() {
+  const query = matchMedia(
+    "(max-width: 600px), (pointer: coarse) and (max-height: 500px)",
+  );
+  const [compact, setCompact] = createSignal(query.matches);
+  const update = () => setCompact(query.matches);
+  query.addEventListener("change", update);
+  onCleanup(() => query.removeEventListener("change", update));
+  return compact;
+}
+
+/**
  * Route `/server/:server/space`, lazy-loaded so PixiJS never reaches the main
  * bundle. The router keeps this component when only `:server` changes, so the
  * page is recreated per server: each server has its own space.
@@ -124,9 +144,31 @@ function ServerSpace(props: { serverId: string }) {
   const [view, setView] = createSignal<SpaceView | null>(null);
   const [profile, setProfile] = createSignal<ProfileView | null>(null);
   const [failed, setFailed] = createSignal<string | null>(null);
+  const compact = useCompact();
+  /** A touch screen (phone or tablet): the map comes first, bigger targets. */
+  const touch = matchMedia("(pointer: coarse)").matches;
+  // On a touch screen the map comes first: the room list opens from its button.
   const [panel, setPanel] = createSignal<"rooms" | "decor" | null>(
-    "rooms",
+    compact() || touch ? null : "rooms",
   );
+  // The width left for the space (the app's sidebar takes its part on tablets):
+  // too little for a side column, and the panels float over the map.
+  const [bodyWidth, setBodyWidth] = createSignal(Number.POSITIVE_INFINITY);
+  let bodyEl: HTMLDivElement | undefined;
+  onMount(() => {
+    if (!bodyEl || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setBodyWidth(e.contentRect.width));
+    ro.observe(bodyEl);
+    onCleanup(() => ro.disconnect());
+  });
+  /** No room for a column beside the map: the room list and decoration float over it. */
+  const sheets = () => compact() || bodyWidth() < 720;
+  /**
+   * The stage goes above the map instead of beside it: beside it, the call
+   * card's buttons need ~400 px and the map its own share (a tablet in
+   * landscape keeps the app's sidebar, 23/11/2026).
+   */
+  const stacked = () => narrow() || bodyWidth() < 1000;
   const [audioChecked, setAudioChecked] = createSignal(audioCheckedHere());
   const [notice, setNotice] = createSignal("");
   // The hero sheet (game stage O7): equipment, backpack, coins.
@@ -183,6 +225,39 @@ function ServerSpace(props: { serverId: string }) {
   } | null>(null);
   const shares = useStageShares();
   const narrow = useNarrow();
+  const appState = useState();
+  /** Back to the server's channels: the drawer on phones, the sidebar elsewhere. */
+  function showChannels() {
+    const drawer = appState.appDrawer();
+    if (drawer) drawer.setShown(false);
+    else
+      appState.layout.toggleSectionState(LAYOUT_SECTIONS.PRIMARY_SIDEBAR, true);
+  }
+  // A landscape phone gets the app's tablet layout, with the channel sidebar
+  // beside the map: close it, the map needs the width (the menu button brings
+  // it back). Phones in portrait use the drawer and need nothing.
+  createEffect(() => {
+    if (compact() && !appState.appDrawer())
+      appState.layout.setSectionState(
+        LAYOUT_SECTIONS.PRIMARY_SIDEBAR,
+        false,
+        true,
+      );
+  });
+  // On a phone the object within reach is a button at the bottom, not a bubble
+  // drawn on the map.
+  createEffect(() => view()?.setMapPrompt(!compact()));
+  // On a phone the notices pop over the map for a few seconds instead of
+  // stretching the header.
+  const [toast, setToast] = createSignal("");
+  createEffect(
+    on(notice, (n) => {
+      setToast(n);
+      if (!n) return;
+      const timer = setTimeout(() => setToast(""), 6_000);
+      onCleanup(() => clearTimeout(timer));
+    }),
+  );
   let host: HTMLDivElement | undefined;
   let disposed = false;
   let unsubscribe: (() => void) | undefined;
@@ -237,6 +312,7 @@ function ServerSpace(props: { serverId: string }) {
   function goToRoom(roomId: string) {
     const v = view();
     if (!v) return;
+    if (sheets() && panel() === "rooms") setPanel(null);
     setNotice(
       v.walkToRoom(roomId) ? "" : t`Não dá para chegar nessa sala daqui.`,
     );
@@ -309,6 +385,38 @@ function ServerSpace(props: { serverId: string }) {
     setStageOpen(false);
     host?.focus();
   }
+
+  /**
+   * Android's back button: the Muchat APK asks the page first
+   * (`window.muchatBack()`) and only goes back (or to the background, during a
+   * call) when nothing was open. Closes what is on top: a dialog, the run, the
+   * stage, the sheet. Without it, back during a call sent the app away with the
+   * hero sheet still open (23/11/2026).
+   */
+  function back(): boolean {
+    const u = ui();
+    const v = view();
+    if (!u || !v) return false;
+    if (u.tvMenu) v.closeTvMenu();
+    else if (heroOpen()) setHeroOpen(false);
+    else if (u.npcRequest) v.closeNpcRequest();
+    else if (u.trainRequest) v.closeTrainRequest();
+    else if (u.interaction) v.closeInteraction();
+    else if (u.runOpen) v.closeRun();
+    else if (stageVisible()) closeStage();
+    else if (panel() === "decor") openDecor(false);
+    else if (panel()) setPanel(null);
+    else return false;
+    host?.focus();
+    return true;
+  }
+  onMount(() => {
+    const w = window as unknown as { muchatBack?: () => boolean };
+    w.muchatBack = back;
+    onCleanup(() => {
+      if (w.muchatBack === back) delete w.muchatBack;
+    });
+  });
 
   /** "Assistir": open the stage on the call and put that screen in focus. */
   function watch(key: string) {
@@ -455,9 +563,15 @@ function ServerSpace(props: { serverId: string }) {
 
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
   const gridStyle = () => {
+    if (compact())
+      return {
+        "grid-template-columns": "minmax(0, 1fr)",
+        "grid-template-rows": "minmax(0, 1fr)",
+        "grid-template-areas": '"map"',
+      };
     const st = stageVisible() ? stageMode() : null;
-    const side = sideWidth() ? `${sideWidth()}px` : null;
-    if (narrow()) {
+    const side = sideWidth() && !sheets() ? `${sideWidth()}px` : null;
+    if (stacked()) {
       const areas: string[] = [];
       const rows: string[] = [];
       if (st) {
@@ -564,6 +678,10 @@ function ServerSpace(props: { serverId: string }) {
       });
       if (disposed) return leaveSpacePage(serverId);
       setView(v);
+      // Lab only (packages/client/qa/full-lab): the mobile audit opens the game
+      // dialogs through the view. Unset in production builds, so Vite drops it.
+      if (import.meta.env.VITE_SPACE_TEST_HOOKS === "1")
+        (window as unknown as { __spaceView?: SpaceView }).__spaceView = v;
       unsubscribe = v.subscribe(setUi);
       host.focus();
       setProfile(await v.profile().catch(() => null));
@@ -595,12 +713,117 @@ function ServerSpace(props: { serverId: string }) {
     host?.focus();
   }
 
+  /**
+   * The actions of the moment: hero sheet, training, lobbies, runs, the object
+   * beside you, a screen to watch, the TV. In the header on wide screens, in the
+   * dock at the bottom of the map on phones.
+   */
+  const actionChips = () => (
+    <>
+          <Show when={view() && (ui()?.rpg?.hero?.vocation ?? 0) !== 0}>
+            <PromptChip
+              type="button"
+              data-quiet=""
+              aria-pressed={heroOpen()}
+              onClick={() => setHeroOpen(!heroOpen())}
+            >
+              <Symbol size={16}>shield_person</Symbol>
+              {t`Herói`}
+            </PromptChip>
+          </Show>
+          <Show when={view() && ui()?.rpg?.hero?.training ? ui()!.rpg : null}>
+            {(rpg) => (
+              <Suspense>
+                <TrainingChip view={view()!} rpg={rpg()} />
+              </Suspense>
+            )}
+          </Show>
+          <Show
+            when={
+              view() && Object.keys(ui()?.lobbies ?? {}).length > 0
+                ? ui()!.lobbies
+                : null
+            }
+          >
+            {(lobbies) => (
+              <Suspense>
+                <LobbyChip
+                  view={view()!}
+                  lobbies={lobbies()}
+                  myId={client().user?.id ?? null}
+                  onAct={() => host?.focus()}
+                />
+              </Suspense>
+            )}
+          </Show>
+          <Show
+            when={
+              view() && Object.keys(ui()?.runs ?? {}).length > 0
+                ? ui()!.runs
+                : null
+            }
+          >
+            {(runs) => (
+              <Suspense>
+                <RunChip
+                  view={view()!}
+                  runs={runs()}
+                  myId={client().user?.id ?? null}
+                  onAct={() => host?.focus()}
+                />
+              </Suspense>
+            )}
+          </Show>
+          <Show when={ui()?.prompt && !ui()?.editor.enabled}>
+            {(_) => (
+              <PromptChip type="button" onClick={() => view()?.interact()}>
+                <Kbd>E</Kbd> {ui()!.prompt!.label}
+              </PromptChip>
+            )}
+          </Show>
+          <Show when={invite()}>
+            {(inv) => (
+              <PromptChip type="button" onClick={() => watch(inv().key)}>
+                <Symbol size={16}>present_to_all</Symbol>
+                {t`${inv().name} está apresentando · Assistir`}
+              </PromptChip>
+            )}
+          </Show>
+          <Show when={tvPlaying() && !(stageVisible() && stageTab() === "tv")}>
+            <PromptChip type="button" onClick={watchTv}>
+              <Symbol size={16}>live_tv</Symbol>
+              {tvListen() && tvMounted()
+                ? t`TV tocando · Abrir`
+                : t`TV da sala ligada · Assistir`}
+            </PromptChip>
+            <Show when={tvListen() && tvMounted()}>
+              <PromptChip
+                type="button"
+                data-quiet=""
+                onClick={() => setTvListen(false)}
+                title={t`Para o som da TV só para você; a sala continua assistindo`}
+              >
+                <Symbol size={16}>volume_off</Symbol>
+                {t`Parar de ouvir`}
+              </PromptChip>
+            </Show>
+          </Show>
+    </>
+  );
+
   return (
     <Page onKeyDown={pageKey}>
-      <Bar>
-        <strong>{ui()?.location || t`Espaço`}</strong>
-        <Muted>{ui() ? statusText(ui()!.status) : ""}</Muted>
-        <Show when={notice()}>
+      <Bar data-compact={compact() ? "" : undefined}>
+        <Show when={compact() || touch}>
+          <IconButton aria-label={t`Canais do servidor`} onPress={showChannels}>
+            <Symbol>{appState.appDrawer() ? "arrow_back" : "menu"}</Symbol>
+          </IconButton>
+        </Show>
+        <strong class={place}>{ui()?.location || t`Espaço`}</strong>
+        <Show when={!compact() || (ui() && ui()!.status !== "online")}>
+          <Muted>{ui() ? statusText(ui()!.status) : ""}</Muted>
+        </Show>
+        <Show when={notice() && !compact()}>
           <Muted role="status">{notice()}</Muted>
         </Show>
         <Show when={ui()?.status === "replaced"}>
@@ -610,11 +833,17 @@ function ServerSpace(props: { serverId: string }) {
         </Show>
         <Show when={ui() && mediaText(ui()!.media)}>
           {(text) => (
-            <MediaChip role="status" data-kind={ui()!.media.kind}>
+            <MediaChip
+              role="status"
+              data-kind={ui()!.media.kind}
+              data-compact={compact() ? "" : undefined}
+              title={text()}
+              aria-label={compact() ? text() : undefined}
+            >
               <Symbol size={16}>
                 {ui()!.media.kind === "connected" ? "volume_up" : "volume_off"}
               </Symbol>
-              {text()}
+              <Show when={!compact()}>{text()}</Show>
             </MediaChip>
           )}
         </Show>
@@ -625,134 +854,83 @@ function ServerSpace(props: { serverId: string }) {
             </Button>
           )}
         </Show>
-        <Show when={view() && (ui()?.rpg?.hero?.vocation ?? 0) !== 0}>
-          <PromptChip
-            type="button"
-            data-quiet=""
-            aria-pressed={heroOpen()}
-            onClick={() => setHeroOpen(!heroOpen())}
-          >
-            <Symbol size={16}>shield_person</Symbol>
-            {t`Herói`}
-          </PromptChip>
-        </Show>
-        <Show when={view() && ui()?.rpg?.hero?.training ? ui()!.rpg : null}>
-          {(rpg) => (
-            <Suspense>
-              <TrainingChip view={view()!} rpg={rpg()} />
-            </Suspense>
-          )}
-        </Show>
-        <Show
-          when={
-            view() && Object.keys(ui()?.lobbies ?? {}).length > 0
-              ? ui()!.lobbies
-              : null
-          }
-        >
-          {(lobbies) => (
-            <Suspense>
-              <LobbyChip
-                view={view()!}
-                lobbies={lobbies()}
-                myId={client().user?.id ?? null}
-                onAct={() => host?.focus()}
-              />
-            </Suspense>
-          )}
-        </Show>
-        <Show
-          when={
-            view() && Object.keys(ui()?.runs ?? {}).length > 0
-              ? ui()!.runs
-              : null
-          }
-        >
-          {(runs) => (
-            <Suspense>
-              <RunChip
-                view={view()!}
-                runs={runs()}
-                myId={client().user?.id ?? null}
-                onAct={() => host?.focus()}
-              />
-            </Suspense>
-          )}
-        </Show>
-        <Show when={ui()?.prompt && !ui()?.editor.enabled}>
-          {(_) => (
-            <PromptChip type="button" onClick={() => view()?.interact()}>
-              <Kbd>E</Kbd> {ui()!.prompt!.label}
-            </PromptChip>
-          )}
-        </Show>
-        <Show when={invite()}>
-          {(inv) => (
-            <PromptChip type="button" onClick={() => watch(inv().key)}>
-              <Symbol size={16}>present_to_all</Symbol>
-              {t`${inv().name} está apresentando · Assistir`}
-            </PromptChip>
-          )}
-        </Show>
-        <Show when={tvPlaying() && !(stageVisible() && stageTab() === "tv")}>
-          <PromptChip type="button" onClick={watchTv}>
-            <Symbol size={16}>live_tv</Symbol>
-            {tvListen() && tvMounted()
-              ? t`TV tocando · Abrir`
-              : t`TV da sala ligada · Assistir`}
-          </PromptChip>
-          <Show when={tvListen() && tvMounted()}>
-            <PromptChip
-              type="button"
-              data-quiet=""
-              onClick={() => setTvListen(false)}
-              title={t`Para o som da TV só para você; a sala continua assistindo`}
-            >
-              <Symbol size={16}>volume_off</Symbol>
-              {t`Parar de ouvir`}
-            </PromptChip>
-          </Show>
-        </Show>
+        <Show when={!compact()}>{actionChips()}</Show>
         <span style={{ flex: 1 }} />
         <Show when={roomId() !== null}>
-          <Button
-            variant={stageVisible() ? "filled" : "tonal"}
-            onPress={() => (stageOpen() ? closeStage() : openStage())}
-            aria-pressed={stageVisible()}
-            use:floating={{
-              tooltip: {
-                placement: "bottom",
-                content: t`Palco da sala: telas compartilhadas e a chamada (P)`,
-              },
-            }}
+          <Show
+            when={compact()}
+            fallback={
+              <Button
+                variant={stageVisible() ? "filled" : "tonal"}
+                onPress={() => (stageOpen() ? closeStage() : openStage())}
+                aria-pressed={stageVisible()}
+                use:floating={{
+                  tooltip: {
+                    placement: "bottom",
+                    content: t`Palco da sala: telas compartilhadas e a chamada (P)`,
+                  },
+                }}
+              >
+                <Symbol size={18}>co_present</Symbol> {t`Palco`}
+                <Show when={shares().length > 0 && !stageVisible()}>
+                  <LiveDot aria-label={t`Alguém está apresentando`} />
+                </Show>
+              </Button>
+            }
           >
-            <Symbol size={18}>co_present</Symbol> {t`Palco`}
-            <Show when={shares().length > 0 && !stageVisible()}>
-              <LiveDot aria-label={t`Alguém está apresentando`} />
-            </Show>
-          </Button>
+            <span class={badged}>
+              <IconButton
+                variant={stageVisible() ? "filled" : "tonal"}
+                aria-label={t`Palco`}
+                aria-pressed={stageVisible()}
+                onPress={() => (stageOpen() ? closeStage() : openStage())}
+              >
+                <Symbol>co_present</Symbol>
+              </IconButton>
+              <Show when={shares().length > 0 && !stageVisible()}>
+                <LiveDot aria-label={t`Alguém está apresentando`} />
+              </Show>
+            </span>
+          </Show>
         </Show>
         <Show when={ui()?.rights.can_edit}>
-          <Button
-            variant={panel() === "decor" ? "filled" : "tonal"}
-            onPress={() => openDecor(panel() !== "decor")}
-            aria-pressed={panel() === "decor"}
+          <Show
+            when={compact()}
+            fallback={
+              <Button
+                variant={panel() === "decor" ? "filled" : "tonal"}
+                onPress={() => openDecor(panel() !== "decor")}
+                aria-pressed={panel() === "decor"}
+              >
+                <Symbol size={18}>chair</Symbol> {t`Decorar`}
+              </Button>
+            }
           >
-            <Symbol size={18}>chair</Symbol> {t`Decorar`}
-          </Button>
+            <IconButton
+              variant={panel() === "decor" ? "filled" : "tonal"}
+              aria-label={t`Decorar`}
+              aria-pressed={panel() === "decor"}
+              onPress={() => openDecor(panel() !== "decor")}
+            >
+              <Symbol>chair</Symbol>
+            </IconButton>
+          </Show>
         </Show>
-        <IconButton
-          aria-label={t`Diminuir zoom`}
-          onPress={() => view()?.setZoom((ui()?.zoom ?? 2) - 1)}
-        >
-          <Symbol>zoom_out</Symbol>
-        </IconButton>
-        <IconButton
-          aria-label={t`Aumentar zoom`}
-          onPress={() => view()?.setZoom((ui()?.zoom ?? 2) + 1)}
-        >
-          <Symbol>zoom_in</Symbol>
-        </IconButton>
+        {/* Touch screens zoom with two fingers on the map. */}
+        <span class={zoomButtons}>
+          <IconButton
+            aria-label={t`Diminuir zoom`}
+            onPress={() => view()?.setZoom((ui()?.zoom ?? 2) - 1)}
+          >
+            <Symbol>zoom_out</Symbol>
+          </IconButton>
+          <IconButton
+            aria-label={t`Aumentar zoom`}
+            onPress={() => view()?.setZoom((ui()?.zoom ?? 2) + 1)}
+          >
+            <Symbol>zoom_in</Symbol>
+          </IconButton>
+        </span>
         <IconButton
           aria-label={
             panel() === "rooms"
@@ -768,7 +946,12 @@ function ServerSpace(props: { serverId: string }) {
           <Symbol>list</Symbol>
         </IconButton>
       </Bar>
-      <Body style={gridStyle()}>
+      <Body
+        ref={bodyEl}
+        style={gridStyle()}
+        data-compact={compact() ? "" : undefined}
+        data-sheets={sheets() && !compact() ? "" : undefined}
+      >
         {/*
           Two siblings, never one: the map canvas is appended by PixiJS to a
           native element with no JSX children, so Solid never rewrites it.
@@ -923,6 +1106,15 @@ function ServerSpace(props: { serverId: string }) {
               </Suspense>
             )}
           </Show>
+          <Show when={compact()}>
+            <Show when={toast()}>
+              <Toast role="status">{toast()}</Toast>
+            </Show>
+            {/* The run panel covers the bottom of a phone: no dock under it. */}
+            <Show when={!panel() && !stageVisible() && !ui()?.runOpen}>
+              <Dock>{actionChips()}</Dock>
+            </Show>
+          </Show>
           <Show when={hoverRoom()}>
             {(h) => (
               <Tooltip
@@ -956,7 +1148,17 @@ function ServerSpace(props: { serverId: string }) {
             aria-hidden={stageVisible() ? undefined : "true"}
             inert={!stageVisible()}
             style={
-              stageVisible()
+              stageVisible() && compact()
+                ? {
+                    // A phone has no room for the map beside the stage.
+                    position: "absolute",
+                    inset: 0,
+                    "z-index": 6,
+                    display: "flex",
+                    background:
+                      "var(--md-sys-color-surface-container-lowest, #14151c)",
+                  }
+                : stageVisible()
                 ? {
                     "grid-area": "stage",
                     display: "flex",
@@ -987,6 +1189,7 @@ function ServerSpace(props: { serverId: string }) {
               onTab={setStageTab}
               mode={stageMode()}
               onMode={setStageMode}
+              compact={compact()}
               onClose={closeStage}
               mediaText={ui() ? mediaText(ui()!.media) : null}
               mediaAction={
@@ -1008,7 +1211,7 @@ function ServerSpace(props: { serverId: string }) {
                 </Show>
               }
               canModerate={!!roomChannel()?.havePermission("MuteMembers")}
-              layoutKey={`${stageMode()}:${panel() ?? ""}:${narrow()}`}
+              layoutKey={`${stageMode()}:${panel() ?? ""}:${stacked()}:${sheets()}:${compact()}`}
               onStopShare={(userId) => view()?.stopScreenOf(userId)}
             />
           </div>
@@ -1232,6 +1435,78 @@ const Bar = styled("div", {
     background: "var(--md-sys-color-surface-container)",
     minHeight: "48px",
     flexWrap: "wrap",
+    // A phone: one row, the place's name gives way (ellipsis).
+    "&[data-compact]": {
+      flexWrap: "nowrap",
+      gap: "4px",
+      padding: "4px 6px",
+      paddingTop: "max(4px, env(safe-area-inset-top))",
+    },
+  },
+});
+
+/** The place's name in the header; on a phone it shrinks with an ellipsis. */
+const place = css({
+  minWidth: 0,
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+});
+
+/** An icon button with the live dot in its corner (the stage on a phone). */
+const badged = css({
+  position: "relative",
+  display: "inline-flex",
+  "& > span:last-child": {
+    position: "absolute",
+    top: "4px",
+    right: "4px",
+    pointerEvents: "none",
+  },
+});
+
+/** The zoom buttons: touch screens pinch the map instead. */
+const zoomButtons = css({
+  display: "contents",
+  "@media (pointer: coarse)": { display: "none" },
+});
+
+/** The actions of the moment, at the bottom of the map on a phone. */
+const Dock = styled("div", {
+  base: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 2,
+    display: "flex",
+    gap: "8px",
+    overflowX: "auto",
+    padding: "8px 12px",
+    paddingBottom: "max(8px, env(safe-area-inset-bottom))",
+    // The map stays tappable between the chips.
+    pointerEvents: "none",
+    "& > *": { pointerEvents: "auto", flex: "0 0 auto" },
+    "&:empty": { display: "none" },
+  },
+});
+
+/** A notice over the map, on a phone (it fades after a few seconds). */
+const Toast = styled("div", {
+  base: {
+    position: "absolute",
+    top: "8px",
+    left: "50%",
+    transform: "translateX(-50%)",
+    zIndex: 3,
+    maxWidth: "calc(100% - 24px)",
+    padding: "8px 14px",
+    borderRadius: "12px",
+    background: "rgba(21, 19, 26, 0.92)",
+    color: "#fff",
+    fontSize: "0.9em",
+    textAlign: "center",
+    pointerEvents: "none",
   },
 });
 
@@ -1244,9 +1519,33 @@ const Body = styled("div", {
   base: {
     flex: 1,
     minHeight: 0,
+    position: "relative",
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr)",
     "& > aside": { gridArea: "panel", minHeight: 0 },
+    // Too narrow for a column (a tablet with the app's sidebar): the room list
+    // and decoration float over the map's right side.
+    "&[data-sheets] > aside": {
+      position: "absolute",
+      top: 0,
+      right: 0,
+      bottom: 0,
+      width: "min(340px, 85%)",
+      zIndex: 4,
+      boxShadow: "-6px 0 24px rgba(0, 0, 0, 0.45)",
+    },
+    // A phone: the room list and decoration are sheets over the map.
+    "&[data-compact] > aside": {
+      position: "absolute",
+      left: 0,
+      right: 0,
+      bottom: 0,
+      maxHeight: "70%",
+      zIndex: 4,
+      borderRadius: "16px 16px 0 0",
+      boxShadow: "0 -6px 24px rgba(0, 0, 0, 0.45)",
+      paddingBottom: "max(var(--gap-md), env(safe-area-inset-bottom))",
+    },
   },
 });
 
@@ -1339,6 +1638,8 @@ const MediaChip = styled("span", {
       background: "var(--md-sys-color-error-container)",
       color: "var(--md-sys-color-on-error-container)",
     },
+    // A phone: the icon alone, its colour says how the audio is.
+    "&[data-compact]": { padding: "6px", flexShrink: 0 },
   },
 });
 
@@ -1356,11 +1657,14 @@ const PromptChip = styled("button", {
     fontSize: "0.85em",
     cursor: "pointer",
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+    "@media (pointer: coarse)": { minHeight: "40px", paddingInline: "8px 14px" },
   },
 });
 
 const Kbd = styled("kbd", {
   base: {
+    // A touch screen has no E key: the chip alone says what it does.
+    "@media (pointer: coarse)": { display: "none" },
     display: "inline-grid",
     placeItems: "center",
     minWidth: "20px",
@@ -1394,6 +1698,7 @@ const RoomButton = styled("button", {
     },
     "&:disabled": { cursor: "default" },
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+    "@media (pointer: coarse)": { minHeight: "48px", justifyContent: "center" },
   },
 });
 
@@ -1406,6 +1711,7 @@ const ChatLink = styled("a", {
     borderRadius: "8px",
     color: "var(--md-sys-color-on-surface-variant)",
     "&:hover": { background: "var(--md-sys-color-surface-container-high)" },
+    "@media (pointer: coarse)": { width: "44px", height: "44px" },
   },
 });
 
@@ -1415,6 +1721,7 @@ const PeekButton = styled("button", {
     placeItems: "center",
     width: "32px",
     height: "32px",
+    "@media (pointer: coarse)": { width: "44px", height: "44px" },
     border: "none",
     borderRadius: "8px",
     background: "transparent",

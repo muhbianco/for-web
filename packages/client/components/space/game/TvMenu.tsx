@@ -444,6 +444,7 @@ const Head = styled("div", {
 
 const Back = styled("button", {
   base: {
+    "@media (pointer: coarse)": { minWidth: "44px", minHeight: "44px" },
     display: "grid",
     placeItems: "center",
     width: "32px",

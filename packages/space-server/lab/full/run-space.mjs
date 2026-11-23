@@ -12,10 +12,18 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
-const ip = readFileSync(join(HERE, ".wsl-ip"), "utf8").trim();
-const state = JSON.parse(readFileSync(join(HERE, "state.local.json"), "utf8"));
+// FULL_LAB_DIR: the lab folder that holds the generated files (.wsl-ip, .keys,
+// state.local.json). Set it to run this worktree's code against a lab set up in
+// another worktree, without copying its secrets around.
+const at = process.argv.indexOf("--lab-dir");
+const LAB =
+  (at >= 0 ? process.argv[at + 1] : undefined) ??
+  process.env.FULL_LAB_DIR ??
+  HERE;
+const ip = readFileSync(join(LAB, ".wsl-ip"), "utf8").trim();
+const state = JSON.parse(readFileSync(join(LAB, "state.local.json"), "utf8"));
 const keys = Object.fromEntries(
-  readFileSync(join(HERE, ".keys"), "utf8")
+  readFileSync(join(LAB, ".keys"), "utf8")
     .split(/\r?\n/)
     .filter(Boolean)
     .map((l) => l.split("=", 2)),
@@ -39,6 +47,8 @@ const child = spawn(
       LIVEKIT_SPACE_KEY: keys.LAB_LIVEKIT_KEY,
       LIVEKIT_SPACE_SECRET: keys.LAB_LIVEKIT_SECRET,
       SPACE_ENABLED_SERVERS: "*",
+      // O jogo idle em todos os servidores do laboratório (em produção, só os da lista).
+      SPACE_GAME_SERVERS: process.env.SPACE_GAME_SERVERS ?? "*",
       SPACE_ALLOWED_ORIGINS: "http://localhost:5173",
       SPACE_PORT: port,
     },

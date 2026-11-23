@@ -606,6 +606,13 @@ const Head = styled("div", {
 
 const Close = styled("button", {
   base: {
+    // A finger needs room: 44 px on touch screens.
+    "@media (pointer: coarse)": {
+      minWidth: "44px",
+      minHeight: "44px",
+      display: "inline-grid",
+      placeItems: "center",
+    },
     border: "none",
     background: "transparent",
     color: "inherit",
@@ -716,6 +723,9 @@ const Auto = styled("label", {
     "& > span": { display: "flex", flexDirection: "column", gap: "2px" },
     "& input": { marginTop: "2px" },
     "@media (max-width: 560px)": { maxWidth: "none" },
+    "@media (pointer: coarse)": {
+      "& input": { width: "24px", height: "24px", marginTop: 0 },
+    },
   },
 });
 
@@ -780,6 +790,7 @@ const PotionRow = styled("div", {
       border: "1px solid var(--md-sys-color-outline-variant)",
       background: "var(--md-sys-color-surface-container-highest)",
       color: "inherit",
+      "@media (pointer: coarse)": { minHeight: "44px", paddingInline: "10px" },
     },
   },
 });

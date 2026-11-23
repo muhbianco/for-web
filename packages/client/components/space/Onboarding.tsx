@@ -176,8 +176,12 @@ const Backdrop = styled("div", {
     display: "grid",
     placeItems: "center",
     background: "rgba(0, 0, 0, 0.55)",
-    zIndex: 5,
+    // Above the run panel (5), which opens by itself when you arrive during a
+    // run: it covered "Pronto" and left the first access stuck (23/11/2026).
+    zIndex: 7,
     padding: "var(--gap-lg)",
+    // A phone: less frame, more card.
+    "@media (max-width: 600px), (max-height: 500px)": { padding: "8px" },
   },
 });
 
@@ -185,6 +189,10 @@ const Card = styled("div", {
   base: {
     maxWidth: "460px",
     width: "100%",
+    // Never taller than the map: on a phone the card scrolls (its button too).
+    maxHeight: "100%",
+    overflowY: "auto",
+    overscrollBehavior: "contain",
     display: "flex",
     flexDirection: "column",
     gap: "var(--gap-md)",

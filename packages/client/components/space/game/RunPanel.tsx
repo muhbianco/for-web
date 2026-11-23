@@ -394,6 +394,13 @@ const Head = styled("div", {
 
 const Close = styled("button", {
   base: {
+    // A finger needs room: 44 px on touch screens.
+    "@media (pointer: coarse)": {
+      minWidth: "44px",
+      minHeight: "44px",
+      display: "inline-grid",
+      placeItems: "center",
+    },
     border: "none",
     background: "transparent",
     color: "inherit",

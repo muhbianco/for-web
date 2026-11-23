@@ -83,6 +83,8 @@ export function MediaStage(props: {
   onTab: (tab: StageTab) => void;
   mode: StageMode;
   onMode: (mode: StageMode) => void;
+  /** A phone: the stage already covers the map, so no side/focus switch. */
+  compact?: boolean;
   onClose: () => void;
   /** Shown on screen; when false the stage is parked off screen (TV still heard). */
   visible: boolean;
@@ -203,29 +205,31 @@ export function MediaStage(props: {
             <Symbol>{fullscreenOn() ? "fullscreen_exit" : "fullscreen"}</Symbol>
           </IconButton>
         </Show>
-        <IconButton
-          size="sm"
-          variant="standard"
-          aria-label={
-            props.mode === "focus" ? t`Restaurar o mapa` : t`Ampliar o palco`
-          }
-          use:floating={{
-            tooltip: {
-              placement: "bottom",
-              content:
-                props.mode === "focus"
-                  ? t`Restaurar o mapa (F)`
-                  : t`Ampliar o palco (F)`,
-            },
-          }}
-          onPress={() =>
-            props.onMode(props.mode === "focus" ? "side" : "focus")
-          }
-        >
-          <Symbol>
-            {props.mode === "focus" ? "close_fullscreen" : "open_in_full"}
-          </Symbol>
-        </IconButton>
+        <Show when={!props.compact}>
+          <IconButton
+            size="sm"
+            variant="standard"
+            aria-label={
+              props.mode === "focus" ? t`Restaurar o mapa` : t`Ampliar o palco`
+            }
+            use:floating={{
+              tooltip: {
+                placement: "bottom",
+                content:
+                  props.mode === "focus"
+                    ? t`Restaurar o mapa (F)`
+                    : t`Ampliar o palco (F)`,
+              },
+            }}
+            onPress={() =>
+              props.onMode(props.mode === "focus" ? "side" : "focus")
+            }
+          >
+            <Symbol>
+              {props.mode === "focus" ? "close_fullscreen" : "open_in_full"}
+            </Symbol>
+          </IconButton>
+        </Show>
         <IconButton
           size="sm"
           variant="standard"
@@ -411,6 +415,7 @@ const Tab = styled("button", {
       fontWeight: 600,
     },
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+    "@media (pointer: coarse)": { minHeight: "40px", paddingInline: "14px" },
   },
 });
 

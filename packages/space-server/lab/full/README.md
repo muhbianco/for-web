@@ -51,6 +51,50 @@ curl -s -X POST localhost:5199/act -d '{"u":"ana","op":"frame","url":"youtube","
 - **Captura de tela headless:** pode mostrar um retângulo, que é o vídeo do card flutuante refletido. É artefato da captura, não do app.
 - **Para o piloto:** TaskStop não mata o node. Use `taskkill //PID <pid> //T //F`, achando o PID com `wmic process where "commandline like '%pilot.mjs%'"`.
 
+## Celular e tablet (o APK)
+
+O APK do Muchat é um WebView que abre o site. Por isso o Espaço no celular é o site numa tela pequena, com toque. O laboratório de celular (desde 23/11/2026) faz o Chromium se passar por esse WebView:
+- **Aparelhos** em `packages/client/qa/full-lab/devices.mjs`:
+  - celular em pé (393×851), pequeno (360×740) e deitado (851×393);
+  - tablet em pé (800×1280) e deitado (1280×800).
+- **Cada aparelho** tem densidade, toque, o user agent do WebView com ` Muchat/<versão>` e a ponte `MuchatNative` sem o lado nativo.
+
+**Roteiro automático** (`packages/client/qa/full-lab/mobile-audit.mjs`):
+- **O que percorre**, com o Caio:
+  - abre o Espaço, passa pelo diálogo do áudio, abre e fecha a lista, anda tocando no mapa e entra numa sala;
+  - abre o palco e a ficha do herói;
+  - abre mercador, banqueiro, menu da TV e boneco de treino;
+  - vai até a TV de verdade, monta um grupo do Idle Hunt e assiste à corrida.
+- **Fechar** usa o voltar do Android (`window.muchatBack()`, o que o APK chama).
+- **A cada passo**, tira captura e audita a tela:
+  - rolagem lateral;
+  - controle cortado pela borda, coberto por outro ou pequeno para o dedo (< 40 px);
+  - conteúdo cortado;
+  - quanto do mapa aparece.
+- **Saída:** `qa/full-lab/out/mobile/<rodada>/report.html`, com as capturas lado a lado e os achados.
+
+**Antes de rodar:**
+```sh
+node packages/space-server/lab/full/seed-heroes.ts --lab-dir <pasta do lab>   # heróis com vocação (Ana, Bia, Caio)
+```
+
+**Rodar:**
+```sh
+cd packages/client
+FULL_LAB_DIR=<pasta do lab> node qa/full-lab/mobile-audit.mjs --with-share [--devices phone,tablet] [--run nome]
+```
+- `--with-share`: a Bia, no computador, compartilha a tela na mesma sala. Assim aparecem o palco e o avatar "AO VIVO".
+- **Build:** rode no build de produção feito com `VITE_SPACE_TEST_HOOKS=1`. O roteiro abre os diálogos do jogo pela visão do Espaço, em `window.__spaceView`. O `run-client.mjs` já liga a variável no modo dev; no build, passe a variável no `vite build`. O build que vai para produção não tem a variável, e o trecho some do pacote.
+- **`FULL_LAB_DIR` / `--lab-dir`** (scripts `run-space.mjs`, `run-client.mjs` e do piloto): usa o laboratório montado em outro worktree sem copiar as chaves dele.
+- **O piloto** também aceita aparelho: `node qa/full-lab/pilot.mjs --devices caio=phone`, com a op `tap` (toque de verdade).
+
+**Armadilhas:**
+- **`click()` do Playwright é mouse, mesmo em aparelho de toque.** Com mouse, o botão com dica a mostra ao passar por cima. Por isso o roteiro usa `tap()`.
+- **O avatar guarda a posição entre as rodadas.** O herói sobe de level e a corrida da rodada anterior pode estar rolando: o painel dela abre sozinho ao entrar, e o roteiro registra e fecha.
+- **Estes achados não valem para produção:**
+  - o aviso "O Stoat funciona melhor como aplicativo" só aparece em `localhost` e nos domínios do Stoat; o APK nunca o mostra;
+  - o botão "Devtools" só existe no modo dev.
+
 ## Arquivos gerados (gitignored)
 
 | Arquivo | O que guarda |

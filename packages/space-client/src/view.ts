@@ -816,9 +816,26 @@ export class SpaceView {
         ev.clientY - rect.top,
       );
     };
+    // Two fingers on the map zoom it (a pinch), like any map on a phone. A pinch
+    // never walks: the second finger cancels the tap of the first.
+    const touches = new Map<number, { x: number; y: number }>();
+    let pinch: { dist: number; zoom: number } | null = null;
+    const spread = () => {
+      const [a, b] = [...touches.values()];
+      return a && b ? Math.hypot(a.x - b.x, a.y - b.y) : 0;
+    };
     const pointerDown = (ev: PointerEvent) => {
       if (ev.button !== 0) return;
       el.focus();
+      if (ev.pointerType === "touch") {
+        touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        if (touches.size === 2) {
+          pinch = { dist: spread(), zoom: this.renderer.zoom };
+          this.pointerDownAt = null;
+          return;
+        }
+        if (touches.size > 2) return;
+      }
       const p = canvasPoint(ev);
       this.pointerDownAt = { x: p.x, y: p.y, t: performance.now() };
       if (this.editor.state.enabled) {
@@ -827,6 +844,18 @@ export class SpaceView {
       }
     };
     const pointerMove = (ev: PointerEvent) => {
+      if (touches.has(ev.pointerId)) {
+        touches.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
+        if (pinch && touches.size === 2) {
+          // One zoom step per clear pinch; the next step counts from there.
+          const ratio = spread() / Math.max(1, pinch.dist);
+          if (ratio > 1.35 || ratio < 0.74) {
+            this.setZoom(pinch.zoom + (ratio > 1 ? 1 : -1));
+            pinch = { dist: spread(), zoom: this.renderer.zoom };
+          }
+          return;
+        }
+      }
       const p = canvasPoint(ev);
       if (this.editor.state.enabled) {
         this.editor.hover(p.x, p.y);
@@ -849,6 +878,8 @@ export class SpaceView {
       });
     };
     const pointerUp = (ev: PointerEvent) => {
+      touches.delete(ev.pointerId);
+      if (touches.size < 2) pinch = null;
       if (ev.button !== 0) return;
       const p = canvasPoint(ev);
       const start = this.pointerDownAt;
@@ -877,6 +908,11 @@ export class SpaceView {
       if (!this.mover.walkTo(p.x, p.y))
         this.patch({ announcement: "Não dá para chegar lá." });
     };
+    const cancel = (ev: PointerEvent) => {
+      touches.delete(ev.pointerId);
+      if (touches.size < 2) pinch = null;
+      this.pointerDownAt = null;
+    };
     const leave = () => {
       if (this.editor.state.enabled) this.editor.hover(-1e9, -1e9);
       if (this.state.hover) this.patch({ hover: null });
@@ -900,6 +936,10 @@ export class SpaceView {
     canvas.addEventListener("pointermove", pointerMove);
     canvas.addEventListener("pointerup", pointerUp);
     canvas.addEventListener("pointerleave", leave);
+    canvas.addEventListener("pointercancel", cancel);
+    // The map takes every touch gesture (tap to walk, pinch to zoom): no page
+    // scroll or browser zoom on it.
+    canvas.style.touchAction = "none";
     document.addEventListener("visibilitychange", visibility);
     this.inputCleanup.push(
       () => el.removeEventListener("keydown", down),
@@ -909,6 +949,7 @@ export class SpaceView {
       () => canvas.removeEventListener("pointermove", pointerMove),
       () => canvas.removeEventListener("pointerup", pointerUp),
       () => canvas.removeEventListener("pointerleave", leave),
+      () => canvas.removeEventListener("pointercancel", cancel),
       () => document.removeEventListener("visibilitychange", visibility),
     );
   }
@@ -971,13 +1012,30 @@ export class SpaceView {
     };
   }
 
+  /** The "E · …" bubble over the object within reach (off on phones: the app shows a button). */
+  private mapPrompt = true;
+
+  /**
+   * Whether the map draws the "E · …" bubble over the object within reach. A phone
+   * turns it off: the app's button at the bottom does the same with a finger, and
+   * the bubble, drawn at the map's zoom, was wider than the screen (23/11/2026).
+   */
+  setMapPrompt(on: boolean) {
+    if (this.mapPrompt === on) return;
+    this.mapPrompt = on;
+    const p = this.prompt;
+    this.renderer.prompt =
+      p && on ? { x: p.x, y: p.y, label: p.label } : null;
+  }
+
   private updatePrompt() {
     const p = this.editor.state.enabled ? null : nearestInteractive(this.world);
     const changed =
       (p?.inst.id ?? null) !== (this.prompt?.inst.id ?? null) ||
       p?.label !== this.prompt?.label;
     this.prompt = p;
-    this.renderer.prompt = p ? { x: p.x, y: p.y, label: p.label } : null;
+    this.renderer.prompt =
+      p && this.mapPrompt ? { x: p.x, y: p.y, label: p.label } : null;
     if (changed)
       this.patch({ prompt: p ? { id: p.inst.id, label: p.label } : null });
   }

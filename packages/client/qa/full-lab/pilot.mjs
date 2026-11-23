@@ -20,12 +20,16 @@
  *
  * As senhas de teste vêm de state.local.json (gerado pela semente) e nunca são
  * impressas. Uso: node qa/full-lab/pilot.mjs [--users ana,bia,caio] [--headed]
+ * [--devices caio=phone,ana=tablet] (aparelhos em qa/full-lab/devices.mjs: o
+ * contexto ganha a tela, o toque e o user agent do APK, e a ponte MuchatNative).
  */
 import { mkdirSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { join, resolve } from "node:path";
 
 import { chromium } from "@playwright/test";
+
+import { openPerson } from "./person.mjs";
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => {
@@ -36,10 +40,19 @@ const HERE = resolve("qa/full-lab");
 const OUT = join(HERE, "out");
 mkdirSync(OUT, { recursive: true });
 const BASE = opt("base", "http://localhost:5173");
-const STATE = JSON.parse(
-  readFileSync(resolve("../space-server/lab/full/state.local.json"), "utf8"),
-);
+// FULL_LAB_DIR: the lab folder that holds the generated files (.wsl-ip, .keys,
+// state.local.json). Set it to run this worktree's code against a lab set up in
+// another worktree, without copying its secrets around.
+const LAB = process.env.FULL_LAB_DIR ?? resolve("../space-server/lab/full");
+const STATE = JSON.parse(readFileSync(join(LAB, "state.local.json"), "utf8"));
 const names = opt("users", "ana,bia,caio").split(",");
+/** Aparelho de cada pessoa (`--devices caio=phone`); sem a pessoa na lista, o computador. */
+const deviceOf = Object.fromEntries(
+  (opt("devices", "") || "")
+    .split(",")
+    .filter(Boolean)
+    .map((p) => p.split("=")),
+);
 // --fake-audio <wav>: the fake mic plays this file (e.g. the voice lab's PT-BR
 // reference) instead of Chromium's beep, which DeepFilter removes as noise.
 const fakeAudio = opt("fake-audio", undefined);
@@ -65,74 +78,19 @@ const browser = await chromium.launch({
 
 /** @type {Record<string, import("@playwright/test").Page>} */
 const pages = {};
-/** Hosts of the /auth/ calls the guard below stopped (see login()). */
-const blockedAuth = [];
 const logs = {};
 
 async function login(name) {
-  const u = STATE.users[name];
-  const ctx = await browser.newContext({
-    viewport: { width: 1600, height: 900 },
-    permissions: ["microphone", "camera"],
-    locale: "pt-BR",
-    colorScheme: "dark",
+  const p = await openPerson(browser, {
+    name,
+    user: STATE.users[name],
+    base: BASE,
+    out: OUT,
+    device: deviceOf[name],
+    initScript,
   });
-  if (initScript) await ctx.addInitScript({ path: resolve(initScript) });
-  // The test passwords must never leave the lab: a build made without the lab's
-  // VITE_API_URL talks to the public Stoat (api.stoat.chat) and would send them
-  // there (it happened on 22/11/2026). Any /auth/ call to a non-local host is
-  // aborted before it goes out.
-  await ctx.route("**/auth/**", (route) => {
-    const host = new URL(route.request().url()).hostname;
-    if (host === "localhost" || host === "127.0.0.1") return route.continue();
-    blockedAuth.push(host);
-    return route.abort("blockedbyclient");
-  });
-  const page = await ctx.newPage();
-  logs[name] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" || m.type() === "warning")
-      logs[name].push(`${m.type()} ${m.text()}`.slice(0, 300));
-    if (logs[name].length > 200) logs[name].shift();
-  });
-  page.on("pageerror", (e) =>
-    logs[name].push(`pageerror ${e.message}`.slice(0, 300)),
-  );
-  await page.goto(`${BASE}/login/auth`, { waitUntil: "domcontentloaded" });
-  // Landing card first ("Log In" / "Sign Up"), then the form: email + password
-  // (the lab's Stoat has no captcha or email check).
-  const email = page
-    .locator('input[type="email"], input[name="email"]')
-    .first();
-  const enter = page.getByText(/^(Log In|Entrar)$/).first();
-  const until = Date.now() + 120_000;
-  while (!(await email.isVisible().catch(() => false))) {
-    if (Date.now() > until) {
-      await page.screenshot({ path: join(OUT, `login-falhou-${name}.png`) });
-      throw new Error(
-        `${name}: formulário de login não apareceu (${page.url()})`,
-      );
-    }
-    if (await enter.isVisible().catch(() => false))
-      await enter.click({ timeout: 2_000, force: true }).catch(() => undefined);
-    await page.waitForTimeout(1_000);
-  }
-  await email.fill(u.email);
-  await page.locator('input[type="password"]').first().fill(u.password);
-  await page.locator('input[type="password"]').first().press("Enter");
-  await page
-    .waitForURL((url) => !url.pathname.startsWith("/login"), {
-      timeout: 60_000,
-    })
-    .catch((e) => {
-      if (blockedAuth.length)
-        throw new Error(
-          `${name}: o app chamou ${blockedAuth[0]} em vez do laboratório (build sem VITE_API_URL do laboratório?); o login foi bloqueado antes de sair`,
-        );
-      throw e;
-    });
-  pages[name] = page;
-  console.log(`${name}: dentro (${page.url()})`);
+  pages[name] = p.page;
+  logs[name] = p.logs;
 }
 
 for (const n of names) await login(n);
@@ -161,6 +119,10 @@ async function act(body) {
     }
     case "mouse":
       await page.mouse.click(body.x, body.y);
+      return "ok";
+    case "tap":
+      // Toque de verdade (touchstart/touchend), como no celular.
+      await page.touchscreen.tap(body.x, body.y);
       return "ok";
     case "fill": {
       const loc = body.label

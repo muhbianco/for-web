@@ -12,7 +12,11 @@ import { mergeConfig } from "vite";
 import base from "../../vite.config";
 
 const ip = readFileSync(
-  resolve(__dirname, "../../../space-server/lab/full/.wsl-ip"),
+  resolve(
+    process.env.FULL_LAB_DIR ??
+      resolve(__dirname, "../../../space-server/lab/full"),
+    ".wsl-ip",
+  ),
   "utf8",
 ).trim();
 const spacePort = process.env.FULL_LAB_SPACE_PORT ?? "8097";

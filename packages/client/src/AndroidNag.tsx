@@ -17,9 +17,11 @@ const PLAY_STORE_URL =
   "https://play.google.com/store/apps/details?id=chat.revolt";
 
 /**
- * Whether the current device is running Android
+ * Whether the current device is running Android. Inside the Muchat APK (its
+ * WebView exposes `MuchatNative`) this already is the app: never nag there.
  */
-const isAndroid = () => /android/i.test(navigator.userAgent);
+const isAndroid = () =>
+  /android/i.test(navigator.userAgent) && !window.MuchatNative;
 
 /**
  * Whether the origin of the request makes us eligible to show the nag screen

@@ -89,6 +89,8 @@ const Text = styled("span", {
 
 const Act = styled("button", {
   base: {
+    // A finger needs room (the chips sit in the dock at the bottom on phones).
+    "@media (pointer: coarse)": { minHeight: "40px", paddingInline: "12px" },
     padding: "2px 10px",
     borderRadius: "999px",
     border: "none",

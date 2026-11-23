@@ -295,6 +295,8 @@ const button = cva({
       xs: {
         height: "32px",
         "--padding-inline": "12px",
+        // [Muchat] A finger needs more than 32 px (Android asks 48 dp).
+        "@media (pointer: coarse)": { height: "40px" },
       },
       sm: {
         height: "40px",

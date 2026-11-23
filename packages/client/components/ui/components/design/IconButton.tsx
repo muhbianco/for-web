@@ -123,6 +123,8 @@ const iconButton2 = cva({
     size: {
       xs: {
         height: "32px",
+        // [Muchat] A finger needs more than 32 px (the sidebar's voice dock).
+        "@media (pointer: coarse)": { height: "40px" },
       },
       sm: {
         height: "40px",
