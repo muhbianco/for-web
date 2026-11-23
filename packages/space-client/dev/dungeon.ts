@@ -1,8 +1,9 @@
-import { addExperience, bestGear, expForLevel, type RunFrame, type RunHero, type RunResult, simulateRun, type SkillId, START, type VocationId, VOCATIONS } from "@muchat/space-core/game/ot";
+import { type RunFrame, type RunHero, type RunResult, simulateRun, type VocationId } from "@muchat/space-core/game/ot";
 import { Application, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { characterSheet, palette } from "../src/render/sprites.ts";
 import { DungeonScene, type DungeonRun } from "../src/game/index.ts";
+import { testHero } from "../src/game/testHero.ts";
 
 /**
  * Página de dev da dungeon vista de cima (docs/espaco/jogo/ot, etapa O10), sem servidor: uma
@@ -14,17 +15,7 @@ import { DungeonScene, type DungeonRun } from "../src/game/index.ts";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const q = new URLSearchParams(location.search);
 
-function hero(vocation: VocationId, level: number, skill: number, ml: number, owned: string[], name: string): RunHero {
-  const voc = VOCATIONS[vocation];
-  const st = addExperience(voc, { level: 1, experience: 0, healthMax: START.health, manaMax: START.mana, cap: START.cap }, expForLevel(level));
-  const skills = { punhos: 10, maca: 10, espada: 10, machado: 10, distancia: 10, escudo: 10 } as Record<SkillId, number>;
-  if (voc.base === 4) {
-    skills.espada = skill;
-    skills.escudo = skill;
-  }
-  if (voc.base === 3) skills.distancia = skill;
-  return { userId: `u${vocation}`, name, vocation, level: st.level, healthMax: st.healthMax, manaMax: st.manaMax, skills, magicLevel: ml, stamina: 2520, gear: bestGear(vocation, st.level, skills, st.manaMax, owned) };
-}
+const hero = (vocation: VocationId, level: number, skill: number, ml: number, owned: string[], name: string) => testHero(vocation, level, skill, ml, owned, name);
 
 const PARTIES: Record<string, RunHero[]> = {
   "cripta-do-musgo": [hero(4, 6, 25, 2, [], "Ana"), hero(2, 6, 10, 8, [], "Bia")],

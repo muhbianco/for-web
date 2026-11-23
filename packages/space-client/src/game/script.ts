@@ -133,7 +133,7 @@ export function monsterSpots(ids: readonly (string | undefined)[]): MonsterSpot[
 }
 
 /** Cor do número de dano pelo elemento; o físico é o sangue. */
-export const ELEMENT_COLOR: Readonly<Record<Element | "cura", number>> = {
+export const ELEMENT_COLOR: Readonly<Record<Element | "cura" | "mana", number>> = {
   fisico: 0xff6a5c,
   fogo: 0xff9a3c,
   gelo: 0x8fd8ff,
@@ -142,6 +142,7 @@ export const ELEMENT_COLOR: Readonly<Record<Element | "cura", number>> = {
   morte: 0xb5a6cc,
   sagrado: 0xffe27a,
   cura: 0x63e68a,
+  mana: 0x6fb6ff,
 };
 
 /** Moedas caem como moedas, não como saco: "moedas" hoje, "moeda-de-ouro/platina/cristal" na O7. */
@@ -153,13 +154,14 @@ const ELEMENTS = new Set<string>(["fisico", "fogo", "gelo", "energia", "terra", 
 const isElement = (s: string): s is Element => ELEMENTS.has(s);
 
 export type Shot = "flecha" | "virote" | "orbe" | "lanca";
-export type HitHow = "dano" | "cura" | "bloqueio" | "erro" | "imune";
+/** "mana": poção de mana (o número sobe em azul; a vida não muda). */
+export type HitHow = "dano" | "cura" | "mana" | "bloqueio" | "erro" | "imune";
 
 /** Um passo do roteiro, `at` ms depois do começo do segundo. Atores como nos eventos: herói 0–3, monstro 100+. */
 export type Cue =
   | { k: "lunge"; at: number; who: number; to: number }
   | { k: "shot"; at: number; dur: number; from: number; to: number; shot: Shot; el: Element }
-  | { k: "hit"; at: number; who: number; v: number; el: Element | "cura"; how: HitHow }
+  | { k: "hit"; at: number; who: number; v: number; el: Element | "cura" | "mana"; how: HitHow }
   | { k: "burst"; at: number; who: number; el: Element }
   | { k: "slash"; at: number; who: number; el: Element }
   | { k: "die"; at: number; who: number }
@@ -203,7 +205,7 @@ function howOf(bl: string, v: number): HitHow {
  */
 export function planSecond(p: PlanInput): Plan {
   const start = Math.max(0, p.delay ?? 0);
-  const actions = p.events.filter((e) => e.k === "golpe" || e.k === "magia").length;
+  const actions = p.events.filter((e) => e.k === "golpe" || e.k === "magia" || e.k === "pocao" || e.k === "desafio").length;
   const span = Math.max(0, SECOND_MS - start - TAIL);
   const step = actions > 1 ? Math.min(MAX_STEP, span / (actions - 1)) : 0;
   const cues: Cue[] = [];
@@ -217,9 +219,9 @@ export function planSecond(p: PlanInput): Plan {
     end = Math.max(end, c.at + dur);
   };
   const nextT = () => Math.round(start + j++ * step);
-  const hit = (who: number, at: number, v: number, el: Element | "cura", how: HitHow) => {
+  const hit = (who: number, at: number, v: number, el: Element | "cura" | "mana", how: HitHow) => {
     push({ k: "hit", at, who, v, el, how }, 120);
-    if (how !== "cura") landed.set(who, at);
+    if (how !== "cura" && how !== "mana") landed.set(who, at);
   };
 
   for (const raw of p.events) {
@@ -291,6 +293,20 @@ export function planSecond(p: PlanInput): Plan {
         push({ k: "shot", at: t, dur: SPELL_MS, from: e.a, to: e.b, shot: "orbe", el }, SPELL_MS);
         push({ k: "burst", at: t + SPELL_MS, who: e.b, el }, 200);
         hit(e.b, t + SPELL_MS, e.v, el, how);
+        break;
+      }
+      case "pocao": {
+        // Etapa O9: a poção bebida sozinha. Vida sobe em verde, mana em azul.
+        area = null;
+        const t = nextT();
+        if (e.mana) hit(e.a, t + 60, e.v, "mana", "mana");
+        else hit(e.a, t + 60, e.v, "cura", "cura");
+        break;
+      }
+      case "desafio": {
+        // O Desafio do cavaleiro promovido: os monstros viram para ele (um brilho nele).
+        area = null;
+        push({ k: "burst", at: nextT(), who: e.a, el: "sagrado" }, 200);
         break;
       }
       case "abate": {

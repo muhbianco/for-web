@@ -1,25 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { addExperience, bestGear, DUNGEONS, expForLevel, MONSTER_BASE, type RunHero, simulateRun, type SkillId, START, stageMonsters, type VocationId, VOCATIONS } from "@muchat/space-core/game/ot";
+import { DUNGEONS, MONSTER_BASE, type RunHero, simulateRun, stageMonsters, type VocationId } from "@muchat/space-core/game/ot";
 
 import { afterHit, type Cue, fitName, frameStep, heroGear, heroSpots, isCoins, isRanged, monsterSpots, planSecond, ROOM_H, ROOM_W, roomCleared, SECOND_MS, TILE } from "./script.ts";
+import { testHero } from "./testHero.ts";
 
-function hero(vocation: VocationId, level: number, skill: number, ml: number, owned: string[] = []): RunHero {
-  const voc = VOCATIONS[vocation];
-  const st = addExperience(voc, { level: 1, experience: 0, healthMax: START.health, manaMax: START.mana, cap: START.cap }, expForLevel(level));
-  const skills = { punhos: 10, maca: 10, espada: 10, machado: 10, distancia: 10, escudo: 10 } as Record<SkillId, number>;
-  if (voc.base === 4) {
-    skills.espada = skill;
-    skills.escudo = skill;
-  }
-  if (voc.base === 3) skills.distancia = skill;
-  return { userId: `u${vocation}`, name: `H${vocation}`, vocation, level: st.level, healthMax: st.healthMax, manaMax: st.manaMax, skills, magicLevel: ml, stamina: 2520, gear: bestGear(vocation, st.level, skills, st.manaMax, owned) };
-}
+const hero = (vocation: VocationId, level: number, skill: number, ml: number, owned: string[] = []) => testHero(vocation, level, skill, ml, owned);
+
+/** Bebe cedo (95 %): as corridas de teste passam pelas poções da O9. */
+const DRINK = { health: { item: null, below: 95 }, mana: { item: null, below: 95 } };
 
 const PARTIES: Record<string, RunHero[]> = {
-  "cripta-do-musgo": [hero(4, 8, 30, 2), hero(2, 8, 10, 12)],
-  "galerias-afogadas": [hero(4, 20, 55, 4, ["espada-larga", "escudo-de-aco"]), hero(2, 20, 10, 30, ["varinha-de-geada"]), hero(3, 20, 55, 8, ["arco-composto"]), hero(1, 20, 10, 30, ["varinha-de-geada"])],
+  "cripta-do-musgo": [hero(4, 3, 15, 0, ["pocao-de-vida", "pocao-de-vida", "pocao-de-vida"]), hero(2, 5, 10, 6, ["pocao-de-mana", "pocao-de-mana", "pocao-de-mana"])],
+  "galerias-afogadas": [{ ...hero(4, 20, 55, 4, ["espada-larga", "escudo-de-aco", "pocao-de-vida", "pocao-de-vida", "pocao-de-vida"]), supplies: DRINK }, { ...hero(2, 20, 10, 30, ["varinha-de-geada", "pocao-de-mana", "pocao-de-mana", "pocao-de-mana"]), supplies: DRINK }, hero(3, 20, 55, 8, ["arco-composto"]), hero(1, 20, 10, 30, ["varinha-de-geada"])],
   "forja-rachada": [hero(4, 40, 70, 6, ["lamina-da-forja", "escudo-da-forja"]), hero(2, 40, 10, 45), hero(3, 40, 70, 10, ["arco-de-guerra"]), hero(1, 40, 10, 45)],
 };
 
@@ -75,6 +69,7 @@ test("monstros: lugares distintos, o chefe 2 × 2 sem ninguém em cima, todos de
 test("cada segundo de corridas inteiras vira um roteiro de ~0,8 s, sem perder dano nem cura", () => {
   let seconds = 0;
   let areas = 0;
+  let potions = 0;
   for (const [dungeon, party] of Object.entries(PARTIES)) {
     for (let seed = 1; seed <= 4; seed++) {
       const r = simulateRun({ seed, dungeon, heroes: party, rateLoot: 2 });
@@ -93,7 +88,11 @@ test("cada segundo de corridas inteiras vira um roteiro de ~0,8 s, sem perder da
         const hits = p.cues.filter((c): c is Extract<Cue, { k: "hit" }> => c.k === "hit");
         const dealt = (how: string) => hits.filter((c) => c.how === how).reduce((a, c) => a + c.v, 0);
         const evs = f.e.filter((e) => e.k === "golpe" || e.k === "magia") as { k: string; v: number; cura?: true; bl?: string }[];
-        assert.equal(dealt("cura"), evs.filter((e) => e.cura).reduce((a, e) => a + e.v, 0));
+        // A cura das magias e a das poções de vida (O9); a poção de mana sobe à parte.
+        const drunk = f.e.filter((e) => e.k === "pocao") as { v: number; mana?: true }[];
+        potions += drunk.length;
+        assert.equal(dealt("cura"), evs.filter((e) => e.cura).reduce((a, e) => a + e.v, 0) + drunk.filter((e) => !e.mana).reduce((a, e) => a + e.v, 0));
+        assert.equal(dealt("mana"), drunk.filter((e) => e.mana).reduce((a, e) => a + e.v, 0));
         assert.equal(dealt("dano"), evs.filter((e) => !e.cura && e.bl !== "erro").reduce((a, e) => a + e.v, 0));
         // O saque cai num corpo que caiu no mesmo segundo, depois da queda.
         for (const l of p.cues.filter((c) => c.k === "loot")) {
@@ -108,13 +107,14 @@ test("cada segundo de corridas inteiras vira um roteiro de ~0,8 s, sem perder da
     }
   }
   assert.ok(seconds > 500);
+  assert.ok(potions > 0, "nenhuma poção bebida nas corridas de teste");
   assert.ok(areas > 0, "nenhum ataque em área visto (Rei das Comportas / Guardião da Forja)");
 });
 
-test("tipo de evento desconhecido (poção, flecha das etapas seguintes) passa batido", () => {
+test("tipo de evento desconhecido (o que vier depois desta versão) passa batido", () => {
   const gears = [heroGear("espada-larga", null)];
   const p = planSecond({
-    events: [{ k: "pocao", a: 0, v: 50 } as { k: string }, { k: "flecha", a: 0, n: 1 } as { k: string }, { k: "golpe", a: 0, b: 100, v: 12, bl: "none" } as { k: string }],
+    events: [{ k: "flecha-nova", a: 0, n: 1 } as { k: string }, { k: "municao", a: 0 } as { k: string }, { k: "golpe", a: 0, b: 100, v: 12, bl: "none" } as { k: string }],
     gears,
     vocations: [4],
     monsters: ["rato-do-musgo"],
@@ -124,6 +124,29 @@ test("tipo de evento desconhecido (poção, flecha das etapas seguintes) passa b
     ["lunge", "hit"],
   );
   assert.deepEqual(planSecond({ events: [{ k: "novo" }], gears, vocations: [4], monsters: [] }), { cues: [], end: 0 });
+});
+
+test("poção (O9): vida em verde, mana em azul sem mexer na vida; o Desafio brilha no cavaleiro", () => {
+  const p = planSecond({
+    events: [
+      { k: "pocao", a: 0, item: "pocao-de-vida", v: 40 },
+      { k: "pocao", a: 1, item: "pocao-de-mana", v: 60, mana: true },
+      { k: "desafio", a: 0, n: 3 },
+    ] as unknown as { k: string }[],
+    gears: [heroGear("espada-larga", null), heroGear("varinha-de-musgo", null)],
+    vocations: [8, 2],
+    monsters: ["rato-do-musgo"],
+  });
+  const hits = p.cues.filter((c): c is Extract<Cue, { k: "hit" }> => c.k === "hit");
+  assert.deepEqual(
+    hits.map((h) => [h.who, h.how, h.v]),
+    [
+      [0, "cura", 40],
+      [1, "mana", 60],
+    ],
+  );
+  assert.equal(afterHit(10, 100, { v: 60, how: "mana" }), 10);
+  assert.ok(p.cues.some((c) => c.k === "burst" && c.who === 0 && c.el === "sagrado"));
 });
 
 test("saque: moedas de qualquer tipo viram moedas; o que ficou no corpo (O7) também deixa o saco", () => {

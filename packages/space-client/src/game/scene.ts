@@ -586,11 +586,12 @@ export class DungeonScene {
         if (!b || b.gone) return;
         b.hp = afterHit(b.hp, b.max, c);
         const head = { x: b.pos.x, y: b.pos.y - b.size };
-        if (c.how === "dano" || c.how === "cura") this.floater(c.how === "cura" ? `+${c.v}` : String(c.v), ELEMENT_COLOR[c.el], head, now);
+        const up = c.how === "cura" || c.how === "mana";
+        if (c.how === "dano" || up) this.floater(up ? `+${c.v}` : String(c.v), ELEMENT_COLOR[c.el], head, now);
         if (c.how === "dano" && motion) b.flashUntil = now + 120;
-        if (c.how === "cura" && motion) {
+        if (up && motion) {
           for (let i = 0; i < 4; i++) {
-            const s = this.fxSprite("faisca", ELEMENT_COLOR.cura);
+            const s = this.fxSprite("faisca", ELEMENT_COLOR[c.how === "mana" ? "mana" : "cura"]);
             const from = { x: b.pos.x - 6 + i * 4, y: b.pos.y - 2 - (i % 2) * 4 };
             this.fx.push({ s, kind: "spark", t0: now + i * 50, dur: 480, from, to: { x: from.x, y: from.y - 10 } });
           }

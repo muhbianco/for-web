@@ -23,9 +23,12 @@ import {
   START,
   VOCATIONS,
   addExperience,
-  bestGear,
+  addItem,
+  autoEquip,
   expForLevel,
+  gearOf,
   simulateRun,
+  starterInventory,
 } from "@muchat/space-core/game/ot";
 
 import { I18nProvider } from "../../components/i18n";
@@ -67,6 +70,10 @@ function hero(
     skills.escudo = skill;
   }
   if (voc.base === 3) skills.distancia = skill;
+  // Etapa O7: o kit com a mochila, os itens a mais e o melhor vestido.
+  const inv = starterInventory(voc.base, "mochila");
+  for (const id of owned) addItem(inv, 100_000, id, 1);
+  autoEquip(inv, vocation, st.level, skills, st.manaMax);
   return {
     userId: `u${vocation}`,
     name: ["", "Feiticeira", "Druida", "Arqueiro", "Cavaleira"][vocation]!,
@@ -77,7 +84,9 @@ function hero(
     skills,
     magicLevel: ml,
     stamina: 2520,
-    gear: bestGear(vocation, st.level, skills, st.manaMax, owned),
+    gear: gearOf(inv),
+    inv,
+    cap: st.cap,
   };
 }
 
