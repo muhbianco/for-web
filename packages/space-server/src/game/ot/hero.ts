@@ -56,7 +56,6 @@ import {
   DEFAULT_SUPPLIES,
   type Mastery,
   REFINE_MAX,
-  REFINE_SAFE,
   cannotRebirth,
   refinable,
   refineChance,
@@ -902,8 +901,8 @@ export interface RefineResult {
 
 /**
  * Uma tentativa de refino no Ferreiro (24/11/2026, items.ts): a arma que o herói empunha, pago
- * das moedas e do banco. `roll` é de 0 a 99 (o serviço sorteia): abaixo da chance, sobe; acima
- * do seguro, a falha volta um nível. A arma não quebra.
+ * das moedas e do banco. `roll` é de 0 a 99 (o serviço sorteia): abaixo da chance, sobe; na
+ * falha, só o ouro vai e a arma fica no nível em que estava. A arma não quebra.
  */
 export function refineWeapon(
   d: RpgHeroDoc,
@@ -921,7 +920,7 @@ export function refineWeapon(
   const cost = refineCost(def, from);
   if (!charge(d, cost)) return { ok: false, reason: "no_money" };
   const success = roll < refineChance(from);
-  const to = success ? from + 1 : from > REFINE_SAFE ? from - 1 : from;
+  const to = success ? from + 1 : from;
   const next = { ...d.inv.equip.arma! };
   if (to > 0) next.refine = to;
   else delete next.refine;

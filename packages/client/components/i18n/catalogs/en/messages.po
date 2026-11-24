@@ -3940,12 +3940,16 @@ msgid "Fale um pouco para medir"
 msgstr "Fale um pouco para medir"
 
 #: components/space/game/NpcDialog.tsx
-msgid "Falhou: a arma continua +{to}."
-msgstr "Falhou: a arma continua +{to}."
+#~ msgid "Falhou: a arma continua +{to}."
+#~ msgstr "Falhou: a arma continua +{to}."
 
 #: components/space/game/NpcDialog.tsx
-msgid "Falhou: a arma voltou para +{to}."
-msgstr "Falhou: a arma voltou para +{to}."
+#~ msgid "Falhou: a arma voltou para +{to}."
+#~ msgstr "Falhou: a arma voltou para +{to}."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Falhou: só o ouro foi, a arma continua +{to}."
+msgstr "Falhou: só o ouro foi, a arma continua +{to}."
 
 #: components/space/game/NpcDialog.tsx
 msgid "Falta level para a evolução."
@@ -6766,8 +6770,12 @@ msgid "Refazer"
 msgstr "Refazer"
 
 #: components/space/game/NpcDialog.tsx
-msgid "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra)."
-msgstr "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra)."
+#~ msgid "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra)."
+#~ msgstr "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra)."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar, e aí só o ouro vai (a arma fica no nível em que estava)."
+msgstr "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar, e aí só o ouro vai (a arma fica no nível em que estava)."
 
 #. placeholder {0}: money(cost())
 #: components/space/game/NpcDialog.tsx
@@ -7222,8 +7230,13 @@ msgstr "Screen Share Volume"
 
 #. placeholder {0}: lvl() - 1 < 0 ? 0 : lvl() - (lvl() > REFINE_SAFE ? 1 : 0)
 #: components/space/game/NpcDialog.tsx
-msgid "Se falhar, a arma volta para +{0} e o ouro vai."
-msgstr "Se falhar, a arma volta para +{0} e o ouro vai."
+#~ msgid "Se falhar, a arma volta para +{0} e o ouro vai."
+#~ msgstr "Se falhar, a arma volta para +{0} e o ouro vai."
+
+#. placeholder {0}: lvl()
+#: components/space/game/NpcDialog.tsx
+msgid "Se falhar, só o ouro vai: a arma continua +{0}."
+msgstr "Se falhar, só o ouro vai: a arma continua +{0}."
 
 #: src/interface/channels/ChannelHeader.tsx
 msgid "Search"

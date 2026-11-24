@@ -604,7 +604,7 @@ test("itens com atributos: o que veste soma na vida, na mana e na corrida; a cap
   assert.equal(capOf(d), cap, "a FOR do item não mexe na capacidade");
 });
 
-test("refino no Ferreiro: só a arma empunhada, até +10; até o +4 não falha, acima volta um nível; cobra", async () => {
+test("refino no Ferreiro: só a arma empunhada, até +10; até o +4 não falha; a falha só cobra; cobra", async () => {
   const { refineWeapon } = await import("./hero.ts");
   const d = newRpgHero("R", 0);
   applyVocation(d, 4);
@@ -616,12 +616,16 @@ test("refino no Ferreiro: só a arma empunhada, até +10; até o +4 não falha, 
   assert.ok(one.ok && one.result.success && one.result.to === 1, "100% no +1");
   assert.equal(d.inv.equip.arma?.refine, 1);
   assert.ok(d.bank_gold < 1_000_000, "cobrou");
-  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 5 };
+  // A falha (24/11/2026): só o ouro vai, a arma fica onde estava.
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 9 };
+  const gold = d.bank_gold;
   const fail = refineWeapon(d, 99, 0);
-  assert.ok(fail.ok && !fail.result.success && fail.result.to === 4, "acima do +4 volta um");
-  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 4 };
+  assert.ok(fail.ok && !fail.result.success && fail.result.to === 9, "do +9 falhando fica no +9");
+  assert.equal(d.inv.equip.arma?.refine, 9);
+  assert.ok(fail.ok && d.bank_gold === gold - fail.result.cost, "cobrou a tentativa");
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 5 };
   const keep = refineWeapon(d, 99, 0);
-  assert.ok(keep.ok && keep.result.to === 4, "do +4 falhando fica no +4");
+  assert.ok(keep.ok && keep.result.to === 5, "do +5 falhando fica no +5");
   d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 10 };
   assert.deepEqual(refineWeapon(d, 0, 0), { ok: false, reason: "max_refine" });
   d.bank_gold = 0;

@@ -302,7 +302,7 @@ export default function NpcDialog(props: {
     if (props.request.npc === "banqueiro")
       return t`Guarda suas moedas sem peso e transfere para quem está no Espaço.`;
     if (props.request.npc === "ferreiro")
-      return t`Refina a arma que você empunha, até +${REFINE_MAX}. Cada nível dá dano; acima do +${REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra).`;
+      return t`Refina a arma que você empunha, até +${REFINE_MAX}. Cada nível dá dano; acima do +${REFINE_SAFE} pode falhar, e aí só o ouro vai (a arma fica no nível em que estava).`;
     return t`Evolui a classe do herói, o que abre partes da árvore de habilidades e sobe o teto de cada adereço, redistribui atributos e habilidades e, com o job no máximo, faz a árvore renascer.`;
   };
 
@@ -775,9 +775,7 @@ export default function NpcDialog(props: {
                 setDone(
                   to > from
                     ? t`Deu certo: +${to}!`
-                    : to < from
-                      ? t`Falhou: a arma voltou para +${to}.`
-                      : t`Falhou: a arma continua +${to}.`,
+                    : t`Falhou: só o ouro foi, a arma continua +${to}.`,
                 );
               };
               return (
@@ -836,7 +834,7 @@ export default function NpcDialog(props: {
                           {t`De +${lvl()} para +${lvl() + 1}: chance de ${refineChance(lvl())}%, dano de +${pct(lvl())}% para +${pct(lvl() + 1)}%.`}{" "}
                           <Muted>
                             {risky()
-                              ? t`Se falhar, a arma volta para +${lvl() - 1 < 0 ? 0 : lvl() - (lvl() > REFINE_SAFE ? 1 : 0)} e o ouro vai.`
+                              ? t`Se falhar, só o ouro vai: a arma continua +${lvl()}.`
                               : t`Até o +${REFINE_SAFE} não falha.`}
                           </Muted>
                         </p>

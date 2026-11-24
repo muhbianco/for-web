@@ -1761,12 +1761,14 @@ const LIST: readonly ItemDef[] = [
 
 /**
  * O refino das armas [RO refine, com números nossos]: de +0 a +`REFINE_MAX`, no Ferreiro, a
- * arma que o herói empunha. Até +`REFINE_SAFE` não falha; acima disso, a falha volta um nível
- * (no Ragnarok a arma quebra; aqui não). Cada nível soma dano à arma (refineFactor).
+ * arma que o herói empunha. Até +`REFINE_SAFE` não falha. Acima disso (24/11/2026, pedido do
+ * dono: "não quero que seja tão difícil; se falhar, você perde só o dinheiro"), a falha custa só o
+ * ouro da tentativa: a arma fica no nível em que estava (no Ragnarok ela quebra; até então aqui
+ * voltava um nível, com as chances 80/65/50/35/25/15). Cada nível soma dano à arma (refineFactor).
  */
 export const REFINE_MAX = 10;
 export const REFINE_SAFE = 4;
-const REFINE_CHANCE = [100, 100, 100, 100, 80, 65, 50, 35, 25, 15] as const;
+const REFINE_CHANCE = [100, 100, 100, 100, 90, 80, 70, 60, 50, 40] as const;
 
 /** Chance (%) de subir de `n` para `n + 1`. */
 export function refineChance(n: number): number {
