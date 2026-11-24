@@ -68,8 +68,8 @@ msgid "(SOR + 10)/10: escapa de qualquer golpe normal."
 msgstr "(SOR + 10)/10: escapa de qualquer golpe normal."
 
 #: components/space/game/RunPanel.tsx
-msgid "(você)"
-msgstr "(você)"
+#~ msgid "(você)"
+#~ msgstr "(você)"
 
 #. placeholder {0}: props.count
 #: components/ui/components/features/messaging/elements/BlockedMessage.tsx
@@ -87,6 +87,12 @@ msgstr "{0, plural, one {Drop a file} other {Drop # files}}"
 #: components/space/game/HeroSheet.tsx
 msgid "{0} · level {1} ({2}%)"
 msgstr "{0} · level {1} ({2}%)"
+
+#. placeholder {0}: vocationName(m().vocation)
+#. placeholder {1}: m().level
+#: components/space/game/RunPanel.tsx
+msgid "{0} · nível {1}"
+msgstr "{0} · nível {1}"
 
 #. placeholder {0}: vocationName(m.vocation)
 #. placeholder {1}: m.level
@@ -132,6 +138,11 @@ msgstr "{0} and {1} are typing…"
 msgid "{0} cada"
 msgstr "{0} cada"
 
+#. placeholder {0}: focus()!.name
+#: components/space/game/RunPanel.tsx
+msgid "{0} caiu"
+msgstr "{0} caiu"
+
 #. placeholder {0}: (message.systemMessage as ChannelEditSystemMessage).by?.username
 #: components/client/NotificationsWorker.tsx
 msgid "{0} changed the channel description"
@@ -157,6 +168,11 @@ msgstr "{0} começou a compartilhar a tela."
 #: components/space/game/HeroSheet.tsx
 msgid "{0} de {1} espaços"
 msgstr "{0} de {1} espaços"
+
+#. placeholder {0}: (pending() ?? 0).toLocaleString()
+#: components/space/game/RunPanel.tsx
+msgid "{0} de experiência perdida"
+msgstr "{0} de experiência perdida"
 
 #. placeholder {0}: s.mana
 #. placeholder {0}: view().now.mana
@@ -289,6 +305,15 @@ msgstr "{0} will not be able to interact with the server until the timeout expir
 msgid "{0}-{1} of {2}"
 msgstr "{0}-{1} of {2}"
 
+#. placeholder {0}: m.name
+#. placeholder {1}: vocationName(m.vocation)
+#. placeholder {2}: m.level
+#. placeholder {3}: hpOf(i())
+#. placeholder {4}: m.health_max
+#: components/space/game/RunPanel.tsx
+msgid "{0}, {1} nível {2}: vida {3} de {4}"
+msgstr "{0}, {1} nível {2}: vida {3} de {4}"
+
 #. placeholder {0}: S[slot]
 #: components/space/game/HeroSheet.tsx
 msgid "{0}: vazio"
@@ -411,6 +436,10 @@ msgstr "{b} não sente o golpe de {a}"
 msgid "{b} se defendeu de {a}"
 msgstr "{b} se defendeu de {a}"
 
+#: components/space/game/RunHud.tsx
+msgid "{count} na mochila"
+msgstr "{count} na mochila"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{device} Hz (não bate com {context} Hz)"
 msgstr "{device} Hz (não bate com {context} Hz)"
@@ -474,16 +503,16 @@ msgstr "{n} partidas rolando"
 #~ msgstr "{name}: +{exp} de experiência, {0} moedas."
 
 #: components/space/game/RunPanel.tsx
-msgid "{name}: +{exp} de experiência, {gold}, {items}."
-msgstr "{name}: +{exp} de experiência, {gold}, {items}."
+#~ msgid "{name}: +{exp} de experiência, {gold}, {items}."
+#~ msgstr "{name}: +{exp} de experiência, {gold}, {items}."
 
 #: components/space/game/RunPanel.tsx
-msgid "{name}: +{exp} de experiência, {gold}."
-msgstr "{name}: +{exp} de experiência, {gold}."
+#~ msgid "{name}: +{exp} de experiência, {gold}."
+#~ msgstr "{name}: +{exp} de experiência, {gold}."
 
 #: components/space/game/RunPanel.tsx
-msgid "{name}: caiu e perdeu a recompensa desta dungeon."
-msgstr "{name}: caiu e perdeu a recompensa desta dungeon."
+#~ msgid "{name}: caiu e perdeu a recompensa desta dungeon."
+#~ msgstr "{name}: caiu e perdeu a recompensa desta dungeon."
 
 #: components/space/game/SkillBar.tsx
 msgid "{name}: pronta"
@@ -548,6 +577,43 @@ msgstr "{v} oz"
 #: components/space/Onboarding.tsx
 msgid "+ e − mudam o zoom. Esc cancela o caminho."
 msgstr "+ e − mudam o zoom. Esc cancela o caminho."
+
+#. placeholder {0}: coins(ev.n)
+#: components/space/game/RunPanel.tsx
+msgid "+{0}"
+msgstr "+{0}"
+
+#. placeholder {0}: gain()
+#. placeholder {1}: x().next
+#: components/space/game/RunHud.tsx
+msgid "+{0} · nível {1} no fim"
+msgstr "+{0} · nível {1} no fim"
+
+#. placeholder {0}: (pending() ?? 0).toLocaleString()
+#. placeholder {0}: rw().exp.toLocaleString()
+#: components/space/game/RunPanel.tsx
+msgid "+{0} de experiência"
+msgstr "+{0} de experiência"
+
+#. placeholder {0}: gain()
+#: components/space/game/RunHud.tsx
+msgid "+{0} nesta corrida, entra no fim"
+msgstr "+{0} nesta corrida, entra no fim"
+
+#. placeholder {0}: gain()
+#: components/space/game/RunHud.tsx
+msgid "+{0} nesta corrida: sobe para o nível {nx} no fim"
+msgstr "+{0} nesta corrida: sobe para o nível {nx} no fim"
+
+#. placeholder {0}: gain()
+#: components/space/game/RunHud.tsx
+msgid "+{0} no fim"
+msgstr "+{0} no fim"
+
+#. placeholder {0}: gain()
+#: components/space/game/RunHud.tsx
+msgid "+{0} perdida"
+msgstr "+{0} perdida"
 
 #. placeholder {0}: pendingTries()
 #. placeholder {1}: h().training.cap_ms / 3_600_000
@@ -753,8 +819,12 @@ msgid "A conexão de {0} está instável"
 msgstr "A conexão de {0} está instável"
 
 #: components/space/game/RunPanel.tsx
-msgid "A corrida segue no servidor; o resultado chega no fim."
-msgstr "A corrida segue no servidor; o resultado chega no fim."
+#~ msgid "A corrida segue no servidor; o resultado chega no fim."
+#~ msgstr "A corrida segue no servidor; o resultado chega no fim."
+
+#: components/space/game/RunHud.tsx
+msgid "a experiência desta corrida se perdeu"
+msgstr "a experiência desta corrida se perdeu"
 
 #. placeholder {0}: Math.ceil((retryMs ?? 0) / 1000)
 #: components/space/game/labels.ts
@@ -803,8 +873,12 @@ msgid "A TV não aceitou o comando."
 msgstr "A TV não aceitou o comando."
 
 #: components/space/game/RunPanel.tsx
-msgid "A vista da dungeon não abriu neste aparelho; segue o resumo em texto."
-msgstr "A vista da dungeon não abriu neste aparelho; segue o resumo em texto."
+msgid "A vista da dungeon não abriu neste aparelho; segue o resumo em barras."
+msgstr "A vista da dungeon não abriu neste aparelho; segue o resumo em barras."
+
+#: components/space/game/RunPanel.tsx
+#~ msgid "A vista da dungeon não abriu neste aparelho; segue o resumo em texto."
+#~ msgstr "A vista da dungeon não abriu neste aparelho; segue o resumo em texto."
 
 #: components/space/game/NpcDialog.tsx
 msgid "A vocação do seu herói não usa"
@@ -1182,6 +1256,11 @@ msgstr "Assign lower-ranked roles to lower-ranking members"
 msgid "Assign Roles"
 msgstr "Assign Roles"
 
+#. placeholder {0}: m().name
+#: components/space/game/RunPanel.tsx
+msgid "Assistindo {0}"
+msgstr "Assistindo {0}"
+
 #: components/space/game/TvMenu.tsx
 msgid "Assistir"
 msgstr "Assistir"
@@ -1407,6 +1486,14 @@ msgstr "Bans"
 #~ msgid "Baú suspeito: 60% de chance de item, 40% de emboscada."
 #~ msgstr "Baú suspeito: 60% de chance de item, 40% de emboscada."
 
+#: components/space/game/RunHud.tsx
+msgid "Bebe poção de mana abaixo de {b}%"
+msgstr "Bebe poção de mana abaixo de {b}%"
+
+#: components/space/game/RunHud.tsx
+msgid "Bebe poção de vida abaixo de {b}%"
+msgstr "Bebe poção de vida abaixo de {b}%"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Being sent"
 msgstr "Being sent"
@@ -1557,6 +1644,10 @@ msgstr "Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo ant
 #: components/space/game/itemUi.ts
 msgid "Cada tiro gasta uma"
 msgstr "Cada tiro gasta uma"
+
+#: components/space/game/RunPanel.tsx
+msgid "Caiu e perdeu a recompensa desta dungeon."
+msgstr "Caiu e perdeu a recompensa desta dungeon."
 
 #: components/space/game/labels.ts
 #~ msgid "Cajado"
@@ -1819,9 +1910,9 @@ msgstr "Check back often to see if your {0} has been approved!"
 msgid "Check your mail!"
 msgstr "Check your mail!"
 
-#: components/space/game/labels.ts
-#~ msgid "Chefe"
-#~ msgstr "Chefe"
+#: components/space/game/RunPanel.tsx
+msgid "Chefe"
+msgstr "Chefe"
 
 #: components/space/game/rpgUi.ts
 msgid "Chegue mais perto do dummy para treinar."
@@ -2434,6 +2525,10 @@ msgstr "Crítico"
 msgid "Cura {0}–{1}"
 msgstr "Cura {0}–{1}"
 
+#: components/space/game/RunHud.tsx
+msgid "cura {a} a {b} de vida"
+msgstr "cura {a} a {b} de vida"
+
 #: components/space/game/itemUi.ts
 msgid "Cura {a} a {b} de vida"
 msgstr "Cura {a} a {b} de vida"
@@ -2744,6 +2839,10 @@ msgstr "Devagar: muitos comandos seguidos."
 msgid "Developer Documentation"
 msgstr "Developer Documentation"
 
+#: components/space/game/RunHud.tsx
+msgid "devolve {a} a {b} de mana"
+msgstr "devolve {a} a {b} de mana"
+
 #: components/space/game/itemUi.ts
 msgid "Devolve {a} a {b} de mana"
 msgstr "Devolve {a} a {b} de mana"
@@ -2847,8 +2946,13 @@ msgid "Druida"
 msgstr "Druida"
 
 #: components/space/game/RunPanel.tsx
-msgid "Dungeon em andamento"
-msgstr "Dungeon em andamento"
+#~ msgid "Dungeon em andamento"
+#~ msgstr "Dungeon em andamento"
+
+#. placeholder {0}: dungeon()?.name ?? run().dungeon
+#: components/space/game/RunPanel.tsx
+msgid "Dungeon em andamento: {0}"
+msgstr "Dungeon em andamento: {0}"
 
 #: components/space/game/TvMenu.tsx
 msgid "Dungeon em grupo"
@@ -2865,6 +2969,10 @@ msgstr "Duplicar"
 #: components/modal/modals/TimeoutMember.tsx
 msgid "Duration"
 msgstr "Duration"
+
+#: components/space/game/RunHud.tsx
+msgid "é a próxima que ele bebe"
+msgstr "é a próxima que ele bebe"
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "E-mail (o Mercado Pago exige no mensal)"
@@ -4404,6 +4512,8 @@ msgid "Mana abaixo de"
 msgstr "Mana abaixo de"
 
 #. placeholder {0}: m.name
+#. placeholder {0}: props.name
+#: components/space/game/RunHud.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Mana de {0}"
 msgstr "Mana de {0}"
@@ -4862,6 +4972,14 @@ msgstr "nada saindo da cadeia"
 msgid "Name"
 msgstr "Name"
 
+#: components/space/game/RunHud.tsx
+msgid "Não bebe poção de mana"
+msgstr "Não bebe poção de mana"
+
+#: components/space/game/RunHud.tsx
+msgid "Não bebe poção de vida"
+msgstr "Não bebe poção de vida"
+
 #: components/space/game/labels.ts
 #~ msgid "Não cabe aí."
 #~ msgstr "Não cabe aí."
@@ -4996,6 +5114,16 @@ msgstr "Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira"
 #~ msgid "nível {0}"
 #~ msgstr "nível {0}"
 
+#. placeholder {0}: x().level
+#. placeholder {1}: pctText()
+#: components/space/game/RunHud.tsx
+msgid "Nível {0} · {1}%"
+msgstr "Nível {0} · {1}%"
+
+#: components/space/game/RunHud.tsx
+msgid "Nível {lv}: {p}% para o próximo"
+msgstr "Nível {lv}: {p}% para o próximo"
+
 #: components/space/game/labels.ts
 #~ msgid "Nível insuficiente para esse item."
 #~ msgstr "Nível insuficiente para esse item."
@@ -5104,6 +5232,10 @@ msgstr "O grupo está cheio."
 #: components/space/game/rpgUi.ts
 msgid "O grupo mudou enquanto começava. Confira e comece de novo."
 msgstr "O grupo mudou enquanto começava. Confira e comece de novo."
+
+#: components/space/game/RunPanel.tsx
+msgid "O grupo segue; a recompensa desta dungeon se perdeu."
+msgstr "O grupo segue; a recompensa desta dungeon se perdeu."
 
 #: components/space/game/labels.ts
 #~ msgid "O herói está ferido: espere a vida voltar a 30%."
@@ -5362,6 +5494,11 @@ msgstr "Paga com as moedas que você carrega; se faltar, com o banco. O troco vo
 msgid "Páginas do próprio Muchat não podem ser mostradas dentro de um objeto."
 msgstr "Páginas do próprio Muchat não podem ser mostradas dentro de um objeto."
 
+#. placeholder {0}: props.member.name
+#: components/space/game/RunHud.tsx
+msgid "Painel de {0}"
+msgstr "Painel de {0}"
+
 #: components/space/SpacePage.tsx
 msgid "Palco"
 msgstr "Palco"
@@ -5470,6 +5607,10 @@ msgstr "Pede {r}"
 #: components/space/game/heroUi.ts
 msgid "Pede antes o adereço anterior do ramo."
 msgstr "Pede antes o adereço anterior do ramo."
+
+#: components/space/game/itemUi.ts
+msgid "pede level {lv}"
+msgstr "pede level {lv}"
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Pele"
@@ -5615,6 +5756,14 @@ msgstr "Please select a reason"
 #: components/space/game/GamePanel.tsx
 #~ msgid "Poção abaixo de (%)"
 #~ msgstr "Poção abaixo de (%)"
+
+#: components/space/game/RunHud.tsx
+msgid "Poções de mana"
+msgstr "Poções de mana"
+
+#: components/space/game/RunHud.tsx
+msgid "Poções de vida"
+msgstr "Poções de vida"
 
 #: components/space/game/HeroSheet.tsx
 msgid "Poções na dungeon"
@@ -6224,6 +6373,12 @@ msgstr "Sair do grupo"
 #~ msgid "sala {0} de {1}"
 #~ msgstr "sala {0} de {1}"
 
+#. placeholder {0}: st() + 1
+#. placeholder {1}: stages()
+#: components/space/game/RunPanel.tsx
+msgid "Sala {0} de {1}"
+msgstr "Sala {0} de {1}"
+
 #: components/space/game/RunPanel.tsx
 msgid "Sala {n} de {of}: {name}"
 msgstr "Sala {n} de {of}: {name}"
@@ -6675,6 +6830,10 @@ msgstr "Smart TV da sala"
 msgid "Smart TV: intervalo entre vídeos"
 msgstr "Smart TV: intervalo entre vídeos"
 
+#: components/space/game/itemUi.ts
+msgid "só {who}"
+msgstr "só {who}"
+
 #: components/space/DecorPanel.tsx
 #~ msgid "Só administradores"
 #~ msgstr "Só administradores"
@@ -6690,6 +6849,11 @@ msgstr "Só páginas https podem ser mostradas aqui."
 #: components/space/game/rpgUi.ts
 msgid "Só quem montou o grupo pode começar."
 msgstr "Só quem montou o grupo pode começar."
+
+#. placeholder {0}: level()
+#: components/space/game/RunPanel.tsx
+msgid "Sobe para o nível {0} quando a corrida acabar"
+msgstr "Sobe para o nível {0} quando a corrida acabar"
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "software"
@@ -7655,8 +7819,9 @@ msgstr "Vida"
 msgid "Vida abaixo de"
 msgstr "Vida abaixo de"
 
-#. placeholder {0}: def?.name ?? x.id
 #. placeholder {0}: m.name
+#. placeholder {0}: props.name
+#: components/space/game/RunHud.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Vida de {0}"
 msgstr "Vida de {0}"
@@ -7748,6 +7913,10 @@ msgstr "Você ainda não é apoiador."
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Você ajustou as opções abaixo à mão."
 msgstr "Você ajustou as opções abaixo à mão."
+
+#: components/space/game/RunPanel.tsx
+msgid "Você caiu"
+msgstr "Você caiu"
 
 #. placeholder {0}: vipUntilLabel()
 #: components/app/interface/settings/user/Support.tsx

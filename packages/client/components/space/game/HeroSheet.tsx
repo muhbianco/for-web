@@ -15,6 +15,7 @@ import {
   expForLevel,
   itemDef,
   missingAmmo,
+  potionCounts,
   potionDefs,
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
@@ -32,6 +33,7 @@ import {
   oz,
   slotLabels,
 } from "./itemUi";
+import { PotionBelt } from "./RunHud";
 import { SkillTree } from "./SkillTree";
 import { StatsPanel } from "./StatsPanel";
 import { useModalKeys } from "./modalKeys";
@@ -573,6 +575,19 @@ export default function HeroSheet(props: {
           <strong>{t`Poções na dungeon`}</strong>
           <For each={["health", "mana"] as const}>
             {(kind) => (
+              <>
+              <Show when={hero()}>
+                {(h) => (
+                  <PotionBelt
+                    kind={kind}
+                    layout="row"
+                    counts={potionCounts(inv().pack)}
+                    vocation={h().vocation}
+                    level={h().level}
+                    rule={supplies()[kind]}
+                  />
+                )}
+              </Show>
               <PotionRow>
                 <span>
                   {kind === "health" ? t`Vida abaixo de` : t`Mana abaixo de`}
@@ -619,6 +634,7 @@ export default function HeroSheet(props: {
                   </For>
                 </select>
               </PotionRow>
+              </>
             )}
           </For>
           <Muted>

@@ -16,11 +16,20 @@ import {
   starterInventory,
 } from "./inventory.ts";
 import { type Stats, withInt, withVit } from "./attributes.ts";
+import {
+  applyPotionEvent,
+  expAt,
+  nextPotion,
+  potionCounts,
+  potionSizes,
+  potionsAt,
+} from "./belt.ts";
 import { addExperience, expForLevel } from "./progression.ts";
 import {
   type RunHero,
   autoEquip,
   RUN,
+  runExpRate,
   runReward,
   runStaminaCost,
   simulateRun,
@@ -590,4 +599,95 @@ test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (cha
         (e) => e.k === "golpe" && e.a >= 100 && e.b > 0,
       ).length;
   assert.ok(backHits > 0, "a troca de alvo do TFS chega aos de trás");
+});
+
+test("cinto de poções: a contagem segue a corrida e a próxima poção é a que a corrida bebe", () => {
+  let looted = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const k = hero(4, 6, 30);
+    addItem(k.inv, 100_000, "pocao-pequena-de-vida", 6);
+    addItem(k.inv, 100_000, "pocao-de-vida", 4);
+    addItem(k.inv, 100_000, "pocao-forte-de-vida", 3);
+    addItem(k.inv, 100_000, "pocao-de-mana", 5);
+    k.supplies = {
+      health: { item: null, below: 80 },
+      mana: { item: null, below: 60 },
+    };
+    const r = run("toca-dos-javalis", [k], seed);
+    const base = VOCATIONS[k.vocation].base;
+    // Acontecimento por acontecimento: antes de cada gole, a escolha bate com o que bebeu.
+    const counts = potionsAt([k], [], -1);
+    for (const f of r.frames)
+      for (const ev of f.e) {
+        if (ev.k === "pocao") {
+          const kind = ev.mana ? "mana" : "health";
+          assert.equal(
+            nextPotion(kind, counts[0]!, k.supplies[kind], base, k.level),
+            ev.item,
+            `seed ${seed}, segundo ${f.s}`,
+          );
+        }
+        if (ev.k === "loot" && ev.item.startsWith("pocao")) looted++;
+        applyPotionEvent(counts, ev);
+      }
+    // No fim, o mesmo que a mochila da corrida.
+    const end = potionsAt([k], r.frames, r.frames.length - 1);
+    assert.deepEqual(end, counts);
+    const real = potionCounts(r.members[0]!.inv.pack);
+    for (const id of new Set([...Object.keys(real), ...Object.keys(end[0]!)]))
+      assert.equal(end[0]![id] ?? 0, real[id] ?? 0, `seed ${seed}: ${id}`);
+  }
+  assert.ok(looted > 0, "alguma corrida pegou poção no loot");
+  // Sem poção que sirva, ou com o limite em "nunca": nada a beber.
+  const rule = { item: null, below: 50 };
+  assert.equal(nextPotion("health", { "pocao-forte-de-vida": 3 }, rule, 1, 80), null);
+  assert.equal(
+    nextPotion("health", { "pocao-forte-de-vida": 3 }, rule, 4, 80),
+    "pocao-forte-de-vida",
+  );
+  assert.equal(
+    nextPotion("health", { "pocao-de-vida": 3 }, { item: null, below: 0 }, 4, 8),
+    null,
+  );
+  assert.equal(
+    nextPotion(
+      "health",
+      { "pocao-de-vida": 3, "pocao-pequena-de-vida": 1 },
+      { item: "pocao-pequena-de-vida", below: 50 },
+      4,
+      8,
+    ),
+    "pocao-pequena-de-vida",
+  );
+  assert.deepEqual(
+    potionSizes("health").map((d) => d.id),
+    ["pocao-pequena-de-vida", "pocao-de-vida", "pocao-forte-de-vida"],
+  );
+  assert.deepEqual(
+    potionSizes("mana").map((d) => d.id),
+    ["pocao-de-mana", "pocao-forte-de-mana"],
+  );
+});
+
+test("experiência na tela: a soma dos abates bate com a da corrida e a taxa dá a recompensa", () => {
+  const parties: RunHero[][] = [
+    [hero(4, 6, 30)],
+    [hero(4, 10, 40), hero(1, 10, 10, { ml: 12 }), hero(3, 10, 40)],
+  ];
+  for (const party of parties)
+    for (let seed = 1; seed <= 15; seed++) {
+      const r = run("toca-dos-javalis", party, seed);
+      const raw = expAt(party.length, r.frames, r.frames.length - 1);
+      assert.deepEqual(
+        raw,
+        r.members.map((m) => m.exp),
+        `seed ${seed}, grupo de ${party.length}`,
+      );
+      party.forEach((h, i) => {
+        const reward = runReward(h, r.members[i]!, r.outcome, DEFAULT_RATES);
+        if (!reward) return;
+        const shown = Math.floor(raw[i]! * runExpRate(h, DEFAULT_RATES));
+        assert.ok(Math.abs(shown - reward.exp) <= 1, `${shown} x ${reward.exp}`);
+      });
+    }
 });

@@ -148,7 +148,8 @@ async function act(body) {
       return "ok";
     case "shot": {
       const file = join(OUT, `${body.name ?? `${body.u}-${Date.now()}`}.png`);
-      await page.screenshot({ path: file, fullPage: false });
+      // `clip` ({x, y, width, height}) recorta um pedaço da tela para ver de perto.
+      await page.screenshot({ path: file, fullPage: false, clip: body.clip });
       return file;
     }
     case "frame": {

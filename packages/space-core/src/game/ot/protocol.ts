@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../../protocol/messages.ts";
 import type { JobTier, Tree } from "./abilities.ts";
+import type { PotionCounts } from "./belt.ts";
 import { type StatId, type Stats, STAT_MAX, STATS } from "./attributes.ts";
 import type { SkillId, VocationId } from "./data.ts";
 import type { Gear, Inventory } from "./inventory.ts";
@@ -435,6 +436,10 @@ export interface RpgRunMemberView {
   gear: Gear;
   /** As 4 habilidades com a mana e a recarga desta corrida (24/11/2026; a barra da tela). */
   skills?: { id: string; mana: number; cd_ms: number }[];
+  /** Quando bebe poção nesta corrida (o limite marca o cristal de vida e o de mana). */
+  supplies?: RunSupplies;
+  /** Quanto vale cada ponto de experiência crua no fim (taxa, level baixo e stamina). */
+  exp_rate?: number;
 }
 
 /** Uma corrida de dungeon (etapa O5): quem, onde e quando acaba. */
@@ -483,6 +488,13 @@ export interface RpgRunEvent {
     run: RpgRunView;
     frame: RunFrame | null;
     feed: RpgRunFeedItem[];
+    /**
+     * 24/11/2026: as poções de cada herói (pelo índice) no fim de `frame`; o app segue com os
+     * quadros que chegam depois (belt.ts).
+     */
+    potions?: PotionCounts[];
+    /** A experiência crua de cada herói até `frame` (a barra da tela; entra no fim). */
+    exp?: number[];
     end?: RpgRunEndView;
   };
 }

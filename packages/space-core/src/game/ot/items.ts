@@ -125,6 +125,8 @@ export interface ItemDef {
     health?: readonly [number, number];
     mana?: readonly [number, number];
     flask: string;
+    /** O tamanho do frasco no cinto da tela (1 pequena, 2 normal, 3 forte); só aparência. */
+    size: 1 | 2 | 3;
   };
 }
 
@@ -524,7 +526,7 @@ const LIST: readonly ItemDef[] = [
     id: "pocao-pequena-de-vida",
     name: "Poção pequena de vida",
     slot: null,
-    potion: { health: [60, 90], flask: "frasco-vazio" },
+    potion: { health: [60, 90], flask: "frasco-vazio", size: 1 },
     weight: 265,
     value: 0,
     stackable: true,
@@ -533,7 +535,7 @@ const LIST: readonly ItemDef[] = [
     id: "pocao-de-vida",
     name: "Poção de vida",
     slot: null,
-    potion: { health: [125, 175], flask: "frasco-vazio" },
+    potion: { health: [125, 175], flask: "frasco-vazio", size: 2 },
     weight: 270,
     value: 0,
     stackable: true,
@@ -542,7 +544,7 @@ const LIST: readonly ItemDef[] = [
     id: "pocao-de-mana",
     name: "Poção de mana",
     slot: null,
-    potion: { mana: [75, 125], flask: "frasco-vazio" },
+    potion: { mana: [75, 125], flask: "frasco-vazio", size: 2 },
     weight: 270,
     value: 0,
     stackable: true,
@@ -551,7 +553,7 @@ const LIST: readonly ItemDef[] = [
     id: "pocao-forte-de-vida",
     name: "Poção forte de vida",
     slot: null,
-    potion: { health: [250, 350], flask: "frasco-forte" },
+    potion: { health: [250, 350], flask: "frasco-forte", size: 3 },
     minLevel: 50,
     vocations: FRONT,
     weight: 290,
@@ -562,7 +564,7 @@ const LIST: readonly ItemDef[] = [
     id: "pocao-forte-de-mana",
     name: "Poção forte de mana",
     slot: null,
-    potion: { mana: [115, 185], flask: "frasco-forte" },
+    potion: { mana: [115, 185], flask: "frasco-forte", size: 3 },
     minLevel: 50,
     weight: 290,
     value: 0,

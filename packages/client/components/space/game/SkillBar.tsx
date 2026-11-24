@@ -51,7 +51,8 @@ export function SkillBar(props: {
   dead: boolean;
   /** Último segundo em que cada habilidade saiu (castKey). */
   casts: Record<string, number>;
-  size: "big" | "mini";
+  /** "hud": a grande, dentro do painel de baixo (os cristais e o cinto em volta). */
+  size: "big" | "mini" | "hud";
 }) {
   const { t } = useLingui();
   const skills = () =>
@@ -94,14 +95,14 @@ export function SkillBar(props: {
               data-nomana={noMana() ? "" : undefined}
               data-cast={at() === props.nowS ? "" : undefined}
             >
-              <Symbol size={props.size === "big" ? 22 : 13}>
+              <Symbol size={props.size === "mini" ? 13 : 22}>
                 {ICON[s.id] ?? "star"}
               </Symbol>
               <Wipe
                 data-wipe=""
                 style={{ height: `${Math.round(frac() * 100)}%` }}
               />
-              <Show when={props.size === "big" && left() > 0}>
+              <Show when={props.size !== "mini" && left() > 0}>
                 <Secs>{secs()}</Secs>
               </Show>
             </Slot>
@@ -126,6 +127,7 @@ const Bar = styled("ul", {
       background: "rgba(15, 16, 21, 0.72)",
       alignSelf: "center",
     },
+    "&[data-size=hud]": { justifyContent: "center", alignItems: "center" },
     "&[data-size=mini]": { gap: "3px", marginTop: "2px" },
     "&[data-dead]": { opacity: 0.4, filter: "grayscale(1)" },
   },
@@ -143,6 +145,7 @@ const Slot = styled("li", {
     boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.08)",
     transition: "box-shadow 0.2s ease, filter 0.2s ease",
     "[data-size=big] > &": { width: "44px", height: "44px" },
+    "[data-size=hud] > &": { width: "44px", height: "44px" },
     "[data-size=mini] > &": {
       width: "20px",
       height: "20px",

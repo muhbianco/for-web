@@ -14,12 +14,16 @@ import {
   type RpgStateEvent,
   type RunResult,
   DEFAULT_RATES,
+  DEFAULT_SUPPLIES,
   dungeonOf,
   RUN,
   runReward,
   runStaminaCost,
   simulateRun,
   abilityBar,
+  expAt,
+  potionsAt,
+  runExpRate,
 } from "@muchat/space-core/game/ot";
 
 import type { AvatarGear, NpcKind } from "@muchat/space-core";
@@ -873,6 +877,8 @@ export class RpgService {
         mana_max: h.manaMax,
         gear: h.gear,
         skills: abilityBar(h),
+        supplies: h.supplies ?? DEFAULT_SUPPLIES,
+        exp_rate: runExpRate(h, this.rates),
       })),
     };
   }
@@ -900,6 +906,13 @@ export class RpgService {
         run: this.runView(run.doc),
         frame: sec >= 0 ? (frames[sec] ?? null) : null,
         feed,
+        // Sem quadros (a corrida veio de outra versão das regras) não há o que contar.
+        ...(frames.length > 0
+          ? {
+              potions: potionsAt(run.doc.heroes, frames, sec),
+              exp: expAt(run.doc.heroes.length, frames, sec),
+            }
+          : {}),
         ...(end ? { end } : {}),
       },
     };

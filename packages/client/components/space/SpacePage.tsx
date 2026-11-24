@@ -1136,6 +1136,7 @@ function ServerSpace(props: { serverId: string }) {
                 <RunPanel
                   state={state()}
                   myId={client().user?.id ?? null}
+                  hero={ui()?.rpg?.hero ?? null}
                   paletteOf={(id) =>
                     view()?.paletteOf(id) ?? defaultPalette(id)
                   }

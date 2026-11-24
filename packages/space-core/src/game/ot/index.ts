@@ -2,6 +2,7 @@
 // Puras e sem I/O, iguais no servidor e no app. Subcaminho próprio: `@muchat/space-core/game/ot`.
 export * from "./abilities.ts";
 export * from "./attributes.ts";
+export * from "./belt.ts";
 export * from "./combat.ts";
 export * from "./data.ts";
 export * from "./dungeons.ts";

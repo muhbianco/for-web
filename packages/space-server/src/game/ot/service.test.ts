@@ -4,7 +4,11 @@ import test from "node:test";
 import {
   type RpgCommand,
   type RpgHeroView,
+  DEFAULT_SUPPLIES,
   coinValue,
+  potionCounts,
+  potionsAt,
+  simulateRun,
 } from "@muchat/space-core/game/ot";
 
 import { silentLog } from "../../log.ts";
@@ -400,11 +404,18 @@ test("corrida: começa marcando os dois, chega à sala e só manda o segundo qua
   assert.equal(ana.lastHero()?.run?.id, run._id);
   // Os dois recebem a corrida com o segundo 0.
   const first = ana.events.find((e) => e.t === "rpg.run")!.d as {
-    run: { members: unknown[] };
+    run: { members: { supplies?: unknown }[] };
     frame: { s: number } | null;
+    potions?: Record<string, number>[];
   };
   assert.equal(first.run.members.length, 2);
   assert.equal(first.frame?.s, 0);
+  // O cinto (24/11/2026): o limite de cada um e as poções no segundo do quadro.
+  assert.deepEqual(
+    first.run.members.map((m) => m.supplies),
+    run.heroes.map((h) => h.supplies ?? DEFAULT_SUPPLIES),
+  );
+  assert.equal(first.potions?.length, 2);
   assert.ok(bia.events.some((e) => e.t === "rpg.run"));
   // Na dungeon não dá para treinar nem montar outro grupo.
   const tr = await send("rpg.train.start", { instance: "d1", skill: "espada" });
@@ -480,9 +491,22 @@ test("corrida: volta depois de reinício com os mesmos quadros e fecha na hora",
   const snap = caio.events.find((e) => e.t === "rpg.run")!.d as {
     frame: { s: number } | null;
     feed: { at: number }[];
+    potions?: Record<string, number>[];
   };
   assert.equal(snap.frame?.s, Math.min(2, run!.seconds - 1));
   assert.ok(snap.feed.every((f) => f.at <= 2));
+  // Quem chega no meio recebe as poções do segundo de agora, não as do começo.
+  const frames = simulateRun({
+    seed: run!.seed,
+    dungeon: run!.dungeon,
+    heroes: run!.heroes,
+    rateLoot: run!.rate_loot,
+  }).frames;
+  assert.deepEqual(snap.potions, potionsAt(run!.heroes, frames, snap.frame!.s));
+  assert.deepEqual(
+    potionsAt(run!.heroes, frames, -1),
+    run!.heroes.map((h) => potionCounts(h.inv.pack)),
+  );
   next.svc.roomEntered(next.host, "U3", "OUTRA");
   assert.equal(caio.events.filter((e) => e.t === "rpg.run").length, 1);
   next.clock.set(run!.ends_at);

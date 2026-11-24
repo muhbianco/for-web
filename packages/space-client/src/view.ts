@@ -26,15 +26,18 @@ import {
 const clampPos = (s: number) =>
   Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
 
-import type {
-  RpgBoardRun,
-  RpgHeroView,
-  RpgLobbyMember,
-  RpgLobbyView,
-  RpgRunEndView,
-  RpgRunFeedItem,
-  RpgRunView,
-  RunFrame,
+import {
+  type PotionCounts,
+  type RpgBoardRun,
+  type RpgHeroView,
+  type RpgLobbyMember,
+  type RpgLobbyView,
+  type RpgRunEndView,
+  type RpgRunFeedItem,
+  type RpgRunView,
+  type RunFrame,
+  applyExpEvent,
+  applyPotionEvent,
 } from "@muchat/space-core/game/ot";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type EditorState, Editor } from "./editor.ts";
@@ -150,6 +153,15 @@ export interface RunState {
   frame: RunFrame | null;
   feed: RpgRunFeedItem[];
   end: RpgRunEndView | null;
+  /**
+   * 24/11/2026: each hero's potions at `frame` (null: the server did not send them). The run
+   * message brings them at its second; the app follows with the frames that arrive later.
+   */
+  potions?: PotionCounts[] | null;
+  /** The last second each hero drank a potion (-1: not yet). */
+  potionAt?: number[];
+  /** Each hero's raw experience so far (null: not sent); it is credited at the end. */
+  exp?: number[] | null;
 }
 
 /** How much of the run log the app keeps. */
@@ -640,13 +652,23 @@ export class SpaceView {
         if (!run || typeof run.id !== "string") return;
         const me = this.world.me?.userId;
         const mine = run.members.some((m) => m.user_id === me);
+        const feed = Array.isArray(d.feed)
+          ? (d.feed as RpgRunFeedItem[]).slice(-RUN_FEED_MAX)
+          : [];
+        const potionAt = run.members.map(() => -1);
+        for (const ev of feed)
+          if (ev.k === "pocao" && ev.a < potionAt.length)
+            potionAt[ev.a] = Math.max(potionAt[ev.a]!, ev.at);
         const next: RunState = {
           run,
           frame: (d.frame ?? null) as RunFrame | null,
-          feed: Array.isArray(d.feed)
-            ? (d.feed as RpgRunFeedItem[]).slice(-RUN_FEED_MAX)
-            : [],
+          feed,
           end: (d.end ?? null) as RpgRunEndView | null,
+          potions: Array.isArray(d.potions)
+            ? (d.potions as PotionCounts[]).map((c) => ({ ...c }))
+            : null,
+          potionAt,
+          exp: Array.isArray(d.exp) ? [...(d.exp as number[])] : null,
         };
         // Runs that ended go once another one arrives, unless their summary is open.
         const runs: Record<string, RunState> = {};
@@ -677,15 +699,32 @@ export class SpaceView {
         const frames = Array.isArray(d.frames) ? (d.frames as RunFrame[]) : [];
         if (!cur || frames.length === 0) return;
         const feed = [...cur.feed];
-        for (const f of frames)
-          for (const ev of f.e) feed.push({ ...ev, at: f.s, st: f.st });
+        const potions = cur.potions?.map((c) => ({ ...c })) ?? null;
+        const potionAt = [...(cur.potionAt ?? [])];
+        const exp = cur.exp ? [...cur.exp] : null;
+        // The run message already counted up to its own second: a tick sent before it arrived
+        // can repeat those frames.
+        const seen = cur.frame?.s ?? -1;
+        for (const f of frames) {
+          if (f.s <= seen) continue;
+          for (const ev of f.e) {
+            feed.push({ ...ev, at: f.s, st: f.st });
+            if (potions) applyPotionEvent(potions, ev);
+            if (exp) applyExpEvent(exp, ev);
+            if (ev.k === "pocao") potionAt[ev.a] = f.s;
+          }
+        }
+        const last = frames[frames.length - 1]!;
         this.patch({
           runs: {
             ...this.state.runs,
             [id]: {
               ...cur,
-              frame: frames[frames.length - 1]!,
+              frame: last.s > seen ? last : cur.frame,
               feed: feed.slice(-RUN_FEED_MAX),
+              potions,
+              potionAt,
+              exp,
             },
           },
         });

@@ -363,7 +363,11 @@ export type RunEvent =
     }
   /** Magia de herói (ataque ou cura) ou de monstro; `v` é o dano ou a cura que entrou. */
   | { k: "magia"; a: number; b: number; v: number; s: string; cura?: true }
-  | { k: "abate"; b: number; exp: number }
+  /**
+   * Monstro morto; `xp` (24/11/2026) é a experiência crua que cada herói levou (pelo índice),
+   * para a tela mostrar a barra enchendo. A recompensa continua saindo de `members[].exp`.
+   */
+  | { k: "abate"; b: number; exp: number; xp?: number[] }
   | { k: "queda"; b: number }
   | { k: "loot"; a: number; item: string; n: number }
   | { k: "sala"; st: number }
@@ -752,7 +756,13 @@ export function simulateRun(input: RunInput): RunResult {
     m.alive = false;
     m.hp = 0;
     const exp = m.def.experience;
-    ev.push({ k: "abate", b: MONSTER_BASE + m.i, exp });
+    const abate: Extract<RunEvent, { k: "abate" }> = {
+      k: "abate",
+      b: MONSTER_BASE + m.i,
+      exp,
+    };
+    ev.push(abate);
+    const gains = heroes.map(() => 0);
     const total = m.dmgBy.reduce((a, b) => a + b, 0);
     const alive = living();
     // Cada um leva a parte do dano [TFS creature.cpp:887-910]; com o grupo dividindo, a soma
@@ -766,10 +776,17 @@ export function simulateRun(input: RunInput): RunResult {
         pool,
         alive.map((h) => h.h.vocation),
       );
-      for (const h of alive) h.res.exp += each;
+      for (const h of alive) {
+        h.res.exp += each;
+        gains[h.i] = each;
+      }
     } else {
-      for (const h of alive) h.res.exp += parts[h.i]!;
+      for (const h of alive) {
+        h.res.exp += parts[h.i]!;
+        gains[h.i] = parts[h.i]!;
+      }
     }
+    if (gains.some((g) => g > 0)) abate.xp = gains;
     // O corpo é de quem fez mais dano [TFS creature.cpp getCorpse]; sem stamina acima de 14 h,
     // o corpo sai vazio [TFS default_onDropLoot.lua]. [nosso] Se ele já caiu, o próximo vivo.
     let owner: HeroRt | null = null;
@@ -1685,6 +1702,21 @@ export function runStaminaCost(seconds: number): number {
  * [TFS onGainSkillTries/rateMagic]. O loot e as moedas já estão no inventário do resultado
  * (`inv`); aqui vão para o resumo.
  */
+/**
+ * Quanto cada ponto de experiência crua vale no fim (a mesma conta de runReward), para a tela
+ * mostrar a experiência da corrida antes de ela entrar.
+ */
+export function runExpRate(
+  hero: Pick<RunHero, "level" | "stamina">,
+  rates: Pick<Rates, "exp">,
+): number {
+  return (
+    rates.exp *
+    (1 + lowLevelBonus(hero.level) / 100) *
+    staminaMultiplier(hero.stamina)
+  );
+}
+
 export function runReward(
   hero: RunHero,
   r: RunMemberResult,

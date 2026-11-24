@@ -4,6 +4,7 @@ import {
   type ItemDef,
   type ItemStack,
   type Slot,
+  type VocationId,
   COINS,
   itemDef,
 } from "@muchat/space-core/game/ot";
@@ -199,6 +200,22 @@ function skillName(k: string): string {
   if (k === "distancia") return t`distância`;
   if (k === "escudo") return t`escudo`;
   return t`punhos`;
+}
+
+/** Por que o herói não bebe esta poção ("só cavaleiro ou paladino", "pede level 50"); null: bebe. */
+export function drinkLock(
+  def: ItemDef,
+  base: VocationId,
+  level: number,
+  vocationName: (base: number) => string,
+): string | null {
+  if (def.vocations && !def.vocations.includes(base)) {
+    const who = def.vocations.map(vocationName).join(t` ou `);
+    return t`só ${who}`;
+  }
+  const lv = def.minLevel ?? 0;
+  if (level < lv) return t`pede level ${lv}`;
+  return null;
 }
 
 /** O que o botão de trocar moedas faz com esta pilha (null: não troca). */
