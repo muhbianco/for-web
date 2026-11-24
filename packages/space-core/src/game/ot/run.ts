@@ -579,6 +579,25 @@ function addTo(
   else list.push({ item, count: n });
 }
 
+/** A recarga de uma habilidade com a DES [nosso]: a que a corrida usa. */
+export function abilityCooldownMs(s: AbilityNow, d: Derived): number {
+  return Math.max(MIN_COOLDOWN_MS, Math.round(s.cooldownMs * d.cooldown));
+}
+
+/**
+ * As 4 habilidades do herói como entram na corrida (a barra da tela da dungeon): mana e recarga
+ * com os adereços e a DES.
+ */
+export function abilityBar(
+  h: Pick<RunHero, "vocation" | "level" | "stats" | "tree">,
+): { id: string; mana: number; cd_ms: number }[] {
+  const d = derive(h.stats ?? freshStats(), h.level);
+  return abilitiesOf(VOCATIONS[h.vocation].base).map((def) => {
+    const s = abilityNow(def, h.tree ?? {});
+    return { id: def.id, mana: s.mana, cd_ms: abilityCooldownMs(s, d) };
+  });
+}
+
 export function simulateRun(input: RunInput): RunResult {
   const dungeon: Dungeon | undefined = dungeonOf(input.dungeon);
   if (!dungeon) throw new Error(`unknown dungeon ${input.dungeon}`);
@@ -1107,10 +1126,7 @@ export function simulateRun(input: RunInput): RunResult {
 
   /** Recarga da habilidade, encurtada pela DES [nosso]. */
   function cool(h: HeroRt, s: AbilityNow, tMs: number) {
-    h.cooldown.set(
-      s.def.id,
-      tMs + Math.max(MIN_COOLDOWN_MS, Math.round(s.cooldownMs * h.d.cooldown)),
-    );
+    h.cooldown.set(s.def.id, tMs + abilityCooldownMs(s, h.d));
   }
 
   type HeroNumbers = Parameters<typeof spellRange>[1];

@@ -4,8 +4,10 @@ import {
   createEffect,
   createMemo,
   createSignal,
+  on,
   onCleanup,
   onMount,
+  untrack,
 } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
@@ -13,6 +15,7 @@ import type { RunState } from "@muchat/space-client";
 import type { DungeonRun, DungeonScene } from "@muchat/space-client/game";
 import { defaultPalette } from "@muchat/space-core";
 import {
+  MONSTER_BASE,
   dungeonOf,
   itemDef,
   monsterDef,
@@ -20,6 +23,7 @@ import {
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
+import { SkillBar, castKey } from "./SkillBar";
 import { rpgLabels, vocationName } from "./rpgUi";
 import {
   clock,
@@ -135,6 +139,52 @@ export default function RunPanel(props: {
     };
     s.show(sceneRun, frameM(), outcomeM());
   });
+  // ---- a barra de habilidades (24/11/2026) ----
+  // O último segundo em que cada habilidade saiu, por herói. O registro guarda só os últimos
+  // eventos: o que já saiu dele fica lembrado aqui até a corrida trocar.
+  const [casts, setCasts] = createSignal<Record<string, number>>({});
+  let castsRun = "";
+  createEffect(
+    on(
+      () => [runM().id, props.state.feed] as const,
+      ([id, items]) => {
+        const next = id === castsRun ? { ...untrack(casts) } : {};
+        castsRun = id;
+        for (const ev of items) {
+          const key =
+            ev.k === "magia" && ev.a < MONSTER_BASE
+              ? castKey(ev.a, ev.s)
+              : ev.k === "desafio"
+                ? castKey(ev.a, "desafio")
+                : null;
+          if (key && (next[key] ?? -1) < ev.at) next[key] = ev.at;
+        }
+        setCasts(next);
+      },
+    ),
+  );
+  /** O herói da barra grande: a própria pessoa, ou o primeiro de quem ela assiste. */
+  const barIndex = () =>
+    Math.max(
+      0,
+      run().members.findIndex((m) => m.user_id === props.myId),
+    );
+  const BigBar = () => (
+    <Show when={frame() && run().members[barIndex()] ? frame() : null}>
+      {(f) => (
+        <SkillBar
+          member={run().members[barIndex()]!}
+          index={barIndex()}
+          nowS={f().s}
+          mana={f().m[barIndex()] ?? 0}
+          dead={(f().h[barIndex()] ?? 0) <= 0}
+          casts={casts()}
+          size="big"
+        />
+      )}
+    </Show>
+  );
+
   const where = () => {
     const n = st() + 1;
     const of = stages();
@@ -175,13 +225,17 @@ export default function RunPanel(props: {
 
       <Body>
         <Show when={!sceneFailed()}>
-          <Stage ref={host} />
+          <StageCol>
+            <Stage ref={host} />
+            <BigBar />
+          </StageCol>
         </Show>
         <Side>
           <Show when={sceneFailed()}>
             <Muted role="status">
               {t`A vista da dungeon não abriu neste aparelho; segue o resumo em texto.`}
             </Muted>
+            <BigBar />
           </Show>
           <Show
             when={frame()}
@@ -234,6 +288,17 @@ export default function RunPanel(props: {
                                 style={{ width: `${pct(mp(), m.mana_max)}%` }}
                               />
                             </Bar>
+                          </Show>
+                          <Show when={i() !== barIndex()}>
+                            <SkillBar
+                              member={m}
+                              index={i()}
+                              nowS={f().s}
+                              mana={mp()}
+                              dead={hp() <= 0}
+                              casts={casts()}
+                              size="mini"
+                            />
                           </Show>
                         </Unit>
                       );
@@ -429,6 +494,16 @@ const Body = styled("div", {
     "@container (max-width: 640px)": {
       "[data-scene] > &": { gridTemplateColumns: "minmax(0, 1fr)" },
     },
+  },
+});
+
+/** A cena e, embaixo dela, a barra de habilidades. */
+const StageCol = styled("div", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "8px",
+    minWidth: 0,
   },
 });
 

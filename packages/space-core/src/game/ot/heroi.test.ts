@@ -218,3 +218,23 @@ test("treino de habilidade: só no dummy de habilidade, um ponto a cada 50 × 1,
   const p = addPointTries({ points: 0, tries: 0 }, day).points;
   assert.ok(p >= 38 && p <= 41, `pontos em 12 h: ${p}`);
 });
+
+test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da corrida", async () => {
+  const { abilityBar } = await import("./run.ts");
+  const bar = abilityBar({
+    vocation: 4,
+    level: 30,
+    stats: { ...freshStats(), des: 61 },
+    tree: { "golpe-brutal.forca": 5, "golpe-brutal.economia": 3 },
+  });
+  assert.deepEqual(
+    bar.map((b) => b.id),
+    ["golpe-brutal", "giro-da-lamina", "atadura", "desafio"],
+  );
+  // 30 de mana − 30% = 21; 6 s × (1 − 61/300) = 4780 ms.
+  assert.deepEqual(bar[0], { id: "golpe-brutal", mana: 21, cd_ms: 4780 });
+  // Sem atributos nem árvore (corrida antiga): os números de partida (a DES 1 tira 0,3%).
+  const plain = abilityBar({ vocation: 1, level: 5 });
+  assert.equal(plain[0]!.id, "golpe-de-raio");
+  assert.equal(plain[0]!.cd_ms, Math.round(2000 * (1 - 1 / 300)));
+});

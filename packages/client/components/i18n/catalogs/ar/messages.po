@@ -158,7 +158,9 @@ msgstr ""
 msgid "{0} de {1} espaços"
 msgstr ""
 
+#. placeholder {0}: s.mana
 #. placeholder {0}: view().now.mana
+#: components/space/game/SkillBar.tsx
 #: components/space/game/SkillTree.tsx
 msgid "{0} de mana"
 msgstr ""
@@ -481,6 +483,20 @@ msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "{name}: caiu e perdeu a recompensa desta dungeon."
+msgstr ""
+
+#: components/space/game/SkillBar.tsx
+msgid "{name}: pronta"
+msgstr ""
+
+#. placeholder {0}: secs()
+#: components/space/game/SkillBar.tsx
+msgid "{name}: recarga, {0} s"
+msgstr ""
+
+#. placeholder {0}: s.mana
+#: components/space/game/SkillBar.tsx
+msgid "{name}: sem mana ({0})"
 msgstr ""
 
 #: components/space/game/RunChip.tsx
@@ -3774,6 +3790,11 @@ msgstr ""
 msgid "Habilidades"
 msgstr ""
 
+#. placeholder {0}: props.member.name
+#: components/space/game/SkillBar.tsx
+msgid "Habilidades de {0}"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Harassment or cyberbullying"
 msgstr "التحرش أو التنمر الإلكتروني"
@@ -5848,6 +5869,8 @@ msgid "Reason: {0} Contact support for more information."
 msgstr ""
 
 #. placeholder {0}: num(view().cooldownS)
+#. placeholder {0}: s.cd_ms / 1000
+#: components/space/game/SkillBar.tsx
 #: components/space/game/SkillTree.tsx
 msgid "recarga {0} s"
 msgstr ""

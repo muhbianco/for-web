@@ -19,6 +19,7 @@ import {
   runReward,
   runStaminaCost,
   simulateRun,
+  abilityBar,
 } from "@muchat/space-core/game/ot";
 
 import type { AvatarGear, NpcKind } from "@muchat/space-core";
@@ -871,6 +872,7 @@ export class RpgService {
         health_max: h.healthMax,
         mana_max: h.manaMax,
         gear: h.gear,
+        skills: abilityBar(h),
       })),
     };
   }

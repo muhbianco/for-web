@@ -433,6 +433,8 @@ export interface RpgRunMemberView {
   health_max: number;
   mana_max: number;
   gear: Gear;
+  /** As 4 habilidades com a mana e a recarga desta corrida (24/11/2026; a barra da tela). */
+  skills?: { id: string; mana: number; cd_ms: number }[];
 }
 
 /** Uma corrida de dungeon (etapa O5): quem, onde e quando acaba. */
