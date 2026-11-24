@@ -61,19 +61,13 @@ const parties: [string, (l: number) => RunHero[]][] = [
   ["arqueiro sozinho", (l) => [heroAt(3, l)]],
   ["druida sozinho", (l) => [heroAt(2, l)]],
   ["feiticeiro sozinho", (l) => [heroAt(1, l)]],
-  ["trio cav+arq+dru", (l) => [heroAt(4, l), heroAt(3, l), heroAt(2, l)]],
-  // --papeis: o grupo sem curandeiro e sem tanque (os papéis ainda importam?).
-  ...(args.includes("--papeis")
-    ? ([
-        ["dupla cav+arq (sem cura)", (l: number) => [heroAt(4, l), heroAt(3, l)]],
-        ["trio arq+dru+fei (sem tanque)", (l: number) => [heroAt(3, l), heroAt(2, l), heroAt(1, l)]],
-        ["quarteto completo", (l: number) => [heroAt(4, l), heroAt(3, l), heroAt(2, l), heroAt(1, l)]],
-      ] as [string, (l: number) => RunHero[]][])
-    : []),
+  // 24/11/2026: o grupo de referência é o completo (as quatro classes); o menu mostra o level em
+  // que ele fica confortável. Os trios sem alguém medem-se no scripts/party-lab.ts.
+  ["grupo completo", (l) => [heroAt(4, l), heroAt(3, l), heroAt(2, l), heroAt(1, l)]],
 ];
 for (const d of DUNGEONS) {
   if (only.length && !only.includes(d.id)) continue;
-  console.log(`\n== ${d.id} (entra L${d.minLevel}, no menu: trio ${d.comfort.group}, sozinho ${JSON.stringify(d.comfort.solo)})`);
+  console.log(`\n== ${d.id} (entra L${d.minLevel}, no menu: grupo ${d.comfort.group}, sozinho ${JSON.stringify(d.comfort.solo)})`);
   const levels: number[] = [];
   const span = Math.max(40, Math.round(d.minLevel * 0.3));
   for (let l = d.minLevel; l <= Math.min(MAX_LEVEL, d.minLevel + span); l += l < 10 ? 1 : l < 30 ? 2 : l < 100 ? 3 : 10) levels.push(l);
@@ -86,8 +80,8 @@ for (const d of DUNGEONS) {
       STATS_RUN.exp = 0;
       STATS_RUN.n = 0;
       const wr = winRate(d.id, () => mk(l), SEEDS);
-      if (l === d.minLevel && label.startsWith("trio cav"))
-        console.log(`  (trio na entrada: ${Math.round(STATS_RUN.seconds / STATS_RUN.n)} s, ${Math.round(STATS_RUN.exp / STATS_RUN.n)} de experiência crua por membro)`);
+      if (l === d.minLevel && label.startsWith("grupo completo"))
+        console.log(`  (grupo na entrada: ${Math.round(STATS_RUN.seconds / STATS_RUN.n)} s, ${Math.round(STATS_RUN.exp / STATS_RUN.n)} de experiência crua por membro)`);
       row.push(`${l}:${Math.round(wr * 100)}`);
       if (comfy === null && wr >= 0.7) comfy = l;
       if (wr >= 0.97 && row.length > 2) break;

@@ -15,6 +15,11 @@ import {
   autoEquip,
   canUse,
   cannotLearn,
+  jobExpGain,
+  jobLevelFor,
+  jobPoints,
+  MAX_UPS,
+  UPS_FULL,
   DUNGEONS,
   expForLevel,
   freshStats,
@@ -44,12 +49,16 @@ export const BUILDS: Record<1 | 2 | 3 | 4, Partial<Record<StatId, number>>> = {
   2: { int: 0.5, vit: 0.3, des: 0.2 },
 };
 
-/** A ordem em que a classe põe os pontos da árvore (cada adereço até o máximo). */
+/**
+ * A ordem em que a classe põe os pontos da árvore. Desde 24/11/2026 em passadas: cada adereço até
+ * 5 ups (o cheio de antes), depois até 10, depois até 20 (buildTree).
+ */
 export const PRIORITY: Record<1 | 2 | 3 | 4, string[]> = {
   4: [
     "golpe-brutal.forca", "atadura.forca", "desafio.presenca", "giro-da-lamina.forca",
     "atadura.reflexo", "golpe-brutal.economia", "giro-da-lamina.economia",
     "atadura.fechar-feridas", "desafio.muralha", "golpe-brutal.atordoar", "giro-da-lamina.sangria",
+    "desafio.escudo", "golpe-brutal.quebra", "giro-da-lamina.certeiro", "atadura.firme",
     "golpe-brutal.forca2", "atadura.forca2", "giro-da-lamina.forca2", "desafio.estrondo",
     "desafio.bastiao", "golpe-brutal.duplo", "giro-da-lamina.redemoinho", "atadura.economia",
     "golpe-brutal.ritmo", "giro-da-lamina.ritmo", "desafio.economia", "atadura.reflexo2", "desafio.eco",
@@ -58,7 +67,8 @@ export const PRIORITY: Record<1 | 2 | 3 | 4, string[]> = {
     "rajada-dupla.forca", "concentracao.foco", "chuva-de-flechas.forca", "flecha-carregada.forca",
     "rajada-dupla.economia", "concentracao.folego", "chuva-de-flechas.economia",
     "rajada-dupla.perfurante", "concentracao.economia", "chuva-de-flechas.farpas",
-    "flecha-carregada.economia", "flecha-carregada.impacto", "rajada-dupla.forca2",
+    "flecha-carregada.economia", "flecha-carregada.impacto", "rajada-dupla.certeira",
+    "concentracao.mira", "flecha-carregada.rompe", "chuva-de-flechas.pontas", "rajada-dupla.forca2",
     "concentracao.foco2", "chuva-de-flechas.forca2", "flecha-carregada.forca2",
     "rajada-dupla.tripla", "chuva-de-flechas.tormenta", "flecha-carregada.trespassar",
     "concentracao.olho-de-aguia", "rajada-dupla.ritmo", "chuva-de-flechas.ritmo",
@@ -68,6 +78,7 @@ export const PRIORITY: Record<1 | 2 | 3 | 4, string[]> = {
     "remendo.cura-leve", "golpe-de-raio.forca", "onda-de-fogo.forca", "golpe-de-chama.forca",
     "remendo.reflexo", "onda-de-fogo.economia", "golpe-de-raio.economia", "remendo.intensa",
     "onda-de-fogo.grande-onda", "golpe-de-raio.corrente", "golpe-de-chama.combustao", "remendo.forca",
+    "remendo.plena", "golpe-de-raio.faisca", "onda-de-fogo.calor", "golpe-de-chama.brasa",
     "onda-de-fogo.forca2", "golpe-de-raio.forca2", "golpe-de-chama.forca2", "onda-de-fogo.tempestade",
     "golpe-de-raio.sobrecarga", "golpe-de-chama.chama-solar", "remendo.economia", "onda-de-fogo.ritmo",
   ],
@@ -75,6 +86,7 @@ export const PRIORITY: Record<1 | 2 | 3 | 4, string[]> = {
     "seiva.cura-leve", "cura-do-companheiro.forca", "golpe-de-gelo.forca", "onda-de-gelo.forca",
     "seiva.reflexo", "cura-do-companheiro.economia", "onda-de-gelo.economia", "seiva.intensa",
     "cura-do-companheiro.em-massa", "golpe-de-gelo.congelar", "onda-de-gelo.raizes", "seiva.forca",
+    "seiva.brotar", "cura-do-companheiro.graca", "golpe-de-gelo.gelo-fino", "onda-de-gelo.nevasca",
     "cura-do-companheiro.forca2", "golpe-de-gelo.forca2", "onda-de-gelo.forca2", "seiva.abrigo",
     "golpe-de-gelo.estilhaco", "onda-de-gelo.inverno", "cura-do-companheiro.bencao", "seiva.economia",
   ],
@@ -103,18 +115,25 @@ export function buildStats(cls: 1 | 2 | 3 | 4, level: number): Stats {
 export function buildTree(cls: 1 | 2 | 3 | 4, tier: JobTier, points: number): Tree {
   const t: Tree = {};
   let free = points;
-  let progress = true;
-  while (free > 0 && progress) {
-    progress = false;
-    for (const id of PRIORITY[cls]) {
-      while (free > 0 && cannotLearn(t, id, cls, tier, free) === null) {
-        t[id] = (t[id] ?? 0) + 1;
-        free--;
-        progress = true;
+  for (const target of [UPS_FULL, 10, MAX_UPS]) {
+    let progress = true;
+    while (free > 0 && progress) {
+      progress = false;
+      for (const id of PRIORITY[cls]) {
+        while (free > 0 && (t[id] ?? 0) < target && cannotLearn(t, id, cls, tier, free) === null) {
+          t[id] = (t[id] ?? 0) + 1;
+          free--;
+          progress = true;
+        }
       }
     }
   }
   return t;
+}
+
+/** Os pontos de habilidade no level `level`: os do job que a experiência do level dá (job.ts). */
+export function pointsAt(level: number): number {
+  return jobPoints(jobLevelFor(jobExpGain(expForLevel(level))));
 }
 
 /**
@@ -198,7 +217,8 @@ export function heroAt(vocation: VocationId, level: number, potions = level < 10
       : cls === 3
         ? Math.min(40, Math.floor(level / 3))
         : 0;
-  const points = Math.min(70, level);
+  // 24/11/2026: os pontos são os do nível de job (30% da experiência do level).
+  const points = pointsAt(level);
   const tier: JobTier = level >= 50 && points >= 24 ? 3 : level >= 20 && points >= 8 ? 2 : 1;
   const promoted = (tier >= 2 ? voc.promotion ?? vocation : vocation) as VocationId;
   const stats = buildStats(cls, level);

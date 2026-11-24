@@ -94,6 +94,8 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
     }
     case "impasse":
       return t`Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira`;
+    case "furia":
+      return t`Os monstros da sala se enfurecem: cada vez mais fortes, até a sala cair`;
     case "deixado": {
       const a = name(ev.a);
       if (COINS.includes(ev.item)) {

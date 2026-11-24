@@ -4,9 +4,9 @@
 // habilidade inteira. Por isso as habilidades têm de ser a menor parte do dano: o que passa pela
 // árvore cresce para sempre, o resto (ataque normal) não.
 //
-// O herói é o do simulador (simHero.ts) no level pedido, com a árvore inteira (o renascimento
-// pede a 3ª classe com a árvore cheia) e a maestria toda num adereço só: o que mais rende em
-// --pick renascimentos, achado pelo próprio laboratório (o jogador que otimiza faria isso).
+// O herói é o do simulador (simHero.ts) no level pedido (por padrão o primeiro com o job no 150,
+// que o renascimento pede), com a árvore que os pontos dele compram, e a maestria toda num adereço
+// só: o que mais rende em --pick renascimentos, achado pelo próprio laboratório.
 //
 // Rodar (no space-core): node scripts/rebirth-lab.ts [--level 60] [--dungeon abismo-gelado]
 //   [--seeds 20] [--rebirths 0,25,50,100,200,400] [--pick 200] [--class 3] [--json saida.json]
@@ -20,17 +20,25 @@ import {
   abilitiesOf,
   DUNGEONS,
   simulateRun,
+  JOB,
   TREE,
   VOCATIONS,
 } from "../src/game/ot/index.ts";
-import { heroAt } from "./simHero.ts";
+import { heroAt, pointsAt } from "./simHero.ts";
+
+/** O primeiro level com o job no máximo (149 pontos). */
+function jobMaxBaseLevel(): number {
+  let l = 1;
+  while (pointsAt(l) < JOB.maxLevel - 1 && l < 500) l++;
+  return l;
+}
 
 const args = process.argv.slice(2);
 const opt = (name: string, def: string) => {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1]! : def;
 };
-const LEVEL = Number(opt("level", "60"));
+const LEVEL = Number(opt("level", "0")) || jobMaxBaseLevel();
 const SEEDS = Number(opt("seeds", "20"));
 const PICK = Number(opt("pick", "200"));
 const REBIRTHS = opt("rebirths", "0,25,50,100,200,400").split(",").map(Number);
@@ -91,10 +99,12 @@ const out: Record<string, unknown> = { level: LEVEL, dungeon: DUNGEON, seeds: SE
 console.log(`renascimento · level ${LEVEL} · ${DUNGEON} · ${SEEDS} corridas por ponto · maestria escolhida em ${PICK} renascimentos`);
 for (const vocation of ONLY ?? ([4, 3, 2, 1] as VocationId[])) {
   const cls = VOCATIONS[vocation].base;
-  const tree = fullTree(cls);
+  // A árvore que os pontos do level compram (o simulador); a triagem olha todos os adereços da classe.
+  const tree = heroAt(vocation, LEVEL).tree ?? {};
+  const candidates = Object.keys(fullTree(cls));
   // O adereço que mais rende com a maestria (triagem com menos corridas).
   let best = { node: "", dps: -1 };
-  for (const node of Object.keys(tree)) {
+  for (const node of candidates) {
     const m = measure(vocation, tree, { [node]: PICK }, Math.max(4, Math.round(SEEDS / 4)));
     if (m.dps > best.dps) best = { node, dps: m.dps };
   }

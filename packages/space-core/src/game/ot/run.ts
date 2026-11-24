@@ -43,6 +43,7 @@ import {
   type VocationId,
   VOCATIONS,
 } from "./data.ts";
+import { DIFFICULTY } from "./difficulty.ts";
 import { type Dungeon, dungeonOf } from "./dungeons.ts";
 import {
   type Gear,
@@ -107,6 +108,15 @@ export const RUN = {
   /** Cura em si abaixo desta fração da vida; cura num companheiro abaixo de `healOtherBelow`. */
   healBelow: 0.5,
   healOtherBelow: 0.4,
+  /**
+   * A Fúria da sala [nosso] (24/11/2026, pedido do dono: sem um membro do grupo, a falta tem de
+   * ser evidente): depois de `afterMs` na mesma sala (na do chefe, o `furyMs` da dungeon), os
+   * golpes dos monstros sobem `pct`% a cada `everyFrac` desse tempo. O grupo que tem dano limpa a
+   * sala antes; o que não tem, apanha cada vez mais. Só em grupo (sozinho, a dungeon de antes).
+   */
+  fury: { afterMs: 30_000, bossMs: 120_000, everyFrac: 0.1, everyMaxMs: 5_000, pct: 15 },
+  /** O tamanho da sala do grupo completo (4) e quanto ela muda por herói (partyScale). */
+  party: { full: 2.2, per: 0.05 },
   /** A parte do corte de intervalo dos atributos (AGI, DES) que o arco aproveita [nosso]. */
   bowAspd: 0.5,
   /**
@@ -116,7 +126,7 @@ export const RUN = {
    */
   protect: { from: 40, span: 80, max: 0.5 },
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 12,
+  engine: 13,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -313,8 +323,16 @@ export function autoEquip(
  * 24/11/2026; com os atributos e a árvore o trio vencia tudo no level de entrada). Com +50% a
  * dupla de level 1 (cavaleiro e mago sem mana) perdia sempre, pior que o cavaleiro sozinho.
  */
-export function partyScale(members: number): number {
-  return 1 + 0.4 * (Math.max(1, members) - 1);
+export function partyScale(members: number, dungeonId?: string): number {
+  const n = Math.max(1, members);
+  if (n === 1) return 1;
+  // Dungeon de iniciante (difficulty.ts): a sala de antes, +40% por herói.
+  if (dungeonId && DIFFICULTY[dungeonId]?.beginner) return 1 + 0.4 * (n - 1);
+  // 24/11/2026 (pedido do dono: "sem algum membro, a deficiência precisa ser evidente"): a sala
+  // é feita para o grupo completo (RUN.party.full com 4) e encolhe só RUN.party.per por herói a
+  // menos; sozinho continua do tamanho de antes.
+  const p = RUN.party;
+  return (p.full / (1 + 3 * p.per)) * (1 + p.per * (n - 1));
 }
 
 /** Os monstros de uma sala, já no tamanho do grupo (o app mostra a lista e a vida). */
@@ -323,15 +341,18 @@ export function stageMonsters(
   st: number,
   members: number,
 ): { id: string; health: number }[] {
-  const stage = dungeonOf(dungeonId)?.stages[st];
+  const d = dungeonOf(dungeonId);
+  const stage = d?.stages[st];
   if (!stage) return [];
-  const scale = partyScale(members);
+  const scale = partyScale(members, dungeonId);
+  // A dificuldade da dungeon (24/11/2026, difficulty.ts): a vida dos monstros, só em grupo.
+  const hp = members >= 2 ? (DIFFICULTY[dungeonId]?.hp ?? 1) : 1;
   const out: { id: string; health: number }[] = [];
   for (const g of stage.monsters) {
     const def = monsterDef(g.id);
     if (!def) continue;
     const count = def.boss ? g.count : Math.round(g.count * scale);
-    const health = def.boss ? Math.round(def.health * scale) : def.health;
+    const health = Math.round(def.health * hp * (def.boss ? scale : 1));
     for (let c = 0; c < count; c++) out.push({ id: g.id, health });
   }
   return out;
@@ -421,7 +442,9 @@ export type RunEvent =
   /** O cavaleiro desafiou: `n` monstros presos nele [TFS challenge.lua]. */
   | { k: "desafio"; a: number; n: number }
   /** Ninguém feriu um monstro por RUN.stallMs: o grupo se retira [nosso]. */
-  | { k: "impasse" };
+  | { k: "impasse" }
+  /** 24/11/2026: os monstros da sala se enfureceram (a Fúria, RUN.fury). */
+  | { k: "furia"; st: number };
 
 /** O estado no fim de um segundo: vida e mana dos heróis, vida dos monstros da sala. */
 export interface RunFrame {
@@ -819,6 +842,31 @@ export function simulateRun(input: RunInput): RunResult {
   };
 
   // A sala cresce com o grupo (stageMonsters): o app monta a mesma lista.
+  /** Quando a sala de agora começou (a Fúria conta daí) e se a Fúria já foi avisada nela. */
+  let roomAt = 0;
+  let furyShown = false;
+
+  /**
+   * O multiplicador da Fúria agora: 1 até RUN.fury.afterMs na sala (na do chefe, até o `furyMs`
+   * da dungeon), depois sobe.
+   */
+  function furyFactor(): number {
+    // Sozinho, ou numa dungeon de iniciante, a dungeon é a de antes (sem Fúria).
+    if (heroes.length < 2 || DIFFICULTY[dungeon!.id]?.beginner) return 1;
+    const f = RUN.fury;
+    const boss = st === dungeon!.stages.length - 1;
+    const after = boss ? (DIFFICULTY[dungeon!.id]?.furyMs ?? f.bossMs) : f.afterMs;
+    const over = nowMs - roomAt - after;
+    if (over < 0 || f.pct <= 0) return 1;
+    // Um degrau a cada `everyFrac` do tempo da sala, nunca mais lento que `everyMaxMs`.
+    const every = Math.max(1000, Math.min(f.everyMaxMs, Math.round(after * f.everyFrac)));
+    if (!furyShown) {
+      furyShown = true;
+      ev.push({ k: "furia", st });
+    }
+    return 1 + (f.pct / 100) * (1 + Math.floor(over / every));
+  }
+
   function spawn(st: number, tMs: number) {
     monsters = stageMonsters(dungeon!.id, st, heroes.length).map((x, i) => {
       const def = monsterDef(x.id)!;
@@ -841,6 +889,8 @@ export function simulateRun(input: RunInput): RunResult {
     });
     ev.push({ k: "sala", st });
     lastHitMs = tMs;
+    roomAt = tMs;
+    furyShown = false;
     // O ataque que venceu na pausa entre as salas não acumula: sai um golpe ao entrar.
     for (const h of heroes) h.nextAttack = Math.max(h.nextAttack, tMs);
   }
@@ -1675,7 +1725,12 @@ export function simulateRun(input: RunInput): RunResult {
         return;
       }
     }
-    const raw = normalRandom(rng, at.min, at.max);
+    // A Fúria da sala (24/11/2026): quem demora a limpar apanha mais.
+    const raw = Math.round(
+      normalRandom(rng, at.min, at.max) *
+        furyFactor() *
+        (heroes.length >= 2 ? (DIFFICULTY[dungeon!.id]?.dmg ?? 1) : 1),
+    );
     const checkArmor = melee || physical;
     const hadBlock = (melee || checkArmor) && h.blocks > 0;
     const b = blockHit(rng, {

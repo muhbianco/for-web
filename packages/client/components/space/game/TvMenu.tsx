@@ -119,14 +119,14 @@ export default function TvMenu(props: {
     if (props.view.knowsRun(id)) return props.view.watchRun(id);
     send("rpg.run.watch", { id }, () => props.view.watchRun(id));
   };
-  // Confortável = vence 70% ou mais (medido no simulador, dungeons.ts): em trio e sozinho com a
-  // vocação de quem olha.
+  // Confortável = vence 70% ou mais (medido no simulador, dungeons.ts): com o grupo completo (as
+  // quatro classes, 24/11/2026) e sozinho com a vocação de quem olha.
   const comfortLine = (d: (typeof DUNGEONS)[number]) => {
     const group = d.comfort.group;
     const inGroup =
       group <= d.minLevel
-        ? t`Em trio, confortável desde a entrada.`
-        : t`Em trio, confortável a partir do level ${group}.`;
+        ? t`Com o grupo completo (as 4 classes), confortável desde a entrada.`
+        : t`Com o grupo completo (as 4 classes), confortável a partir do level ${group}.`;
     const voc = props.hero?.vocation ?? 0;
     if (voc === 0) return inGroup;
     const base = VOCATIONS[voc].base as 1 | 2 | 3 | 4;

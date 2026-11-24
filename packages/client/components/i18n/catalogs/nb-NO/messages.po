@@ -108,7 +108,16 @@ msgstr "{0, plural, one {Slipp fil} other {Slipp # filer}}"
 #. placeholder {1}: hero()?.level ?? 1
 #. placeholder {2}: levelPct()
 #: components/space/game/HeroSheet.tsx
-msgid "{0} · level {1} ({2}%)"
+#~ msgid "{0} · level {1} ({2}%)"
+#~ msgstr ""
+
+#. placeholder {0}: className(hero()?.vocation ?? 0, hero()?.job ?? 1)
+#. placeholder {1}: hero()?.level ?? 1
+#. placeholder {2}: levelPct()
+#. placeholder {3}: hero()?.job_level.level ?? 1
+#. placeholder {4}: jobPct()
+#: components/space/game/HeroSheet.tsx
+msgid "{0} · level {1} ({2}%) · job {3} ({4}%)"
 msgstr ""
 
 #. placeholder {0}: vocationName(m().vocation)
@@ -123,10 +132,8 @@ msgstr ""
 msgid "{0} · Nv {1}"
 msgstr ""
 
-#. placeholder {0}: hero()!.skill_points.earned
 #. placeholder {0}: level()
 #. placeholder {1}: pct()
-#. placeholder {1}: percent(hero()!.skill_points.tries, hero()!.skill_points.next)
 #: components/space/game/TrainingDialog.tsx
 msgid "{0} ({1}%)"
 msgstr ""
@@ -608,7 +615,15 @@ msgid "{pct}% ({0} ms)"
 msgstr ""
 
 #: components/space/game/heroUi.ts
+msgid "{pct}% de chance de acertar mais um monstro da sala"
+msgstr ""
+
+#: components/space/game/heroUi.ts
 msgid "{pct}% de chance de atrasar o ataque do monstro em {s} s"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "{pct}% de chance de crítico (×1,5)"
 msgstr ""
 
 #: components/space/game/heroUi.ts
@@ -724,6 +739,10 @@ msgstr ""
 msgid "+{pct}% de dano"
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "+{pct}% na Proteção do grupo enquanto os monstros estão presos"
+msgstr ""
+
 #: components/space/game/StatsPanel.tsx
 msgid "+10 oz por FOR."
 msgstr ""
@@ -836,8 +855,8 @@ msgstr ""
 
 #. placeholder {0}: duration(eta())
 #: components/space/game/TrainingDialog.tsx
-msgid "≈ {0} para o próximo ponto"
-msgstr ""
+#~ msgid "≈ {0} para o próximo ponto"
+#~ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "1 hora"
@@ -864,8 +883,8 @@ msgid "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura. N
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "100% do treino dele"
-msgstr ""
+#~ msgid "100% do treino dele"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "12 hours"
@@ -901,8 +920,8 @@ msgstr ""
 
 #. placeholder {0}: num(MASTERY_PCT)
 #: components/space/game/NpcDialog.tsx
-msgid "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam). Escolha UM adereço de UMA habilidade: cada ponto dele rende {0}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o treino de habilidade fica 1% mais lento a cada renascimento."
-msgstr ""
+#~ msgid "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam). Escolha UM adereço de UMA habilidade: cada ponto dele rende {0}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o treino de habilidade fica 1% mais lento a cada renascimento."
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "A árvore precisa estar cheia: todos os adereços da sua classe no último ponto."
@@ -1084,7 +1103,11 @@ msgid "Accept friend request"
 msgstr "Aksepter venneforespørsel"
 
 #: components/space/game/heroUi.ts
-msgid "acerta mais {m} monstro(s) da sala"
+#~ msgid "acerta mais {m} monstro(s) da sala"
+#~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "acerta mais {m} monstro(s) da sala, em média"
 msgstr ""
 
 #: components/space/game/itemUi.ts
@@ -2245,14 +2268,28 @@ msgstr ""
 msgid "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas salas que não disserem o contrário)"
 msgstr ""
 
+#. placeholder {0}: cap()
+#. placeholder {1}: effectText(node.effect, nodeUnits(node, cap()), heal)
+#: components/space/game/SkillTree.tsx
+msgid "com {0} ups: {1}"
+msgstr ""
+
 #. placeholder {0}: h().rebirths ?? 0
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
 #~ msgstr ""
 
-#: components/space/game/TrainingDialog.tsx
-msgid "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
+#: components/space/game/TvMenu.tsx
+msgid "Com o grupo completo (as 4 classes), confortável a partir do level {group}."
 msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Com o grupo completo (as 4 classes), confortável desde a entrada."
+msgstr ""
+
+#: components/space/game/TrainingDialog.tsx
+#~ msgid "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
+#~ msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Combate"
@@ -2297,8 +2334,8 @@ msgid "Como andar"
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Como treinar"
-msgstr ""
+#~ msgid "Como treinar"
+#~ msgstr ""
 
 #: components/space/SpacePage.tsx
 #~ msgid "compartilhando a tela"
@@ -3181,6 +3218,14 @@ msgstr ""
 msgid "Distância"
 msgstr ""
 
+#. placeholder {0}: props.hero.job_level.level
+#. placeholder {1}: sp().earned
+#. placeholder {2}: treePointsSpent(props.hero.tree)
+#. placeholder {3}: cap()
+#: components/space/game/SkillTree.tsx
+msgid "Do nível de job {0}: {1} (um por nível). Postos na árvore: {2}. Cada adereço sobe até {3} ups nesta classe."
+msgstr ""
+
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Do Not Disturb"
 msgstr "Ikke Forstyrr"
@@ -3349,12 +3394,12 @@ msgid "em corrida"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Em trio, confortável a partir do level {group}."
-msgstr ""
+#~ msgid "Em trio, confortável a partir do level {group}."
+#~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Em trio, confortável desde a entrada."
-msgstr ""
+#~ msgid "Em trio, confortável desde a entrada."
+#~ msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
 #: components/auth/src/flows/Form.tsx
@@ -3762,12 +3807,12 @@ msgstr ""
 
 #. placeholder {0}: other().title
 #: components/space/game/TrainingDialog.tsx
-msgid "Este e o {0}: {pct}% de cada"
-msgstr ""
+#~ msgid "Este e o {0}: {pct}% de cada"
+#~ msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação."
-msgstr ""
+#~ msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação."
+#~ msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação. O saldo de 12 h é o mesmo dos dois."
@@ -3809,12 +3854,16 @@ msgid "Everyone"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
+msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades e sobe o teto de cada adereço, redistribui atributos e habilidades e, com o job no máximo, faz a árvore renascer."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
 #~ msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, e redistribui atributos e habilidades."
 #~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, redistribui atributos e habilidades e, com a árvore cheia, faz a árvore renascer."
-msgstr ""
+#~ msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, redistribui atributos e habilidades e, com a árvore cheia, faz a árvore renascer."
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "Evoluir"
@@ -3906,6 +3955,12 @@ msgstr ""
 msgid "Falta: chegar à 3ª classe."
 msgstr ""
 
+#. placeholder {0}: JOB.maxLevel
+#. placeholder {1}: jobLevel()
+#: components/space/game/NpcDialog.tsx
+msgid "Falta: job {0} (agora {1})."
+msgstr ""
+
 #. placeholder {0}: money(-left())
 #. placeholder {0}: money(cost() - carried() - bank())
 #: components/space/game/NpcDialog.tsx
@@ -3914,16 +3969,20 @@ msgstr ""
 
 #. placeholder {0}: missing()
 #: components/space/game/NpcDialog.tsx
-msgid "Faltam {0} pontos na árvore."
-msgstr ""
+#~ msgid "Faltam {0} pontos na árvore."
+#~ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Faltam pontos para isso."
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Faltam pontos postos na árvore de habilidades (treine no dummy de habilidade)."
+msgid "Faltam pontos postos na árvore de habilidades (eles vêm do nível de job)."
 msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+#~ msgid "Faltam pontos postos na árvore de habilidades (treine no dummy de habilidade)."
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Fans, street, other people talking."
@@ -4002,8 +4061,8 @@ msgid "File must be smaller than {0}"
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Fique perto dos dois dummies para treinar nos dois."
-msgstr ""
+#~ msgid "Fique perto dos dois dummies para treinar nos dois."
+#~ msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "físico"
@@ -4119,8 +4178,8 @@ msgstr "Fruktsalat"
 #. placeholder {1}: Math.max(0, sp().next - sp().tries)
 #. placeholder {2}: treePointsSpent(props.hero.tree)
 #: components/space/game/SkillTree.tsx
-msgid "Ganhos no dummy de habilidade: {0} (o próximo em {1} tentativas). Postos na árvore: {2}."
-msgstr ""
+#~ msgid "Ganhos no dummy de habilidade: {0} (o próximo em {1} tentativas). Postos na árvore: {2}."
+#~ msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "Gastou: {spent}."
@@ -4283,14 +4342,14 @@ msgid "Há transferências demais a caminho. Espere um pouco."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
-msgid "Habilidade"
-msgstr ""
+#~ msgid "Habilidade"
+#~ msgstr ""
 
 #. placeholder {0}: pts().level
 #. placeholder {1}: percent(pts().tries, pts().next)
 #: components/space/game/TrainingChip.tsx
-msgid "Habilidade {0} · {1}%"
-msgstr ""
+#~ msgid "Habilidade {0} · {1}%"
+#~ msgstr ""
 
 #: components/space/game/HeroSheet.tsx
 #: components/space/game/NpcDialog.tsx
@@ -4385,6 +4444,10 @@ msgstr "Inaktiv"
 
 #: components/space/game/TvMenu.tsx
 msgid "Idle Hunt"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "ignora {pct}% da armadura e da resistência do monstro"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
@@ -5395,7 +5458,14 @@ msgstr "Mine Roboter"
 #. placeholder {0}: num(MASTERY_PCT)
 #. placeholder {1}: h().rebirths ?? 0
 #: components/space/game/NpcDialog.tsx
-msgid "Na 3ª classe, com a árvore inteira cheia (todos os adereços das três classes no último ponto), a árvore pode renascer: ela e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e você escolhe UM adereço de UMA habilidade para render {0}% a mais por ponto, para sempre. Cada renascimento deixa o treino de habilidade 1% mais lento. {1} renascimentos até agora."
+#~ msgid "Na 3ª classe, com a árvore inteira cheia (todos os adereços das três classes no último ponto), a árvore pode renascer: ela e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e você escolhe UM adereço de UMA habilidade para render {0}% a mais por ponto, para sempre. Cada renascimento deixa o treino de habilidade 1% mais lento. {1} renascimentos até agora."
+#~ msgstr ""
+
+#. placeholder {0}: JOB.maxLevel
+#. placeholder {1}: num(MASTERY_PCT)
+#. placeholder {2}: h().rebirths ?? 0
+#: components/space/game/NpcDialog.tsx
+msgid "Na 3ª classe, com o job no nível {0}, a árvore pode renascer: ela zera e o job volta ao 1 (os pontos voltam com ele), e você escolhe UM adereço de UMA habilidade para render {1}% a mais por up, para sempre. Cada renascimento deixa o job 1% mais lento. {2} renascimentos até agora."
 msgstr ""
 
 #: components/space/game/SkillTree.tsx
@@ -5621,8 +5691,8 @@ msgstr ""
 
 #. placeholder {0}: effectText(node.effect, node.ranks, heal)
 #: components/space/game/SkillTree.tsx
-msgid "no máximo: {0}"
-msgstr ""
+#~ msgid "no máximo: {0}"
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "No máximo: +{REFINE_MAX}."
@@ -5671,13 +5741,13 @@ msgid "Normal"
 msgstr "Normal"
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Nos dois dummies"
-msgstr ""
+#~ msgid "Nos dois dummies"
+#~ msgstr ""
 
 #. placeholder {0}: duration(v().elapsed)
 #: components/space/game/TrainingChip.tsx
-msgid "Nos dois dummies, 50% em cada · há {0}"
-msgstr ""
+#~ msgid "Nos dois dummies, 50% em cada · há {0}"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Not in a call"
@@ -5768,6 +5838,11 @@ msgstr ""
 #: components/space/game/StatsPanel.tsx
 #~ msgid "O intervalo cai (4 × AGI + DES)/1000."
 #~ msgstr ""
+
+#. placeholder {0}: num(MASTERY_PCT)
+#: components/space/game/NpcDialog.tsx
+msgid "O job está no máximo. Renascer zera a árvore e volta o job ao 1. Escolha UM adereço de UMA habilidade: cada up dele rende {0}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o job fica 1% mais lento a cada renascimento."
+msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "O jogo está desligado neste servidor."
@@ -5980,6 +6055,10 @@ msgstr "Åpne sørverinstillinger"
 msgid "Open settings"
 msgstr "Åpne innstillinger"
 
+#: components/space/game/runUi.ts
+msgid "Os monstros da sala se enfurecem: cada vez mais fortes, até a sala cair"
+msgstr ""
+
 #: components/space/game/NpcDialog.tsx
 msgid "Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level."
 msgstr ""
@@ -6075,8 +6154,8 @@ msgid "Para quem"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
-msgid "Para treinar nos dois, use um dummy de vocação e um de habilidade."
-msgstr ""
+#~ msgid "Para treinar nos dois, use um dummy de vocação e um de habilidade."
+#~ msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Para trocar ouro por platina, junte 100 moedas na mesma pilha."
@@ -7532,8 +7611,8 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Só neste dummy"
-msgstr ""
+#~ msgid "Só neste dummy"
+#~ msgstr ""
 
 #: components/space/InteractionDialog.tsx
 msgid "Só páginas https podem ser mostradas aqui."
@@ -8148,16 +8227,16 @@ msgstr ""
 #. placeholder {1}: L.skill.habilidade
 #. placeholder {2}: duration(Math.max(0, now() - tr().started_at))
 #: components/space/game/TrainingDialog.tsx
-msgid "Treinando {0} e {1} nos dois dummies ({pct}% de cada) há {2}."
-msgstr ""
+#~ msgid "Treinando {0} e {1} nos dois dummies ({pct}% de cada) há {2}."
+#~ msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
 msgid "Treinar"
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Treinar nos dois"
-msgstr ""
+#~ msgid "Treinar nos dois"
+#~ msgstr ""
 
 #. placeholder {0}: L().dummy[h().training.tier]
 #: components/space/game/GamePanel.tsx
@@ -8483,8 +8562,8 @@ msgstr ""
 
 #. placeholder {0}: duration(pointsEta())
 #: components/space/game/TrainingDialog.tsx
-msgid "Vem junto: ≈ {0} para o próximo ponto"
-msgstr ""
+#~ msgid "Vem junto: ≈ {0} para o próximo ponto"
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "Vender"

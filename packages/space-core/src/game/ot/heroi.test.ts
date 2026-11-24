@@ -271,20 +271,21 @@ test("nível de job (24/11/2026): 30% da experiência, na curva do level, um pon
 test("ups (24/11/2026): o cheio de antes vale 5 ups; alvo em ups vira chance; crítico, perfurar e escudo do grupo", () => {
   const forca = treeNode("golpe-brutal.forca")!;
   assert.equal(nodeUnits(forca, 5), 5);
-  assert.equal(nodeUnits(forca, 20), 20);
+  // Os ups depois do 5º rendem LATE_UP (0,5): 5 + 15 × 0,5.
+  assert.equal(nodeUnits(forca, 20), 12.5);
   const pierce = treeNode("rajada-dupla.perfurante")!;
   assert.equal(nodeUnits(pierce, 1), 0.2);
   const rajada = abilityDef("rajada-dupla")!;
   const base = { "rajada-dupla.forca": 5, "rajada-dupla.perfurante": 3 };
   assert.ok(Math.abs(abilityNow(rajada, base).targets - 0.6) < 1e-9);
-  assert.ok(Math.abs(abilityNow(rajada, { ...base, "rajada-dupla.perfurante": 10 }).targets - 2) < 1e-9);
+  assert.ok(Math.abs(abilityNow(rajada, { ...base, "rajada-dupla.perfurante": 10 }).targets - 1.5) < 1e-9);
   // Os novos: crítico, perfurar e o escudo do grupo do desafio.
   assert.equal(abilityNow(rajada, { ...base, "rajada-dupla.certeira": 5 }).crit, 10);
-  assert.equal(abilityNow(abilityDef("golpe-brutal")!, { "golpe-brutal.forca": 1, "golpe-brutal.quebra": 10 }).pierce, 30);
-  assert.equal(abilityNow(abilityDef("desafio")!, { "desafio.presenca": 1, "desafio.escudo": 20 }).cover, 20);
+  assert.equal(abilityNow(abilityDef("golpe-brutal")!, { "golpe-brutal.forca": 1, "golpe-brutal.quebra": 10 }).pierce, 22.5);
+  assert.equal(abilityNow(abilityDef("desafio")!, { "desafio.presenca": 1, "desafio.escudo": 20 }).cover, 12.5);
   assert.equal(CRIT_MULT, 1.5);
-  // Os tetos: crítico até 60%, perfurar até 75%.
-  assert.equal(abilityNow(rajada, { ...base, "rajada-dupla.certeira": 20 }).crit, 40);
+  // Com 20 ups: 12,5 de peso (crítico 25%); os tetos são 60% e 75%.
+  assert.equal(abilityNow(rajada, { ...base, "rajada-dupla.certeira": 20 }).crit, 25);
   // Cada habilidade ganhou um adereço.
   for (const ab of ABILITIES) assert.ok(TREE.filter((n) => n.ability === ab.id).length >= 5, ab.id);
 });

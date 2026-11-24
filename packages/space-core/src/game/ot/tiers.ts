@@ -473,18 +473,19 @@ const EXP_FIX: Readonly<Record<string, number>> = {
 };
 
 /**
- * O conforto medido (24/11/2026, 30 sementes): o trio cavaleiro + arqueiro + druida vence 70% a
- * partir deste level; sozinho, ninguém (o arqueiro só no Pântano, no 120). Sem curandeiro ou sem
- * tanque, o grupo perde até bem depois (com --papeis no simulador).
+ * O conforto medido (24/11/2026, scripts/comfort-levels.ts): o grupo completo (as quatro classes)
+ * vence 70% a partir deste level; sozinho, quase ninguém. Sem um membro, o trio perde bem mais
+ * (scripts/party-lab.ts).
  */
-const solo = (archer: number | null = null): Dungeon["comfort"]["solo"] => ({
+const solo = (only: Partial<Dungeon["comfort"]["solo"]> = {}): Dungeon["comfort"]["solo"] => ({
   1: null,
   2: null,
-  3: archer,
+  3: null,
   4: null,
+  ...only,
 });
 const COMFORT: Readonly<Record<string, Dungeon["comfort"]>> = {
-  "pantano-dos-afogados": { group: 88, solo: solo() },
+  "pantano-dos-afogados": { group: 85, solo: solo() },
   "fortaleza-partida": { group: 100, solo: solo() },
   "deserto-de-vidro": { group: 120, solo: solo() },
   "picos-trovejantes": { group: 145, solo: solo() },
@@ -492,7 +493,7 @@ const COMFORT: Readonly<Record<string, Dungeon["comfort"]>> = {
   "catacumbas-reais": { group: 200, solo: solo() },
   "vulcao-rubro": { group: 235, solo: solo() },
   "abismo-coral": { group: 270, solo: solo() },
-  "cidade-celeste": { group: 310, solo: solo() },
+  "cidade-celeste": { group: 310, solo: solo({ 2: 400 }) },
   "vale-dos-titas": { group: 350, solo: solo() },
   "plano-etereo": { group: 400, solo: solo() },
   "fenda-do-caos": { group: 450, solo: solo() },

@@ -192,16 +192,22 @@ test("stamina até 14 h: o corpo sai vazio [TFS default_onDropLoot.lua]", () => 
   assert.ok(rested.members[0]!.gold > 0);
 });
 
-test("a sala cresce com o grupo: monstros comuns em número, o chefe em vida", () => {
+test("a sala cresce com o grupo: monstros comuns em número, o chefe em vida", async () => {
+  const { partyScale } = await import("./run.ts");
   assert.deepEqual(
     stageMonsters("cripta-do-musgo", 0, 1).map((m) => m.id),
     ["rato-do-musgo", "rato-do-musgo", "rato-do-musgo"],
   );
+  // A Cripta é de iniciante (difficulty.ts): a sala de antes, +40% por herói.
   assert.equal(stageMonsters("cripta-do-musgo", 0, 2).length, 4); // round(3 × 1,4)
   const boss2 = stageMonsters("cripta-do-musgo", 3, 2);
   assert.equal(boss2[0]!.id, "matriarca-do-musgo");
   assert.equal(boss2[0]!.health, 308); // 220 × 1,4
   assert.equal(boss2.filter((m) => m.id === "matriarca-do-musgo").length, 1);
+  // As outras (24/11/2026): a sala é do grupo completo (2,2 com 4) e encolhe pouco sem alguém.
+  assert.ok(Math.abs(partyScale(4, "forja-rachada") - 2.2) < 1e-9);
+  assert.ok(partyScale(3, "forja-rachada") > 2.05 && partyScale(3, "forja-rachada") < 2.2);
+  assert.equal(partyScale(1, "forja-rachada"), 1);
 });
 
 test("equipamento: a melhor arma pela skill, o level manda e cada vocação na sua", () => {

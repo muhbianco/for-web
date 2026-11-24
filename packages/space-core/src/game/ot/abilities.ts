@@ -449,7 +449,7 @@ export const MAX_UPS = 20;
  * O quanto rende cada up depois do UPS_FULL, perto do de antes (1 = igual). Ajustado no
  * balanceamento: as habilidades continuam a menor parte do dano (rebirth-lab.ts).
  */
-export const LATE_UP = 1;
+export const LATE_UP = 0.5;
 /** A troca de magia sai no 1º up; cada up a mais soma este % ao poder da habilidade. */
 export const FORMULA_UP_PCT = 3;
 /** Crítico de habilidade: o golpe ou a cura sai assim mais forte. */
