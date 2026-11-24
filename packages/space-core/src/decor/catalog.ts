@@ -168,6 +168,7 @@ const ITEMS: DecorItem[] = [
   // NPCs do jogo idle (etapa O8): o herói fala com eles ao lado, como no OT.
   def({ id: "npc-mercador", name: "Mercador", category: "equipment", interaction: "npc", npc: "mercador", description: "Compra o loot e vende munição, mochilas, anéis e colares.", tags: ["npc", "loja", "jogo"] }),
   def({ id: "npc-banqueiro", name: "Banqueiro", category: "equipment", interaction: "npc", npc: "banqueiro", description: "Guarda as moedas sem peso, devolve quando você pede e transfere para outra pessoa.", tags: ["npc", "banco", "jogo"] }),
+  def({ id: "npc-ferreiro", name: "Ferreiro", category: "equipment", interaction: "npc", npc: "ferreiro", description: "Refina a arma que o herói empunha (até +10): cada nível dá dano; acima do +4 pode falhar.", tags: ["npc", "refino", "arma", "jogo"] }),
   def({ id: "npc-mestre", name: "Mestre de evolução", category: "equipment", interaction: "npc", npc: "mestre", description: "Evolui a classe do herói (level 20 e level 50) e redistribui atributos e habilidades.", tags: ["npc", "evolução", "classe", "jogo"] }),
 
   // ---- Especiais ------------------------------------------------------------

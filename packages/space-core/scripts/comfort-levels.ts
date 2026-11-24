@@ -33,11 +33,12 @@ import {
   statScore,
   withGearStats,
   ITEMS,
-  MERCHANT_SELLS,
+  MAX_LEVEL,
+  MERCHANT_OFFERS,
   monsterDef,
   simulateRun,
   START,
-  STAT_MAX,
+  statCost,
   starterInventory,
   statPointsTotal,
   VOCATIONS,
@@ -64,12 +65,14 @@ const PRIORITY: Record<1 | 2 | 3 | 4, string[]> = {
     "golpe-brutal.ritmo", "giro-da-lamina.ritmo", "desafio.economia", "atadura.reflexo2", "desafio.eco",
   ],
   3: [
-    "lanca-eterea.forca", "cura-de-campo.forca", "missil-sagrado.forca", "lanca-eterea.economia",
-    "cura-de-campo.reflexo", "caldeira-sagrada.forca", "caldeira-sagrada.economia",
-    "lanca-eterea.perfurar", "cura-de-campo.intensa", "missil-sagrado.luz", "caldeira-sagrada.consagrar",
-    "lanca-eterea.forca2", "cura-de-campo.forca2", "missil-sagrado.forca2", "caldeira-sagrada.forca2",
-    "lanca-eterea.dupla", "cura-de-campo.abrigo", "missil-sagrado.julgamento", "caldeira-sagrada.coro",
-    "lanca-eterea.ritmo", "missil-sagrado.economia", "cura-de-campo.economia",
+    "rajada-dupla.forca", "concentracao.foco", "chuva-de-flechas.forca", "flecha-carregada.forca",
+    "rajada-dupla.economia", "concentracao.folego", "chuva-de-flechas.economia",
+    "rajada-dupla.perfurante", "concentracao.economia", "chuva-de-flechas.farpas",
+    "flecha-carregada.economia", "flecha-carregada.impacto", "rajada-dupla.forca2",
+    "concentracao.foco2", "chuva-de-flechas.forca2", "flecha-carregada.forca2",
+    "rajada-dupla.tripla", "chuva-de-flechas.tormenta", "flecha-carregada.trespassar",
+    "concentracao.olho-de-aguia", "rajada-dupla.ritmo", "chuva-de-flechas.ritmo",
+    "flecha-carregada.ritmo", "concentracao.ritmo",
   ],
   1: [
     "remendo.cura-leve", "golpe-de-raio.forca", "onda-de-fogo.forca", "golpe-de-chama.forca",
@@ -87,20 +90,22 @@ const PRIORITY: Record<1 | 2 | 3 | 4, string[]> = {
   ],
 };
 
+/**
+ * Os pontos do level na construção da classe, pela escada de custo (24/11/2026): um ponto por vez
+ * no atributo mais abaixo da fração dele (pelo valor), enquanto o custo couber.
+ */
 function buildStats(cls: 1 | 2 | 3 | 4, level: number): Stats {
   const s = freshStats();
-  const total = statPointsTotal(level);
-  let left = total;
-  for (const [k, f] of Object.entries(BUILDS[cls]) as [StatId, number][]) {
-    const n = Math.min(STAT_MAX - 1, Math.floor(total * f));
-    s[k] += n;
-    left -= n;
-  }
-  // O que sobrou (arredondamento ou teto): VIT, depois o resto.
-  for (const k of ["vit", "agi", "des", "sor", "for", "int"] as StatId[]) {
-    const n = Math.min(STAT_MAX - s[k], left);
-    s[k] += n;
-    left -= n;
+  let left = statPointsTotal(level);
+  const w = BUILDS[cls];
+  const keys = Object.keys(w) as StatId[];
+  for (;;) {
+    let pick: StatId | null = null;
+    for (const k of keys)
+      if (statCost(s[k]) <= left && (!pick || s[k] / w[k]! < s[pick] / w[pick]!)) pick = k;
+    if (!pick) break;
+    left -= statCost(s[pick]);
+    s[pick]++;
   }
   return s;
 }
@@ -127,7 +132,7 @@ function buildTree(cls: 1 | 2 | 3 | 4, tier: JobTier, points: number): Tree {
  * de umas corridas na dungeon que o dá (o level mínimo dela + 3).
  */
 const AVAILABLE = new Map<string, number>();
-for (const o of MERCHANT_SELLS) AVAILABLE.set(o.item, 0);
+for (const o of MERCHANT_OFFERS) AVAILABLE.set(o.item, 0);
 for (const d of DUNGEONS)
   for (const st of d.stages)
     for (const g of st.monsters)
@@ -152,10 +157,13 @@ function bestGear(vocation: VocationId, level: number) {
       !d.duration,
   );
   if (voc.base === 3) {
-    const ammo = Object.values(ITEMS)
-      .filter((d) => d.ammo === "flecha" && d.slot === "municao" && canUse(d, 3, level) && (AVAILABLE.get(d.id) ?? Infinity) <= level)
-      .sort((a, b) => (b.attack ?? 0) - (a.attack ?? 0))[0];
-    addItem(inv, Infinity, ammo?.id ?? "flecha", 100);
+    // A melhor flecha e o melhor virote ao alcance (o arco ou a besta escolhe a sua).
+    for (const type of ["flecha", "virote"] as const) {
+      const ammo = Object.values(ITEMS)
+        .filter((d) => d.ammo === type && d.slot === "municao" && canUse(d, 3, level) && (AVAILABLE.get(d.id) ?? Infinity) <= level)
+        .sort((a, b) => (b.attack ?? 0) - (a.attack ?? 0))[0];
+      addItem(inv, Infinity, ammo?.id ?? type, 100);
+    }
   }
   // Os de level mais alto primeiro (a mochila tem 20 espaços); depois de vestir, a mochila
   // esvazia para as poções e a munição.
@@ -164,7 +172,7 @@ function bestGear(vocation: VocationId, level: number) {
   return inv;
 }
 
-function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : level < 30 ? 15 : level < 50 ? 30 : 40): RunHero {
+function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : level < 30 ? 15 : level < 50 ? 30 : level < 120 ? 40 : 60): RunHero {
   const voc = VOCATIONS[vocation];
   const cls = voc.base as 1 | 2 | 3 | 4;
   const st = addExperience(
@@ -173,8 +181,15 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
     expForLevel(level),
   );
   const skills = { punhos: 10, maca: 10, espada: 10, machado: 10, distancia: 10, escudo: 10 } as Record<SkillId, number>;
-  const main = Math.min(10 + 2 * level, 50 + Math.floor(level / 2));
-  const shield = Math.min(10 + level, 40 + Math.floor(level / 2));
+  // O treino do OT é exponencial: depois do 100 a skill quase para (≈116 no 500).
+  const main =
+    level <= 100
+      ? Math.min(10 + 2 * level, 50 + Math.floor(level / 2))
+      : 100 + Math.floor((level - 100) / 25);
+  const shield =
+    level <= 100
+      ? Math.min(10 + level, 40 + Math.floor(level / 2))
+      : 90 + Math.floor((level - 100) / 25);
   if (cls === 4) {
     skills.espada = main;
     skills.machado = main;
@@ -185,8 +200,15 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
     skills.distancia = main;
     skills.escudo = shield;
   }
-  const ml = cls <= 2 ? Math.min(70, level) : cls === 3 ? Math.floor(level / 3) : 0;
-  const points = Math.min(60, level);
+  const ml =
+    cls <= 2
+      ? level <= 70
+        ? level
+        : 70 + Math.floor((level - 70) / 10)
+      : cls === 3
+        ? Math.min(40, Math.floor(level / 3))
+        : 0;
+  const points = Math.min(70, level);
   const tier: JobTier = level >= 50 && points >= 24 ? 3 : level >= 20 && points >= 8 ? 2 : 1;
   const promoted = (tier >= 2 ? voc.promotion ?? vocation : vocation) as VocationId;
   const stats = buildStats(cls, level);
@@ -195,8 +217,12 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
   const strong = level >= 50;
   const pot =
     cls <= 2
-      ? strong ? "pocao-forte-de-mana" : "pocao-de-mana"
-      : strong ? "pocao-forte-de-vida" : level < 10 ? "pocao-pequena-de-vida" : "pocao-de-vida";
+      ? level >= 250 ? "pocao-suprema-de-mana" : level >= 120 ? "pocao-grande-de-mana" : strong ? "pocao-forte-de-mana" : "pocao-de-mana"
+      : cls === 4 && level >= 250
+        ? "pocao-suprema-de-vida"
+        : level >= 120
+          ? "pocao-grande-de-vida"
+          : strong ? "pocao-forte-de-vida" : level < 10 ? "pocao-pequena-de-vida" : "pocao-de-vida";
   autoEquip(inv, promoted, st.level, skills, st.manaMax);
   // 24/11/2026: o melhor anel e o melhor colar de atributos (a escolha automática não mexe neles;
   // quem joga põe à mão). E os atributos dos itens entram, como no servidor (hero.ts).
@@ -240,11 +266,17 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
   };
 }
 
+/** Média de segundos e de experiência crua por membro das corridas medidas (a calibragem da experiência). */
+const STATS_RUN = { seconds: 0, exp: 0, n: 0 };
+
 function winRate(dungeon: string, party: () => RunHero[], n: number): number {
   let w = 0;
   for (let seed = 1; seed <= n; seed++) {
     const r = simulateRun({ seed: seed * 104729, dungeon, heroes: party(), rateLoot: 2 });
     if (r.outcome === "vitoria") w++;
+    STATS_RUN.seconds += r.seconds;
+    STATS_RUN.exp += r.members.reduce((a, m) => a + m.exp, 0) / r.members.length;
+    STATS_RUN.n++;
   }
   return w / n;
 }
@@ -276,17 +308,32 @@ const parties: [string, (l: number) => RunHero[]][] = [
   ["druida sozinho", (l) => [heroAt(2, l)]],
   ["feiticeiro sozinho", (l) => [heroAt(1, l)]],
   ["trio cav+arq+dru", (l) => [heroAt(4, l), heroAt(3, l), heroAt(2, l)]],
+  // --papeis: o grupo sem curandeiro e sem tanque (os papéis ainda importam?).
+  ...(args.includes("--papeis")
+    ? ([
+        ["dupla cav+arq (sem cura)", (l: number) => [heroAt(4, l), heroAt(3, l)]],
+        ["trio arq+dru+fei (sem tanque)", (l: number) => [heroAt(3, l), heroAt(2, l), heroAt(1, l)]],
+        ["quarteto completo", (l: number) => [heroAt(4, l), heroAt(3, l), heroAt(2, l), heroAt(1, l)]],
+      ] as [string, (l: number) => RunHero[]][])
+    : []),
 ];
 for (const d of DUNGEONS) {
   if (only.length && !only.includes(d.id)) continue;
   console.log(`\n== ${d.id} (entra L${d.minLevel}, no menu: trio ${d.comfort.group}, sozinho ${JSON.stringify(d.comfort.solo)})`);
   const levels: number[] = [];
-  for (let l = d.minLevel; l <= d.minLevel + 40; l += l < 10 ? 1 : l < 30 ? 2 : 3) levels.push(l);
+  const span = Math.max(40, Math.round(d.minLevel * 0.3));
+  for (let l = d.minLevel; l <= Math.min(MAX_LEVEL, d.minLevel + span); l += l < 10 ? 1 : l < 30 ? 2 : l < 100 ? 3 : 10) levels.push(l);
+  if (levels.length < 2) levels.push(d.minLevel);
   for (const [label, mk] of parties) {
     const row: string[] = [];
     let comfy: number | null = null;
     for (const l of levels) {
+      STATS_RUN.seconds = 0;
+      STATS_RUN.exp = 0;
+      STATS_RUN.n = 0;
       const wr = winRate(d.id, () => mk(l), SEEDS);
+      if (l === d.minLevel && label.startsWith("trio cav"))
+        console.log(`  (trio na entrada: ${Math.round(STATS_RUN.seconds / STATS_RUN.n)} s, ${Math.round(STATS_RUN.exp / STATS_RUN.n)} de experiência crua por membro)`);
       row.push(`${l}:${Math.round(wr * 100)}`);
       if (comfy === null && wr >= 0.7) comfy = l;
       if (wr >= 0.97 && row.length > 2) break;

@@ -1392,6 +1392,18 @@ export const ART: Record<string, ArtDef> = {
       dot(g, 8, g.top + 4, "#fff2b0");
     },
   },
+  "npc-ferreiro": {
+    tall: 1,
+    draw(g) {
+      npcFigure(g, "#5a4a3a", "#d9a982");
+      // O avental de couro e o martelo na mão.
+      rect(g, 6, g.top + 2, 4, 7, "#3a2a1c");
+      rect(g, 12, g.top - 2, 1, 9, OUTLINE);
+      rect(g, 12, g.top - 1, 1, 7, "#8a5a32");
+      rect(g, 11, g.top - 4, 3, 2, OUTLINE);
+      rect(g, 11, g.top - 4, 3, 1, METAL);
+    },
+  },
   "npc-mestre": {
     tall: 1,
     draw(g) {

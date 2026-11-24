@@ -269,6 +269,20 @@ export const RpgResetCmd = z.object({
   d: z.object({ npc, what: z.enum(["stats", "tree"]) }).strict(),
 });
 
+/** Uma tentativa de refino da arma empunhada, no Ferreiro (24/11/2026). */
+export const RpgRefineCmd = z.object({
+  ...env,
+  t: z.literal("rpg.refine"),
+  d: z.object({ npc }).strict(),
+});
+
+/** O renascimento da árvore no Mestre, com o adereço que ganha a maestria (24/11/2026). */
+export const RpgRebirthCmd = z.object({
+  ...env,
+  t: z.literal("rpg.rebirth"),
+  d: z.object({ npc, node: z.string().min(1).max(80) }).strict(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
@@ -296,6 +310,8 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgLootSkipCmd,
   RpgBoardCmd,
   RpgRunWatchCmd,
+  RpgRefineCmd,
+  RpgRebirthCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -356,6 +372,9 @@ export interface RpgHeroView {
   job: JobTier;
   /** Quantas vezes já redistribuiu no Mestre (a primeira de cada é de graça). */
   resets: { stats: number; tree: number };
+  /** O renascimento da árvore: a maestria de cada adereço e quantas vezes renasceu. */
+  mastery?: Record<string, number>;
+  rebirths?: number;
   skills: Record<SkillId, RpgSkillView>;
   magic: { level: number; mana_spent: number; next: number };
   stamina: number;

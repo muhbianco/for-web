@@ -8,6 +8,7 @@ import {
   cannotLearn,
   EVOLUTION,
   JOB_NAMES,
+  MASTERY_PCT,
   treeOf,
   treePointsSpent,
   VOCATIONS,
@@ -126,6 +127,16 @@ export function SkillTree(props: {
                                     <Rank>
                                       {rank()}/{node.ranks}
                                     </Rank>
+                                    {/* A maestria do renascimento da árvore (24/11/2026). */}
+                                    <Show when={props.hero.mastery?.[node.id]}>
+                                      {(m) => (
+                                        <Mastery
+                                          title={t`Maestria ${m()}: cada ponto rende ${num(m() * MASTERY_PCT)}% a mais`}
+                                        >
+                                          ★{m()}
+                                        </Mastery>
+                                      )}
+                                    </Show>
                                     <NodeText>
                                       {rank() > 0
                                         ? effectText(node.effect, rank(), heal)
@@ -249,6 +260,18 @@ const Node = styled("div", {
     "&[data-has]": {
       boxShadow: "inset 3px 0 0 var(--md-sys-color-primary)",
     },
+  },
+});
+
+const Mastery = styled("span", {
+  base: {
+    marginLeft: "6px",
+    padding: "0 5px",
+    borderRadius: "999px",
+    background: "rgba(217, 180, 90, 0.2)",
+    color: "#ffd66b",
+    fontSize: "0.75em",
+    fontWeight: 700,
   },
 });
 

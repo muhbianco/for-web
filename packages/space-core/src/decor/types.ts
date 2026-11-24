@@ -38,7 +38,7 @@ export type Rotation = 0 | 1 | 2 | 3;
 export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc";
 
 /** Os NPCs do jogo idle (etapa O8). */
-export type NpcKind = "mercador" | "banqueiro" | "mestre";
+export type NpcKind = "mercador" | "banqueiro" | "mestre" | "ferreiro";
 
 export interface InteractionConfig {
   /** Shown as the prompt and dialog title. */

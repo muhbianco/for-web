@@ -1,9 +1,13 @@
+import { allTierDungeons } from "./tiers.ts";
+
 /**
  * Dungeons do jogo idle (docs/espaco/jogo/ot). Conteúdo nosso (nomes, temas, salas); as
  * regras de combate, experiência, grupo e loot são as do OT (TFS). Os monstros estão em
  * monsters.ts e a corrida em run.ts.
  */
+/** As dungeons de antes; as das faixas do 85 ao 500 vêm de tiers.ts (qualquer texto). */
 export type DungeonId =
+  | string
   | "cripta-do-musgo"
   | "toca-dos-javalis"
   | "galerias-afogadas"
@@ -41,9 +45,11 @@ export interface Dungeon {
   };
   blurb: string;
   stages: readonly DungeonStage[];
+  /** As salas com a arte de uma dungeon de antes e outra cor (as faixas de tiers.ts). */
+  look?: { like: string; tint: string };
 }
 
-export const DUNGEONS: readonly Dungeon[] = [
+const BASE_DUNGEONS: readonly Dungeon[] = [
   {
     id: "cripta-do-musgo",
     name: "Cripta do Musgo",
@@ -83,7 +89,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "toca-dos-javalis",
     name: "Toca dos Javalis",
     minLevel: 4,
-    comfort: { group: 4, solo: { 1: 6, 2: 6, 3: 4, 4: 4 } },
+    comfort: { group: 4, solo: { 1: 5, 2: 6, 3: 4, 4: 4 } },
     blurb: "Lobos, javalis e quem caça nas tocas. O Rei Javali guarda o fundo.",
     stages: [
       {
@@ -117,7 +123,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "galerias-afogadas",
     name: "Galerias Afogadas",
     minLevel: 8,
-    comfort: { group: 8, solo: { 1: 9, 2: 12, 3: 10, 4: 10 } },
+    comfort: { group: 8, solo: { 1: 9, 2: 12, 3: 8, 4: 10 } },
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
     stages: [
       {
@@ -151,7 +157,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "ninho-das-aranhas",
     name: "Ninho das Aranhas",
     minLevel: 13,
-    comfort: { group: 13, solo: { 1: 13, 2: 13, 3: 15, 4: 17 } },
+    comfort: { group: 13, solo: { 1: 13, 2: 13, 3: 13, 4: 17 } },
     blurb: "Teias, veneno e casulos. Fogo ajuda; a Rainha cura a si mesma.",
     stages: [
       {
@@ -188,7 +194,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    comfort: { group: 20, solo: { 1: 26, 2: 20, 3: 26, 4: 26 } },
+    comfort: { group: 20, solo: { 1: 26, 2: 20, 3: 22, 4: 26 } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [
@@ -223,7 +229,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "mina-assombrada",
     name: "Mina Assombrada",
     minLevel: 27,
-    comfort: { group: 27, solo: { 1: 31, 2: 31, 3: 37, 4: 40 } },
+    comfort: { group: 27, solo: { 1: 34, 2: 31, 3: 31, 4: 46 } },
     blurb:
       "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
     stages: [
@@ -258,7 +264,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "bosque-petrificado",
     name: "Bosque Petrificado",
     minLevel: 35,
-    comfort: { group: 35, solo: { 1: 35, 2: 38, 3: 41, 4: 47 } },
+    comfort: { group: 35, solo: { 1: 35, 2: 41, 3: 35, 4: 50 } },
     blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
     stages: [
       {
@@ -292,7 +298,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 45, solo: { 1: 54, 2: 51, 3: 57, 4: 60 } },
+    comfort: { group: 45, solo: { 1: 84, 2: 69, 3: 57, 4: null } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -328,7 +334,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "abismo-gelado",
     name: "Abismo Gelado",
     minLevel: 55,
-    comfort: { group: 55, solo: { 1: 55, 2: 64, 3: 64, 4: 67 } },
+    comfort: { group: 55, solo: { 1: 85, 2: 85, 3: 70, 4: null } },
     blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
     stages: [
       { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },
@@ -356,7 +362,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "trono-do-vazio",
     name: "Trono do Vazio",
     minLevel: 70,
-    comfort: { group: 70, solo: { 1: 82, 2: 79, 3: 94, 4: 91 } },
+    comfort: { group: 70, solo: { 1: null, 2: 110, 3: 97, 4: null } },
     blurb: "O fim do caminho. O que vive aqui come a luz.",
     stages: [
       { name: "Limiar", monsters: [{ id: "sombra-vazia", count: 2 }] },
@@ -378,6 +384,9 @@ export const DUNGEONS: readonly Dungeon[] = [
     ],
   },
 ];
+
+/** As dungeons do jogo: as de antes e as das faixas do 85 ao 500 (tiers.ts). */
+export const DUNGEONS: readonly Dungeon[] = [...BASE_DUNGEONS, ...allTierDungeons()];
 
 export function dungeonOf(id: string): Dungeon | undefined {
   return DUNGEONS.find((d) => d.id === id);

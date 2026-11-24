@@ -8,15 +8,25 @@ import {
   type JobTier,
   type RpgHeroView,
   type Slot,
+  abilityDef,
   canDrink,
   cannotEvolve,
   cannotUse,
   EVOLUTION,
   itemDef,
-  MERCHANT_SELLS,
+  MASTERY_PCT,
+  masteryNode,
+  MERCHANT_OFFERS,
   merchantBuys,
+  REFINE_MAX,
+  REFINE_SAFE,
+  refineChance,
+  refineCost,
+  refineFactor,
   resetCost,
   statPointsSpent,
+  TREE,
+  treeFull,
   treePointsSpent,
   VOCATIONS,
 } from "@muchat/space-core/game/ot";
@@ -62,6 +72,8 @@ export default function NpcDialog(props: {
   const [amount, setAmount] = createSignal(0);
   const [to, setTo] = createSignal<string>("");
   const [confirm, setConfirm] = createSignal<string | null>(null);
+  /** O adereço escolhido para a maestria no renascimento da árvore. */
+  const [node, setNode] = createSignal("");
   let card: HTMLDivElement | undefined;
   let title: HTMLHeadingElement | undefined;
   const refocus = useModalKeys(
@@ -131,6 +143,19 @@ export default function NpcDialog(props: {
         return t`Faltam pontos postos na árvore de habilidades (treine no dummy de habilidade).`;
       case "nothing_to_reset":
         return t`Não há pontos postos para redistribuir.`;
+      case "no_weapon":
+        return t`Empunhe a arma que quer refinar (na ficha do herói).`;
+      case "not_refinable":
+        return t`Só armas se refinam.`;
+      case "max_refine":
+        return t`Essa arma já está no +${REFINE_MAX}.`;
+      case "not_full":
+        return t`A árvore precisa estar cheia: todos os adereços da sua classe no último ponto.`;
+      case "not_mastery":
+        return t`Esse adereço não ganha maestria (só os de número: força, economia, recarga...).`;
+      case "not_node":
+      case "not_class":
+        return t`Escolha um adereço da sua classe.`;
     }
     return inventoryError(reason) ?? L.error(code ?? "internal", reason);
   }
@@ -156,7 +181,7 @@ export default function NpcDialog(props: {
     return cannotUse(d, base(), level()) === null;
   };
   const offers = (f: ShopFilter) =>
-    MERCHANT_SELLS.filter((o) => {
+    MERCHANT_OFFERS.filter((o) => {
       const d = itemDef(o.item);
       if (!d) return false;
       if (f === "all") return true;
@@ -272,7 +297,9 @@ export default function NpcDialog(props: {
       return t`Compra o loot e o kit; o que ele vende, recompra pela metade. Vende munição, poções, mochilas, anéis e colares.`;
     if (props.request.npc === "banqueiro")
       return t`Guarda suas moedas sem peso e transfere para quem está no Espaço.`;
-    return t`Evolui a classe do herói, o que abre partes da árvore de habilidades, e redistribui atributos e habilidades.`;
+    if (props.request.npc === "ferreiro")
+      return t`Refina a arma que você empunha, até +${REFINE_MAX}. Cada nível dá dano; acima do +${REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra).`;
+    return t`Evolui a classe do herói, o que abre partes da árvore de habilidades, redistribui atributos e habilidades e, com a árvore cheia, faz a árvore renascer.`;
   };
 
   return (
@@ -714,6 +741,126 @@ export default function NpcDialog(props: {
             </Muted>
           </Show>
 
+          {/* ---- ferreiro: o refino da arma empunhada (24/11/2026) ---- */}
+          <Show when={props.request.npc === "ferreiro"}>
+            {(_) => {
+              const w = () => hero()?.inventory.equip.arma;
+              const def = () => itemDef(w()?.item ?? "");
+              const lvl = () => w()?.refine ?? 0;
+              const pct = (n: number) =>
+                Math.round((refineFactor(n) - 1) * 100);
+              const risky = () => lvl() >= REFINE_SAFE;
+              const cost = () => (def() ? refineCost(def()!, lvl()) : 0);
+              const refine = async () => {
+                if (busy()) return;
+                if (risky() && confirm() !== "refine")
+                  return setConfirm("refine");
+                const from = lvl();
+                setBusy(true);
+                setError(null);
+                setDone(null);
+                setConfirm(null);
+                const res = await request("rpg.refine", {});
+                setBusy(false);
+                queueMicrotask(refocus);
+                if (res.t === "error") {
+                  const d = res.d as { code?: string; reason?: string };
+                  return setError(npcError(d.code, d.reason));
+                }
+                const to = lvl();
+                setDone(
+                  to > from
+                    ? t`Deu certo: +${to}!`
+                    : to < from
+                      ? t`Falhou: a arma voltou para +${to}.`
+                      : t`Falhou: a arma continua +${to}.`,
+                );
+              };
+              return (
+                <Show
+                  when={def()}
+                  fallback={
+                    <p>
+                      {t`Empunhe a arma que quer refinar (na ficha do herói) e volte aqui.`}
+                    </p>
+                  }
+                >
+                  {(d) => (
+                    <>
+                      <ShopRow>
+                        <ItemIcon aria-hidden="true">
+                          <Symbol size={22}>{itemIcon(d())}</Symbol>
+                        </ItemIcon>
+                        <Info>
+                          <strong>
+                            {lvl() > 0 ? `+${lvl()} ` : ""}
+                            {d().name}
+                          </strong>
+                          <Muted>
+                            {lvl() > 0
+                              ? t`Dano da arma: +${pct(lvl())}%`
+                              : t`Sem refino.`}
+                          </Muted>
+                        </Info>
+                        <span />
+                      </ShopRow>
+                      <Ladder aria-label={t`Refino ${lvl()} de ${REFINE_MAX}`}>
+                        <For
+                          each={Array.from(
+                            { length: REFINE_MAX },
+                            (_, i) => i + 1,
+                          )}
+                        >
+                          {(n) => (
+                            <span
+                              data-on={n <= lvl() ? "" : undefined}
+                              data-safe={n <= REFINE_SAFE ? "" : undefined}
+                              title={t`+${n}: dano +${pct(n)}%, chance ${refineChance(n - 1)}%`}
+                            >
+                              {n}
+                            </span>
+                          )}
+                        </For>
+                      </Ladder>
+                      <Show
+                        when={lvl() < REFINE_MAX}
+                        fallback={
+                          <Muted>{t`No máximo: +${REFINE_MAX}.`}</Muted>
+                        }
+                      >
+                        <p>
+                          {t`De +${lvl()} para +${lvl() + 1}: chance de ${refineChance(lvl())}%, dano de +${pct(lvl())}% para +${pct(lvl() + 1)}%.`}{" "}
+                          <Muted>
+                            {risky()
+                              ? t`Se falhar, a arma volta para +${lvl() - 1 < 0 ? 0 : lvl() - (lvl() > REFINE_SAFE ? 1 : 0)} e o ouro vai.`
+                              : t`Até o +${REFINE_SAFE} não falha.`}
+                          </Muted>
+                        </p>
+                        <Row>
+                          <Button
+                            size="xs"
+                            variant="filled"
+                            isDisabled={
+                              busy() || inRun() || carried() + bank() < cost()
+                            }
+                            onPress={() => void refine()}
+                          >
+                            {confirm() === "refine"
+                              ? t`Confirmar: refinar por ${money(cost())}`
+                              : t`Refinar por ${money(cost())}`}
+                          </Button>
+                          <Show when={carried() + bank() < cost()}>
+                            <Warn>{t`Faltam ${money(cost() - carried() - bank())}`}</Warn>
+                          </Show>
+                        </Row>
+                      </Show>
+                    </>
+                  )}
+                </Show>
+              );
+            }}
+          </Show>
+
           {/* ---- mestre de evolução (24/11/2026) ---- */}
           <Show when={props.request.npc === "mestre"}>
             {(_) => {
@@ -778,6 +925,83 @@ export default function NpcDialog(props: {
                         </Show>
                       </>
                     )}
+                  </Show>
+                  <strong>{t`Renascer a árvore`}</strong>
+                  <Show
+                    when={treeFull(
+                      h().tree,
+                      VOCATIONS[h().vocation].base,
+                      tier(),
+                    )}
+                    fallback={
+                      <Muted>
+                        {t`Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render ${MASTERY_PCT}% a mais por ponto, para sempre. ${h().rebirths ?? 0} renascimentos até agora.`}
+                      </Muted>
+                    }
+                  >
+                    {(_) => {
+                      const options = () =>
+                        TREE.filter(
+                          (n) =>
+                            abilityDef(n.ability)?.cls ===
+                              VOCATIONS[h().vocation].base &&
+                            n.tier <= tier() &&
+                            masteryNode(n.id),
+                        );
+                      const label = (id: string) => {
+                        const n = TREE.find((x) => x.id === id);
+                        const m = h().mastery?.[id] ?? 0;
+                        const ab = n ? (abilityDef(n.ability)?.name ?? "") : "";
+                        return m > 0
+                          ? `${ab} · ${n?.name ?? id} (maestria ${m})`
+                          : `${ab} · ${n?.name ?? id}`;
+                      };
+                      return (
+                        <>
+                          <Muted>
+                            {t`A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render ${MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro.`}
+                          </Muted>
+                          <Field>
+                            <span>{t`Adereço`}</span>
+                            <select
+                              value={node()}
+                              aria-label={t`Adereço que ganha a maestria`}
+                              onChange={(e) => {
+                                setConfirm(null);
+                                setNode(e.currentTarget.value);
+                              }}
+                            >
+                              <option value="">{t`Escolha`}</option>
+                              <For each={options()}>
+                                {(n) => (
+                                  <option value={n.id}>{label(n.id)}</option>
+                                )}
+                              </For>
+                            </select>
+                          </Field>
+                          <Row>
+                            <Button
+                              size="xs"
+                              variant="filled"
+                              isDisabled={busy() || inRun() || !node()}
+                              onPress={() => {
+                                if (confirm() !== "rebirth")
+                                  return setConfirm("rebirth");
+                                send(
+                                  "rpg.rebirth",
+                                  { node: node() },
+                                  t`A árvore renasceu.`,
+                                );
+                              }}
+                            >
+                              {confirm() === "rebirth"
+                                ? t`Confirmar: renascer a árvore`
+                                : t`Renascer`}
+                            </Button>
+                          </Row>
+                        </>
+                      );
+                    }}
                   </Show>
                   <strong>{t`Redistribuir`}</strong>
                   <Muted>
@@ -1108,6 +1332,33 @@ const Count = styled("span", {
     fontSize: "0.75em",
     lineHeight: "16px",
     textAlign: "center",
+  },
+});
+
+/** A escada do refino: +1 a +10, o seguro em verde e o já feito aceso. */
+const Ladder = styled("div", {
+  base: {
+    display: "grid",
+    gridTemplateColumns: "repeat(10, minmax(0, 1fr))",
+    gap: "4px",
+    "& > span": {
+      display: "grid",
+      placeItems: "center",
+      height: "26px",
+      borderRadius: "6px",
+      fontSize: "0.75em",
+      fontWeight: 700,
+      background: "rgba(255, 255, 255, 0.06)",
+      boxShadow: "inset 0 0 0 1px rgba(255, 138, 122, 0.35)",
+    },
+    "& > span[data-safe]": {
+      boxShadow: "inset 0 0 0 1px rgba(126, 224, 138, 0.4)",
+    },
+    "& > span[data-on]": {
+      background: "#d9b45a",
+      color: "#1b140b",
+      boxShadow: "none",
+    },
   },
 });
 

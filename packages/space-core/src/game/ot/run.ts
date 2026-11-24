@@ -1,7 +1,9 @@
 import { Rng } from "../rng.ts";
 import {
   type AbilityNow,
+  type Mastery,
   type Tree,
+  CONCENTRATION,
   MIN_COOLDOWN_MS,
   abilitiesOf,
   abilityNow,
@@ -62,6 +64,7 @@ import {
   canDrink,
   canUse,
   itemDef,
+  refineFactor,
 } from "./items.ts";
 import { rollLoot } from "./loot.ts";
 import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
@@ -190,7 +193,7 @@ export function weaponScore(
 const STAT_WEIGHT: Readonly<Record<number, Readonly<Partial<Stats>>>> = {
   1: { int: 1, des: 0.6, vit: 0.5, agi: 0.3, sor: 0.3 },
   2: { int: 1, vit: 0.7, des: 0.5, agi: 0.3, sor: 0.3 },
-  3: { des: 1, int: 0.7, agi: 0.7, vit: 0.5, sor: 0.3, for: 0.2 },
+  3: { des: 1, agi: 0.8, vit: 0.5, sor: 0.4, for: 0.2 },
   4: { for: 1, vit: 0.8, agi: 0.6, des: 0.4, sor: 0.3 },
 };
 
@@ -348,6 +351,8 @@ export interface RunHero {
   /** 24/11/2026: os atributos (sem eles, todos em 1) e a árvore de habilidades. */
   stats?: Stats;
   tree?: Tree;
+  /** A maestria dos renascimentos da árvore (abilities.ts): o efeito a mais de cada adereço. */
+  mastery?: Mastery;
 }
 
 /** Beber poção abaixo de `below`% (0: nunca); `item` null: a que mais cura entre as que tem. */
@@ -489,6 +494,14 @@ interface HeroRt {
   /** Até quando o desafio protege o cavaleiro, e quanto (adereço Muralha). */
   guardUntil: number;
   guardPct: number;
+  /** A Concentração do arqueiro: até quando, e o dano e a velocidade a mais (em %). */
+  focusUntil: number;
+  focusDmg: number;
+  focusAspd: number;
+  /** As habilidades de reforço (a Concentração). */
+  boosts: AbilityNow[];
+  /** O refino da arma vestida: o dano dela é multiplicado por isto (items.ts refineFactor). */
+  refine: number;
   /** A munição do último tiro (a reposição procura a mesma primeiro). */
   lastAmmo: string | null;
   /** Quando pode beber de novo (ms). */
@@ -637,7 +650,9 @@ export function simulateRun(input: RunInput): RunResult {
     const inv = cloneInventory(h.inv);
     // As 4 habilidades da classe (a promovida tem a mesma base), com os adereços.
     const tree = h.tree ?? {};
-    const known = abilitiesOf(voc.base).map((a) => abilityNow(a, tree));
+    const known = abilitiesOf(voc.base).map((a) =>
+      abilityNow(a, tree, h.mastery),
+    );
     const of = (k: string) => known.filter((a) => a.def.kind === k);
     const rt: HeroRt = {
       i,
@@ -661,6 +676,11 @@ export function simulateRun(input: RunInput): RunResult {
       attacks: of("ataque"),
       areas: of("area"),
       supports: of("desafio"),
+      boosts: of("foco"),
+      focusUntil: 0,
+      focusDmg: 0,
+      focusAspd: 0,
+      refine: 1,
       cooldown: new Map(),
       healGroup: 0,
       supportGroup: 0,
@@ -695,6 +715,7 @@ export function simulateRun(input: RunInput): RunResult {
   function refresh(h: HeroRt) {
     const eq = h.inv.equip;
     h.weapon = eq.arma ? (itemDef(eq.arma.item) ?? null) : null;
+    h.refine = refineFactor(eq.arma?.refine ?? 0);
     const shield = eq.escudo ? (itemDef(eq.escudo.item) ?? null) : null;
     h.hasShield = shield !== null;
     const pieces = ARMOR_SLOTS.map(
@@ -958,6 +979,35 @@ export function simulateRun(input: RunInput): RunResult {
     return itemDef(id) ?? null;
   }
 
+  /**
+   * O tiro máximo do arco com a flecha que está pronta, sem gastar nem mexer na flecha: é a base
+   * das habilidades do arqueiro (fórmula "tiro"). Sem arco ou sem flecha: 0.
+   */
+  function rangedMax(h: HeroRt): number {
+    const w = h.weapon;
+    if (w?.kind !== "distancia" || !w.ammo) return 0;
+    const fits = (d: ItemDef | undefined) =>
+      !!d && d.ammo === w.ammo && canUse(d, h.voc.base, h.h.level);
+    const slot = h.inv.equip.municao ? itemDef(h.inv.equip.municao.item) : undefined;
+    const ammo = fits(slot)
+      ? slot!
+      : h.inv.pack.map((x) => itemDef(x.item)).find(fits);
+    if (!ammo) return 0;
+    return Math.trunc(
+      maxWeaponDamage(
+        h.h.level,
+        h.sk.distancia,
+        (ammo.attack ?? 0) + (w.attack ?? 0),
+        ATTACK_FACTOR[RUN.fightMode],
+      ) *
+        h.voc.distDamage *
+        h.refine,
+    );
+  }
+
+  /** A Concentração está valendo agora? */
+  const focused = (h: HeroRt) => h.focusUntil > nowMs;
+
   /** Uniforme em [0, 1] em milésimos, do mesmo gerador da corrida. */
   function unitRoll(): number {
     return uniformRandom(rng, 0, 1000) / 1000;
@@ -984,7 +1034,9 @@ export function simulateRun(input: RunInput): RunResult {
   ): number {
     const floor = Math.max(min, Math.floor(max * h.d.minRoll));
     const raw = crit ? max : normalRandom(rng, Math.min(floor, max), max);
-    const pct = ranged ? h.d.rangedPct : h.d.meleePct;
+    const pct = ranged
+      ? h.d.rangedPct + (focused(h) ? h.focusDmg : 0)
+      : h.d.meleePct;
     return Math.floor(raw * (1 + pct / 100));
   }
 
@@ -1008,7 +1060,7 @@ export function simulateRun(input: RunInput): RunResult {
       const pct =
         h.d.magicPct[0] + (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
       const raw = Math.floor(
-        normalRandom(rng, w.wand.min, w.wand.max) * (1 + pct / 100),
+        normalRandom(rng, w.wand.min, w.wand.max) * (1 + pct / 100) * h.refine,
       );
       const r = monsterElement(m.def, w.wand.element, raw, "none");
       ev.push({
@@ -1076,7 +1128,9 @@ export function simulateRun(input: RunInput): RunResult {
             striker.skill,
             striker.attack,
             ATTACK_FACTOR[striker.mode],
-          ) * h.voc.distDamage,
+          ) *
+            h.voc.distDamage *
+            h.refine,
         );
         const crit = critical(h);
         const raw = weaponRoll(
@@ -1120,13 +1174,17 @@ export function simulateRun(input: RunInput): RunResult {
       w && (w.kind === "espada" || w.kind === "machado" || w.kind === "maca")
         ? w.kind
         : "punhos";
+    // O refino vale para a arma; nos punhos (sem arma, ou o arco sem flecha), não.
+    const refined = w && striker.attack !== 7 ? h.refine : 1;
     const max = Math.trunc(
       maxWeaponDamage(
         striker.level,
         striker.skill,
         striker.attack,
         ATTACK_FACTOR[striker.mode],
-      ) * h.voc.meleeDamage,
+      ) *
+        h.voc.meleeDamage *
+        refined,
     );
     const crit = critical(h);
     const raw = weaponRoll(h, max, 0, false, crit);
@@ -1185,7 +1243,10 @@ export function simulateRun(input: RunInput): RunResult {
         ? h.d.meleePct
         : f === "distancia"
           ? h.d.rangedPct
-          : h.d.magicPct[0] + (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
+          : f === "tiro"
+            ? h.d.rangedPct + (focused(h) ? h.focusDmg : 0)
+            : h.d.magicPct[0] +
+              (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
     return Math.max(0, Math.floor(raw * s.power * (1 + pct / 100)));
   }
 
@@ -1282,6 +1343,7 @@ export function simulateRun(input: RunInput): RunResult {
       weaponSkill: weaponSkill(h.weapon, h.sk),
       weaponAttack: h.weapon?.attack ?? 7,
       distance: h.sk.distancia,
+      rangedMax: rangedMax(h),
     };
     if (tMs >= h.healGroup) {
       // Cura num companheiro: o mais ferido abaixo do limite (40%, mais os adereços) [nosso].
@@ -1306,6 +1368,22 @@ export function simulateRun(input: RunInput): RunResult {
       }
     }
     if (m && tMs >= h.supportGroup) challenge(h, tMs);
+    // A Concentração: com monstro na sala e sem ela valendo, antes dos tiros [nosso].
+    const boost = h.boosts[0];
+    if (
+      m &&
+      boost &&
+      !focused(h) &&
+      hero.rangedMax! > 0 &&
+      ready(h, boost, tMs, healReserve(h))
+    ) {
+      spendMana(h, boost.mana);
+      cool(h, boost, tMs);
+      h.focusUntil = tMs + boost.focusMs;
+      h.focusDmg = CONCENTRATION.dmgPct * boost.power;
+      h.focusAspd = CONCENTRATION.aspdPct * boost.power;
+      ev.push({ k: "magia", a: h.i, b: h.i, v: 0, s: boost.def.id });
+    }
     if (m && tMs >= h.attackGroup) {
       // Ataca guardando mana para a cura dele [nosso]: duas curas ou 20% da mana, o que for
       // maior (com uma só, o mago gastava tudo na magia de área cara e caía sem se curar);
@@ -1647,7 +1725,11 @@ export function simulateRun(input: RunInput): RunResult {
         // abaixo de 1 s, mais de um golpe cabe no mesmo segundo.
         const interval = Math.max(
           RUN.minAttackMs,
-          Math.round(h.voc.attackSpeedMs * h.d.aspd),
+          Math.round(
+            h.voc.attackSpeedMs *
+              h.d.aspd *
+              (focused(h) ? 1 - Math.min(60, h.focusAspd) / 100 : 1),
+          ),
         );
         const cap = Math.ceil(1000 / interval);
         for (let n = 0; n < cap && h.alive && tMs >= h.nextAttack; n++) {

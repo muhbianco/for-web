@@ -1,4 +1,5 @@
 import type { AvatarGear } from "@muchat/space-core";
+import { dungeonOf, monsterDef } from "@muchat/space-core/game/ot";
 
 import { artCanvas as canvas, type Ctx, drawEquipped, outline, px } from "../render/heroArt.ts";
 import { OUTLINE, shade } from "../render/pixel.ts";
@@ -68,7 +69,25 @@ export function fallenCanvas(standing: HTMLCanvasElement): HTMLCanvasElement {
 
 /** Lado do sprite de cada monstro (o chefe ocupa 2 × 2 tiles). */
 export function monsterSize(id: string, boss: boolean): number {
-  return boss || BIG.has(id) ? 32 : 16;
+  return boss || BIG.has(likeOf(id)) ? 32 : 16;
+}
+
+/**
+ * Os monstros das faixas do 85 ao 500 (24/11/2026, space-core tiers.ts) usam a arte de um
+ * monstro de antes (`look.like`) com outra cor por cima (`look.tint`).
+ */
+function likeOf(id: string): string {
+  return monsterDef(id)?.look?.like ?? id;
+}
+
+/** Pinta por cima do desenho (só onde há desenho), guardando a luz e a sombra dele. */
+function tint(ctx: Ctx, w: number, h: number, color: string, alpha = 0.5) {
+  ctx.save();
+  ctx.globalCompositeOperation = "source-atop";
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = color;
+  ctx.fillRect(0, 0, w, h);
+  ctx.restore();
 }
 const BIG = new Set([
   "matriarca-do-musgo", "rei-das-comportas", "guardiao-da-forja", "rei-javali", "rainha-aranha", "capataz-espectral",
@@ -1164,11 +1183,14 @@ function generic(ctx: Ctx, id: string, s: number) {
 export function monsterCanvas(id: string, boss: boolean): HTMLCanvasElement {
   const s = monsterSize(id, boss);
   const { c, ctx } = canvas(s, s);
-  const paint = MONSTERS[id];
-  if (paint && (s === 32) === BIG.has(id)) paint(ctx);
-  else generic(ctx, id, s);
+  const like = likeOf(id);
+  const paint = MONSTERS[like];
+  if (paint && (s === 32) === BIG.has(like)) paint(ctx);
+  else generic(ctx, like, s);
+  const look = monsterDef(id)?.look;
+  if (look) tint(ctx, s, s, look.tint);
   outline(c);
-  if (FLYING.has(id) && s === 16) px(ctx, 5, 14, 6, 1, "rgba(0, 0, 0, 0.35)");
+  if (FLYING.has(like) && s === 16) px(ctx, 5, 14, 6, 1, "rgba(0, 0, 0, 0.35)");
   return c;
 }
 
@@ -1199,8 +1221,9 @@ const POOL: Record<string, string> = {
 export function corpseCanvas(id: string, body: HTMLCanvasElement): HTMLCanvasElement {
   const s = body.width;
   const { c, ctx } = canvas(s, s);
-  if (!DRY.has(id)) {
-    ctx.fillStyle = POOL[id] ?? "#5a1e24";
+  const like = likeOf(id);
+  if (!DRY.has(like)) {
+    ctx.fillStyle = POOL[like] ?? "#5a1e24";
     ctx.globalAlpha = 0.75;
     ctx.beginPath();
     ctx.ellipse(s / 2, s - s * 0.16, s * 0.42, s * 0.14, 0, 0, Math.PI * 2);
@@ -1846,7 +1869,9 @@ const THEMES: Record<string, Theme> = {
 
 /** A sala `st` de uma dungeon: parede com enfeites, chão de lajes, portas dos dois lados. */
 export function roomCanvas(dungeon: string, st: number): HTMLCanvasElement {
-  const th = THEMES[dungeon] ?? THEMES["cripta-do-musgo"]!;
+  // As faixas do 85 ao 500: o tema de uma dungeon de antes, com outra cor por cima no fim.
+  const look = dungeonOf(dungeon)?.look;
+  const th = THEMES[look?.like ?? dungeon] ?? THEMES["cripta-do-musgo"]!;
   const { c, ctx } = canvas(SCENE_W, SCENE_H);
   const rnd = seeded(hash(`${dungeon}|${st}`));
   // Chão: lajes de 16 px com rejunte, umas mais claras, umas lascadas.
@@ -1878,5 +1903,6 @@ export function roomCanvas(dungeon: string, st: number): HTMLCanvasElement {
     px(ctx, x, doorY + TILE, SIDE, 2, "#6a4a2e");
   }
   px(ctx, 0, SCENE_H - 3, SCENE_W, 3, th.lip);
+  if (look) tint(ctx, SCENE_W, SCENE_H, look.tint, 0.35);
   return c;
 }

@@ -24,7 +24,12 @@ export type SpellFormula =
       type: "distancia";
       min: readonly [number, number];
       max: readonly [number, number];
-    };
+    }
+  /**
+   * 24/11/2026, o Arqueiro do Ragnarok: `min`–`max` vezes o tiro máximo do arco com a flecha
+   * (o mesmo do ataque normal, run.ts). Sem arco e flecha, nada.
+   */
+  | { type: "tiro"; min: number; max: number };
 
 /** Quanto tempo o desafio prende o monstro [TFS monster.cpp challengeCreature: 8000 ms]. */
 export const CHALLENGE_FOCUS_MS = 8000;
@@ -41,6 +46,8 @@ export function spellRange(
     weaponSkill: number;
     weaponAttack: number;
     distance: number;
+    /** O tiro máximo do arco com a flecha (0: sem arco ou sem flecha). */
+    rangedMax?: number;
   },
 ): [number, number] {
   const f = s.formula;
@@ -67,5 +74,9 @@ export function spellRange(
         Math.trunc(l + hero.distance * f.min[0] + f.min[1]),
         Math.trunc(l + hero.distance * f.max[0] + f.max[1]),
       ];
+    case "tiro": {
+      const m = hero.rangedMax ?? 0;
+      return [Math.trunc(m * f.min), Math.trunc(m * f.max)];
+    }
   }
 }

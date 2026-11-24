@@ -73,7 +73,11 @@ msgid "(recebendo)"
 msgstr ""
 
 #: components/space/game/StatsPanel.tsx
-msgid "(SOR + 10)/10: escapa de qualquer golpe normal."
+#~ msgid "(SOR + 10)/10: escapa de qualquer golpe normal."
+#~ msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "(SOR + 10)/10: escapa de qualquer golpe normal. Nunca passa de 40%."
 msgstr ""
 
 #: components/space/game/RunPanel.tsx
@@ -642,6 +646,12 @@ msgstr ""
 msgid "+{health} de vida e +{mana} de mana a cada {s} s"
 msgstr ""
 
+#. placeholder {0}: pct(n)
+#. placeholder {1}: refineChance(n - 1)
+#: components/space/game/NpcDialog.tsx
+msgid "+{n}: dano +{0}%, chance {1}%"
+msgstr ""
+
 #: components/space/game/heroUi.ts
 msgid "+{pct}% de cura"
 msgstr ""
@@ -782,7 +792,11 @@ msgid "1 person reacted"
 msgstr "1 জন রিয়্যাক্ট করেছেন"
 
 #: components/space/game/StatsPanel.tsx
-msgid "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura."
+#~ msgid "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura."
+#~ msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura. Nunca passa de 60%."
 msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
@@ -811,6 +825,18 @@ msgstr ""
 
 #: components/space/game/runUi.ts
 msgid "A armadura de {b} segurou {a}"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render {MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A árvore precisa estar cheia: todos os adereços da sua classe no último ponto."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A árvore renasceu."
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -1025,6 +1051,14 @@ msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Add status text"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Adereço"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Adereço que ganha a maestria"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -1271,8 +1305,12 @@ msgid "Arquimago"
 msgstr ""
 
 #: components/space/game/StatsPanel.tsx
-msgid "As habilidades voltam DES/300 mais depressa."
+msgid "As habilidades voltam DES/300 mais depressa no começo, cada vez menos; no máximo pela metade."
 msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+#~ msgid "As habilidades voltam DES/300 mais depressa."
+#~ msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Assign lower-ranked roles to lower-ranking members"
@@ -1346,6 +1384,10 @@ msgstr ""
 
 #: components/space/game/StatsPanel.tsx
 msgid "Ataques por segundo"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Até o +{REFINE_SAFE} não falha."
 msgstr ""
 
 #: components/space/game/itemUi.ts
@@ -1664,8 +1706,16 @@ msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia 
 msgstr ""
 
 #: components/space/game/StatsPanel.tsx
-msgid "Cada level na dungeon dá {POINTS_PER_LEVEL} pontos. Cada ponto é +1 no atributo, até {STAT_MAX}."
+msgid "Cada level na dungeon dá {POINTS_PER_LEVEL} pontos. Até o 50, cada ponto custa 1; do 51 ao 60 custa 2, do 61 ao 70 custa 3, e assim por diante. Passado o {STAT_SOFT}, cada ponto vale menos nas contas. Não há teto."
 msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+#~ msgid "Cada level na dungeon dá {POINTS_PER_LEVEL} pontos. Cada ponto é +1 no atributo, até {STAT_MAX}."
+#~ msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+#~ msgid "Cada level na dungeon dá {POINTS_PER_LEVEL} pontos. Subir um atributo custa 1 ponto até o 10, 2 até o 20, e assim por diante; passado o {STAT_SOFT}, cada ponto vale menos nas contas. Não há teto."
+#~ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo antes de trocar o vídeo (quem gerencia a TV pode trocar antes)."
@@ -2105,6 +2155,11 @@ msgstr ""
 msgid "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas salas que não disserem o contrário)"
 msgstr ""
 
+#. placeholder {0}: h().rebirths ?? 0
+#: components/space/game/NpcDialog.tsx
+msgid "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Combate"
 #~ msgstr ""
@@ -2272,6 +2327,15 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Confirmar: promover por {cost}"
 #~ msgstr ""
+
+#. placeholder {0}: money(cost())
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: refinar por {0}"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: renascer a árvore"
+msgstr ""
 
 #. placeholder {0}: money(amount())
 #: components/space/game/NpcDialog.tsx
@@ -2624,6 +2688,11 @@ msgstr "বর্তমান পাসওয়ার্ড"
 msgid "Current Session"
 msgstr ""
 
+#. placeholder {0}: nextCost(k)
+#: components/space/game/StatsPanel.tsx
+msgid "Custa {0}"
+msgstr ""
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Custom colour"
 msgstr ""
@@ -2650,6 +2719,11 @@ msgstr ""
 #~ msgid "Dano constante à distância; esquiva os golpes com facilidade."
 #~ msgstr ""
 
+#. placeholder {0}: pct(lvl())
+#: components/space/game/NpcDialog.tsx
+msgid "Dano da arma: +{0}%"
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "dano da varinha"
 msgstr ""
@@ -2666,6 +2740,15 @@ msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "Date format"
+msgstr ""
+
+#. placeholder {0}: lvl()
+#. placeholder {1}: lvl() + 1
+#. placeholder {2}: refineChance(lvl())
+#. placeholder {3}: pct(lvl())
+#. placeholder {4}: pct(lvl() + 1)
+#: components/space/game/NpcDialog.tsx
+msgid "De +{0} para +{1}: chance de {2}%, dano de +{3}% para +{4}%."
 msgstr ""
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
@@ -2892,6 +2975,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Detalhe"
 #~ msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Deu certo: +{to}!"
+msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Devagar: muitos comandos seguidos."
@@ -3152,6 +3239,14 @@ msgstr ""
 msgid "Emojis"
 msgstr "ইমোজিগুলি"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Empunhe a arma que quer refinar (na ficha do herói) e volte aqui."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Empunhe a arma que quer refinar (na ficha do herói)."
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Enable Authenticator"
 msgstr ""
@@ -3308,6 +3403,10 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
+msgid "Escolha"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
 msgid "Escolha a vocação do seu herói num dummy de treino primeiro."
 msgstr ""
 
@@ -3333,6 +3432,10 @@ msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Escolha seu personagem"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Escolha um adereço da sua classe."
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -3434,6 +3537,10 @@ msgstr ""
 msgid "Esquiva perfeita"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Essa arma já está no +{REFINE_MAX}."
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "Essa arma usa as duas mãos: tire o escudo antes (ou a arma, para pôr o escudo)."
 msgstr ""
@@ -3456,6 +3563,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Esse adereço já está no máximo."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Esse adereço não ganha maestria (só os de número: força, economia, recarga...)."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -3546,7 +3657,11 @@ msgid "Everyone"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, e redistribui atributos e habilidades."
+#~ msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, e redistribui atributos e habilidades."
+#~ msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, redistribui atributos e habilidades e, com a árvore cheia, faz a árvore renascer."
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
@@ -3624,10 +3739,19 @@ msgid "Fale um pouco para medir"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
+msgid "Falhou: a arma continua +{to}."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Falhou: a arma voltou para +{to}."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
 msgid "Falta level para a evolução."
 msgstr ""
 
 #. placeholder {0}: money(-left())
+#. placeholder {0}: money(cost() - carried() - bank())
 #: components/space/game/NpcDialog.tsx
 msgid "Faltam {0}"
 msgstr ""
@@ -4541,6 +4665,12 @@ msgstr ""
 #~ msgid "Madeira"
 #~ msgstr ""
 
+#. placeholder {0}: m()
+#. placeholder {1}: num(m() * MASTERY_PCT)
+#: components/space/game/SkillTree.tsx
+msgid "Maestria {0}: cada ponto rende {1}% a mais"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Magia"
 msgstr ""
@@ -5266,6 +5396,10 @@ msgstr ""
 msgid "no máximo: {0}"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "No máximo: +{REFINE_MAX}."
+msgstr ""
+
 #: components/space/game/heroUi.ts
 msgid "No máximo."
 msgstr ""
@@ -5379,8 +5513,12 @@ msgid "O herói treina sozinho enquanto você fica ao lado do dummy. Sair de per
 msgstr ""
 
 #: components/space/game/StatsPanel.tsx
-msgid "O intervalo cai (4 × AGI + DES)/1000."
+msgid "O intervalo cai (4 × AGI + DES)/1000 no começo, cada vez menos; no máximo 2,5 vezes mais rápido."
 msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+#~ msgid "O intervalo cai (4 × AGI + DES)/1000."
+#~ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "O jogo está desligado neste servidor."
@@ -5707,6 +5845,10 @@ msgstr ""
 msgid "passa a ser do elemento {0}"
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Passado o {STAT_SOFT}, cada ponto vale menos nas contas"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 #: components/auth/src/flows/Form.tsx
 #: components/modal/modals/MFAFlow.tsx
@@ -5920,10 +6062,8 @@ msgstr ""
 msgid "Pôr um ponto"
 msgstr ""
 
-#. placeholder {0}: info[k].name
 #. placeholder {0}: node.name
 #: components/space/game/SkillTree.tsx
-#: components/space/game/StatsPanel.tsx
 msgid "Pôr um ponto em {0}"
 msgstr ""
 
@@ -6230,9 +6370,31 @@ msgstr ""
 msgid "Refazer"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra)."
+msgstr ""
+
+#. placeholder {0}: money(cost())
+#: components/space/game/NpcDialog.tsx
+msgid "Refinar por {0}"
+msgstr ""
+
+#. placeholder {0}: lvl()
+#: components/space/game/NpcDialog.tsx
+msgid "Refino {0} de {REFINE_MAX}"
+msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "Refino +{refine}: +{pct}% de dano"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Reforçado"
 #~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Reforço em si"
+msgstr ""
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Refúgio"
@@ -6337,6 +6499,14 @@ msgstr ""
 
 #: components/modal/modals/RenameSession.tsx
 msgid "Rename Session"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Renascer"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Renascer a árvore"
 msgstr ""
 
 #: components/app/menus/MessageContextMenu.tsx
@@ -6603,6 +6773,11 @@ msgstr ""
 msgid "Screen Share Volume"
 msgstr ""
 
+#. placeholder {0}: lvl() - 1 < 0 ? 0 : lvl() - (lvl() > REFINE_SAFE ? 1 : 0)
+#: components/space/game/NpcDialog.tsx
+msgid "Se falhar, a arma volta para +{0} e o ouro vai."
+msgstr ""
+
 #: src/interface/channels/ChannelHeader.tsx
 msgid "Search"
 msgstr ""
@@ -6682,6 +6857,10 @@ msgstr ""
 
 #: components/space/game/heroUi.ts
 msgid "Sem pontos livres: treine no dummy de habilidade."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Sem refino."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -6976,6 +7155,10 @@ msgstr ""
 #~ msgid "Só administradores"
 #~ msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Só armas se refinam."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Só dá para se retirar num descanso."
 #~ msgstr ""
@@ -7165,6 +7348,12 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Subir {0}"
 #~ msgstr ""
+
+#. placeholder {0}: info[k].name
+#. placeholder {1}: nextCost(k)
+#: components/space/game/StatsPanel.tsx
+msgid "Subir {0}: custa {1}"
+msgstr ""
 
 #: components/app/interface/settings/user/Feedback.tsx
 msgid "Submit feature suggestion"
@@ -7855,6 +8044,11 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Uses your output volume."
+msgstr ""
+
+#. placeholder {0}: Math.floor(worth())
+#: components/space/game/StatsPanel.tsx
+msgid "vale {0}"
 msgstr ""
 
 #: components/space/game/itemUi.ts

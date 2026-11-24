@@ -11,6 +11,7 @@ import {
   cannotUse,
   itemDef,
   itemStats,
+  REFINE_MAX,
   starterKit,
 } from "./items.ts";
 
@@ -38,6 +39,8 @@ export interface ItemStack {
   charges?: number;
   /** Segundos de uso que restam (anéis). */
   duration?: number;
+  /** O refino da arma (24/11/2026, items.ts REFINE_MAX); sem ele, +0. */
+  refine?: number;
 }
 
 export interface Inventory {
@@ -64,7 +67,8 @@ export function sameStack(a: ItemStack, b: ItemStack): boolean {
   return (
     a.item === b.item &&
     (a.charges ?? null) === (b.charges ?? null) &&
-    (a.duration ?? null) === (b.duration ?? null)
+    (a.duration ?? null) === (b.duration ?? null) &&
+    (a.refine ?? 0) === (b.refine ?? 0)
   );
 }
 
@@ -456,7 +460,11 @@ export function validInventory(inv: unknown): inv is Inventory {
     typeof (s as ItemStack).item === "string" &&
     Number.isInteger((s as ItemStack).count) &&
     (s as ItemStack).count > 0 &&
-    (s as ItemStack).count <= STACK_MAX;
+    (s as ItemStack).count <= STACK_MAX &&
+    ((s as ItemStack).refine === undefined ||
+      (Number.isInteger((s as ItemStack).refine) &&
+        (s as ItemStack).refine! >= 0 &&
+        (s as ItemStack).refine! <= REFINE_MAX));
   for (const s of SLOTS)
     if (x.equip[s] !== undefined && !ok(x.equip[s])) return false;
   if (!x.pack.every(ok)) return false;

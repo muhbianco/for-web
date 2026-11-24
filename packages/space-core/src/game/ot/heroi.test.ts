@@ -23,7 +23,11 @@ import {
   derive,
   freshStats,
   monsterHitChance,
+  softCap,
+  statCost,
+  statCostTo,
   statPointsFree,
+  statValue,
   statPointsTotal,
   validStats,
   vitDefRange,
@@ -37,9 +41,21 @@ import {
   trainingGain,
 } from "./training.ts";
 
-test("pontos de atributo: 5 por level, +1 por ponto, teto 99 [decisão do dono, RO pré-renovação]", () => {
+test("pontos de atributo: 5 por level, escada de custo a partir do 51, sem teto [decisão do dono, 24/11/2026]", () => {
   assert.equal(statPointsTotal(1), 5);
   assert.equal(statPointsTotal(20), 100);
+  assert.equal(statPointsTotal(500), 2500);
+  // Custo de subir de v para v+1: 1 até o 50; 2 do 51 ao 60, 3 do 61 ao 70... 16 do 191 ao 200.
+  assert.deepEqual(
+    [1, 50, 51, 60, 61, 100, 101, 191, 200].map(statCost),
+    [1, 1, 2, 2, 3, 6, 7, 16, 16],
+  );
+  // A soma fechada bate com a soma passo a passo.
+  for (const v of [1, 2, 10, 11, 12, 55, 100, 101, 250, 999]) {
+    let sum = 0;
+    for (let x = 1; x < v; x++) sum += statCost(x);
+    assert.equal(statCostTo(v), sum, `até ${v}`);
+  }
   const s = freshStats();
   assert.equal(statPointsFree(s, 1), 5);
   const r = addStats(s, { for: 3, vit: 2 }, 1);
@@ -50,10 +66,14 @@ test("pontos de atributo: 5 por level, +1 por ponto, teto 99 [decisão do dono, 
     ok: false,
     reason: "no_points",
   });
-  assert.deepEqual(addStats({ ...s, for: 98 }, { for: 2 }, 99), {
-    ok: false,
-    reason: "stat_max",
-  });
+  // Do 50 ao 52 custa 1 + 2 = 3 pontos; o level 11 tem 55, 49 já gastos em FOR 50.
+  const fifty = { ...s, for: 50 };
+  assert.equal(statPointsFree(fifty, 11), 6);
+  const up = addStats(fifty, { for: 2 }, 11);
+  assert.ok(up.ok && statPointsFree(up.stats, 11) === 3);
+  // Sem teto: o 99 passa, se houver pontos (do 99 ao 100 custa 6; o 99 já custou 238).
+  const high = addStats({ ...s, for: 99 }, { for: 1 }, 49);
+  assert.ok(high.ok && high.stats.for === 100);
   assert.deepEqual(addStats(s, { for: -1 }, 5), {
     ok: false,
     reason: "bad_points",
@@ -64,8 +84,35 @@ test("pontos de atributo: 5 por level, +1 por ponto, teto 99 [decisão do dono, 
     !validStats({ ...freshStats(), for: 7 }, 1),
     "mais pontos que o level",
   );
-  assert.ok(!validStats({ ...freshStats(), for: 100 }, 99), "teto 99");
+  // FOR 100 custa 244 pontos: o level 49 (245 pontos) paga; o 48 (240) não.
+  assert.equal(statCostTo(100), 244);
+  assert.ok(validStats({ ...freshStats(), for: 100 }, 49));
+  assert.ok(!validStats({ ...freshStats(), for: 100 }, 48));
   assert.ok(!validStats({ for: 1 }, 1));
+});
+
+test("escada de ganho: cheio até 100, depois cada ponto vale 100/v, sem teto", () => {
+  assert.equal(statValue(50), 50);
+  assert.equal(statValue(100), 100);
+  assert.ok(Math.abs(statValue(200) - (100 + 100 * Math.log(2))) < 1e-9);
+  // Sempre sobe, cada vez menos.
+  let prev = statValue(100);
+  let step = Infinity;
+  for (const v of [150, 200, 300, 500, 1000, 5000]) {
+    const now = statValue(v);
+    assert.ok(now > prev, `${v} sobe`);
+    const per = (now - prev) / v;
+    assert.ok(per < step, `${v} rende menos por ponto`);
+    prev = now;
+    step = per;
+  }
+  // As curvas com limite: igual ao de antes no começo, nunca passa do teto.
+  assert.ok(Math.abs(softCap(1, 60) - 1) < 0.02);
+  assert.ok(softCap(1e9, 60) < 60);
+  const big = derive({ ...freshStats(), agi: 5000, des: 5000, sor: 5000 }, 500);
+  assert.ok(big.aspd >= 0.4, "velocidade no máximo 2,5×");
+  assert.ok(big.crit < 60 && big.perfectDodge < 40);
+  assert.ok(big.minRoll < 0.9 && big.cooldown > 0.5);
 });
 
 test("fórmulas do Ragnarok pré-renovação [rAthena status.cpp, battle.cpp]", () => {
@@ -80,9 +127,15 @@ test("fórmulas do Ragnarok pré-renovação [rAthena status.cpp, battle.cpp]", 
   assert.deepEqual(vitDefRange(99), [29 + 49, 29 + 35 + 49]);
   const d = derive({ ...freshStats(), agi: 50, des: 20, sor: 30 }, 20);
   assert.equal(d.flee, 70, "level + AGI");
-  assert.equal(d.perfectDodge, 4, "(SOR + 10)/10 %");
-  assert.equal(d.crit, 11, "(10 + SOR·10/3)/10 %");
-  assert.equal(d.aspd, 1 - (200 + 20) / 1000, "amotion − (4·AGI + DES)/1000");
+  // Com a curva (24/11/2026): perto dos números do Ragnarok, um pouco abaixo.
+  assert.ok(Math.abs(d.perfectDodge - softCap(4, 40)) < 1e-9, "(SOR + 10)/10 %");
+  assert.ok(Math.abs(d.crit - softCap(11, 60)) < 1e-9, "(10 + SOR·10/3)/10 %");
+  assert.ok(d.crit > 9 && d.crit < 11);
+  assert.ok(
+    Math.abs(d.aspd - (1 - 0.6 * (1 - Math.exp(-220 / 600)))) < 1e-9,
+    "amotion − (4·AGI + DES)/1000, com teto",
+  );
+  assert.ok(d.aspd > 0.78 && d.aspd < 0.82, "perto de 0,78 do Ragnarok");
   assert.equal(
     withVit(400, { ...freshStats(), vit: 50 }),
     600,
@@ -231,10 +284,30 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
     bar.map((b) => b.id),
     ["golpe-brutal", "giro-da-lamina", "atadura", "desafio"],
   );
-  // 30 de mana − 30% = 21; 6 s × (1 − 61/300) = 4780 ms.
-  assert.deepEqual(bar[0], { id: "golpe-brutal", mana: 21, cd_ms: 4780 });
+  // 30 de mana − 30% = 21; 6 s × (1 − a curva da DES 61), a mesma da corrida (derive).
+  const cd = Math.round(6000 * derive({ ...freshStats(), des: 61 }, 30).cooldown);
+  assert.ok(cd > 5000 && cd < 5300, `recarga ${cd}`);
+  assert.deepEqual(bar[0], { id: "golpe-brutal", mana: 21, cd_ms: cd });
   // Sem atributos nem árvore (corrida antiga): os números de partida (a DES 1 tira 0,3%).
   const plain = abilityBar({ vocation: 1, level: 5 });
   assert.equal(plain[0]!.id, "golpe-de-raio");
-  assert.equal(plain[0]!.cd_ms, Math.round(2000 * (1 - 1 / 300)));
+  assert.equal(
+    plain[0]!.cd_ms,
+    Math.round(2000 * derive(freshStats(), 5).cooldown),
+  );
+});
+
+test("maestria: cada vez escolhido, o adereço rende 0,5% a mais por ponto; alvos a mais não mudam", () => {
+  const brutal = abilityDef("golpe-brutal")!;
+  const t = { "golpe-brutal.forca": 5 };
+  const plain = abilityNow(brutal, t).power;
+  const twice = abilityNow(brutal, t, { "golpe-brutal.forca": 2 }).power;
+  assert.ok(Math.abs(plain - 1.4) < 1e-9);
+  assert.ok(Math.abs(twice - (1 + 0.4 * 1.01)) < 1e-9);
+  const ray = abilityDef("golpe-de-raio")!;
+  const t2 = { "golpe-de-raio.forca": 1, "golpe-de-raio.corrente": 1 };
+  assert.equal(
+    abilityNow(ray, t2, { "golpe-de-raio.corrente": 9 }).targets,
+    abilityNow(ray, t2).targets,
+  );
 });

@@ -212,6 +212,11 @@ export function planSecond(p: PlanInput): Plan {
         if (e.a < MONSTER_BASE) {
           area = null;
           const t = nextT();
+          // Reforço no próprio herói (a Concentração do arqueiro, 24/11/2026): um brilho, sem dano.
+          if (e.b < MONSTER_BASE) {
+            push({ k: "burst", at: t, who: e.a, el: "sagrado" }, 200);
+            break;
+          }
           const sp = abilityDef(e.s);
           const el: Element = sp && sp.element !== "cura" ? sp.element : "fisico";
           const how = howOf("none", e.v);
@@ -222,7 +227,7 @@ export function planSecond(p: PlanInput): Plan {
             push({ k: "slash", at: t + MELEE_LAND, who: e.b, el }, 200);
             hit(e.b, t + MELEE_LAND, e.v, el, how);
           } else {
-            push({ k: "shot", at: t, dur: SPELL_MS, from: e.a, to: e.b, shot: el === "fisico" ? "lanca" : "orbe", el }, SPELL_MS);
+            push({ k: "shot", at: t, dur: SPELL_MS, from: e.a, to: e.b, shot: el === "fisico" ? (base === 3 ? "flecha" : "lanca") : "orbe", el }, SPELL_MS);
             push({ k: "burst", at: t + SPELL_MS, who: e.b, el }, 200);
             hit(e.b, t + SPELL_MS, e.v, el, how);
           }

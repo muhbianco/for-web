@@ -302,19 +302,33 @@ export function PotionBelt(props: {
   );
 }
 
-/** As cores do líquido por tamanho: a pequena mais clara, a forte mais funda. */
-const LIQUID: Record<PotionKind, Record<1 | 2 | 3, string>> = {
-  health: { 1: "#f0626a", 2: "#d3242f", 3: "#9b0d1e" },
-  mana: { 1: "#7fa4ff", 2: "#3d6bff", 3: "#1d33b5" },
+type FlaskSize = 1 | 2 | 3 | 4 | 5;
+
+/** As cores do líquido por tamanho: a pequena mais clara, a suprema mais funda (e roxa na mana). */
+const LIQUID: Record<PotionKind, Record<FlaskSize, string>> = {
+  health: {
+    1: "#f0626a",
+    2: "#d3242f",
+    3: "#9b0d1e",
+    4: "#7a0a2e",
+    5: "#5a0a3e",
+  },
+  mana: {
+    1: "#7fa4ff",
+    2: "#3d6bff",
+    3: "#1d33b5",
+    4: "#3a1db5",
+    5: "#5a1a9a",
+  },
 };
 
-/** Um frasco desenhado: o tamanho diz qual é (pequena, normal, forte). */
+/** Um frasco desenhado: o tamanho diz qual é (pequena, normal, forte, grande, suprema). */
 export function Flask(props: {
   kind: PotionKind;
-  size: 1 | 2 | 3;
+  size: FlaskSize;
   px: number;
 }) {
-  const h = () => Math.round(props.px * (0.72 + 0.14 * (props.size - 1)));
+  const h = () => Math.round(props.px * (0.72 + 0.07 * (props.size - 1)));
   return (
     <svg
       viewBox="0 0 24 28"
@@ -346,7 +360,7 @@ export function Flask(props: {
         width="6.4"
         height="2.8"
         rx="0.9"
-        fill={props.size === 3 ? "#d9b45a" : "#8a5a2b"}
+        fill={props.size >= 3 ? "#d9b45a" : "#8a5a2b"}
       />
     </svg>
   );
@@ -580,7 +594,12 @@ const Belt = styled("ul", {
     margin: 0,
     padding: 0,
     listStyle: "none",
-    "&[data-layout=column]": { flexDirection: "column" },
+    // No painel da luta: até 3 por coluna (a vida tem 5 tamanhos desde 24/11/2026).
+    "&[data-layout=column]": {
+      display: "grid",
+      gridTemplateRows: "repeat(3, auto)",
+      gridAutoFlow: "column",
+    },
     "&[data-layout=row]": {
       flexDirection: "row",
       flexWrap: "wrap",

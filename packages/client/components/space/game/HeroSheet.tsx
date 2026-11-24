@@ -33,6 +33,7 @@ import {
   itemName,
   oz,
   slotLabels,
+  stackName,
 } from "./itemUi";
 import { gameFrame } from "./gameTheme";
 import { Deltas } from "./ItemBits";
@@ -346,12 +347,12 @@ export default function HeroSheet(props: {
                       data-empty={inv().equip[slot] ? undefined : ""}
                       aria-label={
                         inv().equip[slot]
-                          ? `${S[slot]}: ${itemName(inv().equip[slot]!.item)}`
+                          ? `${S[slot]}: ${stackName(inv().equip[slot]!)}`
                           : t`${S[slot]}: vazio`
                       }
                       title={
                         inv().equip[slot]
-                          ? itemName(inv().equip[slot]!.item)
+                          ? stackName(inv().equip[slot]!)
                           : S[slot]
                       }
                       onClick={() => {
@@ -453,8 +454,8 @@ export default function HeroSheet(props: {
               <Details aria-live="polite">
                 <strong>
                   {x().count > 1
-                    ? `${x().count}× ${itemName(x().item)}`
-                    : itemName(x().item)}
+                    ? `${x().count}× ${stackName(x())}`
+                    : stackName(x())}
                 </strong>
                 <Show when={def()}>
                   {(d) => (

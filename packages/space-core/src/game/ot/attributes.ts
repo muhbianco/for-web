@@ -21,16 +21,67 @@ export const STATS: readonly StatId[] = [
 ];
 export type Stats = Record<StatId, number>;
 
-/** Todo atributo começa em 1 [RO pc.cpp: personagem novo com 1 em cada] e vai até 99 [RO pré-renovação]. */
+/**
+ * Todo atributo começa em 1 [RO pc.cpp: personagem novo com 1 em cada]. Desde o rework de
+ * 24/11/2026 ("o jogo não acaba nunca") não há teto: STAT_MAX é só a trava de sanidade de um
+ * pedido (nenhum herói chega perto, pela escada de custo).
+ */
 export const STAT_MIN = 1;
-export const STAT_MAX = 99;
+export const STAT_MAX = 10_000;
 
 /**
- * Pontos por level (decisão do dono, 24/11/2026: "cada level dá 5 pontos de status"). O
- * Ragnarok dá de 3 a 22 pontos por level e cobra mais por ponto a cada 10 [RO pc.cpp
- * PC_STATUS_POINT_COST]; com 5 fixos, cada ponto vale +1 [nosso].
+ * Pontos por level (decisão do dono, 24/11/2026: "cada level dá 5 pontos de status"). O ponto
+ * custa mais a cada 10 do atributo (statCost) e, passado o 100, vale menos (statValue): cada
+ * level compra menos, para sempre.
  */
 export const POINTS_PER_LEVEL = 5;
+
+/**
+ * A escada de custo [RO pc.cpp PC_STATUS_POINT_COST, sem o teto do 99], a partir do 50 [nosso]:
+ * até o 50 cada ponto custa 1 (o começo do jogo fica como era); do 51 ao 60 custa 2, do 61 ao 70
+ * custa 3, e assim por diante, para sempre (do 191 ao 200 custa 16).
+ */
+export const STAT_LADDER_FROM = 51;
+export function statCost(v: number): number {
+  const x = Math.max(STAT_MIN, Math.floor(v));
+  return x < STAT_LADDER_FROM ? 1 : 2 + Math.floor((x - STAT_LADDER_FROM) / 10);
+}
+
+/** Pontos para levar um atributo de 1 até `v` (a soma da escada, em fórmula fechada). */
+export function statCostTo(v: number): number {
+  const x = Math.max(STAT_MIN, Math.floor(v));
+  if (x <= STAT_LADDER_FROM) return x - STAT_MIN;
+  const m = x - STAT_LADDER_FROM;
+  const q = Math.floor(m / 10);
+  const r = m % 10;
+  return STAT_LADDER_FROM - STAT_MIN + (10 * q * (q + 3)) / 2 + r * (q + 2);
+}
+
+/**
+ * A escada de ganho [nosso]: até `STAT_SOFT` cada ponto vale cheio; dali em diante o ponto `v`
+ * vale `STAT_SOFT / v`. A soma cresce como o logaritmo: sem teto, cada vez mais devagar (o 200
+ * vale 169, o 300 vale 210, o 1000 vale 330).
+ */
+export const STAT_SOFT = 100;
+export function statValue(v: number): number {
+  return v <= STAT_SOFT ? v : STAT_SOFT + STAT_SOFT * Math.log(v / STAT_SOFT);
+}
+
+/** Os atributos como entram nas contas (statValue em cada um). */
+export function effectiveStats(s: Stats): Stats {
+  const out = { ...s };
+  for (const k of STATS) out[k] = statValue(s[k]);
+  return out;
+}
+
+/**
+ * [nosso] Um número que cresce com o atributo sem passar de `cap`: perto do começo, igual a
+ * `x`; depois, cada vez mais devagar (`cap · x / (x + cap)`). Velocidade, crítico, esquiva
+ * perfeita, golpe mínimo e recarga usam isto: sem teto de atributo, nada passa do possível.
+ */
+export function softCap(x: number, cap: number): number {
+  return x <= 0 ? 0 : (cap * x) / (x + cap);
+}
 
 export function freshStats(): Stats {
   return { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 };
@@ -41,10 +92,10 @@ export function statPointsTotal(level: number): number {
   return POINTS_PER_LEVEL * Math.max(1, Math.floor(level));
 }
 
-/** Pontos já postos (o que passou de 1 em cada atributo). */
+/** Pontos já postos: o custo da escada de cada atributo, do 1 até onde está. */
 export function statPointsSpent(s: Stats): number {
   let n = 0;
-  for (const k of STATS) n += s[k] - STAT_MIN;
+  for (const k of STATS) n += statCostTo(s[k]);
   return n;
 }
 
@@ -52,7 +103,7 @@ export function statPointsFree(s: Stats, level: number): number {
   return statPointsTotal(level) - statPointsSpent(s);
 }
 
-/** Atributos válidos: inteiros entre 1 e 99, sem passar dos pontos do level. */
+/** Atributos válidos: inteiros a partir de 1, com o custo da escada dentro dos pontos do level. */
 export function validStats(s: unknown, level: number): s is Stats {
   if (typeof s !== "object" || s === null) return false;
   for (const k of STATS) {
@@ -68,7 +119,8 @@ export function validStats(s: unknown, level: number): s is Stats {
 }
 
 /**
- * Soma `add` (pontos por atributo, todos ≥ 0) aos atributos, se couber no level e no teto.
+ * Soma `add` (quanto sobe cada atributo, todos ≥ 0) aos atributos, se o custo da escada couber
+ * nos pontos do level.
  * Devolve os atributos novos ou o motivo da recusa.
  */
 export function addStats(
@@ -174,7 +226,15 @@ export function vitDefRange(vit: number): [number, number] {
   return [a + b, a + spread + b];
 }
 
-export function derive(s: Stats, level: number): Derived {
+/**
+ * O que os atributos dão. Desde 24/11/2026 entra o valor de cada atributo (statValue, a escada
+ * de ganho), e o que tinha teto no Ragnarok pelo 99 tem teto aqui pela curva (softCap): no
+ * começo os números são os de antes; no alto, a velocidade de ataque não passa de 2,5 vezes, o
+ * crítico de 60%, a esquiva perfeita de 40%, o golpe mínimo de 90% do máximo e a recarga não
+ * cai abaixo da metade.
+ */
+export function derive(raw: Stats, level: number): Derived {
+  const s = effectiveStats(raw);
   const atk = baseAtk(s, false);
   const atkRanged = baseAtk(s, true);
   const matk = baseMatk(s);
@@ -190,14 +250,15 @@ export function derive(s: Stats, level: number): Derived {
     mpPct: s.int,
     hpRegen: Math.floor(s.vit / 5),
     mpRegen: Math.floor(s.int / 6),
-    aspd: 1 - (4 * s.agi + s.des) / 1000,
-    flee: level + s.agi,
-    perfectDodge: (s.sor + 10) / 10,
-    crit: (10 + Math.floor((s.sor * 10) / 3)) / 10,
+    // [RO] − (4·AGI + DES)/1000, com a mesma inclinação no começo e no máximo −60%.
+    aspd: 1 - 0.6 * (1 - Math.exp(-(4 * s.agi + s.des) / 600)),
+    flee: Math.floor(level + s.agi),
+    perfectDodge: softCap((s.sor + 10) / 10, 40),
+    crit: softCap(1 + s.sor / 3, 60),
     hitBonus: Math.floor(s.des / 3),
-    minRoll: s.des / 200,
-    cooldown: 1 - s.des / 300,
-    capBonus: s.for * 10,
+    minRoll: softCap(s.des / 200, 0.9),
+    cooldown: 1 - softCap(s.des / 300, 0.5),
+    capBonus: Math.floor(raw.for) * 10,
     vitDef: [
       Math.floor(vMin * SOFT_DEF_SCALE),
       Math.floor(vMax * SOFT_DEF_SCALE),
@@ -206,12 +267,12 @@ export function derive(s: Stats, level: number): Derived {
   };
 }
 
-/** Vida e mana máximas com VIT e INT [RO: × (1 + atributo/100), truncado]. */
+/** Vida e mana máximas com VIT e INT [RO: × (1 + atributo/100), truncado], pelo valor do atributo. */
 export function withVit(healthMax: number, s: Stats): number {
-  return Math.floor(healthMax * (1 + s.vit / 100));
+  return Math.floor(healthMax * (1 + statValue(s.vit) / 100));
 }
 export function withInt(manaMax: number, s: Stats): number {
-  return Math.floor(manaMax * (1 + s.int / 100));
+  return Math.floor(manaMax * (1 + statValue(s.int) / 100));
 }
 
 /**

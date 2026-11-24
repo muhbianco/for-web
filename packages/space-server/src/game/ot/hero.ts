@@ -52,6 +52,14 @@ import {
   COINS,
   compactPack,
   DEFAULT_SUPPLIES,
+  type Mastery,
+  REFINE_MAX,
+  REFINE_SAFE,
+  cannotRebirth,
+  refinable,
+  refineChance,
+  refineCost,
+  validMastery,
   gearStats,
   withGearStats,
   discardItem,
@@ -148,6 +156,12 @@ export interface RpgHeroDoc {
   points: PointTraining;
   third: boolean;
   resets: { stats: number; tree: number };
+  /**
+   * 24/11/2026: o renascimento da árvore (abilities.ts): adereço → vezes escolhido (o efeito
+   * de cada ponto dele cresce 0,5% por vez) e quantas vezes renasceu.
+   */
+  mastery: Mastery;
+  rebirths: number;
 }
 
 /** Quantos itens o filtro de loot guarda. */
@@ -206,6 +220,8 @@ export function newRpgHero(userId: string, now: number): RpgHeroDoc {
     points: { points: 0, tries: 0 },
     third: false,
     resets: { stats: 0, tree: 0 },
+    mastery: {},
+    rebirths: 0,
   };
 }
 
@@ -295,6 +311,8 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (!Array.isArray(x.inbox)) x.inbox = [];
   if (!validSupplies(x.supplies)) x.supplies = structuredClone(DEFAULT_SUPPLIES);
   if (!Array.isArray(x.loot_skip)) x.loot_skip = [];
+  if (!validMastery(x.mastery)) x.mastery = {};
+  if (!Number.isInteger(x.rebirths) || x.rebirths < 0) x.rebirths = 0;
   // Versão 3: o herói de antes começa com os atributos em 1 e os pontos do level livres.
   if (!validStats(x.stats, x.level)) x.stats = freshStats();
   if (typeof x.third !== "boolean" || x.vocation === 0) x.third = false;
@@ -403,6 +421,7 @@ export function heroRunSnapshot(
     lootSkip: [...d.loot_skip],
     stats,
     tree: { ...d.tree },
+    mastery: { ...d.mastery },
   };
 }
 
@@ -810,6 +829,70 @@ export function learnNode(d: RpgHeroDoc, node: string, now: number): RpgOutcome 
   return { ok: true };
 }
 
+/**
+ * O renascimento da árvore no Mestre (24/11/2026, abilities.ts cannotRebirth): com a árvore
+ * cheia, ela zera e os pontos de habilidade ganhos também (o treino no dummy de habilidade
+ * recomeça; os pontos que sobravam livres ficam), e o adereço escolhido ganha uma maestria.
+ * Não cobra: o custo é refazer a árvore.
+ */
+export function rebirthTree(
+  d: RpgHeroDoc,
+  node: string,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const why = cannotRebirth(
+    d.tree,
+    VOCATIONS[d.vocation].base,
+    heroTier(d),
+    node,
+  );
+  if (why) return { ok: false, reason: why };
+  d.points = { points: freeSkillPoints(d), tries: d.points.tries };
+  d.tree = {};
+  d.mastery = { ...d.mastery, [node]: (d.mastery[node] ?? 0) + 1 };
+  d.rebirths += 1;
+  return { ok: true };
+}
+
+/** O que a tentativa de refino deu (para a resposta e o registro). */
+export interface RefineResult {
+  from: number;
+  to: number;
+  cost: number;
+  success: boolean;
+}
+
+/**
+ * Uma tentativa de refino no Ferreiro (24/11/2026, items.ts): a arma que o herói empunha, pago
+ * das moedas e do banco. `roll` é de 0 a 99 (o serviço sorteia): abaixo da chance, sobe; acima
+ * do seguro, a falha volta um nível. A arma não quebra.
+ */
+export function refineWeapon(
+  d: RpgHeroDoc,
+  roll: number,
+  now: number,
+): { ok: false; reason: string } | { ok: true; result: RefineResult } {
+  const g = invGuard(d, now);
+  if (g) return g as { ok: false; reason: string };
+  const stack = d.inv.equip.arma;
+  const def = stack ? itemDef(stack.item) : undefined;
+  if (!stack || !def) return { ok: false, reason: "no_weapon" };
+  if (!refinable(def)) return { ok: false, reason: "not_refinable" };
+  const from = stack.refine ?? 0;
+  if (from >= REFINE_MAX) return { ok: false, reason: "max_refine" };
+  const cost = refineCost(def, from);
+  if (!charge(d, cost)) return { ok: false, reason: "no_money" };
+  const success = roll < refineChance(from);
+  const to = success ? from + 1 : from > REFINE_SAFE ? from - 1 : from;
+  const next = { ...d.inv.equip.arma! };
+  if (to > 0) next.refine = to;
+  else delete next.refine;
+  d.inv = { ...d.inv, equip: { ...d.inv.equip, arma: next } };
+  return { ok: true, result: { from, to, cost, success } };
+}
+
 /** Redistribui no Mestre: atributos ou árvore voltam a ser pontos livres (abilities.ts resetCost). */
 export function resetHero(
   d: RpgHeroDoc,
@@ -983,6 +1066,8 @@ export function rpgHeroView(
     },
     job: heroTier(d),
     resets: { ...d.resets },
+    mastery: { ...d.mastery },
+    rebirths: d.rebirths,
     skills,
     magic: {
       level: d.magic.level,

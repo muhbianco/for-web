@@ -46,8 +46,13 @@ export const MIN_SKILL = 10;
 export const MAX_SKILL = 200;
 export const MAX_MAGIC_LEVEL = 200;
 
-/** Level máximo [nosso]: a experiência acumulada fica abaixo de 2^53. */
-export const MAX_LEVEL = 2000;
+/**
+ * O teto de level de agora (24/11/2026, decisão do dono: "nosso primeiro level máximo é 500",
+ * para jogar durante anos). É o único lugar a mudar quando o teto subir: a curva de experiência
+ * (progression.ts expForLevel) já vale para qualquer level, e quem estiver parado no teto volta
+ * a ganhar experiência na hora.
+ */
+export const MAX_LEVEL = 500;
 
 /** Ids das vocações, os mesmos do TFS (data/XML/vocations.xml). */
 export type VocationId = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8;
@@ -299,7 +304,7 @@ export interface Rates {
   loot: number;
 }
 export const DEFAULT_RATES: Readonly<Rates> = {
-  exp: 5,
+  exp: 1.5,
   skill: 2,
   magic: 2,
   loot: 2,

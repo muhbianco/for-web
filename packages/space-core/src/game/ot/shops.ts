@@ -1,4 +1,5 @@
 import { COINS, itemDef } from "./items.ts";
+import { allTierItems } from "./tiers.ts";
 
 /**
  * Os NPCs do jogo idle (docs/espaco/jogo/ot, etapa O8): o mercador, o banqueiro e o mestre
@@ -30,6 +31,11 @@ export const MERCHANT_SELLS: readonly ShopOffer[] = [
   { item: "pocao-de-mana", price: 56 },
   { item: "pocao-forte-de-vida", price: 115 },
   { item: "pocao-forte-de-mana", price: 93 },
+  // 24/11/2026: as dos levels altos [TFS great/ultimate, na faixa de preço do OT].
+  { item: "pocao-grande-de-vida", price: 190 },
+  { item: "pocao-suprema-de-vida", price: 310 },
+  { item: "pocao-grande-de-mana", price: 120 },
+  { item: "pocao-suprema-de-mana", price: 230 },
   { item: "bolsa", price: 4 },
   { item: "mochila", price: 20 },
   { item: "arco-de-caca", price: 200 },
@@ -46,8 +52,19 @@ export const MERCHANT_SELLS: readonly ShopOffer[] = [
   { item: "anel-do-martelo", price: 500 },
 ];
 
+/**
+ * A munição das faixas do 85 ao 500 (tiers.ts): o arqueiro gasta uma por tiro (perto de 200 numa
+ * corrida), então ela não pode depender só do loot [nosso, 24/11/2026].
+ */
+const TIER_AMMO: readonly ShopOffer[] = allTierItems()
+  .filter((d) => d.slot === "municao")
+  .map((d) => ({ item: d.id, price: 4 + Math.floor((d.minLevel ?? 0) / 25) }));
+
+/** Tudo o que o mercador vende: a lista e a munição das faixas. */
+export const MERCHANT_OFFERS: readonly ShopOffer[] = [...MERCHANT_SELLS, ...TIER_AMMO];
+
 export function merchantOffer(itemId: string): ShopOffer | undefined {
-  return MERCHANT_SELLS.find((o) => o.item === itemId);
+  return MERCHANT_OFFERS.find((o) => o.item === itemId);
 }
 
 /**

@@ -52,6 +52,8 @@ import {
   allocateStats,
   creditTraining,
   learnNode,
+  rebirthTree,
+  refineWeapon,
   resetHero,
   sellToMerchant,
   setLootSkip,
@@ -524,18 +526,32 @@ export class RpgService {
       case "rpg.bank.deposit":
       case "rpg.bank.withdraw":
       case "rpg.promote":
-      case "rpg.reset": {
+      case "rpg.reset":
+      case "rpg.rebirth":
+      case "rpg.refine": {
         // NPCs (etapa O8): o certo para o comando, ao lado do herói.
         const kind: NpcKind = cmd.t.startsWith("rpg.shop.")
           ? "mercador"
-          : cmd.t === "rpg.promote" || cmd.t === "rpg.reset"
-            ? "mestre"
-            : "banqueiro";
+          : cmd.t === "rpg.refine"
+            ? "ferreiro"
+            : cmd.t === "rpg.promote" ||
+                cmd.t === "rpg.reset" ||
+                cmd.t === "rpg.rebirth"
+              ? "mestre"
+              : "banqueiro";
         const spot = host.npcSpot(session.viewer, cmd.d.npc, kind);
         if (!spot.ok) return fail(spot.code, spot.reason);
         const before = await this.load(userId);
+        // O sorteio do refino é do servidor, antes (a mesma tentativa, se a gravação repetir).
+        const roll = randomInt(0, 100);
         const out = await this.mutate(userId, false, (d) => {
           switch (cmd.t) {
+            case "rpg.refine":
+              return refineWeapon(d, roll, now);
+            case "rpg.rebirth":
+              // O treino aberto no dummy de habilidade conta antes (os pontos que sobram ficam).
+              creditTraining(d, now, this.rates);
+              return rebirthTree(d, cmd.d.node, now);
             case "rpg.shop.buy":
               return buyFromMerchant(d, cmd.d.item, cmd.d.count, now);
             case "rpg.shop.sell":
@@ -566,6 +582,21 @@ export class RpgService {
             from: before?.vocation,
             to: out.doc.vocation,
             third: out.doc.third,
+          });
+        if (cmd.t === "rpg.refine")
+          this.log.info("rpg refine", {
+            server: host.serverId,
+            user: userId,
+            item: out.doc.inv.equip.arma?.item,
+            from: before?.inv.equip.arma?.refine ?? 0,
+            to: out.doc.inv.equip.arma?.refine ?? 0,
+          });
+        if (cmd.t === "rpg.rebirth")
+          this.log.info("rpg rebirth", {
+            server: host.serverId,
+            user: userId,
+            node: cmd.d.node,
+            rebirths: out.doc.rebirths,
           });
         if (cmd.t === "rpg.reset")
           this.log.info("rpg reset", {

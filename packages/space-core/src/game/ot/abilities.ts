@@ -80,7 +80,24 @@ export function cannotEvolve(
 
 // ---- habilidades --------------------------------------------------------------
 
-export type AbilityKind = "ataque" | "area" | "cura" | "cura-outro" | "desafio";
+/**
+ * O tipo da habilidade. "foco" (24/11/2026): reforço do próprio herói por um tempo (a
+ * Concentração do Arqueiro do Ragnarok).
+ */
+export type AbilityKind =
+  | "ataque"
+  | "area"
+  | "cura"
+  | "cura-outro"
+  | "desafio"
+  | "foco";
+
+/**
+ * A Concentração [RO AC_CONCENTRATION: AGI e DES a mais por um tempo], na nossa escala: por
+ * `durationMs` (mais os adereços de fôlego), os tiros saem `dmgPct`% mais fortes e
+ * `aspdPct`% mais rápidos, os dois vezes a força dos adereços.
+ */
+export const CONCENTRATION = { durationMs: 10_000, dmgPct: 10, aspdPct: 8 };
 
 export interface AbilityDef {
   id: string;
@@ -108,6 +125,11 @@ const magia = (
     : { type: "magia", min, max, mlCap };
 const arma = (min: [number, number], max: [number, number]): SpellFormula => ({
   type: "arma",
+  min,
+  max,
+});
+const tiro = (min: number, max: number): SpellFormula => ({
+  type: "tiro",
   min,
   max,
 });
@@ -165,55 +187,58 @@ export const ABILITIES: readonly AbilityDef[] = [
     blurb:
       "Quando um monstro bate em outra pessoa, puxa a sala inteira para si por 8 s.",
   },
-  // ---- Arqueiro -----------------------------------------------------------------
+  // ---- Arqueiro (24/11/2026: o Arqueiro do Ragnarok, físico, sem magia nem cura) ----
+  // O dano sai do tiro do arco com a flecha (fórmula "tiro"); a mana paga cada uma.
   {
-    id: "lanca-eterea",
-    name: "Lança etérea",
+    id: "rajada-dupla",
+    name: "Rajada dupla",
     cls: 3,
     kind: "ataque",
     element: "fisico",
-    mana: 25,
+    mana: 18,
     cooldownMs: 2000,
-    formula: { type: "distancia", min: [0.7, 0], max: [1, 5] },
+    formula: tiro(1.0, 1.4),
     blockArmor: true,
-    source: "ethereal_spear.lua",
-    blurb: "Uma lança de luz no alvo, pela skill de distância.",
+    source: "RO AC_DOUBLE (Double Strafe)",
+    blurb: "Duas flechas seguidas no alvo do grupo, pelo dano do arco.",
   },
   {
-    id: "missil-sagrado",
-    name: "Míssil sagrado",
-    cls: 3,
-    kind: "ataque",
-    element: "sagrado",
-    mana: 20,
-    cooldownMs: 2000,
-    formula: magia([1.9, 8], [3, 18]),
-    source: "divine_missile.lua",
-    blurb: "Dano sagrado no alvo, pelo magic level.",
-  },
-  {
-    id: "caldeira-sagrada",
-    name: "Caldeira sagrada",
+    id: "chuva-de-flechas",
+    name: "Chuva de flechas",
     cls: 3,
     kind: "area",
-    element: "sagrado",
-    mana: 160,
+    element: "fisico",
+    mana: 28,
     cooldownMs: 4000,
-    formula: magia([5, 25], [6.2, 45]),
-    source: "divine_caldera.lua",
-    blurb: "Luz em volta: acerta todos os monstros da sala.",
+    formula: tiro(0.35, 0.55),
+    blockArmor: true,
+    source: "RO AC_SHOWER (Arrow Shower)",
+    blurb: "Uma chuva de flechas em todos os monstros da sala.",
   },
   {
-    id: "cura-de-campo",
-    name: "Cura de campo",
+    id: "flecha-carregada",
+    name: "Flecha carregada",
     cls: 3,
-    kind: "cura",
-    element: "cura",
-    mana: 20,
-    cooldownMs: 1000,
-    formula: magia([1.4, 8], [1.8, 11]),
-    source: "light_healing.lua",
-    blurb: "Cura a si mesmo quando a vida cai da metade.",
+    kind: "ataque",
+    element: "fisico",
+    mana: 22,
+    cooldownMs: 3000,
+    formula: tiro(0.9, 1.2),
+    blockArmor: true,
+    source: "RO AC_CHARGEARROW (Arrow Repel)",
+    blurb: "Um tiro tenso e forte no alvo do grupo.",
+  },
+  {
+    id: "concentracao",
+    name: "Concentração",
+    cls: 3,
+    kind: "foco",
+    element: "fisico",
+    mana: 30,
+    cooldownMs: 20_000,
+    formula: { type: "fixa", min: 0, max: 0 },
+    source: "RO AC_CONCENTRATION (Improve Concentration)",
+    blurb: "Por 10 s, os tiros saem 10% mais fortes e 8% mais rápidos.",
   },
   // ---- Feiticeiro ---------------------------------------------------------------
   {
@@ -514,78 +539,65 @@ export const TREE: readonly TreeNode[] = [
   N("desafio", "eco", 3, "Eco", 2, { t: "focus", ms: 2000 }, "bastiao"),
   // ---- Arqueiro -----------------------------------------------------------------
   ...attackBranch(
-    "lanca-eterea",
+    "rajada-dupla",
     10,
-    { key: "perfurar", name: "Perfurar", effect: { t: "targets", n: 1 } },
-    { key: "dupla", name: "Lança dupla", effect: { t: "echo", pct: 60 } },
+    {
+      key: "perfurante",
+      name: "Flecha perfurante",
+      effect: { t: "targets", n: 1 },
+    },
+    { key: "tripla", name: "Rajada tripla", effect: { t: "echo", pct: 50 } },
   ),
   ...attackBranch(
-    "missil-sagrado",
-    10,
-    { key: "luz", name: "Luz que cura", effect: { t: "leech", pct: 15 } },
-    { key: "julgamento", name: "Julgamento", effect: { t: "targets", n: 2 } },
-  ),
-  ...attackBranch(
-    "caldeira-sagrada",
+    "chuva-de-flechas",
     15,
     {
-      key: "consagrar",
-      name: "Consagrar",
-      effect: { t: "stun", chance: 20, ms: 1500 },
+      key: "farpas",
+      name: "Flechas farpadas",
+      effect: { t: "stun", chance: 15, ms: 1500 },
     },
-    { key: "coro", name: "Coro", effect: { t: "echo", pct: 40 } },
+    { key: "tormenta", name: "Tormenta", effect: { t: "echo", pct: 35 } },
   ),
-  N("cura-de-campo", "forca", 1, "Força", 5, { t: "power", pct: 10 }),
-  N(
-    "cura-de-campo",
-    "reflexo",
-    1,
-    "Reflexo",
-    2,
-    { t: "trigger", pct: 10 },
-    "forca",
-  ),
-  N(
-    "cura-de-campo",
-    "intensa",
-    2,
-    "Cura intensa",
-    1,
+  ...attackBranch(
+    "flecha-carregada",
+    10,
     {
-      t: "formula",
-      formula: INTENSE_HEALING,
-      mana: 70,
-      name: "Cura intensa",
-      source: "intense_healing.lua",
+      key: "impacto",
+      name: "Impacto",
+      effect: { t: "stun", chance: 35, ms: 2000 },
     },
-    "forca",
+    { key: "trespassar", name: "Trespassar", effect: { t: "targets", n: 2 } },
+    1000,
   ),
+  N("concentracao", "foco", 1, "Foco", 5, { t: "power", pct: 10 }),
+  N("concentracao", "folego", 1, "Fôlego", 3, { t: "focus", ms: 1000 }, "foco"),
   N(
-    "cura-de-campo",
-    "forca2",
-    2,
-    "Força II",
-    5,
-    { t: "power", pct: 6 },
-    "intensa",
-  ),
-  N(
-    "cura-de-campo",
-    "abrigo",
-    3,
-    "Abrigo",
-    1,
-    { t: "group", pct: 30 },
-    "forca2",
-  ),
-  N(
-    "cura-de-campo",
+    "concentracao",
     "economia",
-    3,
+    2,
     "Economia",
     3,
     { t: "cost", pct: 15 },
-    "abrigo",
+    "foco",
+  ),
+  N("concentracao", "foco2", 2, "Foco II", 5, { t: "power", pct: 6 }, "economia"),
+  N(
+    "concentracao",
+    "olho-de-aguia",
+    3,
+    "Olho de águia",
+    2,
+    { t: "focus", ms: 2000 },
+    "foco2",
+  ),
+  N(
+    "concentracao",
+    "ritmo",
+    3,
+    "Ritmo",
+    2,
+    { t: "cooldown", ms: 2000 },
+    "olho-de-aguia",
   ),
   // ---- Feiticeiro ---------------------------------------------------------------
   ...attackBranch(
@@ -836,6 +848,69 @@ export function validTree(t: unknown, cls: number, tier: JobTier): t is Tree {
   return true;
 }
 
+// ---- renascimento da árvore (24/11/2026) ------------------------------------------
+
+/**
+ * O renascimento da árvore (pedido do dono, 24/11/2026: "pro dummy nunca perder utilidade"):
+ * com a árvore cheia, a pessoa zera a árvore e os pontos de habilidade ganhos (o treino no dummy
+ * recomeça) e escolhe um adereço; cada vez que um adereço é escolhido, o efeito de cada ponto dele
+ * cresce `MASTERY_PCT`% para sempre (a maestria). Sem teto: dá para escolher o mesmo de novo.
+ */
+export const MASTERY_PCT = 0.5;
+
+/** Adereço → quantas vezes foi escolhido no renascimento. */
+export type Mastery = Record<string, number>;
+
+/** O multiplicador do efeito de um adereço pela maestria (1 sem nenhuma). */
+export function masteryFactor(m: Mastery | undefined, id: string): number {
+  return 1 + (MASTERY_PCT / 100) * (m?.[id] ?? 0);
+}
+
+/**
+ * O adereço aceita maestria? Só os de número (força, economia, recarga, eco, dreno, atordoar,
+ * reflexo, grupo, fôlego, guarda); os de forma (alvos a mais, elemento, troca de magia) não.
+ */
+export function masteryNode(id: string): boolean {
+  const t = treeNode(id)?.effect.t;
+  return (
+    t !== undefined && t !== "targets" && t !== "element" && t !== "formula"
+  );
+}
+
+/** A árvore está cheia: todos os adereços da classe até a evolução de agora no último ponto. */
+export function treeFull(t: Tree, cls: number, tier: JobTier): boolean {
+  return TREE.every(
+    (n) =>
+      abilityDef(n.ability)?.cls !== cls ||
+      n.tier > tier ||
+      (t[n.id] ?? 0) >= n.ranks,
+  );
+}
+
+/** Por que não renasce agora (null: pode, com o adereço `node`). */
+export function cannotRebirth(
+  t: Tree,
+  cls: number,
+  tier: JobTier,
+  node: string,
+): "not_full" | "not_node" | "not_class" | "not_mastery" | null {
+  if (!treeFull(t, cls, tier)) return "not_full";
+  const n = treeNode(node);
+  if (!n) return "not_node";
+  if (abilityDef(n.ability)?.cls !== cls) return "not_class";
+  if (!masteryNode(node)) return "not_mastery";
+  return null;
+}
+
+/** Maestria válida (o que se lê do banco): adereços que existem e contagens inteiras. */
+export function validMastery(m: unknown): m is Mastery {
+  if (typeof m !== "object" || m === null || Array.isArray(m)) return false;
+  for (const [id, v] of Object.entries(m))
+    if (!treeNode(id) || !Number.isInteger(v) || (v as number) < 1)
+      return false;
+  return true;
+}
+
 /** A habilidade como ela sai com os adereços que o herói tem. */
 export interface AbilityNow {
   def: AbilityDef;
@@ -862,7 +937,11 @@ export interface AbilityNow {
 /** [nosso] Recarga mínima de uma habilidade com os adereços. */
 export const MIN_COOLDOWN_MS = 500;
 
-export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
+export function abilityNow(
+  def: AbilityDef,
+  t: Tree,
+  mastery?: Mastery,
+): AbilityNow {
   const out: AbilityNow = {
     def,
     name: def.name,
@@ -879,7 +958,12 @@ export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
     stun: null,
     trigger: 0,
     group: 0,
-    focusMs: def.kind === "desafio" ? 8000 : 0,
+    focusMs:
+      def.kind === "desafio"
+        ? 8000
+        : def.kind === "foco"
+          ? CONCENTRATION.durationMs
+          : 0,
     guard: 0,
   };
   let cost = 0;
@@ -896,8 +980,10 @@ export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
     }
   }
   for (const node of treeOf(def.id)) {
-    const n = t[node.id] ?? 0;
-    if (n <= 0) continue;
+    const n0 = t[node.id] ?? 0;
+    if (n0 <= 0) continue;
+    // A maestria multiplica o efeito dos pontos postos (renascimento da árvore).
+    const n = n0 * masteryFactor(mastery, node.id);
     const e = node.effect;
     switch (e.t) {
       case "power":
@@ -910,7 +996,7 @@ export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
         cooldown += e.ms * n;
         break;
       case "targets":
-        out.targets += e.n * n;
+        out.targets += e.n * n0;
         break;
       case "echo":
         out.echo += (e.pct * n) / 100;

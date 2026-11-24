@@ -399,7 +399,7 @@ test("NPCs: compra paga das moedas e do banco; venda pelo valor; depósito e saq
   d.level = 20;
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "points" });
   d.points = { points: 8, tries: 0 };
-  d.tree = { "lanca-eterea.forca": 5, "lanca-eterea.economia": 3 };
+  d.tree = { "rajada-dupla.forca": 5, "rajada-dupla.economia": 3 };
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "no_money" });
   d.bank_gold = 19_970;
   assert.deepEqual(promoteHero(d, 0), { ok: true });
@@ -497,6 +497,7 @@ test("atributos: põe fora da dungeon; VIT, INT e FOR mudam vida, mana e capacid
   const d = newRpgHero("S", 0);
   assert.deepEqual(allocateStats(d, { for: 1 }, 0), { ok: false, reason: "no_vocation" });
   applyVocation(d, 4);
+  // Level 10: 50 pontos; VIT 31 e FOR 21 custam 30 e 20 (até o 50 cada ponto custa 1).
   d.level = 10;
   assert.deepEqual(allocateStats(d, { vit: 30, for: 20 }, 0), { ok: true });
   assert.deepEqual(allocateStats(d, { vit: 1 }, 0), { ok: false, reason: "no_points" });
@@ -562,6 +563,7 @@ test("corrida: entra com a vida, a mana e a capacidade dos atributos, e com a á
   const { allocateStats, heroRunSnapshot } = await import("./hero.ts");
   const d = newRpgHero("C", 0);
   applyVocation(d, 2);
+  // INT 51 custa 50 pontos (a escada começa no 51): o level 10 tem 50.
   d.level = 10;
   allocateStats(d, { int: 50 }, 0);
   d.points = { points: 1, tries: 0 };
@@ -588,4 +590,55 @@ test("itens com atributos: o que veste soma na vida, na mana e na corrida; a cap
   assert.equal(r.stats?.for, d.stats.for + 2);
   assert.equal(r.healthMax, view.health_max);
   assert.equal(capOf(d), cap, "a FOR do item não mexe na capacidade");
+});
+
+test("refino no Ferreiro: só a arma empunhada, até +10; até o +4 não falha, acima volta um nível; cobra", async () => {
+  const { refineWeapon } = await import("./hero.ts");
+  const d = newRpgHero("R", 0);
+  applyVocation(d, 4);
+  delete d.inv.equip.arma;
+  assert.deepEqual(refineWeapon(d, 0, 0), { ok: false, reason: "no_weapon" });
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1 };
+  d.bank_gold = 1_000_000;
+  const one = refineWeapon(d, 99, 0);
+  assert.ok(one.ok && one.result.success && one.result.to === 1, "100% no +1");
+  assert.equal(d.inv.equip.arma?.refine, 1);
+  assert.ok(d.bank_gold < 1_000_000, "cobrou");
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 5 };
+  const fail = refineWeapon(d, 99, 0);
+  assert.ok(fail.ok && !fail.result.success && fail.result.to === 4, "acima do +4 volta um");
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 4 };
+  const keep = refineWeapon(d, 99, 0);
+  assert.ok(keep.ok && keep.result.to === 4, "do +4 falhando fica no +4");
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 10 };
+  assert.deepEqual(refineWeapon(d, 0, 0), { ok: false, reason: "max_refine" });
+  d.bank_gold = 0;
+  d.inv.equip.arma = { item: "espada-de-ferro", count: 1, refine: 3 };
+  d.inv.pack = d.inv.pack.filter((x) => !x.item.startsWith("moeda"));
+  assert.deepEqual(refineWeapon(d, 0, 0), { ok: false, reason: "no_money" });
+});
+
+test("renascimento da árvore: só cheia; zera a árvore e os pontos ganhos; o adereço ganha maestria", async () => {
+  const { rebirthTree, heroRunSnapshot } = await import("./hero.ts");
+  const { TREE, abilityDef } = await import("@muchat/space-core/game/ot");
+  const d = newRpgHero("N", 0);
+  applyVocation(d, 3);
+  d.level = 10;
+  const mine = TREE.filter((n) => abilityDef(n.ability)?.cls === 3 && n.tier === 1);
+  const full: Record<string, number> = {};
+  for (const n of mine) full[n.id] = n.ranks;
+  const spent = Object.values(full).reduce((a, b) => a + b, 0);
+  d.points = { points: spent + 2, tries: 7 };
+  d.tree = { ...full, [mine[0]!.id]: mine[0]!.ranks - 1 };
+  assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: false, reason: "not_full" });
+  d.tree = full;
+  assert.deepEqual(rebirthTree(d, "rajada-dupla.perfurante", 0), { ok: false, reason: "not_mastery" });
+  assert.deepEqual(rebirthTree(d, "golpe-brutal.forca", 0), { ok: false, reason: "not_class" });
+  assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: true });
+  assert.deepEqual(d.tree, {});
+  assert.deepEqual(d.points, { points: 2, tries: 7 }, "os livres ficam; os postos voltam a ser treinados");
+  assert.deepEqual(d.mastery, { "rajada-dupla.forca": 1 });
+  assert.equal(d.rebirths, 1);
+  assert.deepEqual(heroRunSnapshot(d, "N", 0).mastery, { "rajada-dupla.forca": 1 });
+  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).rebirths, 1);
 });

@@ -1,5 +1,6 @@
 import { type Element, GOLD } from "./items.ts";
 import type { LootEntry } from "./loot.ts";
+import { allTierMonsters } from "./tiers.ts";
 
 /**
  * Monstros do jogo idle (etapa O5). Ficha com os campos da ficha do TFS
@@ -45,6 +46,11 @@ export interface MonsterDef {
   /** % de dano a menos por elemento (negativo = fraqueza) [TFS `<element *Percent>`]. */
   elements?: Readonly<Partial<Record<Element, number>>>;
   loot: readonly LootEntry[];
+  /**
+   * 24/11/2026, os monstros das faixas do 85 ao 500 (tiers.ts): a arte de um monstro de antes
+   * (`like`) com outra cor por cima (`tint`).
+   */
+  look?: { like: string; tint: string };
 }
 
 const coins = (chance: number, countMax: number): LootEntry => ({
@@ -1098,13 +1104,44 @@ const RO_LOOT: Readonly<Record<string, readonly [string, number][]>> = {
   ],
 };
 
+/**
+ * A experiência das dungeons do 27 ao 70 na curva de "anos" (24/11/2026): com a taxa 1,5 elas
+ * ainda davam de 1,3 a 4,9 vezes a meta de horas por level (tiers.ts hoursPerLevel), e o
+ * Trono daria mais que o Pântano (o 85). Medido no simulador, como as faixas novas.
+ */
+const EXP_SCALE: Readonly<Record<string, number>> = {
+  "mineiro-espectral": 0.8,
+  "golem-de-carvao": 0.8,
+  "morcego-vampiro": 0.8,
+  "capataz-espectral": 0.8,
+  "harpia-de-granito": 0.45,
+  basilisco: 0.45,
+  "ent-de-pedra": 0.45,
+  "medusa-ancia": 0.45,
+  "cavaleiro-de-cinzas": 0.48,
+  salamandra: 0.48,
+  "demonio-menor": 0.48,
+  "senhor-das-cinzas": 0.48,
+  "lobo-glacial": 0.35,
+  "espirito-da-nevasca": 0.35,
+  "gigante-de-gelo": 0.35,
+  "wyrm-de-gelo": 0.35,
+  "sombra-vazia": 0.2,
+  "arauto-do-vazio": 0.2,
+  devorador: 0.2,
+  "imperador-do-vazio": 0.2,
+};
+
 export const MONSTERS: Readonly<Record<string, MonsterDef>> =
   Object.fromEntries(
-    LIST.map((m) => {
+    [...LIST, ...allTierMonsters()].map((m) => {
       const extra = RO_LOOT[m.id];
-      const def = extra
-        ? { ...m, loot: [...m.loot, ...extra.map(([i, c]) => drop(i, c))] }
-        : m;
+      const k = EXP_SCALE[m.id];
+      const def = {
+        ...m,
+        ...(extra ? { loot: [...m.loot, ...extra.map(([i, c]) => drop(i, c))] } : {}),
+        ...(k ? { experience: Math.max(1, Math.round(m.experience * k)) } : {}),
+      };
       return [m.id, def];
     }),
   );

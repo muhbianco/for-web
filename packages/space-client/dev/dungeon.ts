@@ -1,4 +1,4 @@
-import { type RunFrame, type RunHero, type RunResult, simulateRun, type VocationId } from "@muchat/space-core/game/ot";
+import { DUNGEONS, type RunFrame, type RunHero, type RunResult, simulateRun, tierItems, TIERS, type VocationId } from "@muchat/space-core/game/ot";
 import { Application, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { characterSheet, palette } from "../src/render/sprites.ts";
@@ -32,6 +32,30 @@ const PARTIES: Record<string, RunHero[]> = {
   ],
 };
 const PALETTES = [0, 3, 5, 6];
+
+/**
+ * As faixas do 85 ao 500 (tiers.ts): o quarteto no level de entrada com o equipamento da faixa.
+ * Só para ver a cena (a arte de antes com outra cor), não o balanceamento.
+ */
+for (const t of TIERS) {
+  const kit = tierItems(t).map((d) => d.id);
+  const L = t.level;
+  const skill = 100 + Math.floor(L / 25);
+  PARTIES[t.id] = [
+    hero(4, L, skill, 10, kit.filter((id) => /^(espada|escudo|armadura|elmo|calca|botas)-/.test(id)), "Ana"),
+    hero(2, L, 10, 90, kit.filter((id) => /^(cajado|manto|chapeu)-/.test(id)), "Bia"),
+    hero(3, L, skill, 10, kit.filter((id) => /^(arco|couraca|flecha)-/.test(id)), "Caio"),
+    hero(1, L, 10, 90, kit.filter((id) => /^(varinha|manto|chapeu)-/.test(id)), "Duda"),
+  ];
+}
+// Todas as dungeons no seletor (as das faixas também).
+for (const d of DUNGEONS)
+  if (!document.querySelector(`#dungeon option[value="${d.id}"]`)) {
+    const o = document.createElement("option");
+    o.value = d.id;
+    o.textContent = `${d.name} (${d.minLevel})`;
+    $<HTMLSelectElement>("dungeon").append(o);
+  }
 
 let dungeon = (q.get("d") as string) || ($<HTMLSelectElement>("dungeon").value as string);
 $<HTMLSelectElement>("dungeon").value = dungeon;

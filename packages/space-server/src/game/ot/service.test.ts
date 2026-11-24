@@ -266,8 +266,9 @@ test("reenvio do mesmo comando não age de novo; jogo desligado e sem permissão
 });
 
 test("taxas do operador pelo ambiente; valores ruins ficam no padrão", () => {
+  // A experiência padrão é 1,5 desde 24/11/2026 (a curva de anos, até o 500).
   assert.deepEqual(ratesFromEnv(undefined), {
-    exp: 5,
+    exp: 1.5,
     skill: 2,
     magic: 2,
     loot: 2,
@@ -279,7 +280,7 @@ test("taxas do operador pelo ambiente; valores ruins ficam no padrão", () => {
     loot: 2,
   });
   assert.deepEqual(ratesFromEnv("skill=0,loot=abc,foo=9,exp=99999"), {
-    exp: 5,
+    exp: 1.5,
     skill: 2,
     magic: 2,
     loot: 2,

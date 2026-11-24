@@ -9,6 +9,7 @@ import {
   type VocationId,
   COINS,
   itemDef,
+  refineFactor,
 } from "@muchat/space-core/game/ot";
 
 /**
@@ -70,6 +71,12 @@ export function itemIcon(def: ItemDef | undefined): string {
 
 export function itemName(id: string): string {
   return itemDef(id)?.name ?? id;
+}
+
+/** O nome da pilha com o refino na frente, como no Ragnarok ("+7 Espada larga"). */
+export function stackName(x: ItemStack): string {
+  const r = x.refine ?? 0;
+  return r > 0 ? `+${r} ${itemName(x.item)}` : itemName(x.item);
 }
 
 /** "35,00 oz" a partir de centésimos de oz. */
@@ -162,6 +169,11 @@ export function itemLines(
   const out: string[] = [];
   const stats = statsLine(def.stats);
   if (stats) out.push(stats);
+  const refine = stack?.refine ?? 0;
+  if (refine > 0) {
+    const pct = Math.round((refineFactor(refine) - 1) * 100);
+    out.push(t`Refino +${refine}: +${pct}% de dano`);
+  }
   const atk = def.attack ?? 0;
   const dfn = def.defense ?? 0;
   if (def.slot === "arma" && def.kind !== "distancia" && def.kind !== "varinha")

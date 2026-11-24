@@ -1,4 +1,5 @@
 import type { Stats } from "./attributes.ts";
+import { allTierItems } from "./tiers.ts";
 import type { SkillId, VocationId } from "./data.ts";
 
 /**
@@ -131,8 +132,8 @@ export interface ItemDef {
     health?: readonly [number, number];
     mana?: readonly [number, number];
     flask: string;
-    /** O tamanho do frasco no cinto da tela (1 pequena, 2 normal, 3 forte); só aparência. */
-    size: 1 | 2 | 3;
+    /** O tamanho do frasco no cinto da tela (1 pequena, 2 normal, 3 forte, 4 grande, 5 suprema); só aparência. */
+    size: 1 | 2 | 3 | 4 | 5;
   };
 }
 
@@ -1392,7 +1393,8 @@ const BONUS: Readonly<Record<string, Readonly<Partial<Stats>>>> = {
   "escudo-da-forja": { vit: 3 },
   "placa-de-ferreiro": { vit: 3 },
   "elmo-de-aco": { vit: 2 },
-  "arco-de-guerra": { des: 2, int: 1 },
+  // O arqueiro desde 24/11/2026 é o do Ragnarok, sem magia: DES com AGI.
+  "arco-de-guerra": { des: 2, agi: 1 },
   "varinha-ardente": { int: 3 },
   "cajado-de-pedra": { int: 2, vit: 1 },
   // Mina e Bosque (30–40).
@@ -1405,7 +1407,7 @@ const BONUS: Readonly<Record<string, Readonly<Partial<Stats>>>> = {
   "calca-de-placas": { vit: 2 },
   "botas-de-ferro": { vit: 1, agi: 1 },
   "couraca-de-cacador": { des: 3, agi: 1 },
-  "arco-de-teixo": { des: 3, int: 1 },
+  "arco-de-teixo": { des: 3, agi: 1 },
   "besta-pesada": { des: 4 },
   "varinha-da-tempestade": { int: 4, des: 1 },
   "cajado-de-espinhos": { int: 3, vit: 2 },
@@ -1420,7 +1422,7 @@ const BONUS: Readonly<Record<string, Readonly<Partial<Stats>>>> = {
   "calca-de-cinzas": { vit: 3 },
   "botas-de-cinzas": { agi: 2, vit: 1 },
   "couraca-de-escamas-negras": { des: 4, agi: 2 },
-  "arco-de-cinzas": { des: 4, int: 2 },
+  "arco-de-cinzas": { des: 4, agi: 2 },
   "varinha-do-inferno": { int: 5, des: 1 },
   "cajado-glacial": { int: 4, vit: 2 },
   "manto-de-cinzas": { int: 4, des: 1 },
@@ -1431,7 +1433,7 @@ const BONUS: Readonly<Record<string, Readonly<Partial<Stats>>>> = {
   "escudo-do-vazio": { vit: 5, sor: 2 },
   "placa-do-vazio": { vit: 6 },
   "elmo-do-vazio": { vit: 4 },
-  "arco-do-vazio": { des: 5, int: 3 },
+  "arco-do-vazio": { des: 5, agi: 3 },
   "varinha-do-vazio": { int: 6, des: 2 },
   "cajado-do-vazio": { int: 5, vit: 3 },
   "manto-do-vazio": { int: 5, des: 2 },
@@ -1643,7 +1645,7 @@ const RO_KIT: readonly ItemDef[] = [
     weight: 5500,
     value: 2500,
   },
-  // Armas leves do cavaleiro (AGI) e o arco sagrado do paladino (DES e INT).
+  // Armas leves do cavaleiro (AGI) e o arco do falcão do arqueiro (DES e AGI).
   {
     id: "faca-de-combate",
     name: "Faca de combate",
@@ -1672,14 +1674,14 @@ const RO_KIT: readonly ItemDef[] = [
   },
   {
     id: "arco-sagrado",
-    name: "Arco sagrado",
+    name: "Arco do falcão",
     slot: "arma",
     kind: "distancia",
     twoHanded: true,
     ammo: "flecha",
     attack: 6,
     hitChance: 5,
-    stats: { des: 3, int: 3 },
+    stats: { des: 3, agi: 3 },
     minLevel: 45,
     vocations: PALADIN,
     weight: 4000,
@@ -1697,9 +1699,99 @@ function ring(
   return { id, name, slot: "anel", stats, minLevel, weight: 90, value };
 }
 
-const LIST: readonly ItemDef[] = [...BASE, ...RO_KIT].map((i) =>
-  BONUS[i.id] ? { ...i, stats: BONUS[i.id] } : i,
-);
+/**
+ * As poções dos levels altos (24/11/2026: a vida do 500 não cabe nas de antes) [TFS
+ * great/ultimate potions, com números nossos para a vida e a mana de agora].
+ */
+const BIG_POTIONS: readonly ItemDef[] = [
+  {
+    id: "pocao-grande-de-vida",
+    name: "Poção grande de vida",
+    slot: null,
+    potion: { health: [600, 800], flask: "frasco-forte", size: 4 },
+    minLevel: 120,
+    vocations: FRONT,
+    weight: 310,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-suprema-de-vida",
+    name: "Poção suprema de vida",
+    slot: null,
+    potion: { health: [1300, 1700], flask: "frasco-forte", size: 5 },
+    minLevel: 250,
+    vocations: KNIGHT,
+    weight: 330,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-grande-de-mana",
+    name: "Poção grande de mana",
+    slot: null,
+    potion: { mana: [250, 350], flask: "frasco-forte", size: 4 },
+    minLevel: 120,
+    weight: 310,
+    value: 0,
+    stackable: true,
+  },
+  {
+    id: "pocao-suprema-de-mana",
+    name: "Poção suprema de mana",
+    slot: null,
+    potion: { mana: [450, 650], flask: "frasco-forte", size: 5 },
+    minLevel: 250,
+    vocations: MAGES,
+    weight: 330,
+    value: 0,
+    stackable: true,
+  },
+];
+
+const LIST: readonly ItemDef[] = [
+  ...BASE,
+  ...RO_KIT,
+  ...BIG_POTIONS,
+  // As faixas do 85 ao 500 (tiers.ts).
+  ...allTierItems(),
+].map((i) => (BONUS[i.id] ? { ...i, stats: BONUS[i.id] } : i));
+
+// ---- refino (24/11/2026: "sistema de refino de armas, apenas armas") ------------------
+
+/**
+ * O refino das armas [RO refine, com números nossos]: de +0 a +`REFINE_MAX`, no Ferreiro, a
+ * arma que o herói empunha. Até +`REFINE_SAFE` não falha; acima disso, a falha volta um nível
+ * (no Ragnarok a arma quebra; aqui não). Cada nível soma dano à arma (refineFactor).
+ */
+export const REFINE_MAX = 10;
+export const REFINE_SAFE = 4;
+const REFINE_CHANCE = [100, 100, 100, 100, 80, 65, 50, 35, 25, 15] as const;
+
+/** Chance (%) de subir de `n` para `n + 1`. */
+export function refineChance(n: number): number {
+  return REFINE_CHANCE[n] ?? 0;
+}
+
+/**
+ * O dano da arma com o refino: +4% por nível até o seguro e +7% por nível acima dele (o
+ * "overupgrade" do Ragnarok, que só vale acima do seguro). +10 dá +58%.
+ */
+export function refineFactor(n: number): number {
+  const safe = Math.min(n, REFINE_SAFE);
+  const over = Math.max(0, n - REFINE_SAFE);
+  return 1 + (4 * safe + 7 * over) / 100;
+}
+
+/** O ouro de uma tentativa de `n` para `n + 1`: cresce com o valor da arma e com o quadrado do nível. */
+export function refineCost(def: ItemDef, n: number): number {
+  return Math.round((100 + def.value * 0.2) * (n + 1) ** 2);
+}
+
+/** Refina? Só arma (24/11/2026: "apenas armas"). */
+export function refinable(def: ItemDef | undefined): boolean {
+  return !!def && def.slot === "arma";
+}
 
 /** Os atributos que a soma de itens dá (vazio: nenhum). */
 export function itemStats(

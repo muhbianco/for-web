@@ -8,8 +8,12 @@ import {
   type StatId,
   type Stats,
   abilityNow,
+  ATTACK_FACTOR,
   derive,
   itemDef,
+  maxWeaponDamage,
+  refineFactor,
+  RUN,
   spellRange,
   VOCATIONS,
   withGearStats,
@@ -147,6 +151,27 @@ function weaponNumbers(hero: RpgHeroView): { skill: number; attack: number } {
   return { skill: hero.skills.punhos.level, attack: 7 };
 }
 
+/**
+ * O tiro máximo do arco com a flecha vestida, como na corrida (run.ts rangedMax): a base das
+ * habilidades do arqueiro. Sem arco ou sem a flecha dele: 0.
+ */
+function rangedMax(hero: RpgHeroView): number {
+  const eq = hero.inventory.equip;
+  const w = eq.arma ? itemDef(eq.arma.item) : undefined;
+  const ammo = eq.municao ? itemDef(eq.municao.item) : undefined;
+  if (w?.kind !== "distancia" || !w.ammo || ammo?.ammo !== w.ammo) return 0;
+  return Math.trunc(
+    maxWeaponDamage(
+      hero.level,
+      hero.skills.distancia.level,
+      (ammo.attack ?? 0) + (w.attack ?? 0),
+      ATTACK_FACTOR[RUN.fightMode],
+    ) *
+      VOCATIONS[hero.vocation].distDamage *
+      refineFactor(eq.arma?.refine ?? 0),
+  );
+}
+
 /** A habilidade agora: adereços, faixa de valor com os atributos, mana e recarga. */
 export function abilityView(
   hero: RpgHeroView,
@@ -154,23 +179,26 @@ export function abilityView(
   stats: Stats = hero.stats,
   tree = hero.tree,
 ): { now: AbilityNow; range: [number, number] | null; cooldownS: number } {
-  const now = abilityNow(def, tree);
-  const d = derive(stats, hero.level);
+  // A maestria do renascimento e os atributos dos itens, como na corrida.
+  const now = abilityNow(def, tree, hero.mastery);
+  const d = derive(withGearStats(stats, hero.gear_stats ?? {}), hero.level);
   const w = weaponNumbers(hero);
   const cooldownS = Math.max(500, now.cooldownMs * d.cooldown) / 1000;
-  if (def.kind === "desafio") return { now, range: null, cooldownS };
+  if (def.kind === "desafio" || def.kind === "foco")
+    return { now, range: null, cooldownS };
   const [a, b] = spellRange(now, {
     level: hero.level,
     magicLevel: hero.magic.level,
     weaponSkill: w.skill,
     weaponAttack: w.attack,
     distance: hero.skills.distancia.level,
+    rangedMax: rangedMax(hero),
   });
   const f = now.formula.type;
   const [lo, hi] =
     f === "arma"
       ? [d.meleePct, d.meleePct]
-      : f === "distancia"
+      : f === "distancia" || f === "tiro"
         ? [d.rangedPct, d.rangedPct]
         : d.magicPct;
   return {
@@ -195,6 +223,8 @@ export function abilityKind(def: AbilityDef): string {
       return t`Cura no grupo`;
     case "desafio":
       return t`Puxa os monstros`;
+    case "foco":
+      return t`Reforço em si`;
   }
 }
 

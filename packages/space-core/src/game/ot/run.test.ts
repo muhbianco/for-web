@@ -280,9 +280,9 @@ test("recompensa: quem caiu não leva nada; taxa, bônus de level baixo e stamin
     inv: emptyInventory(),
     invBare: emptyInventory(),
   };
-  // Level 2: +100% [TFS player.lua:548-556]; taxa 5; stamina cheia: ×1,5.
+  // Level 2: +100% [TFS player.lua:548-556]; a taxa padrão (1,5 desde 24/11/2026); stamina cheia: ×1,5.
   const r = runReward(h, result, "vitoria", DEFAULT_RATES)!;
-  assert.equal(r.exp, 100 * 5 * 2 * 1.5);
+  assert.equal(r.exp, Math.floor(100 * DEFAULT_RATES.exp * 2 * 1.5));
   assert.deepEqual(r.tries, { espada: 20, escudo: 8 });
   assert.equal(r.manaSpent, 12);
   assert.equal(r.gold, 9);
@@ -292,7 +292,7 @@ test("recompensa: quem caiu não leva nada; taxa, bônus de level baixo e stamin
     "retirada",
     DEFAULT_RATES,
   )!;
-  assert.equal(tired.exp, 100 * 5 * 2 * 0.5);
+  assert.equal(tired.exp, Math.floor(100 * DEFAULT_RATES.exp * 2 * 0.5));
   assert.equal(
     runReward(h, { ...result, dead: true }, "vitoria", DEFAULT_RATES),
     null,
@@ -551,10 +551,13 @@ test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (cha
   const { abilitiesOf } = await import("./abilities.ts");
   // Desde 24/11/2026 o desafio é uma das 4 habilidades fixas do cavaleiro, de saída.
   assert.ok(abilitiesOf(4).some((a) => a.id === "desafio"));
-  // Cripta: ninguém além do cavaleiro leva golpe de um alvo só.
+  // Cripta: os monstros comuns (troca 0%) não largam o cavaleiro. A matriarca, na última sala,
+  // troca 5% a cada 2 s (TFS), então fica de fora: com ela vale a sorte da semente.
   const crypt = run("cripta-do-musgo", [hero(4, 8, 35), hero(3, 8, 30)], 5);
   const singleOnArcher = crypt.frames.flatMap((f) =>
-    f.e.filter((e) => e.k === "golpe" && e.a >= 100 && e.b === 1),
+    f.st === 3
+      ? []
+      : f.e.filter((e) => e.k === "golpe" && e.a >= 100 && e.b === 1),
   );
   assert.equal(singleOnArcher.length, 0);
   // Forja com o Campeão (8): o desafio sai e, nos 8 s seguintes, golpe corpo a corpo só nele.
@@ -666,11 +669,22 @@ test("cinto de poções: a contagem segue a corrida e a próxima poção é a qu
   );
   assert.deepEqual(
     potionSizes("health").map((d) => d.id),
-    ["pocao-pequena-de-vida", "pocao-de-vida", "pocao-forte-de-vida"],
+    [
+      "pocao-pequena-de-vida",
+      "pocao-de-vida",
+      "pocao-forte-de-vida",
+      "pocao-grande-de-vida",
+      "pocao-suprema-de-vida",
+    ],
   );
   assert.deepEqual(
     potionSizes("mana").map((d) => d.id),
-    ["pocao-de-mana", "pocao-forte-de-mana"],
+    [
+      "pocao-de-mana",
+      "pocao-forte-de-mana",
+      "pocao-grande-de-mana",
+      "pocao-suprema-de-mana",
+    ],
   );
 });
 

@@ -106,7 +106,8 @@ test("cada segundo de corridas inteiras vira um roteiro de ~0,8 s, sem perder da
       }
     }
   }
-  assert.ok(seconds > 500);
+  // Cobertura: centenas de segundos (as corridas encurtaram com o arqueiro novo, 24/11/2026).
+  assert.ok(seconds > 300, `${seconds} segundos`);
   assert.ok(potions > 0, "nenhuma poção bebida nas corridas de teste");
   assert.ok(areas > 0, "nenhum ataque em área visto (Rei das Comportas / Guardião da Forja)");
 });
