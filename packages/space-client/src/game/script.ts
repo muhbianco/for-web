@@ -1,4 +1,4 @@
-import { type Element, type RunEvent, type RunFrame, type VocationId, MONSTER_BASE, monsterDef, spellDef, VOCATIONS } from "@muchat/space-core/game/ot";
+import { type Element, type RunEvent, type RunFrame, type VocationId, MONSTER_BASE, monsterDef, abilityDef, VOCATIONS } from "@muchat/space-core/game/ot";
 
 import { type HeroGear, isRanged } from "../render/heroArt.ts";
 
@@ -212,7 +212,7 @@ export function planSecond(p: PlanInput): Plan {
         if (e.a < MONSTER_BASE) {
           area = null;
           const t = nextT();
-          const sp = spellDef(e.s);
+          const sp = abilityDef(e.s);
           const el: Element = sp && sp.element !== "cura" ? sp.element : "fisico";
           const how = howOf("none", e.v);
           const base = p.vocations[e.a] !== undefined ? VOCATIONS[p.vocations[e.a]!]?.base : undefined;

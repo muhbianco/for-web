@@ -46,12 +46,24 @@ test("pontos de atributo: 5 por level, +1 por ponto, teto 99 [decisão do dono, 
   assert.ok(r.ok);
   assert.equal(r.ok && r.stats.for, 4);
   assert.equal(r.ok && statPointsFree(r.stats, 1), 0);
-  assert.deepEqual(addStats(s, { for: 6 }, 1), { ok: false, reason: "no_points" });
-  assert.deepEqual(addStats({ ...s, for: 98 }, { for: 2 }, 99), { ok: false, reason: "stat_max" });
-  assert.deepEqual(addStats(s, { for: -1 }, 5), { ok: false, reason: "bad_points" });
+  assert.deepEqual(addStats(s, { for: 6 }, 1), {
+    ok: false,
+    reason: "no_points",
+  });
+  assert.deepEqual(addStats({ ...s, for: 98 }, { for: 2 }, 99), {
+    ok: false,
+    reason: "stat_max",
+  });
+  assert.deepEqual(addStats(s, { for: -1 }, 5), {
+    ok: false,
+    reason: "bad_points",
+  });
   assert.deepEqual(addStats(s, {}, 5), { ok: false, reason: "bad_points" });
   assert.ok(validStats(freshStats(), 1));
-  assert.ok(!validStats({ ...freshStats(), for: 7 }, 1), "mais pontos que o level");
+  assert.ok(
+    !validStats({ ...freshStats(), for: 7 }, 1),
+    "mais pontos que o level",
+  );
   assert.ok(!validStats({ ...freshStats(), for: 100 }, 99), "teto 99");
   assert.ok(!validStats({ for: 1 }, 1));
 });
@@ -71,7 +83,11 @@ test("fórmulas do Ragnarok pré-renovação [rAthena status.cpp, battle.cpp]", 
   assert.equal(d.perfectDodge, 4, "(SOR + 10)/10 %");
   assert.equal(d.crit, 11, "(10 + SOR·10/3)/10 %");
   assert.equal(d.aspd, 1 - (200 + 20) / 1000, "amotion − (4·AGI + DES)/1000");
-  assert.equal(withVit(400, { ...freshStats(), vit: 50 }), 600, "× (1 + VIT/100)");
+  assert.equal(
+    withVit(400, { ...freshStats(), vit: 50 }),
+    600,
+    "× (1 + VIT/100)",
+  );
   // HIT do monstro (2 × level) contra a esquiva: 80 + HIT − FLEE, entre 5 e 100.
   assert.equal(monsterHitChance(20, 21), 99);
   assert.equal(monsterHitChance(20, 70), 50);
@@ -120,7 +136,10 @@ test("adereços: força, economia, recarga, alvo, eco e fórmula nova", () => {
   // A cura troca de fórmula e de mana.
   const patch = abilityDef("remendo")!;
   assert.equal(abilityNow(patch, {}).mana, 6);
-  const heal = abilityNow(patch, { "remendo.cura-leve": 1, "remendo.intensa": 1 });
+  const heal = abilityNow(patch, {
+    "remendo.cura-leve": 1,
+    "remendo.intensa": 1,
+  });
   assert.equal(heal.name, "Cura intensa");
   assert.equal(heal.mana, 70);
 });
@@ -129,14 +148,29 @@ test("aprender: classe, parte da árvore pela evolução, pré-requisito, pontos
   assert.equal(cannotLearn({}, "golpe-brutal.forca", 4, 1, 1), null);
   assert.equal(cannotLearn({}, "golpe-brutal.forca", 1, 1, 1), "not_class");
   assert.equal(cannotLearn({}, "golpe-brutal.economia", 4, 1, 1), "requires");
-  assert.equal(cannotLearn({ "golpe-brutal.forca": 1 }, "golpe-brutal.atordoar", 4, 1, 1), "tier");
-  assert.equal(cannotLearn({ "golpe-brutal.forca": 1 }, "golpe-brutal.atordoar", 4, 2, 1), null);
-  assert.equal(cannotLearn({ "golpe-brutal.forca": 5 }, "golpe-brutal.forca", 4, 1, 3), "max_rank");
+  assert.equal(
+    cannotLearn({ "golpe-brutal.forca": 1 }, "golpe-brutal.atordoar", 4, 1, 1),
+    "tier",
+  );
+  assert.equal(
+    cannotLearn({ "golpe-brutal.forca": 1 }, "golpe-brutal.atordoar", 4, 2, 1),
+    null,
+  );
+  assert.equal(
+    cannotLearn({ "golpe-brutal.forca": 5 }, "golpe-brutal.forca", 4, 1, 3),
+    "max_rank",
+  );
   assert.equal(cannotLearn({}, "golpe-brutal.forca", 4, 1, 0), "no_points");
   assert.equal(cannotLearn({}, "nada", 4, 1, 1), "not_node");
   assert.ok(validTree({ "golpe-brutal.forca": 2 }, 4, 1));
-  assert.ok(!validTree({ "golpe-brutal.economia": 1 }, 4, 1), "sem o pré-requisito");
-  assert.ok(!validTree({ "golpe-brutal.forca": 1, "golpe-brutal.atordoar": 1 }, 4, 1), "parte da 2ª classe");
+  assert.ok(
+    !validTree({ "golpe-brutal.economia": 1 }, 4, 1),
+    "sem o pré-requisito",
+  );
+  assert.ok(
+    !validTree({ "golpe-brutal.forca": 1, "golpe-brutal.atordoar": 1 }, 4, 1),
+    "parte da 2ª classe",
+  );
   assert.ok(!validTree({ "golpe-brutal.forca": 9 }, 4, 1));
   assert.equal(treePointsSpent({ a: 2, b: 3 }), 5);
 });
@@ -166,10 +200,21 @@ test("treino de habilidade: só no dummy de habilidade, um ponto a cada 50 × 1,
   // Como o treino de uma arma corpo a corpo, sem tentativa de escudo.
   const g = trainingGain(VOCATIONS[4], "habilidade", 100, DEFAULT_RATES);
   assert.deepEqual(g, { main: 50, escudo: 0 });
-  assert.deepEqual(addPointTries({ points: 0, tries: 0 }, 50), { points: 1, tries: 0 });
-  assert.deepEqual(addPointTries({ points: 0, tries: 40 }, 70), { points: 2, tries: 5 });
+  assert.deepEqual(addPointTries({ points: 0, tries: 0 }, 50), {
+    points: 1,
+    tries: 0,
+  });
+  assert.deepEqual(addPointTries({ points: 0, tries: 40 }, 70), {
+    points: 2,
+    tries: 5,
+  });
   // 12 h de treino com a taxa 2: uns 40 pontos.
-  const day = trainingGain(VOCATIONS[4], "habilidade", 12 * 3600, DEFAULT_RATES).main;
+  const day = trainingGain(
+    VOCATIONS[4],
+    "habilidade",
+    12 * 3600,
+    DEFAULT_RATES,
+  ).main;
   const p = addPointTries({ points: 0, tries: 0 }, day).points;
   assert.ok(p >= 38 && p <= 41, `pontos em 12 h: ${p}`);
 });

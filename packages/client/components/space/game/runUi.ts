@@ -10,7 +10,7 @@ import {
   merchantBuys,
   MONSTER_BASE,
   monsterDef,
-  spellDef,
+  abilityDef,
   stageMonsters,
   supplyPrice,
 } from "@muchat/space-core/game/ot";
@@ -45,16 +45,18 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
     case "golpe": {
       const a = name(ev.a);
       const b = name(ev.b);
+      if (ev.bl === "erro" && ev.a >= MONSTER_BASE) return t`${b} esquivou de ${a}`;
       if (ev.bl === "erro") return t`${a} errou ${b}`;
       if (ev.bl === "defense") return t`${b} se defendeu de ${a}`;
       if (ev.bl === "armor") return t`A armadura de ${b} segurou ${a}`;
       if (ev.bl === "immunity") return t`${b} não sente o golpe de ${a}`;
+      if (ev.c) return t`${a} acertou ${b} em cheio (crítico): ${ev.v}`;
       return t`${a} acertou ${b}: ${ev.v}`;
     }
     case "magia": {
       const a = name(ev.a);
       const b = name(ev.b);
-      const spell = ev.a < MONSTER_BASE ? (spellDef(ev.s)?.name ?? ev.s) : ev.s;
+      const spell = ev.a < MONSTER_BASE ? (abilityDef(ev.s)?.name ?? ev.s) : ev.s;
       if (ev.cura && ev.a === ev.b) {
         if (ev.a >= MONSTER_BASE) return t`${a} se curou: +${ev.v}`;
         return t`${a} lançou ${spell}: +${ev.v}`;

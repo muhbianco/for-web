@@ -21,6 +21,9 @@ export const MERCHANT_SELLS: readonly ShopOffer[] = [
   { item: "virote", price: 3 },
   { item: "flecha-afiada", price: 5 },
   { item: "virote-perfurante", price: 5 },
+  // 24/11/2026: a munição das dungeons novas [nosso].
+  { item: "flecha-de-aco", price: 8 },
+  { item: "virote-de-guerra", price: 10 },
   // Poções (etapa O9) [nosso, na faixa de preço do OT].
   { item: "pocao-pequena-de-vida", price: 20 },
   { item: "pocao-de-vida", price: 50 },

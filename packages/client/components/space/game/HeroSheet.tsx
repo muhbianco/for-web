@@ -32,8 +32,10 @@ import {
   oz,
   slotLabels,
 } from "./itemUi";
+import { SkillTree } from "./SkillTree";
+import { StatsPanel } from "./StatsPanel";
 import { useModalKeys } from "./modalKeys";
-import { percent, rpgLabels, vocationName } from "./rpgUi";
+import { className, percent, rpgLabels, vocationName } from "./rpgUi";
 
 /** O corpo como no OT: colar, cabeça e mochila; arma, corpo e escudo; anel, pernas e munição; pés. */
 const DOLL: readonly (Slot | null)[] = [
@@ -57,7 +59,8 @@ type Pick =
 
 /**
  * A ficha do herói (docs/espaco/jogo/ot, etapa O7): o que veste nos 10 lugares, a mochila com
- * os espaços, peso e capacidade, moedas, skills e "escolher o melhor sozinho". Tudo pelo
+ * os espaços, peso e capacidade, moedas, skills e "escolher o melhor sozinho". Desde 24/11/2026
+ * tem três abas: Equipamento, Atributos (StatsPanel) e Habilidades (SkillTree). Tudo pelo
  * servidor: cada ação manda um comando e a ficha muda com o estado que volta.
  */
 export default function HeroSheet(props: {
@@ -73,6 +76,7 @@ export default function HeroSheet(props: {
   const [error, setError] = createSignal<string | null>(null);
   const [pick, setPick] = createSignal<Pick | null>(null);
   const [confirmDrop, setConfirmDrop] = createSignal(false);
+  const [tab, setTab] = createSignal<"equip" | "stats" | "skills">("equip");
   let card: HTMLDivElement | undefined;
   let title: HTMLHeadingElement | undefined;
   const refocus = useModalKeys(
@@ -196,7 +200,7 @@ export default function HeroSheet(props: {
               {props.name}
             </h2>
             <Muted>
-              {t`${vocationName(hero()?.vocation ?? 0)} · level ${hero()?.level ?? 1} (${levelPct()}%)`}
+              {t`${className(hero()?.vocation ?? 0, hero()?.job ?? 1)} · level ${hero()?.level ?? 1} (${levelPct()}%)`}
             </Muted>
           </div>
           <Close type="button" aria-label={t`Fechar`} onClick={props.onClose}>
@@ -204,6 +208,64 @@ export default function HeroSheet(props: {
           </Close>
         </Head>
 
+        <Tabs role="tablist" aria-label={t`Ficha do herói`}>
+          <For
+            each={
+              [
+                { id: "equip", label: t`Equipamento`, badge: 0 },
+                {
+                  id: "stats",
+                  label: t`Atributos`,
+                  badge: hero()?.stat_points ?? 0,
+                },
+                {
+                  id: "skills",
+                  label: t`Habilidades`,
+                  badge: hero()?.skill_points.free ?? 0,
+                },
+              ] as const
+            }
+          >
+            {(x) => (
+              <TabBtn
+                type="button"
+                role="tab"
+                aria-selected={tab() === x.id}
+                data-on={tab() === x.id ? "" : undefined}
+                onClick={() => {
+                  setError(null);
+                  setTab(x.id);
+                }}
+              >
+                {x.label}
+                <Show when={x.badge > 0}>
+                  <Badge>{x.badge}</Badge>
+                </Show>
+              </TabBtn>
+            )}
+          </For>
+        </Tabs>
+
+        <Show when={tab() === "stats" && hero()}>
+          {(h) => (
+            <StatsPanel
+              hero={h()}
+              busy={busy()}
+              locked={inRun()}
+              send={send}
+            />
+          )}
+        </Show>
+        <Show when={tab() === "skills" && hero()}>
+          {(h) => (
+            <SkillTree hero={h()} busy={busy()} locked={inRun()} send={send} />
+          )}
+        </Show>
+        <Show when={tab() !== "equip" && error()}>
+          {(msg) => <ErrorText role="alert">{msg()}</ErrorText>}
+        </Show>
+
+        <Show when={tab() === "equip"}>
         <Stats>
           <span>
             <Symbol size={16}>favorite</Symbol> {hero()?.health_max ?? 0}
@@ -561,10 +623,60 @@ export default function HeroSheet(props: {
             {L.skill.magia} <strong>{hero()?.magic.level ?? 0}</strong>
           </span>
         </Skills>
+        </Show>
       </Card>
     </Backdrop>
   );
 }
+
+const Tabs = styled("div", {
+  base: {
+    display: "flex",
+    gap: "4px",
+    padding: "4px",
+    borderRadius: "999px",
+    background: "var(--md-sys-color-surface-container)",
+    alignSelf: "flex-start",
+    maxWidth: "100%",
+    overflowX: "auto",
+  },
+});
+
+const TabBtn = styled("button", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    minHeight: "32px",
+    padding: "0 14px",
+    borderRadius: "999px",
+    border: "none",
+    cursor: "pointer",
+    background: "transparent",
+    color: "var(--md-sys-color-on-surface)",
+    fontWeight: 600,
+    whiteSpace: "nowrap",
+    "&[data-on]": {
+      background: "var(--md-sys-color-secondary-container)",
+      color: "var(--md-sys-color-on-secondary-container)",
+    },
+    "@media (pointer: coarse)": { minHeight: "40px" },
+  },
+});
+
+const Badge = styled("span", {
+  base: {
+    minWidth: "18px",
+    height: "18px",
+    padding: "0 5px",
+    borderRadius: "999px",
+    background: "var(--md-sys-color-primary)",
+    color: "var(--md-sys-color-on-primary)",
+    fontSize: "0.72rem",
+    lineHeight: "18px",
+    textAlign: "center",
+  },
+});
 
 const Backdrop = styled("div", {
   base: {

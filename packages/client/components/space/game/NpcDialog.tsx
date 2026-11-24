@@ -4,13 +4,17 @@ import { useLingui } from "@lingui/solid/macro";
 import type { GameWireEvent, SpaceView } from "@muchat/space-client";
 import type { NpcKind } from "@muchat/space-core";
 import {
+  type JobTier,
   type RpgHeroView,
-  cannotPromote,
+  cannotEvolve,
   cannotUse,
+  EVOLUTION,
   itemDef,
   MERCHANT_SELLS,
   merchantBuys,
-  PROMOTION,
+  resetCost,
+  statPointsSpent,
+  treePointsSpent,
   VOCATIONS,
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
@@ -20,11 +24,12 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { inventoryError, itemIcon, itemLines, itemName } from "./itemUi";
 import { useModalKeys } from "./modalKeys";
-import { rpgLabels, vocationName } from "./rpgUi";
+import { className, rpgLabels, vocationName } from "./rpgUi";
 
 /**
  * Falar com um NPC do jogo idle (docs/espaco/jogo/ot, etapa O8): o mercador (compra e venda),
- * o banqueiro (saldo, depósito, saque e transferência) e o mestre das vocações (promoção).
+ * o banqueiro (saldo, depósito, saque e transferência) e o Mestre de evolução (24/11/2026: a 2ª
+ * e a 3ª classe, que abrem partes da árvore, e a redistribuição de atributos e habilidades).
  * O servidor confere o NPC e que o herói está ao lado; cada ação volta como o estado novo.
  */
 export default function NpcDialog(props: {
@@ -106,11 +111,14 @@ export default function NpcDialog(props: {
       case "busy":
         return t`Há transferências demais a caminho. Espere um pouco.`;
       case "promoted":
-        return t`Seu herói já foi promovido.`;
-      case "level": {
-        const lv = PROMOTION.level;
-        return t`A promoção pede level ${lv}.`;
-      }
+      case "max_tier":
+        return t`Seu herói já está na última classe.`;
+      case "level":
+        return t`Falta level para a evolução.`;
+      case "points":
+        return t`Faltam pontos postos na árvore de habilidades (treine no dummy de habilidade).`;
+      case "nothing_to_reset":
+        return t`Não há pontos postos para redistribuir.`;
     }
     return inventoryError(reason) ?? L.error(code ?? "internal", reason);
   }
@@ -127,7 +135,7 @@ export default function NpcDialog(props: {
       return t`Compra o loot e o kit; o que ele vende, recompra pela metade. Vende munição, poções, mochilas, anéis e colares.`;
     if (props.request.npc === "banqueiro")
       return t`Guarda suas moedas sem peso e transfere para quem está no Espaço.`;
-    return t`Promove o herói a partir do level ${PROMOTION.level}.`;
+    return t`Evolui a classe do herói, o que abre partes da árvore de habilidades, e redistribui atributos e habilidades.`;
   };
 
   return (
@@ -431,50 +439,127 @@ export default function NpcDialog(props: {
             </Muted>
           </Show>
 
-          {/* ---- mestre das vocações ---- */}
+          {/* ---- mestre de evolução (24/11/2026) ---- */}
           <Show when={props.request.npc === "mestre"}>
             {(_) => {
-              const v = () => hero()!.vocation;
-              const next = () => VOCATIONS[v()].promotion;
-              const why = () => cannotPromote(v(), hero()!.level);
-              const cost = money(PROMOTION.cost);
+              const h = () => hero()!;
+              const tier = () => h().job;
+              const next = () =>
+                tier() < 3 ? EVOLUTION[(tier() + 1) as 2 | 3] : null;
+              const spent = () => treePointsSpent(h().tree);
+              const why = () =>
+                cannotEvolve(h().vocation, tier(), h().level, spent());
+              const nextName = () =>
+                className(
+                  tier() === 1 ? h().vocation + 4 : h().vocation,
+                  (tier() + 1) as JobTier,
+                );
+              const reset = (what: "stats" | "tree") =>
+                resetCost(h().level, h().resets[what]);
               return (
                 <>
+                  <p>
+                    {t`Classe agora: ${className(h().vocation, tier())} (${tier()}ª).`}
+                  </p>
                   <Show
-                    when={next() !== null}
-                    fallback={<p>{t`Seu herói já é ${vocationName(v())}.`}</p>}
+                    when={next()}
+                    fallback={
+                      <Muted>{t`Seu herói já está na última classe.`}</Muted>
+                    }
                   >
-                    <p>
-                      {t`${vocationName(v())} → ${vocationName(next()!)}: level ${PROMOTION.level} e ${cost} de ouro (das moedas e do banco).`}
-                    </p>
-                    <Muted>
-                      {t`A vocação promovida recupera vida e mana mais depressa, como no OT.`}
-                    </Muted>
-                    <Row>
-                      <Button
-                        size="xs"
-                        variant="filled"
-                        isDisabled={
-                          busy() ||
-                          inRun() ||
-                          !!why() ||
-                          carried() + bank() < PROMOTION.cost
-                        }
-                        onPress={() => {
-                          if (confirm() !== "promote")
-                            return setConfirm("promote");
-                          send("rpg.promote", {}, t`Promovido!`);
-                        }}
-                      >
-                        {confirm() === "promote"
-                          ? t`Confirmar: promover por ${cost}`
-                          : t`Promover`}
-                      </Button>
-                    </Row>
-                    <Show when={why() === "level"}>
-                      <Muted>{npcError("rpg_invalid", "level")}</Muted>
-                    </Show>
+                    {(n) => (
+                      <>
+                        <p>
+                          {t`Evoluir para ${nextName()}: level ${n().level}, ${n().points} pontos na árvore (você tem ${spent()}) e ${money(n().cost)} de ouro (das moedas e do banco).`}
+                        </p>
+                        <Muted>
+                          {tier() === 1
+                            ? t`A 2ª classe recupera vida e mana mais depressa, como a promoção do OT, e abre a 2ª parte da árvore.`
+                            : t`A 3ª classe abre a última parte da árvore.`}
+                        </Muted>
+                        <Row>
+                          <Button
+                            size="xs"
+                            variant="filled"
+                            isDisabled={
+                              busy() ||
+                              inRun() ||
+                              !!why() ||
+                              carried() + bank() < n().cost
+                            }
+                            onPress={() => {
+                              if (confirm() !== "promote")
+                                return setConfirm("promote");
+                              send("rpg.promote", {}, t`Evoluiu!`);
+                            }}
+                          >
+                            {confirm() === "promote"
+                              ? t`Confirmar: evoluir por ${money(n().cost)}`
+                              : t`Evoluir`}
+                          </Button>
+                        </Row>
+                        <Show when={why()}>
+                          {(w) => <Muted>{npcError("rpg_invalid", w())}</Muted>}
+                        </Show>
+                      </>
+                    )}
                   </Show>
+                  <strong>{t`Redistribuir`}</strong>
+                  <Muted>
+                    {t`Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level.`}
+                  </Muted>
+                  <Row>
+                    <Button
+                      size="xs"
+                      variant="tonal"
+                      isDisabled={
+                        busy() ||
+                        inRun() ||
+                        statPointsSpent(h().stats) === 0 ||
+                        carried() + bank() < reset("stats")
+                      }
+                      onPress={() => {
+                        if (confirm() !== "reset-stats")
+                          return setConfirm("reset-stats");
+                        send(
+                          "rpg.reset",
+                          { what: "stats" },
+                          t`Atributos livres de novo.`,
+                        );
+                      }}
+                    >
+                      {confirm() === "reset-stats"
+                        ? reset("stats") === 0
+                          ? t`Confirmar: atributos (grátis)`
+                          : t`Confirmar: atributos por ${money(reset("stats"))}`
+                        : t`Atributos`}
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="tonal"
+                      isDisabled={
+                        busy() ||
+                        inRun() ||
+                        spent() === 0 ||
+                        carried() + bank() < reset("tree")
+                      }
+                      onPress={() => {
+                        if (confirm() !== "reset-tree")
+                          return setConfirm("reset-tree");
+                        send(
+                          "rpg.reset",
+                          { what: "tree" },
+                          t`Pontos de habilidade livres de novo.`,
+                        );
+                      }}
+                    >
+                      {confirm() === "reset-tree"
+                        ? reset("tree") === 0
+                          ? t`Confirmar: habilidades (grátis)`
+                          : t`Confirmar: habilidades por ${money(reset("tree"))}`
+                        : t`Habilidades`}
+                    </Button>
+                  </Row>
                 </>
               );
             }}

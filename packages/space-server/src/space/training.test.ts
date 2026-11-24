@@ -233,6 +233,7 @@ test("dummy: ao lado treina, longe não; só item de treino; o servidor confere 
   assert.deepEqual(rt.trainSpot(ana.viewer, "dummy-1"), {
     ok: true,
     zone: "hall",
+    dummy: "vocacao",
   });
   assert.deepEqual(rt.trainSpot(ana.viewer, "nada"), {
     ok: false,

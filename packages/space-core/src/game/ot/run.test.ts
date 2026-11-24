@@ -15,6 +15,7 @@ import {
   gearOf,
   starterInventory,
 } from "./inventory.ts";
+import { type Stats, withInt, withVit } from "./attributes.ts";
 import { addExperience, expForLevel } from "./progression.ts";
 import {
   type RunHero,
@@ -182,10 +183,10 @@ test("a sala cresce com o grupo: monstros comuns em número, o chefe em vida", (
     stageMonsters("cripta-do-musgo", 0, 1).map((m) => m.id),
     ["rato-do-musgo", "rato-do-musgo", "rato-do-musgo"],
   );
-  assert.equal(stageMonsters("cripta-do-musgo", 0, 2).length, 4); // round(3 × 1,3)
+  assert.equal(stageMonsters("cripta-do-musgo", 0, 2).length, 4); // round(3 × 1,4)
   const boss2 = stageMonsters("cripta-do-musgo", 3, 2);
   assert.equal(boss2[0]!.id, "matriarca-do-musgo");
-  assert.equal(boss2[0]!.health, 286); // 220 × 1,3
+  assert.equal(boss2[0]!.health, 308); // 220 × 1,4
   assert.equal(boss2.filter((m) => m.id === "matriarca-do-musgo").length, 1);
 });
 
@@ -323,8 +324,10 @@ test("besta com flecha (munição de outro tipo) luta com os punhos [TFS getWeap
 // Guardas do balanceamento medido em 23/11/2026 (muchat/docs/espaco/jogo/ot): uma mudança
 // de ficha ou de regra que mude a curva acende aqui.
 test("balanceamento: a primeira dungeon é possível no level 1 com um cavaleiro", () => {
+  // 24/11/2026: com a esquiva do Ragnarok (level + AGI contra o HIT do monstro) o cavaleiro de
+  // level 1 vence quase sempre; a Cripta é a primeira descida.
   const k1 = winRate("cripta-do-musgo", [hero(4, 1)]);
-  assert.ok(k1 >= 0.6 && k1 <= 0.95, `cavaleiro 1 sozinho: ${k1}`);
+  assert.ok(k1 >= 0.6, `cavaleiro 1 sozinho: ${k1}`);
   const pair = winRate("cripta-do-musgo", [hero(4, 1), hero(1, 1)]);
   assert.ok(pair >= 0.85, `cavaleiro 1 + feiticeiro 1: ${pair}`);
   const mage = winRate("cripta-do-musgo", [hero(1, 1)]);
@@ -353,6 +356,18 @@ test("balanceamento: Forja no level 40 com grupo completo", () => {
     }),
     hero(1, 40, 10, { ml: 50, owned: ["varinha-ardente", "manto-azul"] }),
   ];
+  // 24/11/2026: no level 40 o herói tem 200 pontos de atributo (e a Forja ficou mais dura).
+  const builds: Stats[] = [
+    { for: 91, vit: 71, agi: 21, des: 21, int: 1, sor: 1 },
+    { int: 99, vit: 61, des: 41, for: 1, agi: 1, sor: 1 },
+    { des: 99, agi: 51, vit: 51, for: 1, int: 1, sor: 1 },
+    { int: 99, des: 61, vit: 41, for: 1, agi: 1, sor: 1 },
+  ];
+  party.forEach((p, i) => {
+    p.stats = builds[i]!;
+    p.healthMax = withVit(p.healthMax, p.stats);
+    p.manaMax = withInt(p.manaMax, p.stats);
+  });
   const w = winRate("forja-rachada", party, 60);
   assert.ok(w >= 0.9, `grupo 40 na Forja: ${w}`);
 });
@@ -475,7 +490,7 @@ test("poções: abaixo do limite bebe a que mais cura, uma por segundo; o frasco
   addItem(k.inv, 100_000, "pocao-de-vida", 10);
   addItem(k.inv, 100_000, "pocao-forte-de-vida", 5);
   k.supplies = {
-    health: { item: null, below: 60 },
+    health: { item: null, below: 90 },
     mana: { item: null, below: 0 },
   };
   const r = run("cripta-do-musgo", [k], 3);

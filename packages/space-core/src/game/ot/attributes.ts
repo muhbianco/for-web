@@ -11,7 +11,14 @@
  */
 
 export type StatId = "for" | "agi" | "vit" | "int" | "des" | "sor";
-export const STATS: readonly StatId[] = ["for", "agi", "vit", "int", "des", "sor"];
+export const STATS: readonly StatId[] = [
+  "for",
+  "agi",
+  "vit",
+  "int",
+  "des",
+  "sor",
+];
 export type Stats = Record<StatId, number>;
 
 /** Todo atributo começa em 1 [RO pc.cpp: personagem novo com 1 em cada] e vai até 99 [RO pré-renovação]. */
@@ -50,7 +57,12 @@ export function validStats(s: unknown, level: number): s is Stats {
   if (typeof s !== "object" || s === null) return false;
   for (const k of STATS) {
     const v = (s as Record<string, unknown>)[k];
-    if (!Number.isInteger(v) || (v as number) < STAT_MIN || (v as number) > STAT_MAX) return false;
+    if (
+      !Number.isInteger(v) ||
+      (v as number) < STAT_MIN ||
+      (v as number) > STAT_MAX
+    )
+      return false;
   }
   return statPointsFree(s as Stats, level) >= 0;
 }
@@ -63,18 +75,22 @@ export function addStats(
   s: Stats,
   add: Partial<Record<StatId, number>>,
   level: number,
-): { ok: true; stats: Stats } | { ok: false; reason: "bad_points" | "stat_max" | "no_points" } {
+):
+  | { ok: true; stats: Stats }
+  | { ok: false; reason: "bad_points" | "stat_max" | "no_points" } {
   const next = { ...s };
   let total = 0;
   for (const k of STATS) {
     const n = add[k] ?? 0;
-    if (!Number.isInteger(n) || n < 0) return { ok: false, reason: "bad_points" };
+    if (!Number.isInteger(n) || n < 0)
+      return { ok: false, reason: "bad_points" };
     next[k] += n;
     total += n;
     if (next[k] > STAT_MAX) return { ok: false, reason: "stat_max" };
   }
   if (total === 0) return { ok: false, reason: "bad_points" };
-  if (statPointsFree(next, level) < 0) return { ok: false, reason: "no_points" };
+  if (statPointsFree(next, level) < 0)
+    return { ok: false, reason: "no_points" };
   return { ok: true, stats: next };
 }
 
@@ -99,11 +115,13 @@ export function baseMatk(s: Stats): [number, number] {
 
 /**
  * [nosso] Escala do Ragnarok para o OT: cada ponto de ataque base é +0,4% de dano da arma, e
- * cada ponto de MATQ é +0,25% de dano e de cura das magias. Com FOR 50 (ATQ 75) a arma bate
- * 30% mais; com INT 50 (MATQ 99~150) a magia sai entre 25% e 37% mais forte.
+ * cada ponto de MATQ é +0,15% de dano e de cura das magias. Com FOR 50 (ATQ 75) a arma bate
+ * 30% mais; com INT 50 (MATQ 99~150) a magia sai entre 15% e 22% mais forte. A magia já cresce
+ * com o magic level do OT: com +0,25% o mago sozinho vencia até a última dungeon (simulador,
+ * 24/11/2026).
  */
 export const ATK_PCT = 0.4;
-export const MATK_PCT = 0.25;
+export const MATK_PCT = 0.15;
 
 /** Escala da defesa da VIT e da INT sobre o dano do OT [nosso]: um quarto da do Ragnarok. */
 export const SOFT_DEF_SCALE = 0.25;
@@ -180,7 +198,10 @@ export function derive(s: Stats, level: number): Derived {
     minRoll: s.des / 200,
     cooldown: 1 - s.des / 300,
     capBonus: s.for * 10,
-    vitDef: [Math.floor(vMin * SOFT_DEF_SCALE), Math.floor(vMax * SOFT_DEF_SCALE)],
+    vitDef: [
+      Math.floor(vMin * SOFT_DEF_SCALE),
+      Math.floor(vMax * SOFT_DEF_SCALE),
+    ],
     mdef: Math.floor((s.int + Math.floor(s.vit / 2)) * SOFT_DEF_SCALE),
   };
 }
@@ -199,9 +220,14 @@ export function withInt(manaMax: number, s: Stats): number {
  * nossos monstros têm DES igual ao level. Com 3 ou mais monstros em cima, a esquiva cai 10%
  * por monstro além do segundo [RO agi_penalty_type 1, count 3, num 10].
  */
-export function monsterHitChance(monsterLevel: number, flee: number, attackers = 1): number {
+export function monsterHitChance(
+  monsterLevel: number,
+  flee: number,
+  attackers = 1,
+): number {
   let f = flee;
-  if (attackers >= 3) f = Math.max(1, Math.floor((f * (100 - (attackers - 2) * 10)) / 100));
+  if (attackers >= 3)
+    f = Math.max(1, Math.floor((f * (100 - (attackers - 2) * 10)) / 100));
   const hit = 2 * monsterLevel;
   return Math.max(5, Math.min(100, 80 + hit - f));
 }

@@ -5,7 +5,10 @@ import {
   type TrainingSkill,
   type VocationId,
   addManaSpent,
+  addPointTries,
   addSkillTries,
+  JOB_NAMES,
+  reqPointTries,
   reqMana,
   reqSkillTries,
   TRAINING,
@@ -46,6 +49,7 @@ export function rpgLabels() {
     distancia: t`Distância`,
     escudo: t`Escudo`,
     magia: t`Magia`,
+    habilidade: t`Habilidade`,
   };
   const error = (code: string, reason?: string): string => {
     if (code === "not_allowed" && reason === "too_far")
@@ -81,6 +85,18 @@ export function rpgLabels() {
       return t`O herói está numa dungeon agora. Espere a corrida acabar.`;
     if (code === "rpg_invalid" && reason === "changed")
       return t`O grupo mudou enquanto começava. Confira e comece de novo.`;
+    if (code === "rpg_invalid" && reason === "wrong_dummy")
+      return t`Este dummy não treina isso: as armas e a magia são no dummy de vocação; a habilidade, no dummy de habilidade.`;
+    if (code === "rpg_invalid" && reason === "no_points")
+      return t`Faltam pontos para isso.`;
+    if (code === "rpg_invalid" && reason === "stat_max")
+      return t`Esse atributo já está no máximo (99).`;
+    if (code === "rpg_invalid" && reason === "requires")
+      return t`Aprenda antes o adereço de que este depende.`;
+    if (code === "rpg_invalid" && reason === "tier")
+      return t`Essa parte da árvore abre com a evolução de classe, no Mestre.`;
+    if (code === "rpg_invalid" && reason === "max_rank")
+      return t`Esse adereço já está no máximo.`;
     return t`Não foi possível fazer isso agora. Tente de novo.`;
   };
   return { vocation, skill, error };
@@ -108,6 +124,18 @@ export function vocationName(v: number): string {
     default:
       return t`Aprendiz`;
   }
+}
+
+/**
+ * O nome da classe com a evolução (24/11/2026): a 1ª e a 2ª são as vocações do OT; a 3ª, a nova
+ * (o nome vem do conteúdo do jogo).
+ */
+export function className(v: number, job: number): string {
+  if (job >= 3) {
+    const base = VOCATIONS[v as VocationId]?.base ?? 0;
+    if (base >= 1 && base <= 4) return JOB_NAMES[base as 1 | 2 | 3 | 4][2];
+  }
+  return vocationName(v);
 }
 
 /** Skills que a vocação treina bem (as outras andam devagar demais). */
@@ -159,6 +187,18 @@ export function projectTraining(
     gain.escudo,
   );
   const shield = { ...sh, next: reqSkillTries(voc, "escudo", sh.level + 1) };
+  if (tr.skill === "habilidade") {
+    // Treino de habilidade (24/11/2026): o "nível" é o total de pontos ganhos.
+    const p = addPointTries(
+      { points: hero.skill_points.earned, tries: hero.skill_points.tries },
+      gain.main,
+    );
+    return {
+      skill: { level: p.points, tries: p.tries, next: reqPointTries(p.points + 1) },
+      shield,
+      remainingMs,
+    };
+  }
   if (tr.skill === "magia") {
     const m = addManaSpent(
       voc,
@@ -208,9 +248,11 @@ export function hoursToNext(hero: RpgHeroView, skill: TrainingSkill): number {
   const perHour = trainingGain(voc, skill, 3600, hero.rates).main;
   if (perHour <= 0) return Number.POSITIVE_INFINITY;
   const left =
-    skill === "magia"
-      ? hero.magic.next - hero.magic.mana_spent
-      : hero.skills[skill].next - hero.skills[skill].tries;
+    skill === "habilidade"
+      ? hero.skill_points.next - hero.skill_points.tries
+      : skill === "magia"
+        ? hero.magic.next - hero.magic.mana_spent
+        : hero.skills[skill].next - hero.skills[skill].tries;
   return Math.max(0, left) / perHour;
 }
 

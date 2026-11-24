@@ -474,11 +474,12 @@ test("herói 3 (24/11/2026): versão 2 vira 3 com atributos em 1 e os pontos do 
   applyVocation(old, 4);
   old.level = 12;
   old.v = 2 as never;
-  delete old.stats;
-  delete old.tree;
-  delete old.points;
-  delete old.third;
-  delete old.resets;
+  const raw = old as Partial<RpgHeroDoc>;
+  delete raw.stats;
+  delete raw.tree;
+  delete raw.points;
+  delete raw.third;
+  delete raw.resets;
   const d = normalizeHero(old);
   assert.equal(d.v, 3);
   assert.deepEqual(d.stats, { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 });

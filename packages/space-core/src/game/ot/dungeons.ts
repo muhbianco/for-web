@@ -5,8 +5,15 @@
  */
 export type DungeonId =
   | "cripta-do-musgo"
+  | "toca-dos-javalis"
   | "galerias-afogadas"
-  | "forja-rachada";
+  | "ninho-das-aranhas"
+  | "forja-rachada"
+  | "mina-assombrada"
+  | "bosque-petrificado"
+  | "cidadela-de-cinzas"
+  | "abismo-gelado"
+  | "trono-do-vazio";
 
 /** Uma sala da dungeon: os monstros entram juntos; a última é a do chefe. */
 export interface DungeonStage {
@@ -21,10 +28,11 @@ export interface Dungeon {
   minLevel: number;
   /**
    * [nosso] Level a partir do qual a dungeon fica confortável (vence 70% ou mais das corridas;
-   * só informação para o menu). Medido no simulador em 23/11/2026: 120 sementes por level, kit
-   * inicial com o melhor vestido, 100 flechas, 5 poções, skill principal 10 + 2·level, escudo
-   * 10 + level, magic level do mago = level (o treino dos heróis de produção). `group` é o trio
-   * cavaleiro + arqueiro + druida; `solo`, por vocação base (null: sozinho não dá até o 50).
+   * só informação para o menu). Medido em 24/11/2026 com scripts/comfort-levels.ts (60 sementes
+   * por level), no herói dos atributos e da árvore: os 5 pontos por level na construção típica
+   * da classe, min(60, level) pontos na árvore, o melhor equipamento já ao alcance no level,
+   * skill e magic level do treino de produção e as poções da faixa. `group` é o trio cavaleiro +
+   * arqueiro + druida; `solo`, por vocação base (null: sozinho não dá).
    */
   comfort: {
     group: number;
@@ -39,7 +47,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "cripta-do-musgo",
     name: "Cripta do Musgo",
     minLevel: 1,
-    comfort: { group: 1, solo: { 1: 4, 2: 4, 3: 1, 4: 1 } },
+    comfort: { group: 1, solo: { 1: 3, 2: 3, 3: 1, 4: 1 } },
     blurb:
       "Ratos, esqueletos e a Matriarca do Musgo no fundo. A primeira descida.",
     stages: [
@@ -71,10 +79,44 @@ export const DUNGEONS: readonly Dungeon[] = [
     ],
   },
   {
+    id: "toca-dos-javalis",
+    name: "Toca dos Javalis",
+    minLevel: 4,
+    comfort: { group: 4, solo: { 1: 5, 2: 6, 3: 4, 4: 4 } },
+    blurb: "Lobos, javalis e quem caça nas tocas. O Rei Javali guarda o fundo.",
+    stages: [
+      {
+        name: "Trilha dos lobos",
+        monsters: [{ id: "lobo-cinzento", count: 3 }],
+      },
+      {
+        name: "Lamaçal",
+        monsters: [
+          { id: "javali-bravo", count: 2 },
+          { id: "lobo-cinzento", count: 1 },
+        ],
+      },
+      {
+        name: "Acampamento",
+        monsters: [
+          { id: "cacador-da-toca", count: 2 },
+          { id: "javali-bravo", count: 1 },
+        ],
+      },
+      {
+        name: "Covil do Rei",
+        monsters: [
+          { id: "rei-javali", count: 1 },
+          { id: "javali-bravo", count: 2 },
+        ],
+      },
+    ],
+  },
+  {
     id: "galerias-afogadas",
     name: "Galerias Afogadas",
     minLevel: 8,
-    comfort: { group: 10, solo: { 1: 16, 2: 18, 3: 24, 4: 32 } },
+    comfort: { group: 8, solo: { 1: 9, 2: 12, 3: 10, 4: 10 } },
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
     stages: [
       {
@@ -105,10 +147,47 @@ export const DUNGEONS: readonly Dungeon[] = [
     ],
   },
   {
+    id: "ninho-das-aranhas",
+    name: "Ninho das Aranhas",
+    minLevel: 13,
+    comfort: { group: 13, solo: { 1: 13, 2: 15, 3: 15, 4: 17 } },
+    blurb: "Teias, veneno e casulos. Fogo ajuda; a Rainha cura a si mesma.",
+    stages: [
+      {
+        name: "Teias da entrada",
+        monsters: [
+          { id: "aranha-tecela", count: 2 },
+          { id: "larva-gigante", count: 1 },
+        ],
+      },
+      {
+        name: "Galeria dos casulos",
+        monsters: [
+          { id: "larva-gigante", count: 2 },
+          { id: "aranha-saltadora", count: 1 },
+        ],
+      },
+      {
+        name: "Poço das saltadoras",
+        monsters: [
+          { id: "aranha-saltadora", count: 2 },
+          { id: "aranha-tecela", count: 1 },
+        ],
+      },
+      {
+        name: "Trono de seda",
+        monsters: [
+          { id: "rainha-aranha", count: 1 },
+          { id: "aranha-tecela", count: 2 },
+        ],
+      },
+    ],
+  },
+  {
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    comfort: { group: 36, solo: { 1: null, 2: null, 3: null, 4: null } },
+    comfort: { group: 20, solo: { 1: 26, 2: 22, 3: 26, 4: 26 } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [
@@ -135,6 +214,164 @@ export const DUNGEONS: readonly Dungeon[] = [
         monsters: [
           { id: "guardiao-da-forja", count: 1 },
           { id: "automato-de-ferro", count: 1 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "mina-assombrada",
+    name: "Mina Assombrada",
+    minLevel: 27,
+    comfort: { group: 27, solo: { 1: 31, 2: 31, 3: 40, 4: 43 } },
+    blurb:
+      "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
+    stages: [
+      {
+        name: "Poço de acesso",
+        monsters: [{ id: "mineiro-espectral", count: 2 }],
+      },
+      {
+        name: "Veio de carvão",
+        monsters: [
+          { id: "golem-de-carvao", count: 1 },
+          { id: "morcego-vampiro", count: 2 },
+        ],
+      },
+      {
+        name: "Galeria desabada",
+        monsters: [
+          { id: "mineiro-espectral", count: 2 },
+          { id: "golem-de-carvao", count: 1 },
+        ],
+      },
+      {
+        name: "Câmara do Capataz",
+        monsters: [
+          { id: "capataz-espectral", count: 1 },
+          { id: "mineiro-espectral", count: 2 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "bosque-petrificado",
+    name: "Bosque Petrificado",
+    minLevel: 35,
+    comfort: { group: 35, solo: { 1: 35, 2: 41, 3: 44, 4: 50 } },
+    blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
+    stages: [
+      {
+        name: "Clareira de pedra",
+        monsters: [
+          { id: "harpia-de-granito", count: 2 },
+          { id: "basilisco", count: 1 },
+        ],
+      },
+      {
+        name: "Bosque cinzento",
+        monsters: [
+          { id: "ent-de-pedra", count: 1 },
+          { id: "basilisco", count: 2 },
+        ],
+      },
+      {
+        name: "Ninho das harpias",
+        monsters: [{ id: "harpia-de-granito", count: 3 }],
+      },
+      {
+        name: "Jardim da Medusa",
+        monsters: [
+          { id: "medusa-ancia", count: 1 },
+          { id: "basilisco", count: 2 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "cidadela-de-cinzas",
+    name: "Cidadela de Cinzas",
+    minLevel: 45,
+    comfort: { group: 48, solo: { 1: 54, 2: 51, 3: 63, 4: 63 } },
+    blurb:
+      "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
+    stages: [
+      {
+        name: "Portão queimado",
+        monsters: [{ id: "cavaleiro-de-cinzas", count: 2 }],
+      },
+      {
+        name: "Pátio das salamandras",
+        monsters: [
+          { id: "salamandra", count: 2 },
+          { id: "cavaleiro-de-cinzas", count: 1 },
+        ],
+      },
+      {
+        name: "Capela profanada",
+        monsters: [
+          { id: "demonio-menor", count: 2 },
+          { id: "salamandra", count: 1 },
+        ],
+      },
+      {
+        name: "Salão do trono",
+        monsters: [
+          { id: "senhor-das-cinzas", count: 1 },
+          { id: "demonio-menor", count: 1 },
+          { id: "cavaleiro-de-cinzas", count: 1 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "abismo-gelado",
+    name: "Abismo Gelado",
+    minLevel: 55,
+    comfort: { group: 55, solo: { 1: 61, 2: 67, 3: 67, 4: 67 } },
+    blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
+    stages: [
+      { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },
+      {
+        name: "Fenda",
+        monsters: [
+          { id: "espirito-da-nevasca", count: 2 },
+          { id: "lobo-glacial", count: 1 },
+        ],
+      },
+      {
+        name: "Caverna dos gigantes",
+        monsters: [{ id: "gigante-de-gelo", count: 2 }],
+      },
+      {
+        name: "Ninho do Wyrm",
+        monsters: [
+          { id: "wyrm-de-gelo", count: 1 },
+          { id: "espirito-da-nevasca", count: 1 },
+        ],
+      },
+    ],
+  },
+  {
+    id: "trono-do-vazio",
+    name: "Trono do Vazio",
+    minLevel: 70,
+    comfort: { group: 70, solo: { 1: 85, 2: 82, 3: 103, 4: 97 } },
+    blurb: "O fim do caminho. O que vive aqui come a luz.",
+    stages: [
+      { name: "Limiar", monsters: [{ id: "sombra-vazia", count: 2 }] },
+      {
+        name: "Corredor dos arautos",
+        monsters: [
+          { id: "arauto-do-vazio", count: 2 },
+          { id: "sombra-vazia", count: 1 },
+        ],
+      },
+      { name: "Fosso", monsters: [{ id: "devorador", count: 2 }] },
+      {
+        name: "Trono",
+        monsters: [
+          { id: "imperador-do-vazio", count: 1 },
+          { id: "arauto-do-vazio", count: 1 },
         ],
       },
     ],

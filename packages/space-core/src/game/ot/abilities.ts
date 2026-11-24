@@ -21,7 +21,9 @@ export type JobTier = 1 | 2 | 3;
 /** As quatro classes (vocações base do OT). */
 export type ClassId = 1 | 2 | 3 | 4;
 
-export const JOB_NAMES: Readonly<Record<ClassId, readonly [string, string, string]>> = {
+export const JOB_NAMES: Readonly<
+  Record<ClassId, readonly [string, string, string]>
+> = {
   1: ["Feiticeiro", "Arquimago", "Grão-mago"],
   2: ["Druida", "Ancião", "Primevo"],
   3: ["Arqueiro", "Caçador", "Sentinela"],
@@ -33,7 +35,9 @@ export const JOB_NAMES: Readonly<Record<ClassId, readonly [string, string, strin
  * ouro [TFS promotion.lua]) e agora pede também pontos postos na árvore, no papel do nível de
  * classe 40 que o Ragnarok pede para a troca de classe. A 3ª é nova.
  */
-export const EVOLUTION: Readonly<Record<2 | 3, { level: number; cost: number; points: number }>> = {
+export const EVOLUTION: Readonly<
+  Record<2 | 3, { level: number; cost: number; points: number }>
+> = {
   2: { level: 20, cost: 20_000, points: 8 },
   3: { level: 50, cost: 150_000, points: 24 },
 };
@@ -94,9 +98,19 @@ export interface AbilityDef {
   blurb: string;
 }
 
-const magia = (min: [number, number], max: [number, number], mlCap?: number): SpellFormula =>
-  mlCap === undefined ? { type: "magia", min, max } : { type: "magia", min, max, mlCap };
-const arma = (min: [number, number], max: [number, number]): SpellFormula => ({ type: "arma", min, max });
+const magia = (
+  min: [number, number],
+  max: [number, number],
+  mlCap?: number,
+): SpellFormula =>
+  mlCap === undefined
+    ? { type: "magia", min, max }
+    : { type: "magia", min, max, mlCap };
+const arma = (min: [number, number], max: [number, number]): SpellFormula => ({
+  type: "arma",
+  min,
+  max,
+});
 
 export const ABILITIES: readonly AbilityDef[] = [
   // ---- Cavaleiro ----------------------------------------------------------------
@@ -148,7 +162,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     cooldownMs: 2000,
     formula: { type: "fixa", min: 0, max: 0 },
     source: "challenge.lua",
-    blurb: "Quando um monstro bate em outra pessoa, puxa a sala inteira para si por 8 s.",
+    blurb:
+      "Quando um monstro bate em outra pessoa, puxa a sala inteira para si por 8 s.",
   },
   // ---- Arqueiro -----------------------------------------------------------------
   {
@@ -330,7 +345,15 @@ export type NodeEffect =
   /** O golpe passa a ser deste elemento. */
   | { t: "element"; element: Element }
   /** Troca a fórmula (e a mana) pela de outra magia do TFS. */
-  | { t: "formula"; formula: SpellFormula; mana: number; name: string; source: string }
+  | {
+      t: "formula";
+      formula: SpellFormula;
+      mana: number;
+      name: string;
+      source: string;
+      /** A magia nova é de outro elemento (a onda de raízes é de terra). */
+      element?: Element;
+    }
   /** A cura dispara mais cedo: o limite sobe estes pontos de % da vida. */
   | { t: "trigger"; pct: number }
   /** A cura também cura o resto do grupo, com esta % do valor. */
@@ -385,11 +408,27 @@ function attackBranch(
 ): TreeNode[] {
   return [
     N(ability, "forca", 1, "Força", 5, { t: "power", pct: 8 }),
-    N(ability, "economia", 1, "Economia", 3, { t: "cost", pct: costPct }, "forca"),
+    N(
+      ability,
+      "economia",
+      1,
+      "Economia",
+      3,
+      { t: "cost", pct: costPct },
+      "forca",
+    ),
     N(ability, t2.key, 2, t2.name, 1, t2.effect, "forca"),
     N(ability, "forca2", 2, "Força II", 5, { t: "power", pct: 6 }, t2.key),
     N(ability, t3.key, 3, t3.name, 1, t3.effect, "forca2"),
-    N(ability, "ritmo", 3, "Ritmo", 2, { t: "cooldown", ms: cooldownMs }, t3.key),
+    N(
+      ability,
+      "ritmo",
+      3,
+      "Ritmo",
+      2,
+      { t: "cooldown", ms: cooldownMs },
+      t3.key,
+    ),
   ];
 }
 
@@ -401,7 +440,11 @@ export const TREE: readonly TreeNode[] = [
   ...attackBranch(
     "golpe-brutal",
     10,
-    { key: "atordoar", name: "Atordoar", effect: { t: "stun", chance: 30, ms: 2000 } },
+    {
+      key: "atordoar",
+      name: "Atordoar",
+      effect: { t: "stun", chance: 30, ms: 2000 },
+    },
     { key: "duplo", name: "Golpe duplo", effect: { t: "echo", pct: 50 } },
     1000,
   ),
@@ -413,20 +456,60 @@ export const TREE: readonly TreeNode[] = [
   ),
   N("atadura", "forca", 1, "Força", 5, { t: "power", pct: 10 }),
   N("atadura", "reflexo", 1, "Reflexo", 2, { t: "trigger", pct: 10 }, "forca"),
-  N("atadura", "fechar-feridas", 2, "Fechar feridas", 1, {
-    t: "formula",
-    formula: magia([4, 25], [8, 50]),
-    mana: 40,
-    name: "Fechar feridas",
-    source: "wound_cleansing.lua",
-  }, "forca"),
-  N("atadura", "forca2", 2, "Força II", 5, { t: "power", pct: 6 }, "fechar-feridas"),
+  N(
+    "atadura",
+    "fechar-feridas",
+    2,
+    "Fechar feridas",
+    1,
+    {
+      t: "formula",
+      formula: magia([4, 25], [8, 50]),
+      mana: 40,
+      name: "Fechar feridas",
+      source: "wound_cleansing.lua",
+    },
+    "forca",
+  ),
+  N(
+    "atadura",
+    "forca2",
+    2,
+    "Força II",
+    5,
+    { t: "power", pct: 6 },
+    "fechar-feridas",
+  ),
   N("atadura", "economia", 3, "Economia", 3, { t: "cost", pct: 15 }, "forca2"),
-  N("atadura", "reflexo2", 3, "Reflexo II", 2, { t: "trigger", pct: 5 }, "forca2"),
+  N(
+    "atadura",
+    "reflexo2",
+    3,
+    "Reflexo II",
+    2,
+    { t: "trigger", pct: 5 },
+    "forca2",
+  ),
   N("desafio", "presenca", 1, "Presença", 3, { t: "focus", ms: 2000 }),
-  N("desafio", "economia", 1, "Economia", 3, { t: "cost", pct: 10 }, "presenca"),
+  N(
+    "desafio",
+    "economia",
+    1,
+    "Economia",
+    3,
+    { t: "cost", pct: 10 },
+    "presenca",
+  ),
   N("desafio", "muralha", 2, "Muralha", 3, { t: "guard", pct: 8 }, "presenca"),
-  N("desafio", "estrondo", 2, "Estrondo", 1, { t: "stun", chance: 100, ms: 1000 }, "muralha"),
+  N(
+    "desafio",
+    "estrondo",
+    2,
+    "Estrondo",
+    1,
+    { t: "stun", chance: 100, ms: 1000 },
+    "muralha",
+  ),
   N("desafio", "bastiao", 3, "Bastião", 1, { t: "guard", pct: 15 }, "muralha"),
   N("desafio", "eco", 3, "Eco", 2, { t: "focus", ms: 2000 }, "bastiao"),
   // ---- Arqueiro -----------------------------------------------------------------
@@ -445,21 +528,65 @@ export const TREE: readonly TreeNode[] = [
   ...attackBranch(
     "caldeira-sagrada",
     15,
-    { key: "consagrar", name: "Consagrar", effect: { t: "stun", chance: 20, ms: 1500 } },
+    {
+      key: "consagrar",
+      name: "Consagrar",
+      effect: { t: "stun", chance: 20, ms: 1500 },
+    },
     { key: "coro", name: "Coro", effect: { t: "echo", pct: 40 } },
   ),
   N("cura-de-campo", "forca", 1, "Força", 5, { t: "power", pct: 10 }),
-  N("cura-de-campo", "reflexo", 1, "Reflexo", 2, { t: "trigger", pct: 10 }, "forca"),
-  N("cura-de-campo", "intensa", 2, "Cura intensa", 1, {
-    t: "formula",
-    formula: INTENSE_HEALING,
-    mana: 70,
-    name: "Cura intensa",
-    source: "intense_healing.lua",
-  }, "forca"),
-  N("cura-de-campo", "forca2", 2, "Força II", 5, { t: "power", pct: 6 }, "intensa"),
-  N("cura-de-campo", "abrigo", 3, "Abrigo", 1, { t: "group", pct: 30 }, "forca2"),
-  N("cura-de-campo", "economia", 3, "Economia", 3, { t: "cost", pct: 15 }, "abrigo"),
+  N(
+    "cura-de-campo",
+    "reflexo",
+    1,
+    "Reflexo",
+    2,
+    { t: "trigger", pct: 10 },
+    "forca",
+  ),
+  N(
+    "cura-de-campo",
+    "intensa",
+    2,
+    "Cura intensa",
+    1,
+    {
+      t: "formula",
+      formula: INTENSE_HEALING,
+      mana: 70,
+      name: "Cura intensa",
+      source: "intense_healing.lua",
+    },
+    "forca",
+  ),
+  N(
+    "cura-de-campo",
+    "forca2",
+    2,
+    "Força II",
+    5,
+    { t: "power", pct: 6 },
+    "intensa",
+  ),
+  N(
+    "cura-de-campo",
+    "abrigo",
+    3,
+    "Abrigo",
+    1,
+    { t: "group", pct: 30 },
+    "forca2",
+  ),
+  N(
+    "cura-de-campo",
+    "economia",
+    3,
+    "Economia",
+    3,
+    { t: "cost", pct: 15 },
+    "abrigo",
+  ),
   // ---- Feiticeiro ---------------------------------------------------------------
   ...attackBranch(
     "golpe-de-raio",
@@ -506,22 +633,50 @@ export const TREE: readonly TreeNode[] = [
     name: "Cura leve",
     source: "light_healing.lua",
   }),
-  N("remendo", "reflexo", 1, "Reflexo", 2, { t: "trigger", pct: 10 }, "cura-leve"),
-  N("remendo", "intensa", 2, "Cura intensa", 1, {
-    t: "formula",
-    formula: INTENSE_HEALING,
-    mana: 70,
-    name: "Cura intensa",
-    source: "intense_healing.lua",
-  }, "cura-leve"),
+  N(
+    "remendo",
+    "reflexo",
+    1,
+    "Reflexo",
+    2,
+    { t: "trigger", pct: 10 },
+    "cura-leve",
+  ),
+  N(
+    "remendo",
+    "intensa",
+    2,
+    "Cura intensa",
+    1,
+    {
+      t: "formula",
+      formula: INTENSE_HEALING,
+      mana: 70,
+      name: "Cura intensa",
+      source: "intense_healing.lua",
+    },
+    "cura-leve",
+  ),
   N("remendo", "forca", 2, "Força", 5, { t: "power", pct: 10 }, "intensa"),
   N("remendo", "economia", 3, "Economia", 3, { t: "cost", pct: 15 }, "forca"),
-  N("remendo", "reflexo2", 3, "Reflexo II", 2, { t: "trigger", pct: 5 }, "forca"),
+  N(
+    "remendo",
+    "reflexo2",
+    3,
+    "Reflexo II",
+    2,
+    { t: "trigger", pct: 5 },
+    "forca",
+  ),
   // ---- Druida -------------------------------------------------------------------
   ...attackBranch(
     "golpe-de-gelo",
     10,
-    { key: "congelar", name: "Congelar", effect: { t: "stun", chance: 25, ms: 2000 } },
+    {
+      key: "congelar",
+      name: "Congelar",
+      effect: { t: "stun", chance: 25, ms: 2000 },
+    },
     { key: "estilhaco", name: "Estilhaço", effect: { t: "targets", n: 2 } },
   ),
   ...attackBranch(
@@ -536,16 +691,57 @@ export const TREE: readonly TreeNode[] = [
         mana: 170,
         name: "Onda de raízes",
         source: "terra_wave.lua",
+        element: "terra",
       },
     },
     { key: "inverno", name: "Inverno", effect: { t: "echo", pct: 40 } },
   ),
   N("cura-do-companheiro", "forca", 1, "Força", 5, { t: "power", pct: 8 }),
-  N("cura-do-companheiro", "economia", 1, "Economia", 3, { t: "cost", pct: 10 }, "forca"),
-  N("cura-do-companheiro", "em-massa", 2, "Cura em massa", 1, { t: "group", pct: 50 }, "forca"),
-  N("cura-do-companheiro", "forca2", 2, "Força II", 5, { t: "power", pct: 6 }, "em-massa"),
-  N("cura-do-companheiro", "bencao", 3, "Bênção", 2, { t: "trigger", pct: 10 }, "forca2"),
-  N("cura-do-companheiro", "fluxo", 3, "Fluxo", 3, { t: "cost", pct: 10 }, "forca2"),
+  N(
+    "cura-do-companheiro",
+    "economia",
+    1,
+    "Economia",
+    3,
+    { t: "cost", pct: 10 },
+    "forca",
+  ),
+  N(
+    "cura-do-companheiro",
+    "em-massa",
+    2,
+    "Cura em massa",
+    1,
+    { t: "group", pct: 50 },
+    "forca",
+  ),
+  N(
+    "cura-do-companheiro",
+    "forca2",
+    2,
+    "Força II",
+    5,
+    { t: "power", pct: 6 },
+    "em-massa",
+  ),
+  N(
+    "cura-do-companheiro",
+    "bencao",
+    3,
+    "Bênção",
+    2,
+    { t: "trigger", pct: 10 },
+    "forca2",
+  ),
+  N(
+    "cura-do-companheiro",
+    "fluxo",
+    3,
+    "Fluxo",
+    3,
+    { t: "cost", pct: 10 },
+    "forca2",
+  ),
   N("seiva", "cura-leve", 1, "Cura leve", 1, {
     t: "formula",
     formula: LIGHT_HEALING,
@@ -553,14 +749,30 @@ export const TREE: readonly TreeNode[] = [
     name: "Cura leve",
     source: "light_healing.lua",
   }),
-  N("seiva", "reflexo", 1, "Reflexo", 2, { t: "trigger", pct: 10 }, "cura-leve"),
-  N("seiva", "intensa", 2, "Cura intensa", 1, {
-    t: "formula",
-    formula: INTENSE_HEALING,
-    mana: 70,
-    name: "Cura intensa",
-    source: "intense_healing.lua",
-  }, "cura-leve"),
+  N(
+    "seiva",
+    "reflexo",
+    1,
+    "Reflexo",
+    2,
+    { t: "trigger", pct: 10 },
+    "cura-leve",
+  ),
+  N(
+    "seiva",
+    "intensa",
+    2,
+    "Cura intensa",
+    1,
+    {
+      t: "formula",
+      formula: INTENSE_HEALING,
+      mana: 70,
+      name: "Cura intensa",
+      source: "intense_healing.lua",
+    },
+    "cura-leve",
+  ),
   N("seiva", "forca", 2, "Força", 5, { t: "power", pct: 10 }, "intensa"),
   N("seiva", "abrigo", 3, "Abrigo", 1, { t: "group", pct: 30 }, "forca"),
   N("seiva", "economia", 3, "Economia", 3, { t: "cost", pct: 15 }, "abrigo"),
@@ -588,7 +800,14 @@ export function cannotLearn(
   cls: number,
   tier: JobTier,
   free: number,
-): "not_node" | "not_class" | "tier" | "requires" | "max_rank" | "no_points" | null {
+):
+  | "not_node"
+  | "not_class"
+  | "tier"
+  | "requires"
+  | "max_rank"
+  | "no_points"
+  | null {
   const node = treeNode(id);
   if (!node) return "not_node";
   if (abilityDef(node.ability)?.cls !== cls) return "not_class";
@@ -604,7 +823,13 @@ export function validTree(t: unknown, cls: number, tier: JobTier): t is Tree {
   if (typeof t !== "object" || t === null || Array.isArray(t)) return false;
   for (const [id, v] of Object.entries(t)) {
     const node = treeNode(id);
-    if (!node || !Number.isInteger(v) || (v as number) < 1 || (v as number) > node.ranks) return false;
+    if (
+      !node ||
+      !Number.isInteger(v) ||
+      (v as number) < 1 ||
+      (v as number) > node.ranks
+    )
+      return false;
     if (abilityDef(node.ability)?.cls !== cls || node.tier > tier) return false;
     if (node.requires && !((t as Tree)[node.requires]! > 0)) return false;
   }
@@ -667,6 +892,7 @@ export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
       out.mana = node.effect.mana;
       out.name = node.effect.name;
       out.source = node.effect.source;
+      if (node.effect.element) out.element = node.effect.element;
     }
   }
   for (const node of treeOf(def.id)) {
@@ -693,7 +919,10 @@ export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
         out.leech += (e.pct * n) / 100;
         break;
       case "stun":
-        out.stun = { chance: Math.min(100, (out.stun?.chance ?? 0) + e.chance * n), ms: Math.max(out.stun?.ms ?? 0, e.ms) };
+        out.stun = {
+          chance: Math.min(100, (out.stun?.chance ?? 0) + e.chance * n),
+          ms: Math.max(out.stun?.ms ?? 0, e.ms),
+        };
         break;
       case "element":
         out.element = e.element;
@@ -714,7 +943,10 @@ export function abilityNow(def: AbilityDef, t: Tree): AbilityNow {
         break;
     }
   }
-  out.mana = Math.max(0, Math.floor((out.mana * (100 - Math.min(90, cost))) / 100));
+  out.mana = Math.max(
+    0,
+    Math.floor((out.mana * (100 - Math.min(90, cost))) / 100),
+  );
   out.cooldownMs = Math.max(MIN_COOLDOWN_MS, out.cooldownMs - cooldown);
   return out;
 }

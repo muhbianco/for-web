@@ -118,7 +118,7 @@ export interface SpaceUiState {
    */
   rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
   /** Someone used a training dummy on the map: the app opens the training dialog. */
-  trainRequest: { instance: string; title: string; n: number } | null;
+  trainRequest: { instance: string; title: string; dummy: "vocacao" | "habilidade"; n: number } | null;
   /** We used an NPC of the idle game (stage O8): the app opens its dialog. */
   npcRequest: {
     instance: string;
@@ -1112,6 +1112,7 @@ export class SpaceView {
         trainRequest: {
           instance: p.inst.id,
           title: p.label,
+          dummy: p.item.dummy ?? "vocacao",
           n: (this.state.trainRequest?.n ?? 0) + 1,
         },
       });

@@ -1322,6 +1322,31 @@ export const ART: Record<string, ArtDef> = {
       dot(g, 8, g.top - 1, "#f4c542");
     },
   },
+  // O dummy de habilidade (24/11/2026): um pedestal com um cristal de runa, para não se
+  // confundir com os de arma.
+  "dummy-habilidade": {
+    tall: 1,
+    draw(g) {
+      const stone = "#7d7f8c";
+      const rune = "#9b6cf0";
+      block(g, 3, g.top + 9, 10, 2, 4, shade(stone, -0.25));
+      rect(g, 5, g.top + 2, 6, 8, OUTLINE);
+      bevel(g, 6, g.top + 3, 4, 6, stone);
+      rect(g, 7, g.top + 5, 2, 1, shade(rune, 0.2));
+      // O cristal: um losango de 7 px que flutua sobre o pedestal.
+      rect(g, 7, g.top - 9, 2, 1, OUTLINE);
+      rect(g, 6, g.top - 8, 4, 1, OUTLINE);
+      rect(g, 5, g.top - 7, 6, 3, OUTLINE);
+      rect(g, 6, g.top - 4, 4, 1, OUTLINE);
+      rect(g, 7, g.top - 3, 2, 1, OUTLINE);
+      rect(g, 7, g.top - 8, 2, 1, shade(rune, 0.35));
+      rect(g, 6, g.top - 7, 4, 3, rune);
+      rect(g, 7, g.top - 4, 2, 1, shade(rune, -0.25));
+      dot(g, 6, g.top - 7, shade(rune, 0.5));
+      dot(g, 3, g.top - 6, shade(rune, 0.4));
+      dot(g, 12, g.top - 4, shade(rune, 0.4));
+    },
+  },
   "dummy-mannequin": {
     tall: 1,
     draw(g) {

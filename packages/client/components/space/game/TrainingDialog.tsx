@@ -7,6 +7,7 @@ import {
   type TrainingSkill,
   TRAINING,
   TRAINING_SKILLS,
+  dummyTrains,
 } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
@@ -26,11 +27,12 @@ import {
 
 /**
  * Usar um dummy de treino (docs/espaco/jogo/ot): na primeira vez escolhe a vocação
- * (definitiva); depois, a skill. O servidor confere a distância e o saldo.
+ * (definitiva); depois, a skill. O dummy de vocação treina as armas e a magia; o de habilidade
+ * (24/11/2026), os pontos da árvore. O servidor confere a distância, o dummy e o saldo.
  */
 export default function TrainingDialog(props: {
   view: SpaceView;
-  request: { instance: string; title: string };
+  request: { instance: string; title: string; dummy?: "vocacao" | "habilidade" };
   rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
   onClose: () => void;
 }) {
@@ -84,6 +86,8 @@ export default function TrainingDialog(props: {
     );
   const stop = () => send("rpg.train.stop", {}, props.onClose);
 
+  const kind = () => props.request.dummy ?? "vocacao";
+  const choices = () => TRAINING_SKILLS.filter((s) => dummyTrains(kind(), s));
   const trainingHere = () =>
     hero()?.training?.instance === props.request.instance
       ? hero()!.training
@@ -117,27 +121,41 @@ export default function TrainingDialog(props: {
                 <p>
                   {t`O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo.`}
                 </p>
+                <Show when={kind() === "habilidade"}>
+                  <Muted>
+                    {t`Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação. O saldo de 12 h é o mesmo dos dois.`}
+                  </Muted>
+                </Show>
                 <Muted>
                   {t`Saldo de treino: ${duration(bankNow(hero()!, now()))} (até ${TRAINING.maxBankMs / 3_600_000} h; volta a encher quando você não treina).`}
                 </Muted>
                 <Skills>
-                  <For each={TRAINING_SKILLS}>
+                  <For each={choices()}>
                     {(skill) => {
-                      const main = () => mainSkills(vocation()).includes(skill);
+                      const main = () =>
+                        skill === "habilidade" ||
+                        mainSkills(vocation()).includes(skill);
                       const level = () =>
-                        skill === "magia"
-                          ? hero()!.magic.level
-                          : hero()!.skills[skill].level;
+                        skill === "habilidade"
+                          ? hero()!.skill_points.earned
+                          : skill === "magia"
+                            ? hero()!.magic.level
+                            : hero()!.skills[skill].level;
                       const pct = () =>
-                        skill === "magia"
+                        skill === "habilidade"
                           ? percent(
-                              hero()!.magic.mana_spent,
-                              hero()!.magic.next,
+                              hero()!.skill_points.tries,
+                              hero()!.skill_points.next,
                             )
-                          : percent(
-                              hero()!.skills[skill].tries,
-                              hero()!.skills[skill].next,
-                            );
+                          : skill === "magia"
+                            ? percent(
+                                hero()!.magic.mana_spent,
+                                hero()!.magic.next,
+                              )
+                            : percent(
+                                hero()!.skills[skill].tries,
+                                hero()!.skills[skill].next,
+                              );
                       const eta = () => hoursToNext(hero()!, skill) * 3_600_000;
                       return (
                         <SkillRow data-main={main() ? "" : undefined}>
@@ -146,9 +164,11 @@ export default function TrainingDialog(props: {
                             {t`${level()} (${pct()}%)`}
                           </span>
                           <Muted>
-                            {main()
-                              ? t`≈ ${duration(eta())} para o próximo nível`
-                              : t`Lento para a sua vocação`}
+                            {skill === "habilidade"
+                              ? t`≈ ${duration(eta())} para o próximo ponto`
+                              : main()
+                                ? t`≈ ${duration(eta())} para o próximo nível`
+                                : t`Lento para a sua vocação`}
                           </Muted>
                           <Button
                             size="xs"
