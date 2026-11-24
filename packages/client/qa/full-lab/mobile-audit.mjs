@@ -24,6 +24,12 @@
  *
  * --with-share: a Bia (no computador) entra na mesma sala e compartilha a tela,
  * para ver o palco e o avatar "AO VIVO" no celular.
+ *
+ * --live: a interface "viva" (23/11/2026): no meio da sessão o aparelho gira (com o
+ * palco, a lista e a ficha abertos), o teclado abre na quantidade do mercador (a tela
+ * encolhe, como o adjustResize do APK) e a tela se divide; no computador a janela
+ * estreita de 1600 a 380 px. A cada mudança, além da auditoria: o mapa do tamanho da
+ * área dele, o cartão da chamada dentro do palco e o zoom que enquadra a tela.
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
@@ -54,6 +60,7 @@ const RUN = opt(
 const OUT = join(resolve("qa/full-lab/out/mobile"), RUN);
 mkdirSync(OUT, { recursive: true });
 const SPACE = `/server/${STATE.serverId}/space`;
+const LIVE = args.includes("--live");
 
 const browser = await chromium.launch({
   headless: !args.includes("--headed"),
@@ -128,6 +135,27 @@ async function androidBack(page) {
     throw new Error(`o voltar não fechou nada (muchatBack → ${handled})`);
   await page.waitForTimeout(500);
 }
+
+// Os diálogos do jogo, abertos pela visão (o mapa do laboratório não tem mercador
+// nem boneco): só o layout conta aqui; o servidor recusa as compras sem o NPC.
+const game = (key, value) => (pg) =>
+  pg.evaluate(
+    ([k, v]) => {
+      const view = window.__spaceView;
+      if (!view)
+        throw new Error(
+          "sem __spaceView: o app precisa de VITE_SPACE_TEST_HOOKS=1",
+        );
+      view.patch({ [k]: { ...v, n: Date.now() } });
+    },
+    [key, value],
+  );
+// Fecha como o voltar do Android (o APK chama window.muchatBack()).
+const shut = () => androidBack;
+
+/** Abre o palco pelo botão do cabeçalho. */
+const openStage = (pg) =>
+  press(pg.getByRole("button", { name: /^Palco( |$)/ }).first());
 
 async function location(page) {
   return (
@@ -219,7 +247,7 @@ async function tapMap(page) {
 
 // ---- auditoria (roda na página) ------------------------------------------------
 
-function auditPage() {
+function auditPage(touch) {
   const vw = innerWidth;
   const vh = innerHeight;
   const issues = [];
@@ -293,7 +321,9 @@ function auditPage() {
     // Range inputs are thin by design; their thumb is the target.
     const thin = el.type === "range";
     if (!thin && min < 24) add("alta", "alvo-pequeno", name, { size });
-    else if (!thin && min < 40) add("media", "alvo-pequeno", name, { size });
+    // Mouse aponta com precisão: só abaixo de 24 px é problema (WCAG 2.5.8).
+    else if (!thin && touch && min < 40)
+      add("media", "alvo-pequeno", name, { size });
     const outside =
       r.left < -1 || r.right > vw + 1 || r.top < -1 || r.bottom > vh + 1;
     if (outside && !scrollParent(el))
@@ -376,10 +406,148 @@ function auditPage() {
       }
     mapPct = Math.round((100 * hit) / n);
   }
+  // A interface acompanhou a última mudança de tamanho?
+  const host = document.querySelector('[role="application"]');
+  if (host && canvas) {
+    const hr = host.getBoundingClientRect();
+    const cr = canvas.getBoundingClientRect();
+    if (
+      Math.abs(hr.width - cr.width) > 2 ||
+      Math.abs(hr.height - cr.height) > 2
+    )
+      add(
+        "alta",
+        "mapa-desajustado",
+        `mapa ${Math.round(cr.width)}×${Math.round(cr.height)} numa área ${Math.round(hr.width)}×${Math.round(hr.height)}`,
+      );
+    // O zoom que enquadra a tela (render/framing.ts), se a pessoa não escolheu outro.
+    const v = window.__spaceView;
+    if (v && !v.zoomByHand && hr.width > 0) {
+      const want = Math.max(
+        1,
+        Math.min(2, Math.floor(Math.min(hr.width, hr.height) / 352)),
+      );
+      if (v.state.zoom !== want)
+        add(
+          "media",
+          "zoom-desenquadrado",
+          `zoom ${v.state.zoom}, a área ${Math.round(hr.width)}×${Math.round(hr.height)} pede ${want}`,
+        );
+    }
+  }
+  // O cartão da chamada (fora do palco, num portal) acompanha o palco aberto.
+  const stage = document.querySelector('[aria-label="Palco de mídia"]');
+  const sr = stage?.getBoundingClientRect();
+  if (
+    stage &&
+    sr &&
+    sr.width > 0 &&
+    !stage.closest("[inert]") &&
+    sr.left >= 0
+  ) {
+    const cards = [...document.querySelectorAll("#floating > div")].filter(
+      (d) => {
+        const r = d.getBoundingClientRect();
+        return (
+          getComputedStyle(d).position === "fixed" &&
+          r.width > 120 &&
+          r.height > 120 &&
+          r.left > -1000
+        );
+      },
+    );
+    for (const c of cards) {
+      const r = c.getBoundingClientRect();
+      const out =
+        Math.max(0, sr.left - r.left) +
+        Math.max(0, r.right - sr.right) +
+        Math.max(0, sr.top - r.top) +
+        Math.max(0, r.bottom - sr.bottom);
+      if (out > 8)
+        add(
+          "alta",
+          "palco-desalinhado",
+          `o cartão da chamada sai ${Math.round(out)}px do palco`,
+        );
+    }
+  }
   return { vw, vh, controls, mapPct, issues };
 }
 
 // ---- roteiro -----------------------------------------------------------------
+
+/** A interface viva: girar, teclado, tela dividida, janela estreitando (ver --live). */
+async function liveFlow(step, device) {
+  const d = DEVICES[device];
+  const base = { ...d.viewport };
+  const size = (w, h) => async (pg) => {
+    await pg.setViewportSize({ width: w, height: h });
+    await pg.waitForTimeout(1_200);
+  };
+  const turn = size(base.height, base.width);
+  const back = size(base.width, base.height);
+  await step("sala", `Entrar em ${ROOM}`, (pg) => enterRoom(pg, ROOM));
+  if (d.isMobile) {
+    await step("girar", "Girar o aparelho", turn);
+    await step("girar-volta", "Girar de volta", back);
+    await step("palco", "Abrir o palco", openStage);
+    await step("palco-girar", "Palco aberto: girar", turn);
+    await step("palco-girar-volta", "Palco aberto: girar de volta", back);
+    await step("palco-fechar", "Fechar o palco", (pg) =>
+      clickLabel(pg, "Fechar o palco"),
+    );
+    await step("lista", "Lista aberta", showList);
+    await step("lista-girar", "Lista aberta: girar", turn);
+    await step("lista-girar-volta", "Lista aberta: girar de volta", back);
+    await step("lista-fechar", "Voltar fecha a lista", androidBack);
+    await step("heroi", "Ficha do herói", (pg) => clickButton(pg, "Herói"));
+    await step("heroi-girar", "Ficha aberta: girar", turn);
+    await step("heroi-girar-volta", "Ficha aberta: girar de volta", back);
+    await step("heroi-fechar", "Voltar fecha a ficha", androidBack);
+    await step(
+      "mercador",
+      "Mercador",
+      game("npcRequest", {
+        instance: "lab-mercador",
+        title: "Mercador",
+        npc: "mercador",
+      }),
+    );
+    await step(
+      "teclado",
+      "Teclado aberto na quantidade (a tela encolhe)",
+      async (pg) => {
+        await press(pg.getByRole("spinbutton").first());
+        await size(base.width, Math.round(base.height * 0.55))(pg);
+      },
+    );
+    await step("teclado-fechar", "Teclado fechado", back);
+    await step("mercador-fechar", "Voltar fecha o mercador", androidBack);
+    await step(
+      "dividida",
+      "Tela dividida ao meio",
+      size(base.width, Math.round(base.height / 2)),
+    );
+    await step("dividida-palco", "Tela dividida: palco", openStage);
+    await step("inteira", "Tela inteira de novo", back);
+    await step("inteira-palco-fechar", "Fechar o palco", (pg) =>
+      clickLabel(pg, "Fechar o palco"),
+    );
+  } else {
+    for (const w of [1280, 1024, 900, 760, 600, 480, 380, 1600])
+      await step(`janela-${w}`, `Janela com ${w} px`, size(w, base.height));
+    await step("palco", "Abrir o palco", openStage);
+    for (const w of [1280, 900, 600, 380, 1600])
+      await step(
+        `palco-${w}`,
+        `Palco aberto, janela com ${w} px`,
+        size(w, base.height),
+      );
+    await step("palco-fechar", "Fechar o palco", (pg) =>
+      clickLabel(pg, "Fechar o palco"),
+    );
+  }
+}
 
 async function runDevice(device) {
   TOUCH = DEVICES[device].hasTouch;
@@ -407,7 +575,7 @@ async function runDevice(device) {
     }
     await page.waitForTimeout(700);
     const audit = await page
-      .evaluate(auditPage)
+      .evaluate(auditPage, TOUCH)
       .catch((e) => ({ error: String(e), issues: [] }));
     const file = join(
       OUT,
@@ -440,6 +608,17 @@ async function runDevice(device) {
     await step("corrida-aberta", "Fechar a corrida que abriu sozinha", (pg) =>
       pg.evaluate(() => window.__spaceView?.closeRun()),
     );
+  if (LIVE) await liveFlow(step, device);
+  else await fullFlow(step, device);
+  const logs = p.logs
+    .filter((l) => !/Failed to load resource/.test(l))
+    .slice(-15);
+  await p.ctx.close();
+  return { device, label: DEVICES[device].label, steps, logs };
+}
+
+/** O roteiro completo: todos os fluxos do Espaço e do jogo. */
+async function fullFlow(step, device) {
   await step("hall", "Espaço depois do diálogo", async () => {});
   await step("lista", "Lista de salas aberta", showList);
   await step("sem-lista", "Lista de salas fechada", hideList);
@@ -468,22 +647,6 @@ async function runDevice(device) {
     "Voltar do Android fecha a ficha do herói",
     androidBack,
   );
-  // Os diálogos do jogo, abertos pela visão (o mapa do laboratório não tem mercador
-  // nem boneco): só o layout conta aqui; o servidor recusa as compras sem o NPC.
-  const game = (key, value) => (pg) =>
-    pg.evaluate(
-      ([k, v]) => {
-        const view = window.__spaceView;
-        if (!view)
-          throw new Error(
-            "sem __spaceView: o app precisa de VITE_SPACE_TEST_HOOKS=1",
-          );
-        view.patch({ [k]: { ...v, n: Date.now() } });
-      },
-      [key, value],
-    );
-  // Fecha como o voltar do Android (o APK chama window.muchatBack()).
-  const shut = () => androidBack;
   await step(
     "mercador",
     "Mercador",
@@ -581,11 +744,6 @@ async function runDevice(device) {
     await pg.waitForTimeout(2_000);
   });
   await step("corrida-fechar", "Fechar a corrida", shut("closeRun"));
-  const logs = p.logs
-    .filter((l) => !/Failed to load resource/.test(l))
-    .slice(-15);
-  await p.ctx.close();
-  return { device, label: DEVICES[device].label, steps, logs };
 }
 
 let companion = null;

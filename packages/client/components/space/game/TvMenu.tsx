@@ -421,6 +421,8 @@ const Backdrop = styled("div", {
 
 const Card = styled("div", {
   base: {
+    // Lays itself out by its own width (container queries), not the window's.
+    containerType: "inline-size",
     maxWidth: "500px",
     width: "100%",
     maxHeight: "100%",
@@ -513,6 +515,11 @@ const Item = styled("div", {
     borderRadius: "10px",
     background: "var(--md-sys-color-surface-container)",
     "& > button": { gridRow: "1 / 3", gridColumn: 2 },
+    // A narrow menu (a phone): the text takes the whole row, the button goes under it.
+    "@container (max-width: 400px)": {
+      gridTemplateColumns: "1fr",
+      "& > button": { gridRow: "auto", gridColumn: 1, justifySelf: "end" },
+    },
   },
 });
 

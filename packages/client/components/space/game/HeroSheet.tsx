@@ -580,6 +580,10 @@ const Backdrop = styled("div", {
 
 const Card = styled("div", {
   base: {
+    // The sheet lays itself out by its own width (container queries below), not
+    // the window's: it fits a phone, a tablet beside the app's sidebar, a split
+    // screen, and follows a rotation (23/11/2026, "as coisas não se reajustam").
+    containerType: "inline-size",
     maxWidth: "680px",
     width: "100%",
     maxHeight: "100%",
@@ -650,24 +654,28 @@ const Body = styled("div", {
     gap: "16px",
     alignItems: "start",
     "& > section": { display: "flex", flexDirection: "column", gap: "10px" },
-    "@media (max-width: 560px)": { gridTemplateColumns: "1fr" },
+    "@container (max-width: 560px)": { gridTemplateColumns: "1fr" },
   },
 });
 
 const Doll = styled("div", {
   base: {
     display: "grid",
-    gridTemplateColumns: "repeat(3, 48px)",
+    gridTemplateColumns: "repeat(3, minmax(48px, 64px))",
     gap: "6px",
     justifyContent: "start",
+    // Stacked over the backpack (a narrow sheet): the body in the middle.
+    "@container (max-width: 560px)": { justifyContent: "center" },
   },
 });
 
+/** The backpack fills the width it gets: more tiles per row, each 48–64 px. */
 const Pack = styled("div", {
   base: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, 48px)",
+    gridTemplateColumns: "repeat(auto-fill, minmax(48px, 1fr))",
     gap: "6px",
+    "& > *": { maxWidth: "64px" },
   },
 });
 
@@ -678,8 +686,9 @@ const PackHead = styled("div", {
 const Tile = styled("button", {
   base: {
     position: "relative",
-    width: "48px",
-    height: "48px",
+    width: "100%",
+    minWidth: "48px",
+    aspectRatio: "1",
     display: "grid",
     placeItems: "center",
     borderRadius: "10px",
@@ -722,7 +731,7 @@ const Auto = styled("label", {
     cursor: "pointer",
     "& > span": { display: "flex", flexDirection: "column", gap: "2px" },
     "& input": { marginTop: "2px" },
-    "@media (max-width: 560px)": { maxWidth: "none" },
+    "@container (max-width: 560px)": { maxWidth: "none" },
     "@media (pointer: coarse)": {
       "& input": { width: "24px", height: "24px", marginTop: 0 },
     },

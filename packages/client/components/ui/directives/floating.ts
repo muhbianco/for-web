@@ -172,10 +172,14 @@ export function floating(element: HTMLElement, accessor: Accessor<Props>) {
 
           element.addEventListener("pointerenter", onPointerEnter);
           element.addEventListener("pointerleave", onPointerLeave);
+          // A press hides it: the button just did its job, and the tooltip
+          // stayed over what it opened (the Espaço's stage buttons).
+          element.addEventListener("pointerdown", onPointerLeave);
 
           onCleanup(() => {
             element.removeEventListener("pointerenter", onPointerEnter);
             element.removeEventListener("pointerleave", onPointerLeave);
+            element.removeEventListener("pointerdown", onPointerLeave);
           });
         }
       },

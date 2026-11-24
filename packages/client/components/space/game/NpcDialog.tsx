@@ -506,6 +506,8 @@ const Backdrop = styled("div", {
 
 const Card = styled("div", {
   base: {
+    // Lays itself out by its own width (container queries), not the window's.
+    containerType: "inline-size",
     maxWidth: "520px",
     width: "100%",
     maxHeight: "100%",
@@ -602,7 +604,7 @@ const ShopRow = styled("div", {
     "& > span": { display: "flex", flexDirection: "column" },
     // A phone: the name (and its warning) on its own line, quantity and
     // button below it, instead of a name squeezed into a sliver.
-    "@media (max-width: 520px)": {
+    "@container (max-width: 460px)": {
       gridTemplateColumns: "auto auto 1fr",
       "& > :nth-child(2)": { gridColumn: "2 / -1" },
       "& > :nth-child(3)": { gridColumn: "2" },

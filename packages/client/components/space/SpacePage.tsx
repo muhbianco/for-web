@@ -244,6 +244,47 @@ function ServerSpace(props: { serverId: string }) {
         true,
       );
   });
+  // What covers the map (a sheet, the dock, the run panel) moves the camera: you
+  // stay in the part you can see. Measured after every layout change and resize.
+  let mapAreaEl: HTMLDivElement | undefined;
+  const measureInsets = () => {
+    const v = view();
+    const area = mapAreaEl?.getBoundingClientRect();
+    if (!v || !area || area.width === 0) return;
+    let right = 0;
+    let bottom = 0;
+    const covers = [
+      ...(bodyEl?.querySelectorAll(":scope > aside") ?? []),
+      ...(mapAreaEl?.querySelectorAll("[data-covers-map]") ?? []),
+    ];
+    for (const el of covers) {
+      const r = el.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) continue;
+      if (r.right < area.left || r.left > area.right) continue;
+      if (r.bottom < area.top || r.top > area.bottom) continue;
+      // Along the right edge (taller than half the map): covers a column.
+      if (r.right >= area.right - 2 && r.height > area.height / 2)
+        right = Math.max(right, area.right - r.left);
+      // Along the bottom edge (wider than half): covers a band.
+      else if (r.bottom >= area.bottom - 2 && r.width > area.width / 2)
+        bottom = Math.max(bottom, area.bottom - r.top);
+    }
+    v.setInsets(right, bottom);
+  };
+  const remeasure = () =>
+    requestAnimationFrame(() => requestAnimationFrame(measureInsets));
+  createEffect(() => {
+    // Everything that opens or closes something over the map.
+    void [panel(), sheets(), compact(), stageVisible(), ui()?.runOpen, view()];
+    remeasure();
+  });
+  onMount(() => {
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(remeasure);
+    if (mapAreaEl) ro.observe(mapAreaEl);
+    if (bodyEl) ro.observe(bodyEl);
+    onCleanup(() => ro.disconnect());
+  });
   // On a phone the object within reach is a button at the bottom, not a bubble
   // drawn on the map.
   createEffect(() => view()?.setMapPrompt(!compact()));
@@ -959,7 +1000,7 @@ function ServerSpace(props: { serverId: string }) {
           dynamic child of an element becomes empty, Solid clears the whole
           element (`textContent = ""`), and that used to wipe the map.
         */}
-        <div class={mapArea} style={{ "grid-area": "map" }}>
+        <div ref={mapAreaEl} class={mapArea} style={{ "grid-area": "map" }}>
           <div
             ref={host}
             class={mapCanvas}
@@ -1112,7 +1153,7 @@ function ServerSpace(props: { serverId: string }) {
             </Show>
             {/* The run panel covers the bottom of a phone: no dock under it. */}
             <Show when={!panel() && !stageVisible() && !ui()?.runOpen}>
-              <Dock>{actionChips()}</Dock>
+              <Dock data-covers-map="">{actionChips()}</Dock>
             </Show>
           </Show>
           <Show when={hoverRoom()}>
@@ -1155,6 +1196,10 @@ function ServerSpace(props: { serverId: string }) {
                     inset: 0,
                     "z-index": 6,
                     display: "flex",
+                    animation: matchMedia("(prefers-reduced-motion: reduce)")
+                      .matches
+                      ? undefined
+                      : "spacePop 180ms ease-out",
                     background:
                       "var(--md-sys-color-surface-container-lowest, #14151c)",
                   }
@@ -1507,6 +1552,8 @@ const Toast = styled("div", {
     fontSize: "0.9em",
     textAlign: "center",
     pointerEvents: "none",
+    animation: "spacePop 180ms ease-out",
+    "@media (prefers-reduced-motion: reduce)": { animation: "none" },
   },
 });
 
@@ -1533,6 +1580,7 @@ const Body = styled("div", {
       width: "min(340px, 85%)",
       zIndex: 4,
       boxShadow: "-6px 0 24px rgba(0, 0, 0, 0.45)",
+      animation: "spaceSheetIn 200ms cubic-bezier(0.2, 0.8, 0.2, 1)",
     },
     // A phone: the room list and decoration are sheets over the map.
     "&[data-compact] > aside": {
@@ -1545,6 +1593,10 @@ const Body = styled("div", {
       borderRadius: "16px 16px 0 0",
       boxShadow: "0 -6px 24px rgba(0, 0, 0, 0.45)",
       paddingBottom: "max(var(--gap-md), env(safe-area-inset-bottom))",
+      animation: "spaceSheetUp 220ms cubic-bezier(0.2, 0.8, 0.2, 1)",
+    },
+    "@media (prefers-reduced-motion: reduce)": {
+      "& > aside": { animation: "none !important" },
     },
   },
 });

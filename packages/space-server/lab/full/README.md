@@ -84,6 +84,7 @@ cd packages/client
 FULL_LAB_DIR=<pasta do lab> node qa/full-lab/mobile-audit.mjs --with-share [--devices phone,tablet] [--run nome]
 ```
 - `--with-share`: a Bia, no computador, compartilha a tela na mesma sala. Assim aparecem o palco e o avatar "AO VIVO".
+- `--live`: a interface "viva". No meio da sessão o aparelho gira (com palco, lista e ficha abertos), o teclado abre na quantidade do mercador (a tela encolhe, como o `adjustResize` do APK) e a tela se divide; no computador a janela estreita de 1600 a 380 px. Além da auditoria, confere a cada mudança: o mapa do tamanho da área dele, o cartão da chamada dentro do palco e o zoom que enquadra a tela (`space-client/src/render/framing.ts`).
 - **Build:** rode no build de produção feito com `VITE_SPACE_TEST_HOOKS=1`. O roteiro abre os diálogos do jogo pela visão do Espaço, em `window.__spaceView`. O `run-client.mjs` já liga a variável no modo dev; no build, passe a variável no `vite build`. O build que vai para produção não tem a variável, e o trecho some do pacote.
 - **`FULL_LAB_DIR` / `--lab-dir`** (scripts `run-space.mjs`, `run-client.mjs` e do piloto): usa o laboratório montado em outro worktree sem copiar as chaves dele.
 - **O piloto** também aceita aparelho: `node qa/full-lab/pilot.mjs --devices caio=phone`, com a op `tap` (toque de verdade).

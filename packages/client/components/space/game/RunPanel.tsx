@@ -144,6 +144,8 @@ export default function RunPanel(props: {
 
   return (
     <Panel
+      // The space moves its camera off what this covers (SpacePage measureInsets).
+      data-covers-map=""
       role="region"
       aria-label={t`Dungeon em andamento`}
       data-scene={sceneFailed() ? undefined : ""}
@@ -367,6 +369,9 @@ const Panel = styled("div", {
     bottom: "12px",
     width: "min(400px, calc(100% - 24px))",
     "&[data-scene]": { width: "min(780px, calc(100% - 24px))" },
+    // Lays itself out by its own width (container queries), not the window's.
+    containerType: "inline-size",
+
     maxHeight: "calc(100% - 24px)",
     overflow: "auto",
     display: "flex",
@@ -421,7 +426,7 @@ const Body = styled("div", {
       gridTemplateColumns: "minmax(0, 1fr) 230px",
       alignItems: "start",
     },
-    "@media (max-width: 760px)": {
+    "@container (max-width: 640px)": {
       "[data-scene] > &": { gridTemplateColumns: "minmax(0, 1fr)" },
     },
   },

@@ -27,6 +27,7 @@ import {
 import { roomTitle } from "../list.ts";
 import type { World } from "../world.ts";
 import { textureFor } from "./atlas.ts";
+import { clampAxis } from "./framing.ts";
 import { type FxArt, equippedSheet, fxCanvas, gearKey } from "./heroArt.ts";
 import {
   type LiveFrame,
@@ -377,6 +378,21 @@ export class Renderer {
     this.resizeObs = null;
     this.app.ticker.stop();
     this.app.canvas.remove();
+  }
+
+  /**
+   * What covers the map's right and bottom edges (a sheet, the dock, the run panel),
+   * in CSS pixels: the camera centres you in the rest (23/11/2026: with the room list
+   * over the map, the avatar stood under it).
+   */
+  private insets = { right: 0, bottom: 0 };
+
+  setInsets(right: number, bottom: number) {
+    const r = Math.max(0, Math.round(right));
+    const b = Math.max(0, Math.round(bottom));
+    if (r === this.insets.right && b === this.insets.bottom) return;
+    this.insets = { right: r, bottom: b };
+    this.dirty = true;
   }
 
   setZoom(z: number) {
@@ -1114,7 +1130,29 @@ export class Renderer {
     // walking brings it back at once. Smoothing off with reduced motion.
     if (this.peekAt && (me.moving || nowMs > this.peekAt.until))
       this.peekAt = null;
-    const target = this.peekAt ?? me;
+    // Centred in the uncovered part of the map, when there is a useful part left.
+    const visW = this.app.screen.width - this.insets.right;
+    const visH = this.app.screen.height - this.insets.bottom;
+    const cw = visW >= 120 ? visW : this.app.screen.width;
+    const ch = visH >= 120 ? visH : this.app.screen.height;
+    // On you, but the map's edge stops the camera: no void at the screen's side
+    // (framing.ts). A map smaller than the screen sits in its middle.
+    const look = this.peekAt ?? me;
+    const T = world.map.tileSize || TILE;
+    const target = {
+      x: clampAxis(
+        look.x,
+        cw / 2 / this.zoom,
+        world.map.originTx * T,
+        (world.map.originTx + world.map.width) * T,
+      ),
+      y: clampAxis(
+        look.y,
+        ch / 2 / this.zoom,
+        world.map.originTy * T,
+        (world.map.originTy + world.map.height) * T,
+      ),
+    };
     if (!this.cam.ready || this.reducedMotion) {
       this.cam = { x: target.x, y: target.y, ready: true };
     } else {
@@ -1128,8 +1166,8 @@ export class Renderer {
     }
     // Rounded: the eased camera converges asymptotically, and once it is within
     // half a pixel the stage stops moving and idle frames stop drawing.
-    const sx = Math.round(this.app.screen.width / 2 - this.cam.x * this.zoom);
-    const sy = Math.round(this.app.screen.height / 2 - this.cam.y * this.zoom);
+    const sx = Math.round(cw / 2 - this.cam.x * this.zoom);
+    const sy = Math.round(ch / 2 - this.cam.y * this.zoom);
     if (this.stage.position.x !== sx || this.stage.position.y !== sy) {
       this.stage.position.set(sx, sy);
       this.dirty = true;

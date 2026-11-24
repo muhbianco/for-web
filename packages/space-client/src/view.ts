@@ -52,6 +52,7 @@ import {
 } from "./list.ts";
 import { type MediaStatus, type VoicePort, MediaLink } from "./media.ts";
 import { Mover } from "./mover.ts";
+import { fitZoom } from "./render/framing.ts";
 import { Renderer } from "./render/renderer.ts";
 import { decodeMap, World } from "./world.ts";
 
@@ -774,8 +775,32 @@ export class SpaceView {
 
   // ---- input -----------------------------------------------------------------
 
+  /** The person picked a zoom (buttons, keys, two fingers): the map stops framing itself. */
+  private zoomByHand = false;
+
+  /**
+   * Frames the map for its screen (render/framing.ts): a phone in portrait gets zoom 1,
+   * a computer 2. Runs on every resize of the map (a rotation, a split screen, a panel
+   * opening) until the person zooms by hand.
+   */
+  private frameZoom(width: number, height: number) {
+    if (this.zoomByHand || width <= 0 || height <= 0) return;
+    const z = fitZoom(width, height);
+    if (z === this.renderer.zoom) return;
+    this.renderer.setZoom(z);
+    this.patch({ zoom: this.renderer.zoom });
+  }
+
   private bindInput(el: HTMLElement) {
     if (!el.hasAttribute("tabindex")) el.tabIndex = 0;
+    // The camera follows the map's size (see frameZoom).
+    if (typeof ResizeObserver !== "undefined") {
+      const ro = new ResizeObserver(() =>
+        this.frameZoom(el.clientWidth, el.clientHeight),
+      );
+      ro.observe(el);
+      this.inputCleanup.push(() => ro.disconnect());
+    }
     const down = (ev: KeyboardEvent) => {
       if (this.editor.state.enabled && this.editorKey(ev)) {
         ev.preventDefault();
@@ -1233,7 +1258,17 @@ export class SpaceView {
     );
   }
 
+  /**
+   * What the app lays over the map's right and bottom edges (sheets, the dock, the
+   * run panel), in CSS pixels: the camera centres you in the rest.
+   */
+  setInsets(right: number, bottom: number) {
+    this.renderer.setInsets(right, bottom);
+  }
+
+  /** A zoom the person picked: from now on the map keeps it (no more framing). */
   setZoom(z: number) {
+    this.zoomByHand = true;
     this.renderer.setZoom(z);
     this.patch({ zoom: this.renderer.zoom });
   }
