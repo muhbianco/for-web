@@ -106,7 +106,7 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 8,
+  engine: 9,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -485,6 +485,8 @@ interface HeroRt {
   areas: AbilityNow[];
   supports: AbilityNow[];
   cooldown: Map<string, number>;
+  /** A mana guardada para a cura (healReserveOf). */
+  reserve: number;
   /** Os grupos de recarga [TFS spell:groupCooldown]: cura, suporte e ataque. */
   healGroup: number;
   supportGroup: number;
@@ -626,16 +628,42 @@ export function abilityCooldownMs(s: AbilityNow, d: Derived): number {
 }
 
 /**
+ * A mana que os ataques, o Desafio e a Concentração guardam (24/11/2026): uma cura, a mais cara
+ * que o herói usa, já com a Economia (Atadura, Remendo, Seiva, Cura do companheiro). Antes eram
+ * duas curas ou 20% da mana máxima: no cavaleiro de level 27 o Golpe brutal custava 21 e só saía
+ * com 47, e a Economia quase não mudava nada. Só entra a cura que custa até metade da mana
+ * máxima: o druida pequeno não paga a Cura do companheiro (120) e, guardando para ela, não atacava.
+ */
+export function healReserveOf(known: readonly AbilityNow[], manaMax: number): number {
+  let r = 0;
+  for (const a of known)
+    if ((a.def.kind === "cura" || a.def.kind === "cura-outro") && a.mana * 2 <= manaMax)
+      r = Math.max(r, a.mana);
+  return r;
+}
+
+/**
  * As 4 habilidades do herói como entram na corrida (a barra da tela da dungeon): mana e recarga
- * com os adereços e a DES.
+ * com os adereços (e a maestria) e a DES; `at` é a mana com que a corrida a usa: o custo e a
+ * cura guardada (nas que não são cura). O cavaleiro em grupo ainda segura os ataques quando
+ * precisa do Desafio (heroSpells), o que a barra não antecipa.
  */
 export function abilityBar(
-  h: Pick<RunHero, "vocation" | "level" | "stats" | "tree">,
-): { id: string; mana: number; cd_ms: number }[] {
+  h: Pick<RunHero, "vocation" | "level" | "stats" | "tree" | "mastery" | "manaMax">,
+): { id: string; mana: number; cd_ms: number; at: number }[] {
   const d = derive(h.stats ?? freshStats(), h.level);
-  return abilitiesOf(VOCATIONS[h.vocation].base).map((def) => {
-    const s = abilityNow(def, h.tree ?? {});
-    return { id: def.id, mana: s.mana, cd_ms: abilityCooldownMs(s, d) };
+  const known = abilitiesOf(VOCATIONS[h.vocation].base).map((def) =>
+    abilityNow(def, h.tree ?? {}, h.mastery),
+  );
+  const reserve = healReserveOf(known, h.manaMax);
+  return known.map((s) => {
+    const heal = s.def.kind === "cura" || s.def.kind === "cura-outro";
+    return {
+      id: s.def.id,
+      mana: s.mana,
+      cd_ms: abilityCooldownMs(s, d),
+      at: heal ? s.mana : s.mana + reserve,
+    };
   });
 }
 
@@ -682,6 +710,7 @@ export function simulateRun(input: RunInput): RunResult {
       focusAspd: 0,
       refine: 1,
       cooldown: new Map(),
+      reserve: healReserveOf(known, h.manaMax),
       healGroup: 0,
       supportGroup: 0,
       attackGroup: 0,
@@ -1213,10 +1242,24 @@ export function simulateRun(input: RunInput): RunResult {
     hurtMonster(h, m, r.damage);
   }
 
-  /** A mana que os ataques não tocam: duas curas, ou 20% da mana máxima (veja heroSpells). */
+  /**
+   * O cavaleiro segura os ataques para o Desafio (24/11/2026) só quando precisa dele: algum
+   * monstro batendo em outra pessoa e o Desafio fora da recarga. Com o Giro da lâmina a 35 e a
+   * reserva de uma cura, ele gastava a mana nos golpes e o Desafio não saía nunca (o papel do
+   * tanque); guardando sempre, o Golpe brutal com Economia (21) só sairia com 59.
+   */
+  function tankHold(h: HeroRt, tMs: number): number {
+    const s = h.supports[0];
+    if (!s || (h.cooldown.get(s.def.id) ?? 0) > tMs) return 0;
+    const loose = monsters.some(
+      (m) => m.alive && m.target >= 0 && m.target !== h.i && heroes[m.target]?.alive,
+    );
+    return loose ? s.mana : 0;
+  }
+
+  /** A mana que os ataques não tocam: uma cura, a mais cara do herói (healReserveOf). */
   function healReserve(h: HeroRt): number {
-    const heal = h.heals[0]?.mana ?? 0;
-    return heal > 0 ? Math.max(heal * 2, Math.floor(h.h.manaMax * 0.2)) : 0;
+    return h.reserve;
   }
 
   function ready(h: HeroRt, s: AbilityNow, tMs: number, reserve: number) {
@@ -1388,7 +1431,7 @@ export function simulateRun(input: RunInput): RunResult {
       // Ataca guardando mana para a cura dele [nosso]: duas curas ou 20% da mana, o que for
       // maior (com uma só, o mago gastava tudo na magia de área cara e caía sem se curar);
       // entre as que estão prontas, a que mais rende agora (a de área com a sala cheia).
-      const reserve = healReserve(h);
+      const reserve = healReserve(h) + tankHold(h, tMs);
       const alive = monsters.filter((x) => x.alive);
       let s: AbilityNow | null = null;
       let best = 0;
@@ -1421,8 +1464,7 @@ export function simulateRun(input: RunInput): RunResult {
   function challenge(h: HeroRt, tMs: number) {
     const s = h.supports[0];
     if (!s) return;
-    const reserve = h.heals[0]?.mana ?? 0;
-    if (!ready(h, s, tMs, reserve)) return;
+    if (!ready(h, s, tMs, healReserve(h))) return;
     const loose = monsters.some(
       (m) =>
         m.alive && m.target >= 0 && m.target !== h.i && heroes[m.target]?.alive,
@@ -1719,8 +1761,11 @@ export function simulateRun(input: RunInput): RunResult {
       for (const h of heroes) {
         if (!h.alive) continue;
         const m = focus();
-        drink(h, tMs);
+        // A cura da habilidade antes da poção (24/11/2026): com as duas em 50% da vida, a poção
+        // vinha antes, subia a vida e a Atadura do cavaleiro nunca saía (gastava poção paga no
+        // lugar da cura de 10 de mana). A poção segue no mesmo tique se a vida continuar baixa.
         heroSpells(h, m, tMs);
+        drink(h, tMs);
         // Velocidade de ataque com AGI e DES [RO status_base_amotion_pc]: com o intervalo
         // abaixo de 1 s, mais de um golpe cabe no mesmo segundo.
         const interval = Math.max(

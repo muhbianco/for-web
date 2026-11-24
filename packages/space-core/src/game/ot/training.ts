@@ -71,11 +71,19 @@ export function addPointTries(p: PointTraining, count: number): PointTraining {
   return { points, tries: tries + count };
 }
 
+/**
+ * Sem limite de treino (24/11/2026, pedido do dono: "vamos remover esse limite de grind"): o
+ * saldo de 12 h do TFS [player.h:154, offline_training.lua:17] saiu. O herói treina enquanto
+ * fica no dummy; o "saldo" vira um número que não acaba (10 anos), para os documentos e as
+ * telas de antes continuarem válidos.
+ */
+const UNLIMITED_MS = 10 * 365 * 24 * 3600 * 1000;
+
 export const TRAINING = {
-  /** Saldo máximo de treino: 12 h [TFS player.h:154]. */
-  maxBankMs: 12 * 3600 * 1000,
-  /** Uma sessão gasta no máximo 12 h [TFS offline_training.lua:17]. */
-  maxSessionMs: 43_200 * 1000,
+  /** Saldo de treino: sem limite (antes 12 h). */
+  maxBankMs: UNLIMITED_MS,
+  /** Uma sessão: sem limite (antes 12 h). */
+  maxSessionMs: UNLIMITED_MS,
   /**
    * Menos de 60 s não rende [TFS offline_training.lua:25]. [nosso] Aqui também não gasta
    * o saldo (o original gastava): quem encosta no dummy e sai logo não perde nada.
@@ -155,9 +163,9 @@ export interface TrainingBank {
  * [TFS player.h:152-155: `addOfflineTrainingTime`, teto 12 h]. [nosso] O original enchia
  * só com o personagem deslogado; aqui enche em qualquer momento sem treino.
  */
-export function bankNow(bank: TrainingBank, now: number): number {
-  const elapsed = Math.max(0, now - bank.at);
-  return Math.min(TRAINING.maxBankMs, bank.ms + elapsed);
+export function bankNow(_bank: TrainingBank, _now: number): number {
+  // Sem limite (24/11/2026): o saldo está sempre cheio.
+  return TRAINING.maxBankMs;
 }
 
 /** Uma sessão no dummy: começou em `startedAt` com `budgetMs` de saldo disponível. */

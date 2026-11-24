@@ -5,7 +5,6 @@ import type { GameWireEvent, SpaceView } from "@muchat/space-client";
 import {
   type RpgHeroView,
   type TrainingSkill,
-  TRAINING,
   TRAINING_SKILLS,
   dummyTrains,
 } from "@muchat/space-core/game/ot";
@@ -16,7 +15,6 @@ import { Button } from "@revolt/ui";
 import { gameFrame } from "./gameTheme";
 import { useModalKeys } from "./modalKeys";
 import {
-  bankNow,
   duration,
   hoursToNext,
   mainSkills,
@@ -125,16 +123,13 @@ export default function TrainingDialog(props: {
             fallback={
               <>
                 <p>
-                  {t`O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo.`}
+                  {t`O herói treina sozinho enquanto você fica ao lado do dummy, sem limite de tempo. Sair de perto encerra; desconectar não: ele segue treinando.`}
                 </p>
                 <Show when={kind() === "habilidade"}>
                   <Muted>
-                    {t`Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação. O saldo de 12 h é o mesmo dos dois.`}
+                    {t`Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação.`}
                   </Muted>
                 </Show>
-                <Muted>
-                  {t`Saldo de treino: ${duration(bankNow(hero()!, now()))} (até ${TRAINING.maxBankMs / 3_600_000} h; volta a encher quando você não treina).`}
-                </Muted>
                 <Skills>
                   <For each={choices()}>
                     {(skill) => {
@@ -195,7 +190,7 @@ export default function TrainingDialog(props: {
             {(tr) => (
               <>
                 <p>
-                  {t`Treinando ${L.skill[tr().skill]} aqui. Restam ${duration(Math.max(0, tr().budget_ms - (now() - tr().started_at)))} de saldo.`}
+                  {t`Treinando ${L.skill[tr().skill]} aqui há ${duration(Math.max(0, now() - tr().started_at))}.`}
                 </p>
                 <Row>
                   <Button variant="filled" isDisabled={busy()} onPress={stop}>

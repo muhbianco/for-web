@@ -81,16 +81,23 @@ export function SkillBar(props: {
           };
           const frac = () => (s.cd_ms > 0 ? left() / s.cd_ms : 0);
           const secs = () => Math.ceil(left() / 1000);
-          const noMana = () => props.mana < s.mana;
+          // A corrida usa com o custo e a mana guardada para a cura (`at`), não só com o custo.
+          const need = (s as { at?: number }).at ?? s.mana;
+          const kept = need - s.mana;
+          const noMana = () => props.mana < need;
           const state = () =>
             left() > 0
               ? t`${name}: recarga, ${secs()} s`
               : noMana()
-                ? t`${name}: sem mana (${s.mana})`
+                ? t`${name}: sem mana (${need})`
                 : t`${name}: pronta`;
+          const cost =
+            kept > 0
+              ? t`${s.mana} de mana; sai com ${need} (guarda ${kept} de reserva)`
+              : t`${s.mana} de mana`;
           return (
             <Slot
-              title={`${name} · ${t`${s.mana} de mana`} · ${t`recarga ${s.cd_ms / 1000} s`}`}
+              title={`${name} · ${cost} · ${t`recarga ${s.cd_ms / 1000} s`}`}
               aria-label={state()}
               data-cd={left() > 0 ? "" : undefined}
               data-nomana={noMana() ? "" : undefined}

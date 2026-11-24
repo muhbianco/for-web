@@ -310,6 +310,11 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (!Array.isArray(x.outbox)) x.outbox = [];
   if (!Array.isArray(x.inbox)) x.inbox = [];
   if (!validSupplies(x.supplies)) x.supplies = structuredClone(DEFAULT_SUPPLIES);
+  // Sem limite de treino (24/11/2026): a sessão aberta com o orçamento de antes (até 12 h)
+  // continua sem fim, e o saldo fica cheio.
+  if (x.training && x.training.budgetMs < TRAINING.maxSessionMs)
+    x.training.budgetMs = TRAINING.maxSessionMs;
+  if (x.bank && x.bank.ms < TRAINING.maxBankMs) x.bank = { ms: TRAINING.maxBankMs, at: x.bank.at };
   if (!Array.isArray(x.loot_skip)) x.loot_skip = [];
   if (!validMastery(x.mastery)) x.mastery = {};
   if (!Number.isInteger(x.rebirths) || x.rebirths < 0) x.rebirths = 0;

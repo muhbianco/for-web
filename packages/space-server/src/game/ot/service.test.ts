@@ -240,7 +240,8 @@ test("treino que ficou para trás (reconexão, reinício) fecha ao abrir, credit
   const h = s.lastHero()!;
   assert.equal(h.training, null);
   assert.ok(h.skills.distancia.level > 10);
-  assert.equal(h.bank_ms, 9 * H);
+  // Sem limite de treino (24/11/2026): o saldo continua cheio.
+  assert.ok(h.bank_ms > 365 * 24 * H);
 });
 
 test("reenvio do mesmo comando não age de novo; jogo desligado e sem permissão recusam", async () => {

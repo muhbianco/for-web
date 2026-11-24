@@ -193,6 +193,11 @@ msgstr ""
 msgid "{0} de mana"
 msgstr ""
 
+#. placeholder {0}: s.mana
+#: components/space/game/SkillBar.tsx
+msgid "{0} de mana; sai com {need} (guarda {kept} de reserva)"
+msgstr ""
+
 #. placeholder {0}: lobbyPrice(it).toLocaleString()
 #: components/space/game/GamePanel.tsx
 #~ msgid "{0} de ouro"
@@ -537,7 +542,11 @@ msgstr ""
 
 #. placeholder {0}: s.mana
 #: components/space/game/SkillBar.tsx
-msgid "{name}: sem mana ({0})"
+#~ msgid "{name}: sem mana ({0})"
+#~ msgstr ""
+
+#: components/space/game/SkillBar.tsx
+msgid "{name}: sem mana ({need})"
 msgstr ""
 
 #: components/space/game/RunChip.tsx
@@ -3618,8 +3627,12 @@ msgid "Este dummy não treina isso: as armas e a magia são no dummy de vocaçã
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação. O saldo de 12 h é o mesmo dos dois."
+msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação."
 msgstr ""
+
+#: components/space/game/TrainingDialog.tsx
+#~ msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação. O saldo de 12 h é o mesmo dos dois."
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "Este NPC não está mais aqui."
@@ -4086,6 +4099,11 @@ msgstr ""
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Guidelines"
 msgstr "Directrices"
+
+#. placeholder {0}: duration(v().elapsed)
+#: components/space/game/TrainingChip.tsx
+msgid "há {0}"
+msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "Há transferências demais a caminho. Espere um pouco."
@@ -5509,8 +5527,12 @@ msgid "O herói está numa dungeon: volte quando a corrida acabar."
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
-msgid "O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo."
+msgid "O herói treina sozinho enquanto você fica ao lado do dummy, sem limite de tempo. Sair de perto encerra; desconectar não: ele segue treinando."
 msgstr ""
+
+#: components/space/game/TrainingDialog.tsx
+#~ msgid "O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo."
+#~ msgstr ""
 
 #: components/space/game/StatsPanel.tsx
 msgid "O intervalo cai (4 × AGI + DES)/1000 no começo, cada vez menos; no máximo 2,5 vezes mais rápido."
@@ -6577,8 +6599,8 @@ msgstr "Reportó problemas de seguridad responsablemente"
 
 #. placeholder {0}: duration(v().p.remainingMs)
 #: components/space/game/TrainingChip.tsx
-msgid "restam {0}"
-msgstr ""
+#~ msgid "restam {0}"
+#~ msgstr ""
 
 #: components/space/MediaStage.tsx
 msgid "Restaurar o mapa"
@@ -6702,12 +6724,12 @@ msgstr ""
 #. placeholder {0}: duration(bankNow(hero()!, now()))
 #. placeholder {1}: TRAINING.maxBankMs / 3_600_000
 #: components/space/game/TrainingDialog.tsx
-msgid "Saldo de treino: {0} (até {1} h; volta a encher quando você não treina)."
-msgstr ""
+#~ msgid "Saldo de treino: {0} (até {1} h; volta a encher quando você não treina)."
+#~ msgstr ""
 
 #: components/space/game/TrainingChip.tsx
-msgid "saldo esgotado"
-msgstr ""
+#~ msgid "saldo esgotado"
+#~ msgstr ""
 
 #: components/space/game/HeroSheet.tsx
 msgid "Saldo no banco (não pesa)"
@@ -7761,10 +7783,16 @@ msgid "Travamentos"
 msgstr ""
 
 #. placeholder {0}: L.skill[tr().skill]
+#. placeholder {1}: duration(Math.max(0, now() - tr().started_at))
+#: components/space/game/TrainingDialog.tsx
+msgid "Treinando {0} aqui há {1}."
+msgstr ""
+
+#. placeholder {0}: L.skill[tr().skill]
 #. placeholder {1}: duration(Math.max(0, tr().budget_ms - (now() - tr().started_at)))
 #: components/space/game/TrainingDialog.tsx
-msgid "Treinando {0} aqui. Restam {1} de saldo."
-msgstr ""
+#~ msgid "Treinando {0} aqui. Restam {1} de saldo."
+#~ msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
 msgid "Treinar"

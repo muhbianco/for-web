@@ -9,7 +9,6 @@ import {
   addExperience,
   addManaSpent,
   addSkillTries,
-  bankAfter,
   bankNow,
   blockHit,
   canShare,
@@ -174,23 +173,19 @@ test("dummy: creditar em pedaços não perde o resto da truncagem", () => {
   assert.equal(escudo, all.escudo);
 });
 
-test("dummy: saldo de 12 h, sessão limitada ao saldo, menos de 60 s não rende nem gasta", () => {
+test("dummy sem limite (24/11/2026): a sessão não acaba pelo saldo; menos de 60 s não rende", () => {
   const full = { ms: TRAINING.maxBankMs, at: 0 };
   const s = startSession(full, "espada", 0);
-  assert.equal(s.budgetMs, 12 * H * 1000);
-  // 2 h treinando: sobram 10 h; mais 3 h fora: enche até o teto de 12 h
-  const after = bankAfter(s, 2 * H * 1000);
-  assert.equal(after.ms, 10 * H * 1000);
-  assert.equal(bankNow(after, 5 * H * 1000), 12 * H * 1000);
-  // a sessão para no fim do orçamento
-  const short = startSession({ ms: 30 * 60 * 1000, at: 0 }, "espada", 0);
-  assert.equal(sessionSeconds(short, 5 * H * 1000), 30 * 60);
+  // Sem limite: o orçamento é de anos, e o saldo está sempre cheio (gasto ou não).
+  assert.ok(s.budgetMs >= 365 * 24 * H * 1000);
+  assert.equal(bankNow({ ms: 0, at: 0 }, 0), TRAINING.maxBankMs);
+  // 3 dias seguidos contam inteiros (antes paravam em 12 h).
+  assert.equal(sessionSeconds(s, 72 * H * 1000), 72 * H);
   // 59 s: nada
   const quick = startSession(full, "espada", 0);
   const q = settleSession(CAV, quick, 59_000, DEFAULT_RATES);
   assert.deepEqual(q.gain, { main: 0, escudo: 0 });
   assert.equal(q.spentMs, 0);
-  assert.equal(bankAfter(quick, 59_000).ms, full.ms);
   // 1 h fechada de uma vez
   const one = settleSession(CAV, s, H * 1000, DEFAULT_RATES);
   assert.deepEqual(one.gain, { main: 1800, escudo: 1800 });

@@ -31,6 +31,7 @@ import {
 import { addExperience, expForLevel } from "./progression.ts";
 import {
   type RunHero,
+  abilityBar,
   autoEquip,
   RUN,
   runExpRate,
@@ -769,4 +770,70 @@ test("o arqueiro usa a Flecha carregada: ela rende mais por uso que a Rajada dup
     d.formula.type === "tiro" ? (d.formula.min + d.formula.max) / 2 : 0;
   // A Rajada com a Tripla (eco de 50%) ainda rende menos que a Flecha carregada sem nada.
   assert.ok(avg(charge) > avg(strafe) * 1.5, `${avg(charge)} x ${avg(strafe)}`);
+});
+
+test("todas as habilidades de ataque e de área saem no quarteto (nenhum botão parado)", () => {
+  // 24/11/2026: o Giro da lâmina (115 de mana) não cabia na mana do cavaleiro e a Chuva de
+  // flechas perdia sempre para os tiros de um alvo. As de reação (curas, Desafio) dependem
+  // do dano e ficam de fora; o feiticeiro escolhe raio ou chama pelo elemento do monstro.
+  const used: Set<string>[] = [new Set(), new Set(), new Set(), new Set()];
+  for (const seed of [1, 2, 3]) {
+    // Level 20: o cavaleiro tem ~95 de mana; o arqueiro com a árvore cheia nos três tiros.
+    const archer = hero(3, 20, 50);
+    archer.tree = {
+      "rajada-dupla.forca": 5, "rajada-dupla.perfurante": 1, "rajada-dupla.forca2": 5, "rajada-dupla.tripla": 1,
+      "flecha-carregada.forca": 5, "flecha-carregada.trespassar": 1, "flecha-carregada.forca2": 5, "flecha-carregada.impacto": 1,
+      "chuva-de-flechas.forca": 5, "chuva-de-flechas.farpas": 1, "chuva-de-flechas.forca2": 5, "chuva-de-flechas.tormenta": 1,
+    };
+    const party = [hero(4, 20, 50), archer, hero(2, 20, 0, { ml: 20 }), hero(1, 20, 0, { ml: 20 })];
+    const r = run("mina-assombrada", party, seed);
+    for (const f of r.frames)
+      for (const e of f.e) if (e.k === "magia" && e.s && e.a < 4) used[e.a]!.add(e.s);
+  }
+  const want: [number, string[]][] = [
+    [0, ["golpe-brutal", "giro-da-lamina"]],
+    [1, ["rajada-dupla", "chuva-de-flechas", "flecha-carregada", "concentracao"]],
+    [2, ["golpe-de-gelo", "onda-de-gelo"]],
+    [3, ["onda-de-fogo"]],
+  ];
+  for (const [i, ids] of want)
+    for (const id of ids) assert.ok(used[i]!.has(id), `${id}: ${[...used[i]!].join(",")}`);
+  assert.ok(used[3]!.has("golpe-de-raio") || used[3]!.has("golpe-de-chama"));
+});
+
+test("a cura da habilidade vem antes da poção no mesmo tique", () => {
+  // 24/11/2026: a poção (abaixo de 50%) vinha antes e a Atadura (também 50%) não precisava sair.
+  let checked = 0;
+  for (const seed of [1, 2, 3, 4]) {
+    const k = hero(4, 34, 50);
+    addItem(k.inv!, 100_000, "pocao-de-vida", 30);
+    const r = run("mina-assombrada", [k], seed);
+    const firstPotion = r.frames.findIndex((f) => f.e.some((e) => e.k === "pocao" && e.a === 0 && !e.mana));
+    if (firstPotion < 0) continue;
+    const firstHeal = r.frames.findIndex((f) => f.e.some((e) => e.k === "magia" && e.a === 0 && e.s === "atadura"));
+    assert.ok(firstHeal >= 0 && firstHeal <= firstPotion, `cura ${firstHeal}, poção ${firstPotion}`);
+    if (firstHeal === firstPotion) {
+      const e = r.frames[firstPotion]!.e;
+      const h = e.findIndex((x) => x.k === "magia" && x.a === 0 && x.s === "atadura");
+      const p = e.findIndex((x) => x.k === "pocao" && x.a === 0);
+      assert.ok(h < p, "no mesmo quadro, a cura primeiro");
+    }
+    checked++;
+  }
+  assert.ok(checked > 0, "alguma corrida precisou de poção");
+});
+
+test("a habilidade sai com o custo (com Economia) mais uma cura guardada, e a barra mostra isso", () => {
+  // 24/11/2026: o cavaleiro de level 27 com Economia 3 no Golpe brutal (21 de mana) só usava
+  // com 47 (duas Ataduras ou 20% da mana guardados). Agora guarda uma cura, a mais cara.
+  const knight = hero(4, 27, 50);
+  knight.tree = { "golpe-brutal.forca": 1, "golpe-brutal.economia": 3 };
+  const bar = Object.fromEntries(abilityBar(knight).map((s) => [s.id, s]));
+  assert.equal(bar["golpe-brutal"]!.mana, 21);
+  assert.equal(bar["golpe-brutal"]!.at, 21 + 10, "o custo e uma Atadura");
+  assert.equal(bar["atadura"]!.at, 10, "a cura não guarda nada");
+  const druid = Object.fromEntries(abilityBar(hero(2, 27, 0, { ml: 30 })).map((s) => [s.id, s]));
+  assert.equal(druid["golpe-de-gelo"]!.at, 20 + 120, "o druida guarda a Cura do companheiro");
+  const archer = Object.fromEntries(abilityBar(hero(3, 27, 50)).map((s) => [s.id, s]));
+  assert.equal(archer["rajada-dupla"]!.at, 18, "sem cura, nada guardado");
 });

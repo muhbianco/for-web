@@ -456,7 +456,8 @@ export interface RpgRunMemberView {
   mana_max: number;
   gear: Gear;
   /** As 4 habilidades com a mana e a recarga desta corrida (24/11/2026; a barra da tela). */
-  skills?: { id: string; mana: number; cd_ms: number }[];
+  /** `at`: a mana com que a corrida usa a habilidade (custo e reserva da cura); falta nas antigas. */
+  skills?: { id: string; mana: number; cd_ms: number; at?: number }[];
   /** Quando bebe poção nesta corrida (o limite marca o cristal de vida e o de mana). */
   supplies?: RunSupplies;
   /** Quanto vale cada ponto de experiência crua no fim (taxa, level baixo e stamina). */

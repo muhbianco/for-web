@@ -70,7 +70,8 @@ test("treino: exige vocação; 1 h de cavaleiro na espada rende 1800 tentativas 
   assert.ok(view.skills.espada.level > 10);
   assert.ok(view.skills.escudo.level > 10);
   assert.equal(d.training, null);
-  assert.deepEqual(d.bank, { ms: 11 * H, at: H });
+  // Sem limite de treino (24/11/2026): o saldo continua cheio.
+  assert.ok(d.bank.ms > 365 * 24 * H);
 });
 
 test("treino: creditar no meio e fechar depois dá o mesmo que fechar de uma vez", () => {
@@ -88,34 +89,40 @@ test("treino: creditar no meio e fechar depois dá o mesmo que fechar de uma vez
   assert.deepEqual(a.bank, b.bank);
 });
 
-test("treino: para no fim do orçamento e o saldo volta a encher a partir dali", () => {
+test("treino sem limite (24/11/2026): não acaba pelo saldo; a sessão de antes (2 h) segue sem fim na leitura", async () => {
+  const { normalizeHero } = await import("./hero.ts");
   const d = newRpgHero("u1", 0);
   applyVocation(d, 4);
   d.bank = { ms: 2 * H, at: 0 };
   startTraining(d, SPOT, "machado", 0, DEFAULT_RATES);
-  assert.equal(trainingExpired(d, 2 * H - 1), false);
-  assert.equal(trainingExpired(d, 2 * H), true);
-  // Volta 10 h depois: treinou só as 2 h do orçamento; o saldo encheu 8 h desde o fim.
+  assert.equal(trainingExpired(d, 2 * H), false);
+  assert.equal(trainingExpired(d, 72 * H), false);
+  // 10 h seguidas contam inteiras (antes paravam nas 2 h do saldo).
   stopTraining(d, 10 * H, DEFAULT_RATES);
-  assert.deepEqual(d.bank, { ms: 0, at: 2 * H });
   const other = newRpgHero("u2", 0);
   applyVocation(other, 4);
-  other.bank = { ms: 2 * H, at: 0 };
   startTraining(other, SPOT, "machado", 0, DEFAULT_RATES);
   stopTraining(other, 2 * H, DEFAULT_RATES);
-  assert.deepEqual(d.skills, other.skills);
+  assert.ok(d.skills.machado.level > other.skills.machado.level);
+  // Um herói gravado com a sessão de 2 h aberta: a leitura estende o orçamento.
+  const old = newRpgHero("u3", 0);
+  applyVocation(old, 4);
+  startTraining(old, SPOT, "machado", 0, DEFAULT_RATES);
+  old.training!.budgetMs = 2 * H;
+  old.bank = { ms: 0, at: 0 };
+  normalizeHero(old);
+  assert.ok(old.training!.budgetMs > 365 * 24 * H);
+  assert.ok(old.bank.ms > 365 * 24 * H);
 });
 
-test("treino: sem saldo não começa; repetir o mesmo dummy não reinicia; trocar fecha o anterior", () => {
+test("treino: começa com qualquer saldo; repetir o mesmo dummy não reinicia; trocar fecha o anterior", () => {
   const d = newRpgHero("u1", 0);
   applyVocation(d, 4);
+  // Sem limite (24/11/2026): o saldo de antes (30 s) não impede mais.
   d.bank = { ms: 30_000, at: 0 };
   assert.deepEqual(startTraining(d, SPOT, "espada", 0, DEFAULT_RATES), {
-    ok: false,
-    reason: "no_bank",
+    ok: true,
   });
-  d.bank = { ms: 4 * H, at: 0 };
-  startTraining(d, SPOT, "espada", 0, DEFAULT_RATES);
   const started = d.training!.startedAt;
   assert.deepEqual(startTraining(d, SPOT, "espada", 60_000, DEFAULT_RATES), {
     ok: true,
@@ -130,7 +137,7 @@ test("treino: sem saldo não começa; repetir o mesmo dummy não reinicia; troca
     DEFAULT_RATES,
   );
   assert.equal(d.training!.instance, "dummy-2");
-  assert.equal(d.training!.budgetMs, 3 * H);
+  assert.ok(d.training!.budgetMs > 365 * 24 * H);
   assert.ok(d.skills.espada.level > 10);
 });
 

@@ -41,7 +41,11 @@ export default function TrainingChip(props: {
       hero,
       serverNow(props.rpg.serverNow, props.rpg.at),
     );
-    return p ? { hero, p } : null;
+    const elapsed = Math.max(
+      0,
+      serverNow(props.rpg.serverNow, props.rpg.at) - hero.training.started_at,
+    );
+    return p ? { hero, p, elapsed } : null;
   };
 
   return (
@@ -53,9 +57,7 @@ export default function TrainingChip(props: {
             {t`${L.skill[v().hero.training!.skill]} ${v().p.skill?.level ?? 0} · ${percent(v().p.skill?.tries ?? 0, v().p.skill?.next ?? 0)}%`}
           </span>
           <Muted>
-            {v().p.remainingMs > 0
-              ? t`restam ${duration(v().p.remainingMs)}`
-              : t`saldo esgotado`}
+            {t`há ${duration(v().elapsed)}`}
           </Muted>
           <Stop
             type="button"

@@ -298,7 +298,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 45, solo: { 1: 84, 2: 69, 3: 57, 4: null } },
+    comfort: { group: 45, solo: { 1: 84, 2: 69, 3: 63, 4: 81 } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -334,7 +334,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "abismo-gelado",
     name: "Abismo Gelado",
     minLevel: 55,
-    comfort: { group: 55, solo: { 1: 85, 2: 85, 3: 70, 4: null } },
+    comfort: { group: 55, solo: { 1: 85, 2: 85, 3: 70, 4: 94 } },
     blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
     stages: [
       { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },
@@ -362,7 +362,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "trono-do-vazio",
     name: "Trono do Vazio",
     minLevel: 70,
-    comfort: { group: 70, solo: { 1: null, 2: 110, 3: 97, 4: null } },
+    comfort: { group: 70, solo: { 1: null, 2: 110, 3: 88, 4: null } },
     blurb: "O fim do caminho. O que vive aqui come a luz.",
     stages: [
       { name: "Limiar", monsters: [{ id: "sombra-vazia", count: 2 }] },

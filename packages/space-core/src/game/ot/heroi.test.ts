@@ -277,6 +277,7 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
   const bar = abilityBar({
     vocation: 4,
     level: 30,
+    manaMax: 150,
     stats: { ...freshStats(), des: 61 },
     tree: { "golpe-brutal.forca": 5, "golpe-brutal.economia": 3 },
   });
@@ -287,9 +288,11 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
   // 30 de mana − 30% = 21; 6 s × (1 − a curva da DES 61), a mesma da corrida (derive).
   const cd = Math.round(6000 * derive({ ...freshStats(), des: 61 }, 30).cooldown);
   assert.ok(cd > 5000 && cd < 5300, `recarga ${cd}`);
-  assert.deepEqual(bar[0], { id: "golpe-brutal", mana: 21, cd_ms: cd });
+  // Sai com o custo e uma Atadura guardada (10).
+  assert.deepEqual(bar[0], { id: "golpe-brutal", mana: 21, cd_ms: cd, at: 31 });
+  assert.equal(bar[3]!.at, 40 + 10, "o Desafio guarda a cura");
   // Sem atributos nem árvore (corrida antiga): os números de partida (a DES 1 tira 0,3%).
-  const plain = abilityBar({ vocation: 1, level: 5 });
+  const plain = abilityBar({ vocation: 1, level: 5, manaMax: 50 });
   assert.equal(plain[0]!.id, "golpe-de-raio");
   assert.equal(
     plain[0]!.cd_ms,
