@@ -98,6 +98,8 @@ export interface RpgHost {
   ): { ok: true } | { ok: false; code: string; reason?: string };
   /** O runtime ainda vê a pessoa treinando neste dummy. */
   isTrainingAt(userId: string, instanceId: string): boolean;
+  /** O dummy em que o runtime vê a pessoa treinando (null: nenhum). */
+  trainingOf(userId: string): string | null;
   setTraining(userId: string, instanceId: string | null): void;
   /** The hero under the person's name on the map and what they wear (null: no hero). */
   setHero(
@@ -340,6 +342,12 @@ export class RpgService {
       userId,
       async () => {
         const doc = await this.load(userId);
+        // Voltou treinando depois de um reinício (o runtime leu o lugar dele): só vale se o herói
+        // ainda tem aquele treino aberto neste servidor; senão o boneco não mostra treino.
+        const at = host.trainingOf(userId);
+        const t = doc?.training;
+        if (at !== null && (!t || t.server !== host.serverId || t.instance !== at || trainingExpired(doc!, this.now())))
+          host.setTraining(userId, null);
         host.setHero(userId, doc ? heroLook(doc) : null);
       },
       () => undefined,

@@ -16,6 +16,7 @@ import { StoatCache } from "../stoat/cache.ts";
 import type { StoatMember, StoatUser } from "../stoat/types.ts";
 import { MemoryDecorStore } from "./decorStore.ts";
 import { type SessionPort, type Viewer, SpaceRuntime } from "./runtime.ts";
+import { MemorySpotStore } from "./spotStore.ts";
 import { MemoryAssignmentStore } from "./store.ts";
 
 const SRV = "01JSRV00000000000000000000";
@@ -306,6 +307,74 @@ test("dummy: desconectar não encerra (segue como o treino offline); reconectar 
   // Longe dali, a próxima reentrada encerra.
   moveTo(rt, ANA, dummy.tx + 7, dummy.ty);
   assert.deepEqual(left, [ANA]);
+});
+
+test("reinício: cada um volta ao mesmo lugar e quem treinava volta treinando ao lado do dummy", async () => {
+  const BIA = "01JBIA00000000000000000000";
+  const decor = new MemoryDecorStore();
+  const spots = new MemorySpotStore();
+  let now = 5_000_000;
+  const boot = async () => {
+    const rt = new SpaceRuntime({
+      serverId: SRV,
+      cache: makeCache(),
+      store: new MemoryAssignmentStore(),
+      decorStore: decor,
+      spotStore: spots,
+      log: silentLog,
+      now: () => now,
+    });
+    await rt.init();
+    return rt;
+  };
+  const rt1 = await boot();
+  const ana = enter(rt1, ANA, "Ana");
+  const dummy = await placeDummy(rt1, ana, "dummy-1");
+  moveTo(rt1, ANA, dummy.tx, dummy.ty + 1);
+  rt1.setTraining(ANA, "dummy-1");
+  enter(rt1, BIA, "Bia");
+  const internals = rt1 as unknown as Internals & {
+    nearestFree: (t: { tx: number; ty: number }, room: string | null) => { x: number; y: number } | null;
+  };
+  const spawn = rt1.map.spawns[0]!;
+  const biaAt = internals.nearestFree({ tx: spawn.tx + 6, ty: spawn.ty + 2 }, null)!;
+  internals.place(internals.avatars.get(BIA), biaAt, null);
+  const anaAt = tileCenter({ tx: dummy.tx, ty: dummy.ty + 1 });
+  assert.equal(await rt1.saveSpots(), 2);
+
+  // O processo novo: Bia entra primeiro (o spawn seria outro) e Ana depois.
+  now += 60_000;
+  const rt2 = await boot();
+  const bia2 = enter(rt2, BIA, "Bia");
+  const ana2 = enter(rt2, ANA, "Ana");
+  assert.deepEqual(bia2.pos, biaAt);
+  assert.deepEqual(ana2.pos, anaAt);
+  assert.ok(rt2.isTrainingAt(ANA, "dummy-1"));
+  assert.equal(rt2.trainingOf(BIA), null);
+  // O lugar vale uma vez: o documento sai na leitura.
+  assert.equal(spots.docs.size, 0);
+
+  // Só o treino conhecido (sem posição): vai para o lado do dummy, treinando.
+  await spots.save(SRV, [{ user: ANA, x: null, y: null, room: null, training: "dummy-1" }], now);
+  const rt3 = await boot();
+  const ana3 = enter(rt3, ANA, "Ana");
+  assert.ok(rt3.isTrainingAt(ANA, "dummy-1"));
+  const tx = Math.floor(ana3.pos.x / rt3.map.tileSize);
+  const ty = Math.floor(ana3.pos.y / rt3.map.tileSize);
+  assert.ok(Math.abs(tx - dummy.tx) <= 1 && Math.abs(ty - dummy.ty) <= 1, `ao lado do dummy: ${tx},${ty}`);
+
+  // Velho demais (mais de 30 min): a entrada normal, sem treino.
+  await spots.save(SRV, [{ user: ANA, x: anaAt.x, y: anaAt.y, room: null, training: "dummy-1" }], now);
+  now += 31 * 60_000;
+  const rt4 = await boot();
+  enter(rt4, ANA, "Ana");
+  assert.equal(rt4.isTrainingAt(ANA, "dummy-1"), false);
+
+  // Uma sala em que a pessoa não pode mais entrar: entrada normal.
+  await spots.save(SRV, [{ user: BIA, x: biaAt.x, y: biaAt.y, room: "01JNADA0000000000000000000", training: null }], now);
+  const rt5 = await boot();
+  const bia5 = enter(rt5, BIA, "Bia");
+  assert.notDeepEqual(bia5.pos, biaAt);
 });
 
 test("herói no avatar: level e treino chegam aos outros; quem entra com o jogo ligado é anunciado", async () => {

@@ -66,6 +66,7 @@ import type { StoatMember, StoatServer, StoatTextChannel, StoatUser } from "../s
 import { type Assignment, reconcile, toLayoutInput } from "./assignment.ts";
 import { type DecorStore, MemoryDecorStore } from "./decorStore.ts";
 import { type MediaHost, type MediaHub, RoomMedia } from "./roomMedia.ts";
+import { type ResumeSpot, RESUME_SPOT_TTL_MS, type SpotStore } from "./spotStore.ts";
 import type { AssignmentStore } from "./store.ts";
 import { MemoryTvStore, type TvCommand, TvHub, type TvHost, type TvStore } from "./tv.ts";
 
@@ -189,6 +190,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
   readonly media: RoomMedia | null;
   /** After a restart: room to put a returning avatar back in (its lease survived). */
   private readonly resumeAt = new Map<string, string>();
+  /** Where the previous process saw each avatar (and its dummy), until that person's first join. */
+  private readonly resumeSpots = new Map<string, ResumeSpot>();
+  /** Past this, a spot from the restart no longer applies (the person just came back later). */
+  private resumeSpotsUntil = Number.NEGATIVE_INFINITY;
+  private readonly spotStore: SpotStore | null;
   /** Watch-only sessions (sidebar presence): no avatar, never "in the space". */
   private readonly observers = new Set<SessionPort>();
   private lkSeen = new Map<string, SeenInLiveKit>();
@@ -208,8 +214,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
     media?: { hub: MediaHub; lk: LiveKitAdmin };
     /** The operator switched Refúgio on for this server (ADR 0009); off when absent. */
     gameAvailable?: boolean;
+    /** Spots kept across a restart (24/11/2026); none when absent (tests, lab). */
+    spotStore?: SpotStore;
   }) {
     this.serverId = deps.serverId;
+    this.spotStore = deps.spotStore ?? null;
     this.gameAvailable = deps.gameAvailable ?? false;
     this.cache = deps.cache;
     this.store = deps.store;
@@ -261,8 +270,46 @@ export class SpaceRuntime implements MediaHost, TvHost {
   async init(): Promise<void> {
     await this.reconcileAndBuild();
     await this.loadDecor();
+    await this.loadSpots();
     await this.media?.recoverEpochs();
     await this.tv.init();
+  }
+
+  /** The spots the previous process wrote at shutdown; best effort (the normal entry without them). */
+  private async loadSpots(): Promise<void> {
+    if (!this.spotStore) return;
+    try {
+      const spots = await this.spotStore.take(this.serverId, this.now() - RESUME_SPOT_TTL_MS);
+      for (const s of spots) this.resumeSpots.set(s.user, s);
+      this.resumeSpotsUntil = this.now() + RESUME_SPOT_TTL_MS;
+      if (spots.length) this.log.info("resume spots loaded", { server: this.serverId, count: spots.length });
+    } catch (err) {
+      this.log.warn("resume spots unavailable", { server: this.serverId, err: String(err) });
+    }
+  }
+
+  /** Every avatar on the map now (reconnecting ones too) and the dummy it trains at: written at shutdown. */
+  spots(): ResumeSpot[] {
+    const out: ResumeSpot[] = [];
+    for (const a of this.avatars.values()) {
+      if (a.evicted) continue;
+      out.push({
+        user: a.userId,
+        x: a.move.pos.x,
+        y: a.move.pos.y,
+        room: a.move.room,
+        training: this.trainingAt.get(a.userId) ?? null,
+      });
+    }
+    return out;
+  }
+
+  /** Writes `spots()` (the process is stopping). */
+  async saveSpots(): Promise<number> {
+    if (!this.spotStore) return 0;
+    const spots = this.spots();
+    if (spots.length) await this.spotStore.save(this.serverId, spots, this.now());
+    return spots.length;
   }
 
   // ---- TvHost --------------------------------------------------------------
@@ -687,6 +734,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return this.trainingAt.get(userId) === instanceId;
   }
 
+  /** The dummy the runtime sees the person training at (null: none). */
+  trainingOf(userId: string): string | null {
+    return this.trainingAt.get(userId) ?? null;
+  }
+
   setTraining(userId: string, instanceId: string | null): void {
     if (instanceId === null) this.trainingAt.delete(userId);
     else this.trainingAt.set(userId, instanceId);
@@ -721,15 +773,55 @@ export class SpaceRuntime implements MediaHost, TvHost {
    * A longer reach also needs the avatar inside the instance's zone (no training through a wall).
    */
   private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" | "npc" = "train", reach = 1): boolean {
+    return this.nearInstance(a.move.pos, instanceId, kind, reach);
+  }
+
+  private nearInstance(pos: { x: number; y: number }, instanceId: string, kind: "train" | "tv" | "npc", reach: number): boolean {
     const inst = this.decor.items.find((i) => i.id === instanceId);
     const item = inst ? itemOf(CATALOG, inst.item) : undefined;
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
     if (!inst || !item || !zone || item.interaction !== kind) return false;
     const rect = instanceRect(zone, item, inst);
-    const tx = Math.floor(a.move.pos.x / this.map.tileSize);
-    const ty = Math.floor(a.move.pos.y / this.map.tileSize);
+    const tx = Math.floor(pos.x / this.map.tileSize);
+    const ty = Math.floor(pos.y / this.map.tileSize);
     if (reach > 1 && !(tx >= zone.rect.x0 && tx <= zone.rect.x1 && ty >= zone.rect.y0 && ty <= zone.rect.y1)) return false;
     return tx >= rect.x0 - reach && tx <= rect.x1 + reach && ty >= rect.y0 - reach && ty <= rect.y1 + reach;
+  }
+
+  /**
+   * Where a person comes back after a restart (their resume spot), or null for the normal entry.
+   * They must still be allowed there; a trainer stands next to the dummy (the shutdown spot
+   * normally already is) and goes on training.
+   */
+  private spotStart(
+    viewer: Viewer,
+    spot: ResumeSpot,
+  ): { pos: { x: number; y: number }; room: string | null; training: string | null } | null {
+    if (spot.room && (!this.ix.roomsById.has(spot.room) || !this.canEnter(viewer, spot.room))) return null;
+    const regionOf = (p: { x: number; y: number }): string | null | undefined => {
+      const r = regionAt(this.ix, p.x, p.y);
+      return r.kind === "room" ? r.roomId : r.kind === "open" ? null : undefined;
+    };
+    const tileOf = (p: { x: number; y: number }): TilePos => ({
+      tx: Math.floor(p.x / this.map.tileSize),
+      ty: Math.floor(p.y / this.map.tileSize),
+    });
+    const saved = spot.x !== null && spot.y !== null ? this.nearestFree(tileOf({ x: spot.x, y: spot.y }), spot.room) : null;
+    const pos = saved && regionOf(saved) === spot.room ? saved : null;
+    if (spot.training) {
+      const inst = this.decor.items.find((i) => i.id === spot.training);
+      const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+      const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
+      if (inst && item && zone && item.interaction === "train" && this.canInteract(viewer, inst.zone)) {
+        const near = (p: { x: number; y: number } | null) =>
+          !!p && regionOf(p) === spot.room && this.nearInstance(p, inst.id, "train", TRAIN_REACH_TILES);
+        if (near(pos)) return { pos: pos!, room: spot.room, training: inst.id };
+        const rect = instanceRect(zone, item, inst);
+        const beside = this.nearestFree({ tx: rect.x0, ty: rect.y0 }, spot.room);
+        if (near(beside)) return { pos: beside!, room: spot.room, training: inst.id };
+      }
+    }
+    return pos ? { pos, room: spot.room, training: null } : null;
   }
 
   /** A trainer who left the dummy's zone or walked more than TRAIN_REACH_TILES away (or is gone) stops training. */
@@ -1458,6 +1550,10 @@ export class SpaceRuntime implements MediaHost, TvHost {
     } else {
       const resume = this.resumeAt.get(user._id);
       this.resumeAt.delete(user._id);
+      // After a restart: the exact spot (and the dummy) the previous process saw.
+      const spot = this.resumeSpots.get(user._id);
+      this.resumeSpots.delete(user._id);
+      const start = spot && this.now() <= this.resumeSpotsUntil ? this.spotStart(session.viewer, spot) : null;
       const room = resume ? this.ix.roomsById.get(resume) : undefined;
       const spawn = this.map.spawns[this.avatars.size % this.map.spawns.length] ?? this.map.spawns[0]!;
       a = {
@@ -1465,9 +1561,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
         viewer: session.viewer,
         name,
         look,
-        move: room
-          ? initialMoveState(tileCenter(room.inside), room.roomId, this.now())
-          : initialMoveState(tileCenter(spawn), null, this.now()),
+        move: start
+          ? initialMoveState(start.pos, start.room, this.now())
+          : room
+            ? initialMoveState(tileCenter(room.inside), room.roomId, this.now())
+            : initialMoveState(tileCenter(spawn), null, this.now()),
         dir: "down",
         moving: false,
         idle: false,
@@ -1480,6 +1578,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
         heroLook: null,
       };
       this.avatars.set(user._id, a);
+      // Trained there before the restart: goes on training (the hero document kept the session).
+      if (start?.training) this.trainingAt.set(user._id, start.training);
     }
     a.dirty = true;
     const visible = new Set<string>();

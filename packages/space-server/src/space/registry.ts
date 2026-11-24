@@ -6,6 +6,7 @@ import type { RuntimeRegistry } from "../ws/gateway.ts";
 import type { MediaHub } from "./roomMedia.ts";
 import { SpaceRuntime } from "./runtime.ts";
 import type { DecorStore } from "./decorStore.ts";
+import type { SpotStore } from "./spotStore.ts";
 import type { TvStore } from "./tv.ts";
 import type { AssignmentStore } from "./store.ts";
 
@@ -28,6 +29,7 @@ export class Registry implements RuntimeRegistry {
   private readonly store: AssignmentStore;
   private readonly decorStore: DecorStore | undefined;
   private readonly tvStore: TvStore | undefined;
+  private readonly spotStore: SpotStore | undefined;
   private readonly members: StoatMembers & Partial<Pick<MemberCache, "invalidate">>;
   private readonly log: Log;
   private readonly now: () => number;
@@ -48,6 +50,8 @@ export class Registry implements RuntimeRegistry {
     decorStore?: DecorStore;
     /** Smart TV sessions (ADR 0008); in-memory when absent. */
     tvStore?: TvStore;
+    /** Where the avatars stood at shutdown (24/11/2026); none kept when absent. */
+    spotStore?: SpotStore;
     members: StoatMembers & Partial<Pick<MemberCache, "invalidate">>;
     log: Log;
     now?: () => number;
@@ -67,6 +71,7 @@ export class Registry implements RuntimeRegistry {
     // decoration vanished on each restart (found in the 16/11/2026 audit).
     this.decorStore = deps.decorStore;
     this.tvStore = deps.tvStore;
+    this.spotStore = deps.spotStore;
     this.members = deps.members;
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
@@ -128,6 +133,7 @@ export class Registry implements RuntimeRegistry {
         store: this.store,
         decorStore: this.decorStore,
         tvStore: this.tvStore,
+        spotStore: this.spotStore,
         log: this.log,
         now: this.now,
         media: this.media,
@@ -160,6 +166,35 @@ export class Registry implements RuntimeRegistry {
 
   all(): Iterable<SpaceRuntime> {
     return this.live.values();
+  }
+
+  /**
+   * The process is stopping: every live space writes where its avatars stand (and who trains
+   * where), so the next process puts them back. Bounded by `timeoutMs`; a failure only costs that.
+   */
+  async saveSpots(timeoutMs = 3_000): Promise<{ servers: number; avatars: number; failed: number }> {
+    const out = { servers: 0, avatars: 0, failed: 0 };
+    const jobs = [...this.live.values()].map(async (rt) => {
+      try {
+        const n = await rt.saveSpots();
+        if (n) {
+          out.servers++;
+          out.avatars += n;
+        }
+      } catch (err) {
+        out.failed++;
+        this.log.warn("resume spots not saved", { server: rt.serverId, err: String(err) });
+      }
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      Promise.allSettled(jobs),
+      new Promise((r) => {
+        timer = setTimeout(r, timeoutMs);
+      }),
+    ]);
+    clearTimeout(timer);
+    return out;
   }
 
   /** True when every server has the space on (SPACE_ENABLED_SERVERS=*). */

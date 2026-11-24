@@ -21,6 +21,7 @@ import { SpatialSwitch } from "./space/spatialSwitch.ts";
 import { Registry } from "./space/registry.ts";
 import { MongoProfileStore } from "./space/profiles.ts";
 import { MongoDecorStore } from "./space/decorStore.ts";
+import { MongoSpotStore } from "./space/spotStore.ts";
 import { MongoAssignmentStore } from "./space/store.ts";
 import { MongoTvStore } from "./space/tv.ts";
 import { MemberCache, StoatApi } from "./stoat/api.ts";
@@ -129,6 +130,7 @@ async function main() {
     store: new MongoAssignmentStore(mongo),
     decorStore: new MongoDecorStore(mongo),
     tvStore: new MongoTvStore(mongo),
+    spotStore: new MongoSpotStore(mongo),
     members,
     log,
     enabled,
@@ -222,6 +224,9 @@ async function main() {
     structure.stop();
     if (switchTimer) clearInterval(switchTimer);
     rpg.stopRuns();
+    // Before the sockets close (a closed socket is still an avatar on the map, but say it first).
+    const saved = await registry.saveSpots();
+    log.info("resume spots saved", saved);
     await gateway.close().catch(() => undefined);
     await media?.stop();
     await mongo.close().catch(() => undefined);

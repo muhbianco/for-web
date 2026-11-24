@@ -71,6 +71,9 @@ class FakeHost implements RpgHost {
   isTrainingAt(userId: string, instanceId: string) {
     return this.training.get(userId) === instanceId;
   }
+  trainingOf(userId: string) {
+    return this.training.get(userId) ?? null;
+  }
   setTraining(userId: string, instanceId: string | null) {
     if (instanceId === null) this.training.delete(userId);
     else this.training.set(userId, instanceId);
@@ -272,6 +275,33 @@ test("treino que ficou para trás (reconexão, reinício) fecha ao abrir, credit
   assert.ok(h.skills.distancia.level > 10);
   // Sem limite de treino (24/11/2026): o saldo continua cheio.
   assert.ok(h.bank_ms > 365 * 24 * H);
+});
+
+test("volta do reinício treinando: vale se o herói ainda tem aquele treino; senão a marca sai", async () => {
+  const { s, host, send, svc, clock } = await setup();
+  await send("rpg.vocation", { vocation: 3 });
+  await send("rpg.train.start", { instance: "d1", skill: "distancia" });
+  // O processo novo leu o lugar da pessoa e já a vê treinando no d1 (resume spot).
+  host.training.clear();
+  host.training.set("U1", "d1");
+  clock.advance(3 * H);
+  svc.avatarJoined(host, "U1");
+  await svc.idle("U1");
+  assert.equal(host.trainingOf("U1"), "d1");
+  // Abrir o jogo não fecha: o runtime vê o treino.
+  await send("rpg.open");
+  assert.notEqual(s.lastHero()!.training, null);
+  // O runtime acha outro dummy que o herói não tem: a marca sai, o treino do herói fica.
+  host.training.set("U1", "d2");
+  svc.avatarJoined(host, "U1");
+  await svc.idle("U1");
+  assert.equal(host.trainingOf("U1"), null);
+  // Herói sem treino aberto: também sai.
+  await send("rpg.train.stop");
+  host.training.set("U1", "d1");
+  svc.avatarJoined(host, "U1");
+  await svc.idle("U1");
+  assert.equal(host.trainingOf("U1"), null);
 });
 
 test("reenvio do mesmo comando não age de novo; jogo desligado e sem permissão recusam", async () => {
