@@ -835,7 +835,8 @@ test("a habilidade sai com o custo (com Economia) mais uma cura guardada, e a ba
   const druid = Object.fromEntries(abilityBar(hero(2, 27, 0, { ml: 30 })).map((s) => [s.id, s]));
   assert.equal(druid["golpe-de-gelo"]!.at, 20 + 120, "o druida guarda a Cura do companheiro");
   const archer = Object.fromEntries(abilityBar(hero(3, 27, 50)).map((s) => [s.id, s]));
-  assert.equal(archer["rajada-dupla"]!.at, 18, "sem cura, nada guardado");
+  // 24/11/2026: a Rajada passou a custar 30 (tiro especial de recarga longa).
+  assert.equal(archer["rajada-dupla"]!.at, 30, "sem cura, nada guardado");
 });
 
 test("resistência física e mágica (24/11/2026): o elemento não importa; itens protegem do físico ou da magia", async () => {

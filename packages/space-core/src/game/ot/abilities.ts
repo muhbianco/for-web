@@ -189,15 +189,20 @@ export const ABILITIES: readonly AbilityDef[] = [
   },
   // ---- Arqueiro (24/11/2026: o Arqueiro do Ragnarok, físico, sem magia nem cura) ----
   // O dano sai do tiro do arco com a flecha (fórmula "tiro"); a mana paga cada uma.
+  // [nosso] 24/11/2026, à noite (pedido do dono): no modelo do cavaleiro, as habilidades são a
+  // menor parte do dano e o tiro normal é a base (data.ts ARCHER_DIST_DAMAGE). Antes saíam a cada
+  // 2 a 6 s com 1 a 2,3 tiros máximos e faziam 84% do dano no level 60; agora são tiros especiais
+  // de recarga longa (a DES ainda corta até a metade), ~30% do dano, e 400 renascimentos dão
+  // ×1,2, como no cavaleiro (scripts/rebirth-lab.ts). Os fatores são do tiro máximo já com o multiplicador do arqueiro.
   {
     id: "rajada-dupla",
     name: "Rajada dupla",
     cls: 3,
     kind: "ataque",
     element: "fisico",
-    mana: 18,
-    cooldownMs: 2000,
-    formula: tiro(1.0, 1.4),
+    mana: 30,
+    cooldownMs: 16_000,
+    formula: tiro(0.2, 0.27),
     blockArmor: true,
     source: "RO AC_DOUBLE (Double Strafe)",
     blurb: "Duas flechas seguidas no alvo do grupo, pelo dano do arco.",
@@ -208,9 +213,9 @@ export const ABILITIES: readonly AbilityDef[] = [
     cls: 3,
     kind: "area",
     element: "fisico",
-    mana: 28,
-    cooldownMs: 4000,
-    formula: tiro(0.6, 0.9),
+    mana: 45,
+    cooldownMs: 24_000,
+    formula: tiro(0.1, 0.15),
     blockArmor: true,
     source: "RO AC_SHOWER (Arrow Shower)",
     blurb: "Uma chuva de flechas em todos os monstros da sala.",
@@ -221,9 +226,9 @@ export const ABILITIES: readonly AbilityDef[] = [
     cls: 3,
     kind: "ataque",
     element: "fisico",
-    mana: 20,
-    cooldownMs: 6000,
-    formula: tiro(1.7, 2.3),
+    mana: 40,
+    cooldownMs: 32_000,
+    formula: tiro(0.31, 0.42),
     blockArmor: true,
     source: "RO AC_CHARGEARROW (Arrow Repel)",
     blurb: "Um tiro tenso e forte no alvo do grupo.",

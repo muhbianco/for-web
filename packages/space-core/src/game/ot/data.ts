@@ -136,6 +136,16 @@ const COMMON = {
   armor: 1,
 } as const;
 
+/**
+ * [nosso] O multiplicador do tiro do Arqueiro e do Caçador (24/11/2026). Com as habilidades
+ * menores (abilities.ts), o tiro normal faz uns 73% do dano do arqueiro no level 60 de árvore
+ * cheia e as habilidades 27%, como no cavaleiro (26%); antes as habilidades eram 84% e 400
+ * renascimentos quase dobravam o dano. O valor (4) devolve o conforto de antes: o trio vence
+ * na entrada de todas as dungeons e o arqueiro sozinho fica perto do que era (comfort-levels.ts,
+ * 80 corridas). Ele não muda a proporção: as habilidades saem do mesmo tiro máximo.
+ */
+export const ARCHER_DIST_DAMAGE = 4;
+
 /** As 9 vocações do TFS (vocations.xml:3-90), com os nossos nomes. */
 export const VOCATIONS: Readonly<Record<VocationId, Vocation>> = {
   0: {
@@ -201,6 +211,10 @@ export const VOCATIONS: Readonly<Record<VocationId, Vocation>> = {
     manaTicks: 4,
     manaAmount: 5,
     ...COMMON,
+    // [nosso] 24/11/2026: o tiro do arco é a base do arqueiro (o multiplicador de distância da
+    // vocação [TFS vocations.xml distDamage]), e as habilidades, a menor parte do dano, como no
+    // cavaleiro: o renascimento cresce a árvore sem teto (rebirth-lab.ts).
+    distDamage: ARCHER_DIST_DAMAGE,
   },
   4: {
     id: 4,
@@ -265,6 +279,10 @@ export const VOCATIONS: Readonly<Record<VocationId, Vocation>> = {
     manaTicks: 3,
     manaAmount: 10,
     ...COMMON,
+    // [nosso] 24/11/2026: o tiro do arco é a base do arqueiro (o multiplicador de distância da
+    // vocação [TFS vocations.xml distDamage]), e as habilidades, a menor parte do dano, como no
+    // cavaleiro: o renascimento cresce a árvore sem teto (rebirth-lab.ts).
+    distDamage: ARCHER_DIST_DAMAGE,
   },
   8: {
     id: 8,

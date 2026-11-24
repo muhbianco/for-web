@@ -123,7 +123,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "galerias-afogadas",
     name: "Galerias Afogadas",
     minLevel: 8,
-    comfort: { group: 8, solo: { 1: 9, 2: 10, 3: 8, 4: 10 } },
+    comfort: { group: 8, solo: { 1: 10, 2: 10, 3: 8, 4: 10 } },
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
     stages: [
       {
@@ -229,7 +229,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "mina-assombrada",
     name: "Mina Assombrada",
     minLevel: 27,
-    comfort: { group: 27, solo: { 1: 34, 2: 31, 3: 31, 4: 46 } },
+    comfort: { group: 27, solo: { 1: 34, 2: 31, 3: 34, 4: 46 } },
     blurb:
       "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
     stages: [
@@ -298,7 +298,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 45, solo: { 1: 75, 2: 66, 3: 63, 4: 81 } },
+    comfort: { group: 45, solo: { 1: 81, 2: 66, 3: 63, 4: 78 } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -362,7 +362,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "trono-do-vazio",
     name: "Trono do Vazio",
     minLevel: 70,
-    comfort: { group: 70, solo: { 1: null, 2: 110, 3: 88, 4: null } },
+    comfort: { group: 70, solo: { 1: null, 2: 110, 3: 97, 4: null } },
     blurb: "O fim do caminho. O que vive aqui come a luz.",
     stages: [
       { name: "Limiar", monsters: [{ id: "sombra-vazia", count: 2 }] },
