@@ -816,7 +816,19 @@ export class SpaceRuntime implements MediaHost, TvHost {
         const near = (p: { x: number; y: number } | null) =>
           !!p && regionOf(p) === spot.room && this.nearInstance(p, inst.id, "train", TRAIN_REACH_TILES);
         if (near(pos)) return { pos: pos!, room: spot.room, training: inst.id };
+        // Next to the dummy, on a tile nobody stands on (several trainers come back to one dummy).
         const rect = instanceRect(zone, item, inst);
+        const taken = new Set<string>();
+        for (const o of this.avatars.values()) {
+          if (!o.evicted) taken.add(`${Math.floor(o.move.pos.x / this.map.tileSize)},${Math.floor(o.move.pos.y / this.map.tileSize)}`);
+        }
+        for (let ty = rect.y0 - 1; ty <= rect.y1 + 1; ty++) {
+          for (let tx = rect.x0 - 1; tx <= rect.x1 + 1; tx++) {
+            if (taken.has(`${tx},${ty}`) || tileAt(this.map, tx, ty) !== Tile.Floor || solidAt(this.ix, tx, ty)) continue;
+            const c = tileCenter({ tx, ty });
+            if (near(c)) return { pos: c, room: spot.room, training: inst.id };
+          }
+        }
         const beside = this.nearestFree({ tx: rect.x0, ty: rect.y0 }, spot.room);
         if (near(beside)) return { pos: beside!, room: spot.room, training: inst.id };
       }

@@ -362,6 +362,20 @@ test("reinício: cada um volta ao mesmo lugar e quem treinava volta treinando ao
   const tx = Math.floor(ana3.pos.x / rt3.map.tileSize);
   const ty = Math.floor(ana3.pos.y / rt3.map.tileSize);
   assert.ok(Math.abs(tx - dummy.tx) <= 1 && Math.abs(ty - dummy.ty) <= 1, `ao lado do dummy: ${tx},${ty}`);
+  // Dois no mesmo dummy (gravados à mão, sem posição): cada um num quadrado.
+  await spots.save(
+    SRV,
+    [
+      { user: ANA, x: null, y: null, room: null, training: "dummy-1" },
+      { user: BIA, x: null, y: null, room: null, training: "dummy-1" },
+    ],
+    now,
+  );
+  const rt3b = await boot();
+  const anaB = enter(rt3b, ANA, "Ana");
+  const biaB = enter(rt3b, BIA, "Bia");
+  assert.ok(rt3b.isTrainingAt(ANA, "dummy-1") && rt3b.isTrainingAt(BIA, "dummy-1"));
+  assert.notDeepEqual(anaB.pos, biaB.pos);
 
   // Velho demais (mais de 30 min): a entrada normal, sem treino.
   await spots.save(SRV, [{ user: ANA, x: anaAt.x, y: anaAt.y, room: null, training: "dummy-1" }], now);
