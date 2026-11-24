@@ -35,7 +35,14 @@ import {
 import { SkillTree } from "./SkillTree";
 import { StatsPanel } from "./StatsPanel";
 import { useModalKeys } from "./modalKeys";
-import { className, percent, rpgLabels, vocationName } from "./rpgUi";
+import {
+  className,
+  percent,
+  projectTraining,
+  rpgLabels,
+  serverNow,
+  vocationName,
+} from "./rpgUi";
 
 /** O corpo como no OT: colar, cabeça e mochila; arma, corpo e escudo; anel, pernas e munição; pés. */
 const DOLL: readonly (Slot | null)[] = [
@@ -124,6 +131,13 @@ export default function HeroSheet(props: {
     return x && x.item === p.item ? x : null;
   });
 
+  // Treino de habilidade aberto: os pontos que ele já rendeu (o servidor credita ao aprender).
+  const projectedPoints = () => {
+    const h = hero();
+    if (!h || h.training?.skill !== "habilidade") return undefined;
+    return projectTraining(h, serverNow(props.rpg.serverNow, props.rpg.at))
+      ?.skill?.level;
+  };
   const levelPct = () => {
     const h = hero();
     if (!h) return 0;
@@ -258,7 +272,13 @@ export default function HeroSheet(props: {
         </Show>
         <Show when={tab() === "skills" && hero()}>
           {(h) => (
-            <SkillTree hero={h()} busy={busy()} locked={inRun()} send={send} />
+            <SkillTree
+              hero={h()}
+              earned={projectedPoints()}
+              busy={busy()}
+              locked={inRun()}
+              send={send}
+            />
           )}
         </Show>
         <Show when={tab() !== "equip" && error()}>
@@ -631,6 +651,8 @@ export default function HeroSheet(props: {
 
 const Tabs = styled("div", {
   base: {
+    // The card scrolls (overflow auto): without this the bar shrinks to nothing.
+    flexShrink: 0,
     display: "flex",
     gap: "4px",
     padding: "4px",

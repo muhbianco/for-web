@@ -260,7 +260,7 @@ const List = styled("section", {
 const StatRow = styled("div", {
   base: {
     display: "grid",
-    gridTemplateColumns: "3.2em 2.6em auto auto",
+    gridTemplateColumns: "3.2em 2.6em auto auto 1fr",
     gridTemplateRows: "auto auto",
     alignItems: "center",
     columnGap: "8px",

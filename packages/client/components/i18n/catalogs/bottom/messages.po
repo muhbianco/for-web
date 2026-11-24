@@ -63,6 +63,10 @@ msgstr ""
 msgid "(recebendo)"
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "(SOR + 10)/10: escapa de qualquer golpe normal."
+msgstr ""
+
 #: components/space/game/RunPanel.tsx
 msgid "(você)"
 msgstr ""
@@ -77,7 +81,7 @@ msgstr ""
 msgid "{0, plural, one {Drop a file} other {Drop # files}}"
 msgstr ""
 
-#. placeholder {0}: vocationName(hero()?.vocation ?? 0)
+#. placeholder {0}: className(hero()?.vocation ?? 0, hero()?.job ?? 1)
 #. placeholder {1}: hero()?.level ?? 1
 #. placeholder {2}: levelPct()
 #: components/space/game/HeroSheet.tsx
@@ -113,8 +117,8 @@ msgstr ""
 #. placeholder {1}: vocationName(next()!)
 #. placeholder {2}: PROMOTION.level
 #: components/space/game/NpcDialog.tsx
-msgid "{0} → {1}: level {2} e {cost} de ouro (das moedas e do banco)."
-msgstr ""
+#~ msgid "{0} → {1}: level {2} e {cost} de ouro (das moedas e do banco)."
+#~ msgstr ""
 
 #. placeholder {0}: users() .slice(0, -1) .map((user) => user!.username) .join(", ")
 #. placeholder {1}: users().slice(-1)[0]!.username
@@ -154,10 +158,10 @@ msgstr ""
 msgid "{0} de {1} espaços"
 msgstr ""
 
-#. placeholder {0}: s().mp
-#: components/space/game/GamePanel.tsx
-#~ msgid "{0} de mana"
-#~ msgstr ""
+#. placeholder {0}: view().now.mana
+#: components/space/game/SkillTree.tsx
+msgid "{0} de mana"
+msgstr ""
 
 #. placeholder {0}: lobbyPrice(it).toLocaleString()
 #: components/space/game/GamePanel.tsx
@@ -307,6 +311,11 @@ msgstr ""
 
 #. placeholder {0}: ev.v
 #: components/space/game/runUi.ts
+msgid "{a} acertou {b} em cheio (crítico): {0}"
+msgstr ""
+
+#. placeholder {0}: ev.v
+#: components/space/game/runUi.ts
 msgid "{a} acertou {b}: {0}"
 msgstr ""
 
@@ -382,6 +391,10 @@ msgstr ""
 #. placeholder {0}: ev.exp
 #: components/space/game/runUi.ts
 msgid "{b} caiu ({0} de experiência)"
+msgstr ""
+
+#: components/space/game/runUi.ts
+msgid "{b} esquivou de {a}"
 msgstr ""
 
 #: components/space/game/runUi.ts
@@ -479,6 +492,19 @@ msgstr ""
 msgid "{pct}% ({0} ms)"
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "{pct}% de chance de atrasar o ataque do monstro em {s} s"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "{pct}% do dano volta como vida"
+msgstr ""
+
+#. placeholder {0}: names()![tier - 1]
+#: components/space/game/SkillTree.tsx
+msgid "{tier}ª classe: {0}"
+msgstr ""
+
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "{unknown} reacted"
 msgstr ""
@@ -526,6 +552,18 @@ msgstr ""
 msgid "+{health} de vida e +{mana} de mana a cada {s} s"
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "+{pct}% de cura"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "+{pct}% de dano"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "+10 oz por FOR."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "+10% de crítico"
 #~ msgstr ""
@@ -541,6 +579,14 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "+20% de dano"
 #~ msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "× (1 + INT/100)"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "× (1 + VIT/100)"
+msgstr ""
 
 #: components/ui/components/features/messaging/elements/SystemMessage.tsx
 msgid "<0/> has been added by <1/>"
@@ -607,9 +653,26 @@ msgstr ""
 msgid "<0>Be careful!</0><1/>This is not the same as the link that was displayed:"
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "−{pct}% de dano recebido enquanto os monstros estão presos"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "−{pct}% de mana"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "−{s} s de recarga"
+msgstr ""
+
 #. placeholder {0}: duration(eta())
 #: components/space/game/TrainingDialog.tsx
 msgid "≈ {0} para o próximo nível"
+msgstr ""
+
+#. placeholder {0}: duration(eta())
+#: components/space/game/TrainingDialog.tsx
+msgid "≈ {0} para o próximo ponto"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -628,12 +691,24 @@ msgstr ""
 msgid "1 person reacted"
 msgstr "✨✨✨✨🥺,,,,👉👈✨✨✨,,👉👈💖💖✨,,👉👈💖💖,👉👈💖💖✨,,,,👉👈💖💖✨🥺👉👈💖💖✨,👉👈💖💖✨👉👈✨✨✨,,👉👈💖💖✨,,,,👉👈💖💖,👉👈💖✨✨✨✨🥺,,👉👈💖✨✨✨✨🥺,,,,👉👈💖💖✨🥺,👉👈💖💖,👉👈💖💖👉👈"
 
+#: components/space/game/StatsPanel.tsx
+msgid "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura."
+msgstr ""
+
 #: components/app/interface/settings/user/Language.tsx
 msgid "12 hours"
 msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "24 hours"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A 2ª classe recupera vida e mana mais depressa, como a promoção do OT, e abre a 2ª parte da árvore."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "A 3ª classe abre a última parte da árvore."
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
@@ -696,8 +771,8 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "A promoção pede level {lv}."
-msgstr ""
+#~ msgid "A promoção pede level {lv}."
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A reprodução neste computador está engasgando"
@@ -724,8 +799,8 @@ msgid "A vocação já foi escolhida."
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "A vocação promovida recupera vida e mana mais depressa, como no OT."
-msgstr ""
+#~ msgid "A vocação promovida recupera vida e mana mais depressa, como no OT."
+#~ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
@@ -757,6 +832,16 @@ msgstr ""
 
 #: components/space/InteractionDialog.tsx
 msgid "Abra o modo Decorar, selecione o objeto e preencha o que ele mostra."
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Abre com a evolução de classe, no Mestre."
+msgstr ""
+
+#. placeholder {0}: evolve!.level
+#. placeholder {1}: evolve!.points
+#: components/space/game/SkillTree.tsx
+msgid "abre no Mestre (level {0} e {1} pontos na árvore)"
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -791,6 +876,10 @@ msgstr ""
 #: components/app/menus/UserContextMenu.tsx
 msgid "Accept friend request"
 msgstr "💖✨🥺👉👈💖✨✨✨✨🥺,,,,👉👈💖✨✨✨✨🥺,,,,👉👈💖💖,👉👈💖💖✨,,👉👈💖💖✨🥺,👉👈✨✨✨,,👉👈💖💖,,👉👈💖💖✨,,,,👉👈💖💖🥺👉👈💖💖,👉👈💖💖✨👉👈💖💖👉👈✨✨✨,,👉👈💖💖✨,,,,👉👈💖💖,👉👈💖💖✨,,,👉👈💖💖✨🥺,,👉👈💖💖,👉👈💖💖✨🥺👉👈💖💖✨🥺,👉👈"
+
+#: components/space/game/heroUi.ts
+msgid "acerta mais {m} monstro(s) da sala"
+msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Acerto +{h}%"
@@ -850,6 +939,14 @@ msgstr "💖✨🥺👉👈💖💖👉👈💖💖✨🥺,,,👉👈💖✨✨�
 #: components/space/game/GamePanel.tsx
 #~ msgid "Afiar: +{0}% de dano"
 #~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "AGI"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Agilidade: velocidade de ataque e esquiva (level + AGI)."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "aguardando a primeira janela"
@@ -987,12 +1084,20 @@ msgid "Apps da TV"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
+msgid "Aprenda antes o adereço de que este depende."
+msgstr ""
+
+#: components/space/game/rpgUi.ts
 msgid "Aprendiz"
 msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Arco"
 #~ msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Arco e besta: DES + (DES/10)² + FOR/5 + SOR/5."
+msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
 msgid "Are you sure you want to clear your sessions?"
@@ -1049,6 +1154,10 @@ msgstr ""
 msgid "Arquimago"
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "As habilidades voltam DES/300 mais depressa."
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Assign lower-ranked roles to lower-ranking members"
 msgstr ""
@@ -1102,6 +1211,18 @@ msgstr ""
 #~ msgid "ataque atinge mais um"
 #~ msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "Ataque em área"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Ataque no alvo"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Ataques por segundo"
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "Atira {ammo}; usa as duas mãos"
 msgstr ""
@@ -1111,8 +1232,26 @@ msgstr ""
 #~ msgid "ATQ {0}"
 #~ msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "ATQ à distância"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "ATQ base"
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Atravesse a porta para entrar numa sala; saia por ela quando quiser."
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+#: components/space/game/NpcDialog.tsx
+#: components/space/game/StatsPanel.tsx
+msgid "Atributos"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Atributos livres de novo."
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -1391,6 +1530,10 @@ msgstr ""
 msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Cada level na dungeon dá {POINTS_PER_LEVEL} pontos. Cada ponto é +1 no atributo, até {STAT_MAX}."
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Cada sala tem uma TV e um vídeo por vez. Opcional: um tempo mínimo antes de trocar o vídeo (quem gerencia a TV pode trocar antes)."
 msgstr ""
@@ -1506,6 +1649,10 @@ msgstr "💖✨🥺,,👉👈💖✨✨✨✨🥺,,👉👈💖💖✨👉👈�
 
 #: components/i18n/errors.tsx
 msgid "Cannot edit this message."
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Capacidade"
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
@@ -1687,6 +1834,12 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Classe"
 #~ msgstr ""
+
+#. placeholder {0}: className(h().vocation, tier())
+#. placeholder {1}: tier()
+#: components/space/game/NpcDialog.tsx
+msgid "Classe agora: {0} ({1}ª)."
+msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Clear status"
@@ -1926,8 +2079,18 @@ msgstr "💖✨🥺,,👉👈💖💖✨,👉👈💖💖✨👉👈💖💖,,�
 msgid "Confirm action"
 msgstr "💖✨🥺,,👉👈💖💖✨,👉👈💖💖✨👉👈💖💖,,👉👈💖💖🥺👉👈💖💖✨,,,,👉👈💖💖🥺,,,,👉👈✨✨✨,,👉👈💖✨✨✨✨🥺,,👉👈💖✨✨✨✨🥺,,,,👉👈💖💖✨🥺,👉👈💖💖🥺👉👈💖💖✨,👉👈💖💖✨👉👈"
 
+#: components/space/game/StatsPanel.tsx
 #: components/space/game/VocationPicker.tsx
 msgid "Confirmar"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: atributos (grátis)"
+msgstr ""
+
+#. placeholder {0}: money(reset("stats"))
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: atributos por {0}"
 msgstr ""
 
 #. placeholder {0}: money(total())
@@ -1935,13 +2098,27 @@ msgstr ""
 msgid "Confirmar: comprar por {0}"
 msgstr ""
 
+#. placeholder {0}: money(n().cost)
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: evoluir por {0}"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: habilidades (grátis)"
+msgstr ""
+
+#. placeholder {0}: money(reset("tree"))
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: habilidades por {0}"
+msgstr ""
+
 #: components/space/game/HeroSheet.tsx
 msgid "Confirmar: jogar fora"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Confirmar: promover por {cost}"
-msgstr ""
+#~ msgid "Confirmar: promover por {cost}"
+#~ msgstr ""
 
 #. placeholder {0}: money(amount())
 #: components/space/game/NpcDialog.tsx
@@ -2094,6 +2271,10 @@ msgstr ""
 msgid "Corpo"
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Corpo a corpo: FOR + (FOR/10)² + DES/5 + SOR/5. Cada ponto é +0,4% de dano da arma."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Corrente"
 #~ msgstr ""
@@ -2222,10 +2403,20 @@ msgstr ""
 #~ msgid "Crie o seu herói primeiro."
 #~ msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Crítico"
+msgstr ""
+
 #. placeholder {0}: (it.critBp / 100).toLocaleString(undefined, { maximumFractionDigits: 1 })
 #: components/space/game/labels.ts
 #~ msgid "crítico +{0}%"
 #~ msgstr ""
+
+#. placeholder {0}: r()[0]
+#. placeholder {1}: r()[1]
+#: components/space/game/SkillTree.tsx
+msgid "Cura {0}–{1}"
+msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Cura {a} a {b} de vida"
@@ -2238,6 +2429,22 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Cura e controle; começa com uma magia de dano e uma de cura."
 #~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Cura em si"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "cura mais cedo: +{pct} pontos no limite da vida"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Cura no grupo"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "cura também o resto do grupo, com {pct}% do valor"
+msgstr ""
 
 #. placeholder {0}: RULES.restHealPct
 #: components/space/game/GamePanel.tsx
@@ -2269,6 +2476,12 @@ msgstr ""
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Customisation"
 msgstr "💖✨🥺,,👉👈💖💖✨🥺,,👉👈💖💖✨🥺👉👈💖💖✨🥺,👉👈💖💖✨,👉👈💖💖🥺,,,,👉👈💖💖🥺👉👈💖💖✨🥺👉👈💖✨✨✨✨🥺,,👉👈💖💖✨🥺,👉👈💖💖🥺👉👈💖💖✨,👉👈💖💖✨👉👈"
+
+#. placeholder {0}: r()[0]
+#. placeholder {1}: r()[1]
+#: components/space/game/SkillTree.tsx
+msgid "Dano {0}–{1}"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Dano constante à distância; esquiva os golpes com facilidade."
@@ -2346,6 +2559,14 @@ msgstr "💖✨🥺,,,👉👈💖💖,👉👈💖💖,,👉👈💖✨✨✨�
 
 #: components/space/game/itemUi.ts
 msgid "Defesa {dfn}"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Defesa da VIT"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Defesa mágica"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -2431,6 +2652,10 @@ msgstr "💖✨🥺,,,👉👈💖💖,👉👈💖💖🥺,,,👉👈💖💖,�
 msgid "Delete Server"
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Depois de confirmar, os pontos só voltam no Mestre de evolução (a primeira vez é de graça)."
+msgstr ""
+
 #: components/space/game/NpcDialog.tsx
 msgid "Depositado."
 msgstr ""
@@ -2442,6 +2667,10 @@ msgstr ""
 #. placeholder {0}: money(carried())
 #: components/space/game/NpcDialog.tsx
 msgid "Depositar tudo ({0})"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "DES"
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -2459,6 +2688,7 @@ msgid "Description provided by {0}"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
+#: components/space/game/StatsPanel.tsx
 msgid "Desfazer"
 msgstr ""
 
@@ -2480,6 +2710,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Desmarcar"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Destreza: dano à distância, pontaria, golpe mínimo mais alto e recargas mais curtas."
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -2886,6 +3120,10 @@ msgstr ""
 msgid "Escolha a vocação do seu herói num dummy de treino primeiro."
 msgstr ""
 
+#: components/space/game/SkillTree.tsx
+msgid "Escolha a vocação num dummy para ver a árvore."
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Escolha a vocação primeiro."
 msgstr ""
@@ -2997,8 +3235,20 @@ msgstr ""
 #~ msgid "esquiva"
 #~ msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Esquiva"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Esquiva perfeita"
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "Essa arma usa as duas mãos: tire o escudo antes (ou a arma, para pôr o escudo)."
+msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Essa parte da árvore abre com a evolução de classe, no Mestre."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -3011,6 +3261,14 @@ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 msgid "Essa pessoa não está no Espaço agora."
+msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Esse adereço já está no máximo."
+msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Esse atributo já está no máximo (99)."
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -3053,6 +3311,14 @@ msgstr ""
 msgid "Este dummy não está mais aqui."
 msgstr ""
 
+#: components/space/game/rpgUi.ts
+msgid "Este dummy não treina isso: as armas e a magia são no dummy de vocação; a habilidade, no dummy de habilidade."
+msgstr ""
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação. O saldo de 12 h é o mesmo dos dois."
+msgstr ""
+
 #: components/space/game/NpcDialog.tsx
 msgid "Este NPC não está mais aqui."
 msgstr ""
@@ -3086,6 +3352,27 @@ msgstr ""
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Everyone"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Evolui a classe do herói, o que abre partes da árvore de habilidades, e redistribui atributos e habilidades."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Evoluir"
+msgstr ""
+
+#. placeholder {0}: nextName()
+#. placeholder {1}: n().level
+#. placeholder {2}: n().points
+#. placeholder {3}: spent()
+#. placeholder {4}: money(n().cost)
+#: components/space/game/NpcDialog.tsx
+msgid "Evoluir para {0}: level {1}, {2} pontos na árvore (você tem {3}) e {4} de ouro (das moedas e do banco)."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Evoluiu!"
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -3138,6 +3425,18 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Fale um pouco para medir"
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Falta level para a evolução."
+msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Faltam pontos para isso."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Faltam pontos postos na árvore de habilidades (treine no dummy de habilidade)."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -3199,6 +3498,10 @@ msgstr ""
 #~ msgid "Ferido: a vida volta sozinha em alguns minutos (precisa de {0}%)."
 #~ msgstr ""
 
+#: components/space/game/HeroSheet.tsx
+msgid "Ficha do herói"
+msgstr ""
+
 #: components/space/game/RunPanel.tsx
 msgid "Ficou no corpo (sem espaço): {left}."
 msgstr ""
@@ -3233,6 +3536,10 @@ msgstr "💖✨✨👉👈💖💖✨,👉👈💖✨✨✨✨🥺,,,,👉👈�
 
 #: components/space/game/itemUi.ts
 msgid "fogo"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "FOR"
 msgstr ""
 
 #. placeholder {0}: h().combat.attrs.for
@@ -3272,6 +3579,10 @@ msgstr ""
 msgid "fora da chamada"
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "Força: dano corpo a corpo (ATQ) e capacidade, +10 oz por ponto."
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "FPS"
 msgstr ""
@@ -3308,6 +3619,13 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Fúria da mata"
 #~ msgstr ""
+
+#. placeholder {0}: sp().earned
+#. placeholder {1}: Math.max(0, sp().next - sp().tries)
+#. placeholder {2}: treePointsSpent(props.hero.tree)
+#: components/space/game/SkillTree.tsx
+msgid "Ganhos no dummy de habilidade: {0} (o próximo em {1} tentativas). Postos na árvore: {2}."
+msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "Gastou: {spent}."
@@ -3447,6 +3765,15 @@ msgstr ""
 msgid "Há transferências demais a caminho. Espere um pouco."
 msgstr ""
 
+#: components/space/game/rpgUi.ts
+msgid "Habilidade"
+msgstr ""
+
+#: components/space/game/HeroSheet.tsx
+#: components/space/game/NpcDialog.tsx
+msgid "Habilidades"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Harassment or cyberbullying"
 msgstr ""
@@ -3566,6 +3893,14 @@ msgstr ""
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Instead of closing, Muchat will hide in your tray."
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "INT"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Inteligência: +1% de mana por ponto, regeneração de mana, força de magias e curas (MATQ) e defesa mágica."
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -3845,6 +4180,10 @@ msgstr ""
 msgid "level {lv}"
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Level + AGI contra o acerto do monstro (2 × o level dele). Cai com 3 ou mais monstros em cima."
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Libera 30 dias de VIP."
 msgstr ""
@@ -4014,6 +4353,10 @@ msgstr ""
 #~ msgid "magias podem repetir"
 #~ msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "Magias, curas e varinhas: INT + (INT/7)² até INT + (INT/5)². Cada ponto é +0,15%."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Mágico"
 #~ msgstr ""
@@ -4026,9 +4369,9 @@ msgstr ""
 msgid "Malware or phishing"
 msgstr ""
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Mana"
-#~ msgstr ""
+#: components/space/game/StatsPanel.tsx
+msgid "Mana"
+msgstr ""
 
 #. placeholder {0}: it.mp
 #: components/space/game/labels.ts
@@ -4121,6 +4464,10 @@ msgstr ""
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Masquerade"
 msgstr "💖✨✨🥺,,👉👈💖✨✨✨✨🥺,,👉👈💖💖✨🥺👉👈💖💖✨,,,👉👈💖💖✨🥺,,👉👈💖💖,👉👈💖💖✨,,,,👉👈💖✨✨✨✨🥺,,👉👈💖💖👉👈💖💖,👉👈"
+
+#: components/space/game/StatsPanel.tsx
+msgid "MATQ"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Matriarca do Musgo"
@@ -4453,8 +4800,16 @@ msgstr "💖✨✨🥺,,👉👈💖💖✨✨,👉👈✨✨✨,,👉👈💖�
 msgid "My Bots"
 msgstr "💖✨✨🥺,,👉👈💖💖✨✨,👉👈✨✨✨,,👉👈💖✨🥺,👉👈💖💖✨,👉👈💖💖✨🥺,👉👈💖💖✨🥺👉👈"
 
+#: components/space/game/SkillTree.tsx
+msgid "Na dungeon: a árvore volta quando a corrida acabar."
+msgstr ""
+
 #: components/space/game/HeroSheet.tsx
 msgid "Na dungeon: o inventário volta quando a corrida acabar."
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Na dungeon: os atributos voltam quando a corrida acabar."
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -4527,6 +4882,10 @@ msgstr ""
 msgid "Não deu para testar o microfone agora."
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "Não disponível."
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
 msgstr ""
@@ -4541,6 +4900,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Não foi possível fazer isso agora. Tente de novo."
+msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Não há pontos postos para redistribuir."
 msgstr ""
 
 #. placeholder {0}: skipped().map(itemName).join(", ")
@@ -4626,6 +4989,15 @@ msgstr ""
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "No GIFs found"
+msgstr ""
+
+#. placeholder {0}: effectText(node.effect, node.ranks, heal)
+#: components/space/game/SkillTree.tsx
+msgid "no máximo: {0}"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "No máximo."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
@@ -4732,6 +5104,10 @@ msgstr ""
 msgid "O herói treina sozinho enquanto você fica ao lado do dummy. Sair de perto encerra; desconectar não: ele segue até o fim do saldo."
 msgstr ""
 
+#: components/space/game/StatsPanel.tsx
+msgid "O intervalo cai (4 × AGI + DES)/1000."
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "O jogo está desligado neste servidor."
 msgstr ""
@@ -4758,6 +5134,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "O que os atributos dão"
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -4905,6 +5285,10 @@ msgstr ""
 msgid "Open settings"
 msgstr "💖✨✨🥺,,,,👉👈💖💖✨,,👉👈💖💖,👉👈💖💖✨👉👈✨✨✨,,👉👈💖💖✨🥺👉👈💖💖,👉👈💖💖✨🥺,👉👈💖💖✨🥺,👉👈💖💖🥺👉👈💖💖✨👉👈💖💖,,,👉👈💖💖✨🥺👉👈"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Ossário"
 #~ msgstr ""
@@ -5031,6 +5415,11 @@ msgstr ""
 #~ msgid "Partir"
 #~ msgstr ""
 
+#. placeholder {0}: e.element
+#: components/space/game/heroUi.ts
+msgid "passa a ser do elemento {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/Account.tsx
 #: components/auth/src/flows/Form.tsx
 #: components/modal/modals/MFAFlow.tsx
@@ -5055,6 +5444,10 @@ msgstr ""
 
 #: components/space/game/itemUi.ts
 msgid "Pede {r}"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Pede antes o adereço anterior do ramo."
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -5206,6 +5599,31 @@ msgstr ""
 msgid "Poções na dungeon"
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Pontos de habilidade livres de novo."
+msgstr ""
+
+#. placeholder {0}: sp().free
+#: components/space/game/SkillTree.tsx
+msgid "Pontos de habilidade: {0}"
+msgstr ""
+
+#. placeholder {0}: free()
+#: components/space/game/StatsPanel.tsx
+msgid "Pontos livres: {0}"
+msgstr ""
+
+#: components/space/game/SkillTree.tsx
+msgid "Pôr um ponto"
+msgstr ""
+
+#. placeholder {0}: info[k].name
+#. placeholder {0}: node.name
+#: components/space/game/SkillTree.tsx
+#: components/space/game/StatsPanel.tsx
+msgid "Pôr um ponto em {0}"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Posição do vídeo"
 msgstr ""
@@ -5218,6 +5636,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Precisa do nível {0}."
 #~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "prende os monstros por mais {s} s"
+msgstr ""
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Preview"
@@ -5255,16 +5677,16 @@ msgstr ""
 
 #. placeholder {0}: PROMOTION.level
 #: components/space/game/NpcDialog.tsx
-msgid "Promove o herói a partir do level {0}."
-msgstr ""
+#~ msgid "Promove o herói a partir do level {0}."
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Promover"
-msgstr ""
+#~ msgid "Promover"
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Promovido!"
-msgstr ""
+#~ msgid "Promovido!"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/profile/UserProfileEditor.tsx
 #: components/modal/modals/ServerIdentity.tsx
@@ -5293,6 +5715,10 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "Punhos"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Puxa os monstros"
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
@@ -5421,6 +5847,15 @@ msgstr ""
 msgid "Reason: {0} Contact support for more information."
 msgstr ""
 
+#. placeholder {0}: num(view().cooldownS)
+#: components/space/game/SkillTree.tsx
+msgid "recarga {0} s"
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Recargas"
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "Recebe a mais: {bad}"
 msgstr ""
@@ -5468,6 +5903,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Redemoinho"
 #~ msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Redistribuir"
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Redução forte de ruído"
@@ -5925,6 +6364,10 @@ msgstr ""
 msgid "Sem permissão para compartilhar a tela aqui"
 msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "Sem pontos livres: treine no dummy de habilidade."
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 msgid "Sem saldo de treino agora. Ele volta a encher enquanto você não treina."
 msgstr ""
@@ -6095,12 +6538,16 @@ msgstr ""
 
 #. placeholder {0}: vocationName(v())
 #: components/space/game/NpcDialog.tsx
-msgid "Seu herói já é {0}."
+#~ msgid "Seu herói já é {0}."
+#~ msgstr ""
+
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói já está na última classe."
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
-msgid "Seu herói já foi promovido."
-msgstr ""
+#~ msgid "Seu herói já foi promovido."
+#~ msgstr ""
 
 #. placeholder {0}: def?.minLevel ?? 0
 #: components/space/game/NpcDialog.tsx
@@ -6240,6 +6687,14 @@ msgstr ""
 
 #: components/i18n/errors.tsx
 msgid "Something went wrong! {error}"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "SOR"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Sorte: crítico (golpe no máximo que passa pela armadura), esquiva perfeita e um pouco de ATQ."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -6708,12 +7163,25 @@ msgstr ""
 msgid "Timeout Members"
 msgstr "💖✨✨✨,,,,👉👈💖💖🥺👉👈💖💖🥺,,,,👉👈💖💖,👉👈💖💖✨,👉👈💖💖✨🥺,,👉👈💖💖✨🥺,👉👈✨✨✨,,👉👈💖✨✨🥺,,👉👈💖💖,👉👈💖💖🥺,,,,👉👈💖✨✨✨✨🥺,,,👉👈💖💖,👉👈💖💖✨,,,,👉👈💖💖✨🥺👉👈"
 
+#: components/space/game/StatsPanel.tsx
+msgid "Tirada de cada golpe físico, depois da armadura."
+msgstr ""
+
+#: components/space/game/StatsPanel.tsx
+msgid "Tirada de cada magia dos monstros: (INT + VIT/2)/4."
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Tirar"
 #~ msgstr ""
 
 #: components/space/game/HeroSheet.tsx
 msgid "Tirar para a mochila"
+msgstr ""
+
+#. placeholder {0}: info[k].name
+#: components/space/game/StatsPanel.tsx
+msgid "Tirar um ponto de {0}"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -6846,6 +7314,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Um herói por conta: ele é o mesmo em todo servidor com o Refúgio ligado."
 #~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "um segundo golpe com {pct}% do primeiro"
+msgstr ""
 
 #. placeholder {0}: Math.round(props.tv.cooldownS / 60)
 #: components/space/SmartTv.tsx
@@ -7138,9 +7610,9 @@ msgstr ""
 msgid "Vestir"
 msgstr ""
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Vida"
-#~ msgstr ""
+#: components/space/game/StatsPanel.tsx
+msgid "Vida"
+msgstr ""
 
 #. placeholder {0}: run().hp
 #. placeholder {1}: run().max_hp
@@ -7218,6 +7690,10 @@ msgstr "💖✨✨✨🥺,👉👈💖💖🥺👉👈💖💖,👉👈💖💖�
 #~ msgid "Vigor"
 #~ msgstr ""
 
+#: components/space/game/heroUi.ts
+msgid "vira {name} ({mana} de mana)"
+msgstr ""
+
 #: components/space/game/itemUi.ts
 msgid "virotes"
 msgstr ""
@@ -7225,6 +7701,14 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Visual ainda não conquistado."
 #~ msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "VIT"
+msgstr ""
+
+#: components/space/game/heroUi.ts
+msgid "Vitalidade: +1% de vida por ponto, regeneração de vida e defesa contra golpes."
+msgstr ""
 
 #: components/space/game/runUi.ts
 msgid "Vitória!"

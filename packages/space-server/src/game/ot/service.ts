@@ -45,6 +45,7 @@ import {
   normalizeHero,
   promoteHero,
   allocateStats,
+  creditTraining,
   learnNode,
   resetHero,
   sellToMerchant,
@@ -501,12 +502,13 @@ export class RpgService {
       }
       case "rpg.stats":
       case "rpg.learn": {
-        // Atributos e árvore (24/11/2026): em qualquer lugar, fora da dungeon.
-        const out = await this.mutate(userId, false, (d) =>
-          cmd.t === "rpg.stats"
-            ? allocateStats(d, cmd.d.add, now)
-            : learnNode(d, cmd.d.node, now),
-        );
+        // Atributos e árvore (24/11/2026): em qualquer lugar, fora da dungeon. Quem aprende
+        // ao lado do dummy de habilidade já conta os pontos do treino aberto até agora.
+        const out = await this.mutate(userId, false, (d) => {
+          if (cmd.t === "rpg.stats") return allocateStats(d, cmd.d.add, now);
+          creditTraining(d, now, this.rates);
+          return learnNode(d, cmd.d.node, now);
+        });
         if (!out) return fail("rpg_invalid", "no_vocation");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
         this.remember(userId, cmd.id);

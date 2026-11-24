@@ -31,6 +31,8 @@ const TIERS: readonly JobTier[] = [1, 2, 3];
  */
 export function SkillTree(props: {
   hero: RpgHeroView;
+  /** Pontos ganhos contando o treino de habilidade aberto (o servidor credita ao aprender). */
+  earned?: number;
   busy: boolean;
   locked: boolean;
   send: (type: string, d: Record<string, unknown>) => void;
@@ -39,7 +41,11 @@ export function SkillTree(props: {
   const base = () => VOCATIONS[props.hero.vocation].base;
   const names = () =>
     base() >= 1 && base() <= 4 ? JOB_NAMES[base() as 1 | 2 | 3 | 4] : null;
-  const sp = () => props.hero.skill_points;
+  const sp = () => {
+    const s = props.hero.skill_points;
+    const extra = Math.max(0, (props.earned ?? s.earned) - s.earned);
+    return { ...s, earned: s.earned + extra, free: s.free + extra };
+  };
 
   return (
     <Wrap>
