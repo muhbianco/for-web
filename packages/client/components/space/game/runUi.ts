@@ -62,6 +62,8 @@ export function feedLine(run: RpgRunView, ev: RpgRunFeedItem): string {
         return t`${a} lançou ${spell}: +${ev.v}`;
       }
       if (ev.cura) return t`${a} lançou ${spell} em ${b}: +${ev.v}`;
+      // A Proteção do cavaleiro: ele tomou para si parte do golpe num aliado (run.ts coverHit).
+      if (ev.s === "protecao") return t`${b} protegeu o grupo do golpe de ${a}: ${ev.v}`;
       return t`${a} lançou ${spell} em ${b}: ${ev.v}`;
     }
     case "abate": {

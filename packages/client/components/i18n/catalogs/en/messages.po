@@ -485,6 +485,11 @@ msgstr "{b} morreu na dungeon"
 msgid "{b} não sente o golpe de {a}"
 msgstr "{b} não sente o golpe de {a}"
 
+#. placeholder {0}: ev.v
+#: components/space/game/runUi.ts
+msgid "{b} protegeu o grupo do golpe de {a}: {0}"
+msgstr "{b} protegeu o grupo do golpe de {a}: {0}"
+
 #: components/space/game/runUi.ts
 msgid "{b} se defendeu de {a}"
 msgstr "{b} se defendeu de {a}"

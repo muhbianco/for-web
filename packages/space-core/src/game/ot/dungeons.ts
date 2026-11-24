@@ -229,7 +229,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "mina-assombrada",
     name: "Mina Assombrada",
     minLevel: 27,
-    comfort: { group: 27, solo: { 1: 37, 2: 34, 3: 34, 4: 46 } },
+    comfort: { group: 27, solo: { 1: 37, 2: 34, 3: 37, 4: 46 } },
     blurb:
       "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
     stages: [
@@ -264,7 +264,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "bosque-petrificado",
     name: "Bosque Petrificado",
     minLevel: 35,
-    comfort: { group: 35, solo: { 1: 41, 2: 35, 3: 35, 4: 50 } },
+    comfort: { group: 35, solo: { 1: 41, 2: 35, 3: 41, 4: 50 } },
     blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
     stages: [
       {
@@ -298,7 +298,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 51, solo: { 1: null, 2: 75, 3: 63, 4: 78 } },
+    comfort: { group: 51, solo: { 1: null, 2: 75, 3: 72, 4: 78 } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -334,7 +334,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "abismo-gelado",
     name: "Abismo Gelado",
     minLevel: 55,
-    comfort: { group: 55, solo: { 1: 91, 2: 73, 3: 70, 4: 94 } },
+    comfort: { group: 55, solo: { 1: 91, 2: 73, 3: 76, 4: 94 } },
     blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
     stages: [
       { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },
@@ -362,7 +362,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "trono-do-vazio",
     name: "Trono do Vazio",
     minLevel: 70,
-    comfort: { group: 70, solo: { 1: null, 2: 110, 3: 97, 4: null } },
+    comfort: { group: 70, solo: { 1: null, 2: 110, 3: null, 4: null } },
     blurb: "O fim do caminho. O que vive aqui come a luz.",
     stages: [
       { name: "Limiar", monsters: [{ id: "sombra-vazia", count: 2 }] },

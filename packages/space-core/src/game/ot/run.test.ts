@@ -872,3 +872,25 @@ test("resistência física e mágica (24/11/2026): o elemento não importa; iten
   const chama = used.get("golpe-de-chama") ?? 0;
   assert.ok(raio > 0 && chama > 0 && Math.abs(raio - chama) <= Math.max(raio, chama) / 2, `raio ${raio}, chama ${chama}`);
 });
+
+test("Proteção do cavaleiro (24/11/2026): de escudo, ele toma parte do golpe num aliado; sem ele, ninguém", async () => {
+  const { RUN } = await import("./run.ts");
+  const share = (escudo: number) =>
+    Math.max(0, Math.min(RUN.protect.max, ((escudo - RUN.protect.from) / RUN.protect.span) * RUN.protect.max));
+  // Nada até o escudo 40; o máximo (50% do golpe) no 120.
+  assert.equal(share(40), 0);
+  assert.equal(share(120), 0.5);
+  let covered = 0;
+  for (const seed of [1, 2, 3]) {
+    const r = run("trono-do-vazio", [hero(4, 90, 100), hero(2, 90, 0, { ml: 70 })], seed);
+    for (const f of r.frames)
+      for (const e of f.e)
+        if (e.k === "magia" && e.s === "protecao") {
+          assert.equal(e.b, 0, "quem protege é o cavaleiro");
+          covered += e.v;
+        }
+  }
+  assert.ok(covered > 0, "o cavaleiro tomou parte dos golpes no druida");
+  const alone = run("trono-do-vazio", [hero(3, 90, 90), hero(2, 90, 0, { ml: 70 })], 1);
+  assert.ok(!alone.frames.some((f) => f.e.some((e) => e.k === "magia" && e.s === "protecao")));
+});

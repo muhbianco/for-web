@@ -106,8 +106,16 @@ export const RUN = {
   /** Cura em si abaixo desta fração da vida; cura num companheiro abaixo de `healOtherBelow`. */
   healBelow: 0.5,
   healOtherBelow: 0.4,
+  /** A parte do corte de intervalo dos atributos (AGI, DES) que o arco aproveita [nosso]. */
+  bowAspd: 0.5,
+  /**
+   * A Proteção do cavaleiro [nosso, no molde da Devoção do Ragnarok]: com ele vivo e de
+   * escudo, esta fração do dano que um aliado levaria vai para ele. Cresce com a skill de
+   * escudo (a base dele, do dummy de vocação): nada até `from`, o máximo em `from + span`.
+   */
+  protect: { from: 40, span: 80, max: 0.5 },
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 11,
+  engine: 12,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -1668,7 +1676,18 @@ export function simulateRun(input: RunInput): RunResult {
         if (type === "none") type = "armor";
       }
     }
-    const dealt = type === "none" && dmg > 0 ? absorb(h, at.element, dmg) : dmg;
+    let dealt = type === "none" && dmg > 0 ? absorb(h, at.element, dmg) : dmg;
+    // A Proteção do cavaleiro: parte do golpe num aliado vai para ele (24/11/2026).
+    if (dealt > 0 && h.voc.base !== 4) {
+      const k = protector(h);
+      if (k) {
+        const share = Math.floor(dealt * protectShare(k));
+        if (share > 0) {
+          dealt -= share;
+          coverHit(m, k, at, share);
+        }
+      }
+    }
     const real = Math.min(h.hp, dealt);
     h.hp -= real;
     if (melee)
@@ -1691,6 +1710,53 @@ export function simulateRun(input: RunInput): RunResult {
       h.alive = false;
       h.res.dead = true;
       ev.push({ k: "queda", b: h.i });
+    }
+  }
+
+  /** O cavaleiro vivo, de escudo, que protege o grupo (o de mais escudo, se houver dois). */
+  function protector(ally: HeroRt): HeroRt | null {
+    let best: HeroRt | null = null;
+    for (const x of heroes)
+      if (
+        x !== ally &&
+        x.alive &&
+        x.voc.base === 4 &&
+        x.hasShield &&
+        (!best || x.sk.escudo > best.sk.escudo)
+      )
+        best = x;
+    return best;
+  }
+
+  /** A fração que o cavaleiro tira do golpe num aliado, pela skill de escudo (RUN.protect). */
+  function protectShare(k: HeroRt): number {
+    const p = RUN.protect;
+    return Math.max(0, Math.min(p.max, ((k.sk.escudo - p.from) / p.span) * p.max));
+  }
+
+  /**
+   * O pedaço do golpe que o cavaleiro tomou para si: passa pela Muralha do desafio e pela
+   * proteção dos itens dele (a armadura e a defesa já seguraram o golpe no aliado).
+   */
+  function coverHit(m: MonsterRt, k: HeroRt, at: MonsterAttack, share: number) {
+    let dmg = share;
+    if (k.guardUntil > nowMs && k.guardPct > 0)
+      dmg = Math.floor((dmg * (100 - k.guardPct)) / 100);
+    dmg = absorb(k, at.element, dmg);
+    const real = Math.min(k.hp, Math.max(0, dmg));
+    if (real <= 0) return;
+    k.hp -= real;
+    ev.push({
+      k: "magia",
+      a: MONSTER_BASE + m.i,
+      b: k.i,
+      v: real,
+      s: "protecao",
+    });
+    if (k.hp <= 0) {
+      k.alive = false;
+      k.res.dead = true;
+      ev.push({ k: "queda", b: k.i });
     }
   }
 
@@ -1788,11 +1854,18 @@ export function simulateRun(input: RunInput): RunResult {
         drink(h, tMs);
         // Velocidade de ataque com AGI e DES [RO status_base_amotion_pc]: com o intervalo
         // abaixo de 1 s, mais de um golpe cabe no mesmo segundo.
+        // [nosso, no molde da velocidade por arma do Ragnarok] o arco leva só RUN.bowAspd do corte
+        // dos atributos (24/11/2026): com ele todo, o arqueiro de AGI e DES atirava 1,7 vez mais
+        // rápido que o mago no level 500 e se afastava dos magos a cada level.
+        const aspd =
+          h.weapon?.kind === "distancia"
+            ? 1 - (1 - h.d.aspd) * RUN.bowAspd
+            : h.d.aspd;
         const interval = Math.max(
           RUN.minAttackMs,
           Math.round(
             h.voc.attackSpeedMs *
-              h.d.aspd *
+              aspd *
               (focused(h) ? 1 - Math.min(60, h.focusAspd) / 100 : 1),
           ),
         );
