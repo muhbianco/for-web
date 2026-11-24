@@ -231,8 +231,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
    * Idle game (docs/espaco/jogo/ot): who trains at which dummy here. The hero document
    * holds the authoritative session; this only notices when the avatar walks away.
    */
-  /** Who trains where: the dummy and, training at both (24/11/2026), the other one. */
-  private readonly trainingAt = new Map<string, { at: string; also?: string }>();
+  /** Who trains at which dummy. */
+  private readonly trainingAt = new Map<string, string>();
   /** Called when a trainer leaves the dummy (walked off, moved, evicted, dummy removed). */
   onTrainingLeft: ((userId: string) => void) | null = null;
   /** Called when someone enters the map where the game is on (to show their hero's level). */
@@ -658,11 +658,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
 
   // ---- idle game: training dummies (docs/espaco/jogo/ot) -----------------------
 
-  /**
-   * A training dummy: exists, is a dummy, the person may use it and stands next to it. `near`:
-   * inside its zone within TRAIN_REACH_TILES (the second dummy when training at both).
-   */
-  trainSpot(viewer: Viewer, instanceId: string, reach: "beside" | "near" = "beside"): { ok: true; zone: string; dummy: "vocacao" | "habilidade" } | { ok: false; code: string; reason?: string } {
+  /** A training dummy: exists, is a dummy, the person may use it and stands next to it. */
+  trainSpot(viewer: Viewer, instanceId: string): { ok: true; zone: string } | { ok: false; code: string; reason?: string } {
     const a = this.avatars.get(viewer.user._id);
     if (!a || !a.session) return { ok: false, code: "not_allowed" };
     const inst = this.decor.items.find((i) => i.id === instanceId);
@@ -670,9 +667,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
     if (!inst || !item || !zone || item.interaction !== "train") return { ok: false, code: "not_found" };
     if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
-    const ok = reach === "near" ? this.besideInstance(a, instanceId, "train", TRAIN_REACH_TILES) : this.besideInstance(a, instanceId);
-    if (!ok) return { ok: false, code: "not_allowed", reason: "too_far" };
-    return { ok: true, zone: inst.zone, dummy: item.dummy ?? "vocacao" };
+    if (!this.besideInstance(a, instanceId)) return { ok: false, code: "not_allowed", reason: "too_far" };
+    return { ok: true, zone: inst.zone };
   }
 
   /** An NPC of the idle game (stage O8): exists, is that NPC, the person may use it and stands next to it. */
@@ -687,14 +683,13 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return { ok: true };
   }
 
-  isTrainingAt(userId: string, instanceId: string, also?: string): boolean {
-    const t = this.trainingAt.get(userId);
-    return !!t && t.at === instanceId && (t.also ?? null) === (also ?? null);
+  isTrainingAt(userId: string, instanceId: string): boolean {
+    return this.trainingAt.get(userId) === instanceId;
   }
 
-  setTraining(userId: string, instanceId: string | null, also?: string): void {
+  setTraining(userId: string, instanceId: string | null): void {
     if (instanceId === null) this.trainingAt.delete(userId);
-    else this.trainingAt.set(userId, also ? { at: instanceId, also } : { at: instanceId });
+    else this.trainingAt.set(userId, instanceId);
     this.markHero(userId);
   }
 
@@ -710,12 +705,12 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const a = this.avatars.get(userId);
     if (!a) return;
     const look = a.heroLook;
-    const t = this.trainingAt.get(userId);
+    const at = this.trainingAt.get(userId);
     const hero: AvatarHero | null = !look
       ? null
-      : t === undefined
+      : at === undefined
         ? { level: look.level, training: false }
-        : { level: look.level, training: true, at: t.at, ...(t.also ? { also: t.also } : {}), vocation: look.vocation, gear: look.gear };
+        : { level: look.level, training: true, at, vocation: look.vocation, gear: look.gear };
     if (JSON.stringify(hero) === JSON.stringify(a.hero)) return;
     a.hero = hero;
     a.dirty = true;
@@ -737,16 +732,12 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return tx >= rect.x0 - reach && tx <= rect.x1 + reach && ty >= rect.y0 - reach && ty <= rect.y1 + reach;
   }
 
-  /**
-   * A trainer who left the dummy's zone or walked more than TRAIN_REACH_TILES away (or is gone)
-   * stops training. Training at both dummies, leaving either one stops it all.
-   */
+  /** A trainer who left the dummy's zone or walked more than TRAIN_REACH_TILES away (or is gone) stops training. */
   private checkTraining(userId: string): void {
-    const t = this.trainingAt.get(userId);
-    if (t === undefined) return;
+    const instanceId = this.trainingAt.get(userId);
+    if (instanceId === undefined) return;
     const a = this.avatars.get(userId);
-    const near = (id: string) => !!a && this.besideInstance(a, id, "train", TRAIN_REACH_TILES);
-    if (a && !a.evicted && near(t.at) && (t.also === undefined || near(t.also))) return;
+    if (a && !a.evicted && this.besideInstance(a, instanceId, "train", TRAIN_REACH_TILES)) return;
     this.trainingAt.delete(userId);
     this.markHero(userId);
     this.onTrainingLeft?.(userId);

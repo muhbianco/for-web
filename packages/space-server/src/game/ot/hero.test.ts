@@ -280,7 +280,7 @@ test("herói de antes da O7: kit vestido, mochila de 20, os itens de mais valor 
     { item: "coisa-que-nao-existe", count: 1 },
   ];
   const d = normalizeHero(old as unknown as RpgHeroDoc);
-  assert.equal(d.v, 3);
+  assert.equal(d.v, 4);
   assert.equal(d.auto_equip, true);
   assert.equal(d.inv.equip.mochila?.item, "mochila");
   assert.ok(d.inv.pack.length <= 20);
@@ -405,7 +405,8 @@ test("NPCs: compra paga das moedas e do banco; venda pelo valor; depósito e saq
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "level" });
   d.level = 20;
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "points" });
-  d.points = { points: 8, tries: 0 };
+  // 24/11/2026: os pontos vêm do nível de job (job 9 = 8 pontos).
+  d.job = { level: 9, exp: 0 };
   d.tree = { "rajada-dupla.forca": 5, "rajada-dupla.economia": 3 };
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "no_money" });
   d.bank_gold = 19_970;
@@ -484,16 +485,18 @@ test("herói 3 (24/11/2026): versão 2 vira 3 com atributos em 1 e os pontos do 
   const raw = old as Partial<RpgHeroDoc>;
   delete raw.stats;
   delete raw.tree;
-  delete raw.points;
+  delete (raw as Record<string, unknown>).points;
+  delete (raw as Record<string, unknown>).job;
   delete raw.third;
   delete raw.resets;
   const d = normalizeHero(old);
-  assert.equal(d.v, 3);
+  assert.equal(d.v, 4);
   assert.deepEqual(d.stats, { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 });
   const v = rpgHeroView(d, DEFAULT_RATES, 0);
   assert.equal(v.stat_points, 60);
   assert.equal(v.job, 1);
-  assert.deepEqual(v.skill_points, { earned: 0, free: 0, tries: 0, next: 50 });
+  assert.deepEqual(v.skill_points, { earned: 0, free: 0 });
+  assert.equal(v.job_level.level, 1);
   // Árvore com nó que não existe, ou de outra classe: zera na leitura.
   const bad = { ...d, tree: { "golpe-de-raio.forca": 1 } };
   assert.deepEqual(normalizeHero(bad).tree, {});
@@ -517,79 +520,33 @@ test("atributos: põe fora da dungeon; VIT, INT e FOR mudam vida, mana e capacid
   assert.deepEqual(allocateStats(d, { vit: 1 }, 2), { ok: false, reason: "in_run" });
 });
 
-test("treino de habilidade: só no dummy de habilidade; os pontos vão para a árvore", async () => {
+test("herói 4 (24/11/2026): o job sai de 30% da experiência; a árvore zera; o treino de habilidade fecha", async () => {
   const { learnNode } = await import("./hero.ts");
-  const d = newRpgHero("T", 0);
-  applyVocation(d, 1);
-  assert.deepEqual(startTraining(d, SPOT, "habilidade", 0, DEFAULT_RATES, "vocacao"), {
-    ok: false,
-    reason: "wrong_dummy",
-  });
-  assert.deepEqual(startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "habilidade"), {
-    ok: false,
-    reason: "wrong_dummy",
-  });
-  assert.deepEqual(startTraining(d, SPOT, "habilidade", 0, DEFAULT_RATES, "habilidade"), { ok: true });
-  const sword = d.skills.espada.tries;
-  stopTraining(d, 10 * 60_000, DEFAULT_RATES);
-  assert.equal(d.skills.espada.tries, sword, "nenhuma skill de arma");
-  assert.equal(d.skills.escudo.tries, 0, "nem o escudo");
-  // 10 min = 300 tentativas: 50 + 55 + 60 + 66 = 231 dão 4 pontos (o 5º pede 73).
-  assert.equal(d.points.points, 4);
-  assert.deepEqual(learnNode(d, "golpe-de-raio.forca", 0), { ok: true });
-  assert.deepEqual(learnNode(d, "golpe-brutal.forca", 0), { ok: false, reason: "not_class" });
-  assert.deepEqual(learnNode(d, "golpe-de-raio.corrente", 0), { ok: false, reason: "tier" });
-  for (let i = 0; i < 3; i++) learnNode(d, "golpe-de-raio.forca", 0);
-  assert.deepEqual(learnNode(d, "golpe-de-raio.forca", 0), { ok: false, reason: "no_points" });
-  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).skill_points.free, 0);
-});
-
-test("nos dois dummies: um de cada tipo; 1 h dá metade da espada, do escudo e dos pontos", () => {
-  const d = newRpgHero("D", 0);
-  applyVocation(d, 4);
-  const HAB = { instance: "hab-1", dummy: "habilidade" as const };
-  // Dois do mesmo tipo, ou o mesmo dummy duas vezes, não.
-  assert.deepEqual(
-    startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "vocacao", { instance: "dummy-2", dummy: "vocacao" }),
-    { ok: false, reason: "same_dummy" },
-  );
-  assert.deepEqual(
-    startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "vocacao", { instance: "dummy-1", dummy: "habilidade" }),
-    { ok: false, reason: "same_dummy" },
-  );
-  // Nos dois, escolhe-se a skill do dummy de vocação (a habilidade vem junto).
-  assert.deepEqual(
-    startTraining(d, SPOT, "habilidade", 0, DEFAULT_RATES, "vocacao", HAB),
-    { ok: false, reason: "wrong_dummy" },
-  );
-  assert.deepEqual(startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "vocacao", HAB), { ok: true });
-  assert.equal(d.training?.dual, true);
-  assert.equal(d.training?.alsoAt, "hab-1");
-  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).training?.also, "hab-1");
-  // Repetir o mesmo pedido não reinicia; o mesmo dummy sem o outro, sim.
-  const started = d.training!.startedAt;
-  assert.deepEqual(startTraining(d, SPOT, "espada", 60_000, DEFAULT_RATES, "vocacao", HAB), { ok: true });
-  assert.equal(d.training!.startedAt, started);
-  stopTraining(d, H, DEFAULT_RATES);
-  // 900 tentativas de espada (metade de 1800), 900 de escudo e 900 de ponto.
-  const ref = newRpgHero("R", 0);
-  applyVocation(ref, 4);
-  startTraining(ref, SPOT, "espada", 0, DEFAULT_RATES);
-  stopTraining(ref, H / 2, DEFAULT_RATES);
-  assert.deepEqual(d.skills.espada, ref.skills.espada, "a espada de 1 h nos dois = 30 min num só");
-  assert.deepEqual(d.skills.escudo, ref.skills.escudo, "o escudo também");
-  const pts = newRpgHero("P", 0);
-  applyVocation(pts, 4);
-  startTraining(pts, { ...SPOT, instance: "hab-1" }, "habilidade", 0, DEFAULT_RATES, "habilidade");
-  stopTraining(pts, H / 2, DEFAULT_RATES);
-  assert.deepEqual(d.points, pts.points, "os pontos de 1 h nos dois = 30 min no dummy de habilidade");
-  assert.ok(d.points.points > 0);
-  // Começar o treino num dummy só, de novo, deixa de ser nos dois.
-  startTraining(d, SPOT, "espada", H, DEFAULT_RATES, "vocacao", HAB);
-  startTraining(d, SPOT, "espada", H + 60_000, DEFAULT_RATES);
-  assert.equal(d.training?.dual, undefined);
-  assert.equal(d.training?.alsoAt, undefined);
-  assert.equal(rpgHeroView(d, DEFAULT_RATES, H).training?.also, undefined);
+  const { expForLevel, jobLevelFor } = await import("@muchat/space-core/game/ot");
+  const old = newRpgHero("J", 0) as RpgHeroDoc & Record<string, unknown>;
+  applyVocation(old, 2);
+  old.level = 27;
+  old.experience = expForLevel(27) + 1000;
+  old.v = 3 as never;
+  const raw = old as Record<string, unknown>;
+  delete raw.job;
+  raw.points = { points: 21, tries: 0 };
+  old.tree = { "golpe-de-gelo.forca": 5, "seiva.cura-leve": 1 };
+  old.training = { skill: "habilidade" as never, startedAt: 0, budgetMs: 1, creditedSeconds: 0, instance: "h", server: "S", zone: "z" };
+  const d = normalizeHero(old);
+  assert.equal(d.v, 4);
+  const exp = Math.floor(old.experience * 0.3);
+  assert.deepEqual(d.job, { level: jobLevelFor(exp), exp });
+  assert.equal(d.job.level, 18, "o druida de level 27 fica com o job 18");
+  assert.deepEqual(d.tree, {}, "a árvore zera");
+  assert.equal(d.training, null, "o treino no dummy de habilidade fecha");
+  assert.equal((d as unknown as Record<string, unknown>).points, undefined);
+  const v = rpgHeroView(d, DEFAULT_RATES, 0);
+  assert.deepEqual(v.skill_points, { earned: 17, free: 17 });
+  assert.equal(v.job_level.level, 18);
+  // Os pontos voltam para a árvore pelo job.
+  assert.deepEqual(learnNode(d, "golpe-de-gelo.forca", 0), { ok: true });
+  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).skill_points.free, 16);
 });
 
 test("Mestre: redistribuir é de graça na primeira vez e depois cobra 500 por level", async () => {
@@ -607,7 +564,7 @@ test("Mestre: redistribuir é de graça na primeira vez e depois cobra 500 por l
   assert.deepEqual(resetHero(d, "stats", 0), { ok: true });
   assert.equal(d.bank_gold, 0);
   assert.deepEqual(d.resets, { stats: 2, tree: 0 });
-  d.points = { points: 3, tries: 0 };
+  d.job = { level: 4, exp: 0 };
   learnNode(d, "desafio.presenca", 0);
   assert.deepEqual(resetHero(d, "tree", 0), { ok: true });
   assert.deepEqual(d.tree, {});
@@ -621,7 +578,7 @@ test("corrida: entra com a vida, a mana e a capacidade dos atributos, e com a á
   // INT 51 custa 50 pontos (a escada começa no 51): o level 10 tem 50.
   d.level = 10;
   allocateStats(d, { int: 50 }, 0);
-  d.points = { points: 1, tries: 0 };
+  d.job = { level: 2, exp: 0 };
   d.tree = { "seiva.cura-leve": 1 };
   const r = heroRunSnapshot(d, "C", 0);
   assert.equal(r.manaMax, Math.floor(d.mana_max * 1.51));
@@ -673,44 +630,34 @@ test("refino no Ferreiro: só a arma empunhada, até +10; até o +4 não falha, 
   assert.deepEqual(refineWeapon(d, 0, 0), { ok: false, reason: "no_money" });
 });
 
-test("renascimento da árvore: só na 3ª classe e com a árvore inteira cheia; qualquer adereço de uma habilidade ganha a maestria", async () => {
+test("renascimento da árvore (24/11/2026): na 3ª classe com o job no máximo; o job volta ao 1 e a árvore zera", async () => {
   const { rebirthTree, heroRunSnapshot } = await import("./hero.ts");
-  const { TREE, abilityDef, abilityNow, VOCATIONS } = await import("@muchat/space-core/game/ot");
+  const { abilityDef, abilityNow, VOCATIONS } = await import("@muchat/space-core/game/ot");
   const d = newRpgHero("N", 0);
   applyVocation(d, 3);
-  d.level = 60;
-  const fill = (tier: number) => {
-    const t: Record<string, number> = {};
-    for (const n of TREE) if (abilityDef(n.ability)?.cls === 3 && n.tier <= tier) t[n.id] = n.ranks;
-    return t;
-  };
-  const all = fill(3);
-  const spent = Object.values(all).reduce((a, b) => a + b, 0);
-  d.points = { points: spent + 2, tries: 7 };
-  // 24/11/2026: a árvore da 1ª classe cheia não basta (umas 2 h de dummy; quebrava o jogo).
-  d.tree = fill(1);
+  d.level = 230;
+  d.job = { level: 150, exp: 123 };
+  d.tree = { "rajada-dupla.forca": 5, "rajada-dupla.perfurante": 1 };
   assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: false, reason: "not_last_tier" });
-  // Na 3ª classe, só a parte da 1ª cheia: falta a árvore inteira.
   d.vocation = VOCATIONS[3].promotion!;
   d.third = true;
-  assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: false, reason: "not_full" });
-  d.tree = all;
+  d.job = { level: 149, exp: 0 };
+  assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: false, reason: "job_level" });
+  d.job = { level: 150, exp: 123 };
   assert.deepEqual(rebirthTree(d, "golpe-brutal.forca", 0), { ok: false, reason: "not_class" });
   // Qualquer adereço vale, inclusive os de forma (Flecha perfurante).
   assert.deepEqual(rebirthTree(d, "rajada-dupla.perfurante", 0), { ok: true });
   assert.deepEqual(d.tree, {});
-  assert.deepEqual(d.points, { points: 2, tries: 7 }, "os livres ficam; os postos voltam a ser treinados");
+  assert.deepEqual(d.job, { level: 1, exp: 0 }, "o job recomeça");
   assert.deepEqual(d.mastery, { "rajada-dupla.perfurante": 1 });
   assert.equal(d.rebirths, 1);
   assert.deepEqual(heroRunSnapshot(d, "N", 0).mastery, { "rajada-dupla.perfurante": 1 });
-  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).rebirths, 1);
   // A maestria de um adereço de forma soma 0,5% ao poder da habilidade, com ele aprendido.
   const def = abilityDef("rajada-dupla")!;
   const tree = { "rajada-dupla.forca": 5, "rajada-dupla.perfurante": 1 };
   const plain = abilityNow(def, tree).power;
   const mastered = abilityNow(def, tree, d.mastery).power;
   assert.ok(Math.abs(mastered - plain * 1.005) < 1e-9, `${plain} → ${mastered}`);
-  assert.equal(abilityNow(def, { "rajada-dupla.forca": 5 }, d.mastery).power, abilityNow(def, { "rajada-dupla.forca": 5 }).power, "sem o adereço aprendido, nada");
 });
 
 test("mana de um level já no 1 (24/11/2026): o mago de level 1 lança e bebe poção; o herói de antes ganha uma vez", async () => {

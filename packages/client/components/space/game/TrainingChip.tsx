@@ -56,28 +56,8 @@ export default function TrainingChip(props: {
       {(v) => (
         <Chip style={gameChip} role="status">
           <span aria-hidden="true">⚔</span>
-          <Show
-            when={v().p.points}
-            fallback={
-              <>
-                <span>{mainText(v())}</span>
-                <Muted>{t`há ${duration(v().elapsed)}`}</Muted>
-              </>
-            }
-          >
-            {(pts) => (
-              // Nos dois dummies (24/11/2026): a skill e os pontos em duas linhas, para o chip
-              // caber no celular com o "Parar"; o tempo fica no title.
-              <Lines
-                title={t`Nos dois dummies, 50% em cada · há ${duration(v().elapsed)}`}
-              >
-                <span>{mainText(v())}</span>
-                <span>
-                  {t`Habilidade ${pts().level} · ${percent(pts().tries, pts().next)}%`}
-                </span>
-              </Lines>
-            )}
-          </Show>
+          <span>{mainText(v())}</span>
+          <Muted>{t`há ${duration(v().elapsed)}`}</Muted>
           <Stop
             type="button"
             onClick={() => props.view.gameSend("rpg.train.stop", {})}
@@ -105,10 +85,6 @@ const Chip = styled("div", {
 });
 
 const Muted = styled("span", { base: { opacity: 0.8 } });
-
-const Lines = styled("span", {
-  base: { display: "inline-grid", lineHeight: 1.15, fontSize: "0.92em" },
-});
 
 const Stop = styled("button", {
   base: {

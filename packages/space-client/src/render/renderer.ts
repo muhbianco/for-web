@@ -769,29 +769,16 @@ export class Renderer {
     };
   }
 
-  /**
-   * The dummy of the trainer's shot now: training at both (24/11/2026), every other shot goes to
-   * the second one, switching when a shot starts; reduced motion keeps the first.
-   */
-  private trainTarget(hero: AvatarHero, userId: string, nowMs: number): string | undefined {
-    if (!hero.at || !hero.also || this.reducedMotion) return hero.at;
-    const { n } = shotPhase(nowMs, seedOf(userId), attackPeriod(hero.vocation));
-    return n % 2 === 0 ? hero.at : hero.also;
-  }
-
-  /** A trainer standing still faces their dummy (the one their shot goes to). */
+  /** A trainer standing still faces their dummy. */
   private faceDummy(
     world: World,
     x: number,
     y: number,
     hero: AvatarHero | null,
     moving: boolean,
-    userId: string,
-    nowMs: number,
   ): Direction | null {
     if (moving || !hero?.training || !hero.at) return null;
-    const target = this.trainTarget(hero, userId, nowMs);
-    const c = target ? this.dummyCenter(world, target) : null;
+    const c = this.dummyCenter(world, hero.at);
     if (!c) return null;
     const dx = c.x - x;
     const dy = c.y - (y - 8);
@@ -825,9 +812,8 @@ export class Renderer {
       const due = nowMs - this.shotAt >= SHOT_FRAME_MS;
       if (due) this.shotAt = nowMs;
       for (const t of trainers) {
-        const target = this.trainTarget(t.hero, t.userId, nowMs);
-        if (!target || !t.hero.gear) continue;
-        const c = this.dummyCenter(world, target);
+        if (!t.hero.at || !t.hero.gear) continue;
+        const c = this.dummyCenter(world, t.hero.at);
         if (!c || (!this.inView(t.x, t.y) && !this.inView(c.x, c.y))) continue;
         live.add(t.userId);
         if (!due) continue;
@@ -1208,7 +1194,7 @@ export class Renderer {
     const mineVisible = this.place(mine, me.x, me.y, 1);
     this.pose(
       mine,
-      this.faceDummy(world, me.x, me.y, world.myHero, me.moving, me.userId, nowMs) ?? me.dir,
+      this.faceDummy(world, me.x, me.y, world.myHero, me.moving) ?? me.dir,
       me.moving,
       nowMs,
       mineVisible,
@@ -1233,7 +1219,7 @@ export class Renderer {
       );
       this.pose(
         a,
-        this.faceDummy(world, p.x, p.y, r.hero, r.moving, r.userId, nowMs) ?? r.dir,
+        this.faceDummy(world, p.x, p.y, r.hero, r.moving) ?? r.dir,
         r.moving,
         nowMs,
         visible,

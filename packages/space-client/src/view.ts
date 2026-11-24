@@ -42,7 +42,7 @@ import {
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type EditorState, Editor } from "./editor.ts";
 import { myHeroOf } from "./hero.ts";
-import { type DummyPartner, type Prompt, dummyPartner, nearestInteractive } from "./interact.ts";
+import { type Prompt, nearestInteractive } from "./interact.ts";
 import {
   type ListWing,
   type ZoneOption,
@@ -121,8 +121,7 @@ export interface SpaceUiState {
    */
   rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
   /** Someone used a training dummy on the map: the app opens the training dialog. */
-  /** A dummy to train at; `partner`: the other kind nearby, to train at both (50% each). */
-  trainRequest: { instance: string; title: string; dummy: "vocacao" | "habilidade"; partner: DummyPartner | null; n: number } | null;
+  trainRequest: { instance: string; title: string; n: number } | null;
   /** We used an NPC of the idle game (stage O8): the app opens its dialog. */
   npcRequest: {
     instance: string;
@@ -1182,8 +1181,6 @@ export class SpaceView {
         trainRequest: {
           instance: p.inst.id,
           title: p.label,
-          dummy: p.item.dummy ?? "vocacao",
-          partner: dummyPartner(this.world, p.inst.id),
           n: (this.state.trainRequest?.n ?? 0) + 1,
         },
       });

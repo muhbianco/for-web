@@ -32,7 +32,6 @@ export function myHeroOf(h: RpgHeroView): AvatarHero {
     level: h.level,
     training: true,
     at: h.training.instance,
-    ...(h.training.also ? { also: h.training.also } : {}),
     vocation: h.vocation,
     gear,
   };

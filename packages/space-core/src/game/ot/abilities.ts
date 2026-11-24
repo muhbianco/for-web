@@ -1,6 +1,7 @@
 import type { VocationId } from "./data.ts";
 import { VOCATIONS } from "./data.ts";
 import type { Element } from "./items.ts";
+import { JOB } from "./job.ts";
 import type { SpellFormula } from "./spells.ts";
 
 /**
@@ -410,20 +411,61 @@ export type NodeEffect =
   /** O desafio prende por mais `ms`. */
   | { t: "focus"; ms: number }
   /** Enquanto o desafio prende, o dano que o cavaleiro leva cai esta %. */
-  | { t: "guard"; pct: number };
+  | { t: "guard"; pct: number }
+  /**
+   * [nosso] 24/11/2026: chance (%) de a habilidade sair crítica (×CRIT_MULT, golpe ou cura); na
+   * Concentração, a chance de crítico dos tiros enquanto ela dura.
+   */
+  | { t: "crit"; pct: number }
+  /** [nosso] 24/11/2026: a habilidade ignora esta % da armadura e da resistência do monstro. */
+  | { t: "pierce"; pct: number }
+  /** [nosso] 24/11/2026: enquanto o desafio prende, a Proteção do cavaleiro sobe esta %. */
+  | { t: "cover"; pct: number };
 
 export interface TreeNode {
   id: string;
   ability: string;
   tier: JobTier;
   name: string;
+  /**
+   * Os pontos que davam o efeito cheio até 24/11/2026. Desde então o adereço sobe em ups: o
+   * efeito cheio de antes vale UPS_FULL ups (cada up é `ranks / UPS_FULL` do ponto de antes) e
+   * ele vai até o teto da classe (TIER_MAX_UPS).
+   */
   ranks: number;
   /** Precisa de ao menos 1 ponto neste outro adereço. */
   requires?: string;
   effect: NodeEffect;
 }
 
-/** O que o herói pôs na árvore: id do adereço → pontos. */
+/**
+ * [nosso] 24/11/2026 (pedido do dono): os adereços sobem em ups. O efeito cheio de cada um até
+ * então vale UPS_FULL ups; o teto de ups sobe com a evolução no Mestre (TIER_MAX_UPS) até 20.
+ */
+export const UPS_FULL = 5;
+export const TIER_MAX_UPS: Readonly<Record<JobTier, number>> = { 1: 5, 2: 10, 3: 20 };
+export const MAX_UPS = 20;
+/**
+ * O quanto rende cada up depois do UPS_FULL, perto do de antes (1 = igual). Ajustado no
+ * balanceamento: as habilidades continuam a menor parte do dano (rebirth-lab.ts).
+ */
+export const LATE_UP = 1;
+/** A troca de magia sai no 1º up; cada up a mais soma este % ao poder da habilidade. */
+export const FORMULA_UP_PCT = 3;
+/** Crítico de habilidade: o golpe ou a cura sai assim mais forte. */
+export const CRIT_MULT = 1.5;
+
+/** O peso de `ups` em ups cheios (os depois do UPS_FULL rendem LATE_UP). */
+export function upsWeight(ups: number): number {
+  return Math.min(ups, UPS_FULL) + Math.max(0, ups - UPS_FULL) * LATE_UP;
+}
+
+/** O efeito de `ups` num adereço, em pontos de antes (o que `effect` multiplica). */
+export function nodeUnits(node: Pick<TreeNode, "ranks">, ups: number): number {
+  return (upsWeight(ups) * node.ranks) / UPS_FULL;
+}
+
+/** O que o herói pôs na árvore: id do adereço → ups. */
 export type Tree = Record<string, number>;
 
 const N = (
@@ -454,8 +496,11 @@ function attackBranch(
   t2: { key: string; name: string; effect: NodeEffect },
   t3: { key: string; name: string; effect: NodeEffect },
   cooldownMs = 500,
+  extra?: { key: string; name: string; effect: NodeEffect },
 ): TreeNode[] {
   return [
+    // 24/11/2026: o adereço novo de cada habilidade (crítico ou perfurar), na 2ª classe.
+    ...(extra ? [N(ability, extra.key, 2, extra.name, 5, extra.effect, "forca")] : []),
     N(ability, "forca", 1, "Força", 5, { t: "power", pct: 8 }),
     N(
       ability,
@@ -496,14 +541,18 @@ export const TREE: readonly TreeNode[] = [
     },
     { key: "duplo", name: "Golpe duplo", effect: { t: "echo", pct: 50 } },
     1000,
+    { key: "quebra", name: "Quebrar guarda", effect: { t: "pierce", pct: 3 } },
   ),
   ...attackBranch(
     "giro-da-lamina",
     15,
     { key: "sangria", name: "Sangria", effect: { t: "leech", pct: 10 } },
     { key: "redemoinho", name: "Redemoinho", effect: { t: "echo", pct: 40 } },
+    500,
+    { key: "certeiro", name: "Golpe certeiro", effect: { t: "crit", pct: 2 } }
   ),
   N("atadura", "forca", 1, "Força", 5, { t: "power", pct: 10 }),
+  N("atadura", "firme", 2, "Cura firme", 5, { t: "crit", pct: 2 }, "forca"),
   N("atadura", "reflexo", 1, "Reflexo", 2, { t: "trigger", pct: 10 }, "forca"),
   N(
     "atadura",
@@ -540,6 +589,8 @@ export const TREE: readonly TreeNode[] = [
     "forca2",
   ),
   N("desafio", "presenca", 1, "Presença", 3, { t: "focus", ms: 2000 }),
+  // 24/11/2026: o tanque protege o grupo mais enquanto o desafio prende (run.ts Proteção).
+  N("desafio", "escudo", 2, "Escudo do grupo", 5, { t: "cover", pct: 1 }, "presenca"),
   N(
     "desafio",
     "economia",
@@ -571,6 +622,8 @@ export const TREE: readonly TreeNode[] = [
       effect: { t: "targets", n: 1 },
     },
     { key: "tripla", name: "Rajada tripla", effect: { t: "echo", pct: 50 } },
+    500,
+    { key: "certeira", name: "Flecha certeira", effect: { t: "crit", pct: 2 } }
   ),
   ...attackBranch(
     "chuva-de-flechas",
@@ -581,6 +634,8 @@ export const TREE: readonly TreeNode[] = [
       effect: { t: "stun", chance: 15, ms: 1500 },
     },
     { key: "tormenta", name: "Tormenta", effect: { t: "echo", pct: 35 } },
+    500,
+    { key: "pontas", name: "Pontas de aço", effect: { t: "pierce", pct: 3 } }
   ),
   ...attackBranch(
     "flecha-carregada",
@@ -592,8 +647,10 @@ export const TREE: readonly TreeNode[] = [
     },
     { key: "trespassar", name: "Trespassar", effect: { t: "targets", n: 1 } },
     500,
+    { key: "rompe", name: "Rompe-armadura", effect: { t: "pierce", pct: 3 } },
   ),
   N("concentracao", "foco", 1, "Foco", 5, { t: "power", pct: 10 }),
+  N("concentracao", "mira", 2, "Mira", 5, { t: "crit", pct: 2 }, "foco"),
   N("concentracao", "folego", 1, "Fôlego", 3, { t: "focus", ms: 1000 }, "foco"),
   N(
     "concentracao",
@@ -629,6 +686,8 @@ export const TREE: readonly TreeNode[] = [
     10,
     { key: "corrente", name: "Corrente", effect: { t: "targets", n: 1 } },
     { key: "sobrecarga", name: "Sobrecarga", effect: { t: "echo", pct: 50 } },
+    500,
+    { key: "faisca", name: "Faísca", effect: { t: "crit", pct: 2 } }
   ),
   ...attackBranch(
     "golpe-de-chama",
@@ -645,6 +704,8 @@ export const TREE: readonly TreeNode[] = [
         source: "strong_flame_strike.lua",
       },
     },
+    500,
+    { key: "brasa", name: "Brasa", effect: { t: "pierce", pct: 3 } }
   ),
   ...attackBranch(
     "onda-de-fogo",
@@ -661,6 +722,8 @@ export const TREE: readonly TreeNode[] = [
       },
     },
     { key: "tempestade", name: "Tempestade", effect: { t: "echo", pct: 40 } },
+    500,
+    { key: "calor", name: "Calor intenso", effect: { t: "crit", pct: 2 } }
   ),
   N("remendo", "cura-leve", 1, "Cura leve", 1, {
     t: "formula",
@@ -669,6 +732,7 @@ export const TREE: readonly TreeNode[] = [
     name: "Cura leve",
     source: "light_healing.lua",
   }),
+  N("remendo", "plena", 2, "Cura plena", 5, { t: "crit", pct: 2 }, "cura-leve"),
   N(
     "remendo",
     "reflexo",
@@ -714,6 +778,8 @@ export const TREE: readonly TreeNode[] = [
       effect: { t: "stun", chance: 25, ms: 2000 },
     },
     { key: "estilhaco", name: "Estilhaço", effect: { t: "targets", n: 2 } },
+    500,
+    { key: "gelo-fino", name: "Gelo fino", effect: { t: "pierce", pct: 3 } }
   ),
   ...attackBranch(
     "onda-de-gelo",
@@ -731,8 +797,11 @@ export const TREE: readonly TreeNode[] = [
       },
     },
     { key: "inverno", name: "Inverno", effect: { t: "echo", pct: 40 } },
+    500,
+    { key: "nevasca", name: "Nevasca", effect: { t: "crit", pct: 2 } }
   ),
   N("cura-do-companheiro", "forca", 1, "Força", 5, { t: "power", pct: 8 }),
+  N("cura-do-companheiro", "graca", 2, "Graça", 5, { t: "crit", pct: 2 }, "forca"),
   N(
     "cura-do-companheiro",
     "economia",
@@ -785,6 +854,7 @@ export const TREE: readonly TreeNode[] = [
     name: "Cura leve",
     source: "light_healing.lua",
   }),
+  N("seiva", "brotar", 2, "Brotar", 5, { t: "crit", pct: 2 }, "cura-leve"),
   N(
     "seiva",
     "reflexo",
@@ -849,7 +919,7 @@ export function cannotLearn(
   if (abilityDef(node.ability)?.cls !== cls) return "not_class";
   if (node.tier > tier) return "tier";
   if (node.requires && !((t[node.requires] ?? 0) > 0)) return "requires";
-  if ((t[id] ?? 0) >= node.ranks) return "max_rank";
+  if ((t[id] ?? 0) >= TIER_MAX_UPS[tier]) return "max_rank";
   if (free <= 0) return "no_points";
   return null;
 }
@@ -863,7 +933,7 @@ export function validTree(t: unknown, cls: number, tier: JobTier): t is Tree {
       !node ||
       !Number.isInteger(v) ||
       (v as number) < 1 ||
-      (v as number) > node.ranks
+      (v as number) > TIER_MAX_UPS[tier]
     )
       return false;
     if (abilityDef(node.ability)?.cls !== cls || node.tier > tier) return false;
@@ -908,25 +978,18 @@ export function isShapeNode(id: string): boolean {
   return t === "targets" || t === "element" || t === "formula";
 }
 
-/** A árvore está cheia: todos os adereços da classe até a evolução de agora no último ponto. */
-export function treeFull(t: Tree, cls: number, tier: JobTier): boolean {
-  return TREE.every(
-    (n) =>
-      abilityDef(n.ability)?.cls !== cls ||
-      n.tier > tier ||
-      (t[n.id] ?? 0) >= n.ranks,
-  );
-}
-
-/** Por que não renasce agora (null: pode, com o adereço `node`): só na 3ª classe, árvore cheia. */
+/**
+ * Por que não renasce agora (null: pode, com o adereço `node`): só na 3ª classe e com o job no
+ * máximo (24/11/2026; antes, a árvore cheia, que com os ups de até 20 ninguém enche).
+ */
 export function cannotRebirth(
-  t: Tree,
   cls: number,
   tier: JobTier,
+  jobLevel: number,
   node: string,
-): "not_last_tier" | "not_full" | "not_node" | "not_class" | "not_mastery" | null {
+): "not_last_tier" | "job_level" | "not_node" | "not_class" | "not_mastery" | null {
   if (tier < 3) return "not_last_tier";
-  if (!treeFull(t, cls, 3)) return "not_full";
+  if (jobLevel < JOB.maxLevel) return "job_level";
   const n = treeNode(node);
   if (!n) return "not_node";
   if (abilityDef(n.ability)?.cls !== cls) return "not_class";
@@ -964,6 +1027,12 @@ export interface AbilityNow {
   group: number;
   focusMs: number;
   guard: number;
+  /** Chance (%) de sair crítica; na Concentração, o crítico dos tiros enquanto ela dura. */
+  crit: number;
+  /** % da armadura e da resistência do monstro que a habilidade ignora. */
+  pierce: number;
+  /** % a mais na Proteção do cavaleiro enquanto o desafio prende. */
+  cover: number;
 }
 
 /** [nosso] Recarga mínima de uma habilidade com os adereços. */
@@ -997,10 +1066,13 @@ export function abilityNow(
           ? CONCENTRATION.durationMs
           : 0,
     guard: 0,
+    crit: 0,
+    pierce: 0,
+    cover: 0,
   };
   let cost = 0;
   let cooldown = 0;
-  // A fórmula troca primeiro (ela traz a mana nova); os outros somam por ponto.
+  // A fórmula troca primeiro (ela traz a mana nova); os outros somam por up.
   for (const node of treeOf(def.id)) {
     const n = t[node.id] ?? 0;
     if (n > 0 && node.effect.t === "formula") {
@@ -1012,9 +1084,11 @@ export function abilityNow(
     }
   }
   for (const node of treeOf(def.id)) {
-    const n0 = t[node.id] ?? 0;
-    if (n0 <= 0) continue;
-    // A maestria multiplica o efeito dos pontos postos (renascimento da árvore).
+    const ups = t[node.id] ?? 0;
+    if (ups <= 0) continue;
+    // 24/11/2026: `n0` é o efeito em pontos de antes (o cheio de antes = UPS_FULL ups); a
+    // maestria multiplica o efeito dos ups postos (renascimento da árvore).
+    const n0 = (upsWeight(ups) * node.ranks) / UPS_FULL;
     const n = n0 * masteryFactor(mastery, node.id);
     const e = node.effect;
     switch (e.t) {
@@ -1042,6 +1116,15 @@ export function abilityNow(
           ms: Math.max(out.stun?.ms ?? 0, e.ms),
         };
         break;
+      case "crit":
+        out.crit += e.pct * n;
+        break;
+      case "pierce":
+        out.pierce += e.pct * n;
+        break;
+      case "cover":
+        out.cover += e.pct * n;
+        break;
       case "element":
         out.element = e.element;
         break;
@@ -1058,9 +1141,17 @@ export function abilityNow(
         out.guard += e.pct * n;
         break;
       case "formula":
+        // A troca sai no 1º up; os ups a mais somam poder (FORMULA_UP_PCT cada).
+        out.power += (FORMULA_UP_PCT * Math.max(0, upsWeight(ups) - 1)) / 100;
         break;
     }
   }
+  // Tetos dos efeitos que viram absurdos com 20 ups.
+  out.group = Math.min(1, out.group);
+  out.trigger = Math.min(40, out.trigger);
+  out.crit = Math.min(60, out.crit);
+  out.pierce = Math.min(75, out.pierce);
+  out.cover = Math.min(30, out.cover);
   // A maestria dos adereços de forma (alvo a mais, elemento, troca de magia): o mesmo % no poder
   // da habilidade, enquanto o adereço está aprendido.
   for (const node of treeOf(def.id))

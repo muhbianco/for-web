@@ -256,9 +256,8 @@ function gameRoomPlan(room: CompiledRoom): { item: string; at: [number, number][
     ...everywhere,
   ];
   return [
-    { item: "dummy-habilidade", at: prefer([[0, 1]], rows(0)) },
-    { item: "dummy-wood", at: prefer([[0, 3]], rows(0)) },
-    { item: "dummy-target", at: prefer([[0, 5]], rows(0)) },
+    { item: "dummy-wood", at: prefer([[0, 1]], rows(0)) },
+    { item: "dummy-target", at: prefer([[0, 3]], rows(0)) },
     { item: "npc-mercador", at: prefer([[right, 1]], rows(right)) },
     { item: "npc-banqueiro", at: prefer([[right, 3]], rows(right)) },
     { item: "npc-mestre", at: prefer([[right, 5]], rows(right)) },

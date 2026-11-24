@@ -77,7 +77,6 @@ export interface DecorItem {
   /** `npc` items: which NPC of the idle game this is (stage O8). */
   npc?: NpcKind;
   /** Dummy de treino (`train`): de vocação (armas e magia, o padrão) ou de habilidade (24/11/2026). */
-  dummy?: "vocacao" | "habilidade";
 }
 
 export interface DecorInstance {

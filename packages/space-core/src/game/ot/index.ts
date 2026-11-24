@@ -20,3 +20,4 @@ export * from "./resist.ts";
 export * from "./stamina.ts";
 export * from "./tiers.ts";
 export * from "./training.ts";
+export * from "./job.ts";

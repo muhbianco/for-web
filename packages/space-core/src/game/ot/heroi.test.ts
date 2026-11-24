@@ -34,15 +34,10 @@ import {
   withVit,
 } from "./attributes.ts";
 import { DEFAULT_RATES, VOCATIONS } from "./data.ts";
-import {
-  DUAL_EFFICIENCY,
-  addPointTries,
-  dummyTrains,
-  reqPointTries,
-  settleSession,
-  startSession,
-  trainingGain,
-} from "./training.ts";
+import { trainingGain } from "./training.ts";
+import { JOB, addJobExp, jobExpGain, jobLevelFor, jobPoints, rebirthScale } from "./job.ts";
+import { expForLevel } from "./progression.ts";
+import { TIER_MAX_UPS, nodeUnits, treeNode, CRIT_MULT, cannotRebirth } from "./abilities.ts";
 
 test("pontos de atributo: 5 por level, escada de custo a partir do 51, sem teto [decisão do dono, 24/11/2026]", () => {
   assert.equal(statPointsTotal(1), 5);
@@ -175,13 +170,14 @@ test("4 habilidades fixas por classe; a árvore só dá adereços a elas", () =>
 test("adereços: força, economia, recarga, alvo, eco e fórmula nova", () => {
   const brutal = abilityDef("golpe-brutal")!;
   assert.equal(abilityNow(brutal, {}).power, 1);
+  // 24/11/2026: em ups; o cheio de antes de cada adereço vale 5 ups.
   const t = {
     "golpe-brutal.forca": 5,
-    "golpe-brutal.economia": 3,
-    "golpe-brutal.atordoar": 1,
+    "golpe-brutal.economia": 5,
+    "golpe-brutal.atordoar": 5,
     "golpe-brutal.forca2": 5,
-    "golpe-brutal.duplo": 1,
-    "golpe-brutal.ritmo": 2,
+    "golpe-brutal.duplo": 5,
+    "golpe-brutal.ritmo": 5,
   };
   const now = abilityNow(brutal, t);
   assert.ok(Math.abs(now.power - 1.7) < 1e-9);
@@ -228,6 +224,12 @@ test("aprender: classe, parte da árvore pela evolução, pré-requisito, pontos
     "parte da 2ª classe",
   );
   assert.ok(!validTree({ "golpe-brutal.forca": 9 }, 4, 1));
+  // 24/11/2026: o teto sobe com a classe (5, 10, 20 ups).
+  assert.deepEqual(TIER_MAX_UPS, { 1: 5, 2: 10, 3: 20 });
+  assert.ok(validTree({ "golpe-brutal.forca": 20 }, 4, 3));
+  assert.ok(!validTree({ "golpe-brutal.forca": 21 }, 4, 3));
+  assert.equal(cannotLearn({ "golpe-brutal.forca": 5 }, "golpe-brutal.forca", 4, 2, 3), null);
+  assert.equal(cannotLearn({ "golpe-brutal.forca": 10 }, "golpe-brutal.forca", 4, 2, 3), "max_rank");
   assert.equal(treePointsSpent({ a: 2, b: 3 }), 5);
 });
 
@@ -246,70 +248,55 @@ test("evolução: a promovida é a 2ª classe; a 3ª pede level 50 e 24 pontos",
   assert.equal(cannotEvolve(8, 3, 99, 99), "max_tier");
 });
 
-test("treino de habilidade: só no dummy de habilidade, um ponto a cada 50 × 1,1^(n−1) tentativas", () => {
-  assert.ok(dummyTrains("habilidade", "habilidade"));
-  assert.ok(!dummyTrains("habilidade", "espada"));
-  assert.ok(!dummyTrains("vocacao", "habilidade"));
-  assert.ok(dummyTrains("vocacao", "magia"));
-  assert.equal(reqPointTries(1), 50);
-  assert.equal(reqPointTries(11), Math.floor(50 * 1.1 ** 10));
-  // Como o treino de uma arma corpo a corpo, sem tentativa de escudo.
-  const g = trainingGain(VOCATIONS[4], "habilidade", 100, DEFAULT_RATES);
-  assert.deepEqual(g, { main: 50, escudo: 0 });
-  assert.deepEqual(addPointTries({ points: 0, tries: 0 }, 50), {
-    points: 1,
-    tries: 0,
-  });
-  assert.deepEqual(addPointTries({ points: 0, tries: 40 }, 70), {
-    points: 2,
-    tries: 5,
-  });
-  // 12 h de treino com a taxa 2: uns 40 pontos.
-  const day = trainingGain(
-    VOCATIONS[4],
-    "habilidade",
-    12 * 3600,
-    DEFAULT_RATES,
-  ).main;
-  const p = addPointTries({ points: 0, tries: 0 }, day).points;
-  assert.ok(p >= 38 && p <= 41, `pontos em 12 h: ${p}`);
+test("nível de job (24/11/2026): 30% da experiência, na curva do level, um ponto por nível até o 150", () => {
+  assert.equal(JOB.expShare, 0.3);
+  assert.equal(JOB.maxLevel, 150);
+  assert.equal(jobExpGain(1000), 300);
+  assert.equal(jobLevelFor(0), 1);
+  assert.equal(jobLevelFor(expForLevel(18)), 18);
+  assert.equal(jobLevelFor(expForLevel(18) - 1), 17);
+  assert.equal(jobLevelFor(Number.MAX_SAFE_INTEGER), 150);
+  assert.equal(jobPoints(1), 0);
+  assert.equal(jobPoints(18), 17);
+  assert.equal(jobPoints(150), 149);
+  // O job anda junto, mais devagar: com a experiência do level 27, o job fica no 18.
+  const j = addJobExp({ level: 1, exp: 0 }, jobExpGain(expForLevel(27)));
+  assert.equal(j.level, 18);
+  // No máximo, para.
+  assert.deepEqual(addJobExp({ level: 150, exp: 5 }, 999), { level: 150, exp: 5 });
+  // O treino do dummy é só das armas e da magia (o de habilidade saiu).
+  assert.deepEqual(trainingGain(VOCATIONS[4], "espada", 3600, DEFAULT_RATES), { main: 1800, escudo: 1800 });
 });
 
-test("nos dois dummies (24/11/2026): a skill, o escudo e os pontos rendem 50% cada; num só, 100%", () => {
-  assert.equal(DUAL_EFFICIENCY, 0.5);
-  const H = 3600;
-  const knight = VOCATIONS[4];
-  // Um dummy só: 1800 de espada e de escudo por hora; nos dois, metade.
-  assert.deepEqual(trainingGain(knight, "espada", H, DEFAULT_RATES), { main: 1800, escudo: 1800 });
-  assert.deepEqual(trainingGain(knight, "espada", H, DEFAULT_RATES, DUAL_EFFICIENCY), { main: 900, escudo: 900 });
-  const sess = startSession({ ms: 10 * H * 1000, at: 0 }, "espada", 0, true);
-  assert.equal(sess.dual, true);
-  const once = settleSession(knight, sess, H * 1000, DEFAULT_RATES);
-  assert.deepEqual(once.gain, { main: 900, escudo: 900 });
-  assert.equal(once.points, 900, "os pontos de habilidade vêm junto, também a 50%");
-  // Sem "dual", nada de pontos.
-  const single = startSession({ ms: 10 * H * 1000, at: 0 }, "espada", 0);
-  assert.equal(single.dual, undefined);
-  assert.equal(settleSession(knight, single, H * 1000, DEFAULT_RATES).points, 0);
-  // Creditar em pedaços (de 7 em 7 s, número que não divide a truncagem) dá o mesmo total.
-  let s = { ...sess };
-  let main = 0;
-  let shield = 0;
-  let points = 0;
-  for (let t = 61; t <= H; t += 7) {
-    const r = settleSession(knight, s, t * 1000, DEFAULT_RATES);
-    main += r.gain.main;
-    shield += r.gain.escudo;
-    points += r.points;
-    s = { ...s, creditedSeconds: r.creditedSeconds };
-  }
-  const last = settleSession(knight, s, H * 1000, DEFAULT_RATES);
-  main += last.gain.main;
-  shield += last.gain.escudo;
-  points += last.points;
-  assert.deepEqual({ main, shield, points }, { main: 900, shield: 900, points: 900 });
-  // A magia também: 9000 de mana por hora no feiticeiro vira 4500.
-  assert.equal(trainingGain(VOCATIONS[1], "magia", H, DEFAULT_RATES, DUAL_EFFICIENCY).main, 4500);
+test("ups (24/11/2026): o cheio de antes vale 5 ups; alvo em ups vira chance; crítico, perfurar e escudo do grupo", () => {
+  const forca = treeNode("golpe-brutal.forca")!;
+  assert.equal(nodeUnits(forca, 5), 5);
+  assert.equal(nodeUnits(forca, 20), 20);
+  const pierce = treeNode("rajada-dupla.perfurante")!;
+  assert.equal(nodeUnits(pierce, 1), 0.2);
+  const rajada = abilityDef("rajada-dupla")!;
+  const base = { "rajada-dupla.forca": 5, "rajada-dupla.perfurante": 3 };
+  assert.ok(Math.abs(abilityNow(rajada, base).targets - 0.6) < 1e-9);
+  assert.ok(Math.abs(abilityNow(rajada, { ...base, "rajada-dupla.perfurante": 10 }).targets - 2) < 1e-9);
+  // Os novos: crítico, perfurar e o escudo do grupo do desafio.
+  assert.equal(abilityNow(rajada, { ...base, "rajada-dupla.certeira": 5 }).crit, 10);
+  assert.equal(abilityNow(abilityDef("golpe-brutal")!, { "golpe-brutal.forca": 1, "golpe-brutal.quebra": 10 }).pierce, 30);
+  assert.equal(abilityNow(abilityDef("desafio")!, { "desafio.presenca": 1, "desafio.escudo": 20 }).cover, 20);
+  assert.equal(CRIT_MULT, 1.5);
+  // Os tetos: crítico até 60%, perfurar até 75%.
+  assert.equal(abilityNow(rajada, { ...base, "rajada-dupla.certeira": 20 }).crit, 40);
+  // Cada habilidade ganhou um adereço.
+  for (const ab of ABILITIES) assert.ok(TREE.filter((n) => n.ability === ab.id).length >= 5, ab.id);
+});
+
+test("renascimento (24/11/2026): na 3ª classe com o job no máximo; cada um deixa o job 1% mais lento", () => {
+  assert.equal(cannotRebirth(4, 2, 150, "golpe-brutal.forca"), "not_last_tier");
+  assert.equal(cannotRebirth(4, 3, 149, "golpe-brutal.forca"), "job_level");
+  assert.equal(cannotRebirth(4, 3, 150, "golpe-brutal.forca"), null);
+  assert.equal(cannotRebirth(4, 3, 150, "golpe-de-raio.forca"), "not_class");
+  assert.equal(rebirthScale(0), 1);
+  assert.ok(Math.abs(rebirthScale(2) - 1.0201) < 1e-12, "composto");
+  assert.ok(jobExpGain(100_000, 10) < jobExpGain(100_000));
 });
 
 test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da corrida", async () => {
@@ -319,7 +306,7 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
     level: 30,
     manaMax: 150,
     stats: { ...freshStats(), des: 61 },
-    tree: { "golpe-brutal.forca": 5, "golpe-brutal.economia": 3 },
+    tree: { "golpe-brutal.forca": 5, "golpe-brutal.economia": 5 },
   });
   assert.deepEqual(
     bar.map((b) => b.id),
@@ -356,16 +343,3 @@ test("maestria: cada vez escolhido, o adereço rende 0,5% a mais por ponto; alvo
   );
 });
 
-test("cada renascimento deixa o treino de habilidade 1% mais lento, um sobre o outro", async () => {
-  const { reqPointTries, rebirthScale, addPointTries } = await import("./training.ts");
-  assert.equal(rebirthScale(0), 1);
-  assert.ok(Math.abs(rebirthScale(1) - 1.01) < 1e-12);
-  assert.ok(Math.abs(rebirthScale(2) - 1.0201) < 1e-12, "composto");
-  // O ponto 30 pede 1% a mais com um renascimento.
-  assert.equal(reqPointTries(30, rebirthScale(1)), Math.floor(50 * Math.pow(1.1, 29) * 1.01));
-  assert.ok(reqPointTries(30, rebirthScale(1)) > reqPointTries(30));
-  // As mesmas tentativas rendem um pouco menos depois de renascer.
-  const plain = addPointTries({ points: 0, tries: 0 }, 50_000);
-  const slower = addPointTries({ points: 0, tries: 0 }, 50_000, rebirthScale(10));
-  assert.ok(slower.points < plain.points || (slower.points === plain.points && slower.tries < plain.tries));
-});

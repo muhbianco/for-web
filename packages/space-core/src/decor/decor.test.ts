@@ -247,7 +247,6 @@ test("sala do jogo (24/11/2026): \"Idle Hunt\" se mobilia com a TV, os 3 bonecos
   const zones = zonesOf(map);
   const d = defaultDecor(ix, { serverName: "Teste" });
   const GAME = [
-    "dummy-habilidade",
     "dummy-wood",
     "dummy-target",
     "npc-mercador",

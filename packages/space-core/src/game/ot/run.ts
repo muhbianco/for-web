@@ -4,6 +4,7 @@ import {
   type Mastery,
   type Tree,
   CONCENTRATION,
+  CRIT_MULT,
   MIN_COOLDOWN_MS,
   abilitiesOf,
   abilityNow,
@@ -505,6 +506,11 @@ interface HeroRt {
   /** Até quando o desafio protege o cavaleiro, e quanto (adereço Muralha). */
   guardUntil: number;
   guardPct: number;
+  /** O Escudo do grupo do desafio: a Proteção sobe `coverPct` até `coverUntil`. */
+  coverUntil: number;
+  coverPct: number;
+  /** A Mira da Concentração: chance (%) a mais de crítico dos tiros enquanto ela dura. */
+  focusCrit: number;
   /** A Concentração do arqueiro: até quando, e o dano e a velocidade a mais (em %). */
   focusUntil: number;
   focusDmg: number;
@@ -601,9 +607,12 @@ function monsterElement(
   el: Element,
   damage: number,
   type: BlockType,
+  /** A parte da resistência que vale (1: toda; o Perfurar ignora o resto, só da que protege). */
+  keep = 1,
 ): { damage: number; type: BlockType } {
   if (damage === 0) return { damage, type };
-  const mod = heroElementMod(m, el);
+  const raw = heroElementMod(m, el);
+  const mod = raw > 0 ? raw * keep : raw;
   if (mod === 0) return { damage, type };
   const out = Math.round(damage * ((100 - mod) / 100));
   return out <= 0 ? { damage: 0, type: "armor" } : { damage: out, type };
@@ -734,6 +743,9 @@ export function simulateRun(input: RunInput): RunResult {
       d: derive(h.stats ?? freshStats(), h.level),
       guardUntil: 0,
       guardPct: 0,
+      coverUntil: 0,
+      coverPct: 0,
+      focusCrit: 0,
       lastAmmo: inv.equip.municao?.item ?? null,
       noAmmo: false,
       potionAt: 0,
@@ -1064,7 +1076,8 @@ export function simulateRun(input: RunInput): RunResult {
    * o golpe sai no máximo e passa direto pela defesa e pela armadura.
    */
   function critical(h: HeroRt): boolean {
-    return uniformRandom(rng, 1, 1000) <= Math.round(h.d.crit * 10);
+    const crit = h.d.crit + (focused(h) ? h.focusCrit : 0);
+    return uniformRandom(rng, 1, 1000) <= Math.round(crit * 10);
   }
 
   /**
@@ -1309,7 +1322,12 @@ export function simulateRun(input: RunInput): RunResult {
             ? h.d.rangedPct + (focused(h) ? h.focusDmg : 0)
             : h.d.magicPct[0] +
               (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
-    return Math.max(0, Math.floor(raw * s.power * (1 + pct / 100)));
+    // O adereço de crítico (24/11/2026): a habilidade sai CRIT_MULT vezes mais forte.
+    const crit = s.crit > 0 && uniformRandom(rng, 1, 1000) <= Math.round(s.crit * 10);
+    return Math.max(
+      0,
+      Math.floor(raw * s.power * (1 + pct / 100) * (crit ? CRIT_MULT : 1)),
+    );
   }
 
   /** O monstro atordoado atrasa os próximos ataques [nosso, no papel do stun do Bash do Ragnarok]. */
@@ -1322,11 +1340,13 @@ export function simulateRun(input: RunInput): RunResult {
     if (!m.alive) return;
     let damage = abilityValue(h, s, hero);
     let type: BlockType = "none";
+    // Perfurar (24/11/2026): a habilidade ignora parte da armadura e da resistência.
+    const keep = 1 - s.pierce / 100;
     if (s.blockArmor) {
       const b = blockHit(rng, {
         damage,
         defense: m.def.defense,
-        armor: m.def.armor,
+        armor: Math.round(m.def.armor * keep),
         checkDefense: false,
         checkArmor: true,
         blocks: m.blocks,
@@ -1336,7 +1356,7 @@ export function simulateRun(input: RunInput): RunResult {
       type = b.type;
     }
     const el = s.element === "cura" ? "fisico" : s.element;
-    const r = monsterElement(m.def, el, damage, type);
+    const r = monsterElement(m.def, el, damage, type, keep);
     ev.push({
       k: "magia",
       a: h.i,
@@ -1389,12 +1409,15 @@ export function simulateRun(input: RunInput): RunResult {
     alive: readonly MonsterRt[],
   ): number {
     const [a, b] = spellRange(s, hero);
+    // Alvos em ups (24/11/2026): a parte quebrada conta pela chance de pegar mais um.
+    const whole = Math.floor(s.targets);
+    const others = alive.filter((x) => x !== target);
     const hit =
-      s.def.kind === "area"
-        ? alive
-        : [target, ...alive.filter((x) => x !== target).slice(0, s.targets)];
+      s.def.kind === "area" ? alive : [target, ...others.slice(0, whole)];
     let k = 0;
     for (const x of hit) k += elementFactor(x, s.element);
+    const next = s.def.kind === "area" ? undefined : others[whole];
+    if (next) k += (s.targets - whole) * elementFactor(next, s.element);
     return ((a + b) / 2) * s.power * (1 + s.echo) * k;
   }
 
@@ -1444,6 +1467,7 @@ export function simulateRun(input: RunInput): RunResult {
       h.focusUntil = tMs + boost.focusMs;
       h.focusDmg = CONCENTRATION.dmgPct * boost.power;
       h.focusAspd = CONCENTRATION.aspdPct * boost.power;
+      h.focusCrit = boost.crit;
       ev.push({ k: "magia", a: h.i, b: h.i, v: 0, s: boost.def.id });
     }
     if (m && tMs >= h.attackGroup) {
@@ -1474,7 +1498,11 @@ export function simulateRun(input: RunInput): RunResult {
       h.attackGroup = tMs + 2000;
       if (s.def.kind === "area") for (const x of alive) strike(h, x, s, hero);
       else {
-        const others = alive.filter((x) => x !== m).slice(0, s.targets);
+        // Alvos em ups (24/11/2026): a parte quebrada é a chance de pegar mais um.
+        const extra =
+          Math.floor(s.targets) +
+          (unitRoll() < s.targets - Math.floor(s.targets) ? 1 : 0);
+        const others = alive.filter((x) => x !== m).slice(0, extra);
         for (const x of [m, ...others]) strike(h, x, s, hero);
       }
     }
@@ -1512,6 +1540,10 @@ export function simulateRun(input: RunInput): RunResult {
     if (s.guard > 0) {
       h.guardUntil = tMs + s.focusMs;
       h.guardPct = Math.min(60, s.guard);
+    }
+    if (s.cover > 0) {
+      h.coverUntil = tMs + s.focusMs;
+      h.coverPct = s.cover;
     }
     ev.push({ k: "desafio", a: h.i, n });
   }
@@ -1731,7 +1763,10 @@ export function simulateRun(input: RunInput): RunResult {
   /** A fração que o cavaleiro tira do golpe num aliado, pela skill de escudo (RUN.protect). */
   function protectShare(k: HeroRt): number {
     const p = RUN.protect;
-    return Math.max(0, Math.min(p.max, ((k.sk.escudo - p.from) / p.span) * p.max));
+    const base = Math.max(0, Math.min(p.max, ((k.sk.escudo - p.from) / p.span) * p.max));
+    // O Escudo do grupo do desafio soma enquanto ele prende (24/11/2026), até 75%.
+    const cover = k.coverUntil > nowMs ? k.coverPct / 100 : 0;
+    return Math.min(0.75, base + cover);
   }
 
   /**

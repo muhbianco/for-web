@@ -9,8 +9,10 @@ import {
   EVOLUTION,
   JOB_NAMES,
   MASTERY_PCT,
+  TIER_MAX_UPS,
   isShapeNode,
   masteryFactor,
+  nodeUnits,
   treeOf,
   treePointsSpent,
   VOCATIONS,
@@ -30,12 +32,11 @@ const TIERS: readonly JobTier[] = [1, 2, 3];
 /**
  * A árvore de habilidades (24/11/2026): as 4 habilidades fixas da classe e os adereços de cada
  * uma, em três partes (uma por classe; a 2ª e a 3ª abrem com a evolução no Mestre). Os pontos
- * vêm do dummy de habilidade. Cada "+" manda um ponto; o servidor confere tudo de novo.
+ * vêm do nível de job (24/11/2026), e cada adereço sobe em ups até o teto da classe (5, 10 e 20).
+ * Cada "+" manda um up; o servidor confere tudo de novo.
  */
 export function SkillTree(props: {
   hero: RpgHeroView;
-  /** Pontos ganhos contando o treino de habilidade aberto (o servidor credita ao aprender). */
-  earned?: number;
   busy: boolean;
   locked: boolean;
   send: (type: string, d: Record<string, unknown>) => void;
@@ -44,18 +45,15 @@ export function SkillTree(props: {
   const base = () => VOCATIONS[props.hero.vocation].base;
   const names = () =>
     base() >= 1 && base() <= 4 ? JOB_NAMES[base() as 1 | 2 | 3 | 4] : null;
-  const sp = () => {
-    const s = props.hero.skill_points;
-    const extra = Math.max(0, (props.earned ?? s.earned) - s.earned);
-    return { ...s, earned: s.earned + extra, free: s.free + extra };
-  };
+  const sp = () => props.hero.skill_points;
+  const cap = () => TIER_MAX_UPS[props.hero.job];
 
   return (
     <Wrap>
       <Head>
         <strong>{t`Pontos de habilidade: ${sp().free}`}</strong>
         <Muted>
-          {t`Ganhos no dummy de habilidade: ${sp().earned} (o próximo em ${Math.max(0, sp().next - sp().tries)} tentativas). Postos na árvore: ${treePointsSpent(props.hero.tree)}.`}
+          {t`Do nível de job ${props.hero.job_level.level}: ${sp().earned} (um por nível). Postos na árvore: ${treePointsSpent(props.hero.tree)}. Cada adereço sobe até ${cap()} ups nesta classe.`}
         </Muted>
       </Head>
       <Show
@@ -127,7 +125,7 @@ export function SkillTree(props: {
                                   <div>
                                     <strong>{node.name}</strong>{" "}
                                     <Rank>
-                                      {rank()}/{node.ranks}
+                                      {rank()}/{cap()}
                                     </Rank>
                                     {/* A maestria do renascimento da árvore (24/11/2026). */}
                                     <Show when={props.hero.mastery?.[node.id]}>
@@ -145,15 +143,19 @@ export function SkillTree(props: {
                                         ? effectText(
                                             node.effect,
                                             isShapeNode(node.id)
-                                              ? rank()
-                                              : rank() *
+                                              ? nodeUnits(node, rank())
+                                              : nodeUnits(node, rank()) *
                                                   masteryFactor(
                                                     props.hero.mastery,
                                                     node.id,
                                                   ),
                                             heal,
                                           )
-                                        : effectText(node.effect, 1, heal)}
+                                        : effectText(
+                                            node.effect,
+                                            nodeUnits(node, 1),
+                                            heal,
+                                          )}
                                       <Show when={props.hero.mastery?.[node.id]}>
                                         {(m) => (
                                           <MasteryNote>
@@ -165,12 +167,14 @@ export function SkillTree(props: {
                                       </Show>
                                       <Show
                                         when={
-                                          node.ranks > 1 && rank() < node.ranks
+                                          node.effect.t !== "formula" &&
+                                          node.effect.t !== "element" &&
+                                          rank() < cap()
                                         }
                                       >
                                         <Muted>
                                           {" · "}
-                                          {t`no máximo: ${effectText(node.effect, node.ranks, heal)}`}
+                                          {t`com ${cap()} ups: ${effectText(node.effect, nodeUnits(node, cap()), heal)}`}
                                         </Muted>
                                       </Show>
                                     </NodeText>

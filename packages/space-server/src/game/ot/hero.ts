@@ -2,11 +2,10 @@ import {
   type Inventory,
   type JobTier,
   type MagicState,
-  type PointTraining,
+  type JobState,
   type StatId,
   type Stats,
   type Tree,
-  type DummyKind,
   type Rates,
   type RpgHeroView,
   type RunHero,
@@ -25,7 +24,7 @@ import {
   addMoney,
   addManaSpent,
   addSkillTries,
-  addPointTries,
+  addJobExp,
   addStats,
   autoEquip,
   bankAfter,
@@ -33,12 +32,14 @@ import {
   cannotEvolve,
   cannotLearn,
   derive,
-  dummyTrains,
   EVOLUTION,
   freshStats,
   jobTier,
-  reqPointTries,
-  rebirthScale,
+  JOB,
+  jobExpGain,
+  jobLevelFor,
+  jobPoints,
+  expForLevel,
   resetCost,
   statPointsFree,
   statPointsSpent,
@@ -100,15 +101,13 @@ import {
  * habilidades, pontos do treino de habilidade, 3ª classe e redistribuições no Mestre. O herói
  * das versões 1 e 2 vira 3 na leitura (normalizeHero), com os pontos do level todos livres.
  */
-export const RPG_VERSION = 3;
+export const RPG_VERSION = 4;
 
 /** O treino aberto: a sessão das regras mais onde ele acontece. */
 export interface RpgTraining extends TrainingSession {
   instance: string;
   server: string;
   zone: string;
-  /** Treino nos dois dummies (`dual`): o outro dummy, do outro tipo. */
-  alsoAt?: string;
 }
 
 /** O herói está numa dungeon até `ends_at` (etapa O5). */
@@ -158,10 +157,14 @@ export interface RpgHeroDoc {
   /** Etapa O9: quando beber poção e o que não pegar do loot. */
   supplies: RunSupplies;
   loot_skip: string[];
-  /** Versão 3: atributos, árvore, treino de habilidade, 3ª classe e redistribuições. */
+  /** Versão 3: atributos, árvore, 3ª classe e redistribuições. */
   stats: Stats;
   tree: Tree;
-  points: PointTraining;
+  /**
+   * Versão 4 (24/11/2026): o nível de job (job.ts), que dá os pontos da árvore; o herói de antes
+   * ganha o job de 30% da experiência que tinha e a árvore zera (pedido do dono).
+   */
+  job: JobState;
   third: boolean;
   resets: { stats: number; tree: number };
   /**
@@ -225,7 +228,7 @@ export function newRpgHero(userId: string, now: number): RpgHeroDoc {
     loot_skip: [],
     stats: freshStats(),
     tree: {},
-    points: { points: 0, tries: 0 },
+    job: { level: 1, exp: 0 },
     third: false,
     resets: { stats: 0, tree: 0 },
     mastery: {},
@@ -243,9 +246,9 @@ export function capOf(d: RpgHeroDoc): number {
   return d.cap + derive(d.stats, d.level).capBonus;
 }
 
-/** Pontos de habilidade que sobram (ganhos no treino menos os postos na árvore). */
+/** Pontos de habilidade que sobram (os do nível de job menos os postos na árvore). */
 export function freeSkillPoints(d: RpgHeroDoc): number {
-  return d.points.points - treePointsSpent(d.tree);
+  return jobPoints(d.job.level) - treePointsSpent(d.tree);
 }
 
 function skillLevels(d: { skills: Record<SkillId, SkillState> }) {
@@ -334,18 +337,28 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   // Versão 3: o herói de antes começa com os atributos em 1 e os pontos do level livres.
   if (!validStats(x.stats, x.level)) x.stats = freshStats();
   if (typeof x.third !== "boolean" || x.vocation === 0) x.third = false;
+  // Versão 4 (24/11/2026): o job sai de 30% da experiência que o herói já tem e a árvore zera
+  // (os pontos agora são os do job; o treino no dummy de habilidade deixou de existir).
+  const old = x as RpgHeroDoc & { points?: unknown };
   if (
-    typeof x.points !== "object" ||
-    x.points === null ||
-    !Number.isInteger(x.points.points) ||
-    !Number.isInteger(x.points.tries) ||
-    x.points.points < 0 ||
-    x.points.tries < 0
-  )
-    x.points = { points: 0, tries: 0 };
+    typeof x.job !== "object" ||
+    x.job === null ||
+    !Number.isInteger(x.job.level) ||
+    !Number.isInteger(x.job.exp) ||
+    x.job.level < 1 ||
+    x.job.exp < 0
+  ) {
+    const exp = Math.floor(Math.max(0, x.experience ?? 0) * JOB.expShare);
+    x.job = { level: jobLevelFor(exp), exp };
+    x.tree = {};
+  }
+  delete old.points;
+  const tr = x.training as (RpgTraining & { dual?: unknown; alsoAt?: unknown }) | null;
+  if (tr && ((tr.skill as string) === "habilidade" || tr.dual || tr.alsoAt))
+    x.training = null;
   if (
     !validTree(x.tree, VOCATIONS[x.vocation].base, jobTier(x.vocation, x.third)) ||
-    treePointsSpent(x.tree) > x.points.points
+    treePointsSpent(x.tree) > jobPoints(x.job.level)
   )
     x.tree = {};
   if (
@@ -533,6 +546,8 @@ export function settleRun(
     );
     d.level = lv.level;
     d.experience = lv.experience;
+    // O job leva JOB.expShare da mesma experiência (menos 1% por renascimento, job.ts).
+    d.job = addJobExp(d.job, jobExpGain(reward.exp, d.rebirths));
     d.health_max = lv.healthMax;
     d.mana_max = lv.manaMax;
     d.cap = lv.cap;
@@ -851,10 +866,9 @@ export function learnNode(d: RpgHeroDoc, node: string, now: number): RpgOutcome 
 }
 
 /**
- * O renascimento da árvore no Mestre (24/11/2026, abilities.ts cannotRebirth): com a árvore
- * cheia, ela zera e os pontos de habilidade ganhos também (o treino no dummy de habilidade
- * recomeça; os pontos que sobravam livres ficam), e o adereço escolhido ganha uma maestria.
- * Não cobra: o custo é refazer a árvore.
+ * O renascimento da árvore no Mestre (24/11/2026, abilities.ts cannotRebirth): na 3ª classe e com
+ * o job no máximo, a árvore zera e o job volta ao 1 (os pontos voltam com ele, 1% mais devagar a
+ * cada renascimento), e o adereço escolhido ganha uma maestria. Não cobra: o custo é refazer o job.
  */
 export function rebirthTree(
   d: RpgHeroDoc,
@@ -864,13 +878,14 @@ export function rebirthTree(
   const g = invGuard(d, now);
   if (g) return g;
   const why = cannotRebirth(
-    d.tree,
     VOCATIONS[d.vocation].base,
     heroTier(d),
+    d.job.level,
     node,
   );
   if (why) return { ok: false, reason: why };
-  d.points = { points: freeSkillPoints(d), tries: d.points.tries };
+  // 24/11/2026: o job volta ao 1 e a árvore zera (os pontos voltam com o job).
+  d.job = { level: 1, exp: 0 };
   d.tree = {};
   d.mastery = { ...d.mastery, [node]: (d.mastery[node] ?? 0) + 1 };
   d.rebirths += 1;
@@ -976,16 +991,9 @@ export function creditTraining(
   const t = d.training;
   if (!t) return false;
   const voc = VOCATIONS[d.vocation];
-  const { gain, points, creditedSeconds } = settleSession(voc, t, now, rates);
+  const { gain, creditedSeconds } = settleSession(voc, t, now, rates);
   if (creditedSeconds === t.creditedSeconds) return false;
   t.creditedSeconds = creditedSeconds;
-  // Nos dois dummies, os pontos de habilidade (já a 50%) e a skill de vocação (abaixo).
-  if (points > 0)
-    d.points = addPointTries(d.points, points, rebirthScale(d.rebirths));
-  if (t.skill === "habilidade") {
-    d.points = addPointTries(d.points, gain.main, rebirthScale(d.rebirths));
-    return true;
-  }
   if (t.skill === "magia") d.magic = addManaSpent(voc, d.magic, gain.main);
   else
     d.skills[t.skill] = addSkillTries(
@@ -1016,27 +1024,15 @@ export function stopTraining(
   return true;
 }
 
-/**
- * Começa a treinar (fecha antes o treino anterior, se houver). Com `also`, nos dois dummies
- * (24/11/2026): um de cada tipo, `skill` é a do dummy de vocação, e a skill (com o escudo) e os
- * pontos de habilidade rendem DUAL_EFFICIENCY cada.
- */
+/** Começa a treinar (fecha antes o treino anterior, se houver). */
 export function startTraining(
   d: RpgHeroDoc,
   where: { instance: string; server: string; zone: string },
   skill: TrainingSkill,
   now: number,
   rates: Rates,
-  dummy: DummyKind = "vocacao",
-  also?: { instance: string; dummy: DummyKind },
 ): RpgOutcome {
   if (d.vocation === 0) return { ok: false, reason: "no_vocation" };
-  if (also) {
-    if (also.dummy === dummy || also.instance === where.instance)
-      return { ok: false, reason: "same_dummy" };
-    if (skill === "habilidade") return { ok: false, reason: "wrong_dummy" };
-  } else if (!dummyTrains(dummy, skill))
-    return { ok: false, reason: "wrong_dummy" };
   if (inRun(d, now)) return { ok: false, reason: "in_run" };
   const t = d.training;
   if (
@@ -1044,7 +1040,6 @@ export function startTraining(
     t.instance === where.instance &&
     t.server === where.server &&
     t.skill === skill &&
-    (t.alsoAt ?? null) === (also?.instance ?? null) &&
     now < t.startedAt + t.budgetMs
   ) {
     return { ok: true };
@@ -1052,9 +1047,9 @@ export function startTraining(
   stopTraining(d, now, rates);
   const bank = bankNow(d.bank, now);
   if (bank < TRAINING.minCreditMs) return { ok: false, reason: "no_bank" };
-  const s = startSession({ ms: bank, at: now }, skill, now, !!also);
+  const s = startSession({ ms: bank, at: now }, skill, now);
   d.bank = { ms: bank, at: now };
-  d.training = { ...s, ...where, ...(also ? { alsoAt: also.instance } : {}) };
+  d.training = { ...s, ...where };
   return { ok: true };
 }
 
@@ -1094,10 +1089,18 @@ export function rpgHeroView(
     stat_points: statPointsFree(d.stats, d.level),
     tree: { ...d.tree },
     skill_points: {
-      earned: d.points.points,
+      earned: jobPoints(d.job.level),
       free: freeSkillPoints(d),
-      tries: d.points.tries,
-      next: reqPointTries(d.points.points + 1, rebirthScale(d.rebirths)),
+    },
+    job_level: {
+      level: d.job.level,
+      exp: d.job.exp,
+      from: expForLevel(d.job.level),
+      next:
+        d.job.level >= JOB.maxLevel
+          ? expForLevel(d.job.level)
+          : expForLevel(d.job.level + 1),
+      max: JOB.maxLevel,
     },
     job: heroTier(d),
     resets: { ...d.resets },
@@ -1116,7 +1119,6 @@ export function rpgHeroView(
       ? {
           skill: d.training.skill,
           instance: d.training.instance,
-          ...(d.training.alsoAt ? { also: d.training.alsoAt } : {}),
           started_at: d.training.startedAt,
           budget_ms: d.training.budgetMs,
           credited_s: d.training.creditedSeconds,

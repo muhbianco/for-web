@@ -44,9 +44,7 @@ import { useModalKeys } from "./modalKeys";
 import {
   className,
   percent,
-  projectTraining,
   rpgLabels,
-  serverNow,
   vocationName,
 } from "./rpgUi";
 
@@ -137,14 +135,11 @@ export default function HeroSheet(props: {
     return x && x.item === p.item ? x : null;
   });
 
-  // Treino de habilidade aberto: os pontos que ele já rendeu (o servidor credita ao aprender).
-  const projectedPoints = () => {
-    const h = hero();
-    if (!h?.training) return undefined;
-    const p = projectTraining(h, serverNow(props.rpg.serverNow, props.rpg.at));
-    if (h.training.skill === "habilidade") return p?.skill?.level;
-    // Nos dois dummies, os pontos vêm junto (24/11/2026).
-    return h.training.also ? p?.points?.level : undefined;
+  // O nível de job (24/11/2026): a barra até o próximo.
+  const jobPct = () => {
+    const j = hero()?.job_level;
+    if (!j || j.level >= j.max) return 100;
+    return percent(j.exp - j.from, j.next - j.from);
   };
   const levelPct = () => {
     const h = hero();
@@ -223,7 +218,7 @@ export default function HeroSheet(props: {
               {props.name}
             </h2>
             <Muted>
-              {t`${className(hero()?.vocation ?? 0, hero()?.job ?? 1)} · level ${hero()?.level ?? 1} (${levelPct()}%)`}
+              {t`${className(hero()?.vocation ?? 0, hero()?.job ?? 1)} · level ${hero()?.level ?? 1} (${levelPct()}%) · job ${hero()?.job_level.level ?? 1} (${jobPct()}%)`}
             </Muted>
           </div>
           <Close type="button" aria-label={t`Fechar`} onClick={props.onClose}>
@@ -283,7 +278,6 @@ export default function HeroSheet(props: {
           {(h) => (
             <SkillTree
               hero={h()}
-              earned={projectedPoints()}
               busy={busy()}
               locked={inRun()}
               send={send}

@@ -26,7 +26,8 @@ import {
   resetCost,
   statPointsSpent,
   TREE,
-  treeFull,
+  JOB,
+  nodeUnits,
   treePointsSpent,
   VOCATIONS,
 } from "@muchat/space-core/game/ot";
@@ -141,7 +142,7 @@ export default function NpcDialog(props: {
       case "level":
         return t`Falta level para a evolução.`;
       case "points":
-        return t`Faltam pontos postos na árvore de habilidades (treine no dummy de habilidade).`;
+        return t`Faltam pontos postos na árvore de habilidades (eles vêm do nível de job).`;
       case "nothing_to_reset":
         return t`Não há pontos postos para redistribuir.`;
       case "no_weapon":
@@ -302,7 +303,7 @@ export default function NpcDialog(props: {
       return t`Guarda suas moedas sem peso e transfere para quem está no Espaço.`;
     if (props.request.npc === "ferreiro")
       return t`Refina a arma que você empunha, até +${REFINE_MAX}. Cada nível dá dano; acima do +${REFINE_SAFE} pode falhar e voltar um nível (a arma não quebra).`;
-    return t`Evolui a classe do herói, o que abre partes da árvore de habilidades, redistribui atributos e habilidades e, com a árvore cheia, faz a árvore renascer.`;
+    return t`Evolui a classe do herói, o que abre partes da árvore de habilidades e sobe o teto de cada adereço, redistribui atributos e habilidades e, com o job no máximo, faz a árvore renascer.`;
   };
 
   return (
@@ -931,34 +932,30 @@ export default function NpcDialog(props: {
                   </Show>
                   <strong>{t`Renascer a árvore`}</strong>
                   {(() => {
-                    // 24/11/2026: só na 3ª classe e com a árvore inteira cheia; escolhe UM
-                    // adereço de UMA habilidade (qualquer um: força, economia, flecha perfurante...).
+                    // 24/11/2026: só na 3ª classe e com o job no máximo; escolhe UM adereço
+                    // de UMA habilidade (qualquer um: força, economia, flecha perfurante...).
                     const cls = () => VOCATIONS[h().vocation].base;
-                    const missing = () =>
-                      TREE.filter((n) => abilityDef(n.ability)?.cls === cls()).reduce(
-                        (a, n) => a + Math.max(0, n.ranks - (h().tree[n.id] ?? 0)),
-                        0,
-                      );
+                    const jobLevel = () => h().job_level?.level ?? 1;
                     const ready = () =>
-                      tier() === 3 && treeFull(h().tree, cls(), 3);
+                      tier() === 3 && jobLevel() >= JOB.maxLevel;
                     return (
                       <Show
                         when={ready()}
                         fallback={
                           <>
                             <Muted>
-                              {t`Na 3ª classe, com a árvore inteira cheia (todos os adereços das três classes no último ponto), a árvore pode renascer: ela e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e você escolhe UM adereço de UMA habilidade para render ${num(MASTERY_PCT)}% a mais por ponto, para sempre. Cada renascimento deixa o treino de habilidade 1% mais lento. ${h().rebirths ?? 0} renascimentos até agora.`}
+                              {t`Na 3ª classe, com o job no nível ${JOB.maxLevel}, a árvore pode renascer: ela zera e o job volta ao 1 (os pontos voltam com ele), e você escolhe UM adereço de UMA habilidade para render ${num(MASTERY_PCT)}% a mais por up, para sempre. Cada renascimento deixa o job 1% mais lento. ${h().rebirths ?? 0} renascimentos até agora.`}
                             </Muted>
                             <Muted data-status="">
                               {tier() < 3
                                 ? t`Falta: chegar à 3ª classe.`
-                                : t`Faltam ${missing()} pontos na árvore.`}
+                                : t`Falta: job ${JOB.maxLevel} (agora ${jobLevel()}).`}
                             </Muted>
                           </>
                         }
                       >
                         <Muted>
-                          {t`A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam). Escolha UM adereço de UMA habilidade: cada ponto dele rende ${num(MASTERY_PCT)}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o treino de habilidade fica 1% mais lento a cada renascimento.`}
+                          {t`O job está no máximo. Renascer zera a árvore e volta o job ao 1. Escolha UM adereço de UMA habilidade: cada up dele rende ${num(MASTERY_PCT)}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o job fica 1% mais lento a cada renascimento.`}
                         </Muted>
                         <Picker
                           role="radiogroup"
@@ -987,7 +984,7 @@ export default function NpcDialog(props: {
                                         />
                                         <span>
                                           <strong>{n.name}</strong>{" "}
-                                          <Muted>{effectText(n.effect, 1, heal)}</Muted>
+                                          <Muted>{effectText(n.effect, nodeUnits(n, 1), heal)}</Muted>
                                           <Show when={m() > 0}>
                                             <Star title={t`Maestria ${m()}`}>{`★${m()}`}</Star>
                                           </Show>

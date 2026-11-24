@@ -50,11 +50,6 @@ export const RpgTrainStartCmd = z.object({
     .object({
       instance: z.string().min(1).max(40),
       skill: z.enum(TRAINING_SKILLS as [TrainingSkill, ...TrainingSkill[]]),
-      /**
-       * Treinar nos dois dummies (24/11/2026): o outro dummy, do outro tipo, na mesma sala e até
-       * TRAIN_REACH_TILES. `skill` é a do dummy de vocação; cada um rende DUAL_EFFICIENCY.
-       */
-      with: z.string().min(1).max(40).optional(),
     })
     .strict(),
 });
@@ -387,11 +382,8 @@ export interface RpgSkillView {
 
 /** O treino em andamento: o app projeta o progresso pelo relógio com as regras puras. */
 export interface RpgTrainingView {
-  /** Nos dois dummies, a skill do dummy de vocação (os pontos de habilidade vêm junto). */
   skill: TrainingSkill;
   instance: string;
-  /** Treino nos dois dummies: o outro dummy (cada um rende DUAL_EFFICIENCY). */
-  also?: string;
   started_at: number;
   budget_ms: number;
   credited_s: number;
@@ -414,7 +406,13 @@ export interface RpgHeroView {
   stat_points: number;
   /** A árvore, os pontos do treino de habilidade (ganhos, livres e o progresso) e a classe. */
   tree: Tree;
-  skill_points: { earned: number; free: number; tries: number; next: number };
+  /** Pontos de habilidade: os do nível de job (um por nível) e os que sobram. */
+  skill_points: { earned: number; free: number };
+  /**
+   * O nível de job (24/11/2026): o nível, a experiência de job e a experiência que o nível de
+   * agora e o próximo pedem (job.ts; a barra vai de `from` a `next`).
+   */
+  job_level: { level: number; exp: number; from: number; next: number; max: number };
   job: JobTier;
   /** Quantas vezes já redistribuiu no Mestre (a primeira de cada é de graça). */
   resets: { stats: number; tree: number };

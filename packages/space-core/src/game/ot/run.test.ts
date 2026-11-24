@@ -828,7 +828,8 @@ test("a habilidade sai com o custo (com Economia) mais uma cura guardada, e a ba
   // 24/11/2026: o cavaleiro de level 27 com Economia 3 no Golpe brutal (21 de mana) só usava
   // com 47 (duas Ataduras ou 20% da mana guardados). Agora guarda uma cura, a mais cara.
   const knight = hero(4, 27, 50);
-  knight.tree = { "golpe-brutal.forca": 1, "golpe-brutal.economia": 3 };
+  // 24/11/2026: em ups (5 = o cheio de antes: −30% de mana).
+  knight.tree = { "golpe-brutal.forca": 1, "golpe-brutal.economia": 5 };
   const bar = Object.fromEntries(abilityBar(knight).map((s) => [s.id, s]));
   assert.equal(bar["golpe-brutal"]!.mana, 21);
   assert.equal(bar["golpe-brutal"]!.at, 21 + 10, "o custo e uma Atadura");

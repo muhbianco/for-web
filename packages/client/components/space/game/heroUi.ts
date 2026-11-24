@@ -85,7 +85,8 @@ export function num(n: number, digits = 1): string {
 
 /** O que um ponto num adereço faz (`n` pontos: o total). */
 export function effectText(e: NodeEffect, n: number, heal: boolean): string {
-  const k = Math.max(1, n);
+  // `n` é o efeito em pontos de antes (abilities.ts nodeUnits): fracionado com poucos ups.
+  const k = Math.max(0, n);
   switch (e.t) {
     case "power": {
       const pct = num(e.pct * k);
@@ -100,8 +101,13 @@ export function effectText(e: NodeEffect, n: number, heal: boolean): string {
       return t`−${s} s de recarga`;
     }
     case "targets": {
-      const m = num(e.n * k, 0);
-      return t`acerta mais ${m} monstro(s) da sala`;
+      const v = e.n * k;
+      if (v < 1) {
+        const pct = num(v * 100, 0);
+        return t`${pct}% de chance de acertar mais um monstro da sala`;
+      }
+      const m = num(v);
+      return t`acerta mais ${m} monstro(s) da sala, em média`;
     }
     case "echo": {
       const pct = num(e.pct * k);
@@ -138,6 +144,18 @@ export function effectText(e: NodeEffect, n: number, heal: boolean): string {
     case "guard": {
       const pct = num(e.pct * k);
       return t`−${pct}% de dano recebido enquanto os monstros estão presos`;
+    }
+    case "crit": {
+      const pct = num(Math.min(60, e.pct * k));
+      return t`${pct}% de chance de crítico (×1,5)`;
+    }
+    case "pierce": {
+      const pct = num(Math.min(75, e.pct * k));
+      return t`ignora ${pct}% da armadura e da resistência do monstro`;
+    }
+    case "cover": {
+      const pct = num(Math.min(30, e.pct * k));
+      return t`+${pct}% na Proteção do grupo enquanto os monstros estão presos`;
     }
   }
 }
