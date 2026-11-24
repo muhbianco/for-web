@@ -11,6 +11,7 @@ import {
   itemAbsorb,
   itemDef,
   refineFactor,
+  WAND_ML,
 } from "@muchat/space-core/game/ot";
 
 /**
@@ -205,10 +206,13 @@ export function itemLines(
   if (def.wand) {
     const { min, max, mana } = def.wand;
     const e = el[def.wand.element];
+    // 24/11/2026: a varinha cresce com o magic level (spells.ts WAND_ML).
+    const a = String(WAND_ML[0]).replace(".", ",");
+    const b = String(WAND_ML[1]).replace(".", ",");
     out.push(
       mana > 0
-        ? t`${min} a ${max} de ${e} por tiro; ${mana} de mana`
-        : t`${min} a ${max} de ${e} por tiro`,
+        ? t`${min} a ${max} de ${e} por tiro, mais ${a} a ${b} por magic level; ${mana} de mana`
+        : t`${min} a ${max} de ${e} por tiro, mais ${a} a ${b} por magic level`,
     );
   }
   if (def.potion?.health) {

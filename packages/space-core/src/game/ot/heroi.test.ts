@@ -336,7 +336,8 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
   assert.equal(plain[0]!.id, "golpe-de-raio");
   assert.equal(
     plain[0]!.cd_ms,
-    Math.round(2000 * derive(freshStats(), 5).cooldown),
+    // 24/11/2026: as magias de um alvo dos magos saem a cada 8 s (abilities.ts MAGE_ATTACK).
+    Math.round(8000 * derive(freshStats(), 5).cooldown),
   );
 });
 

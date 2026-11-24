@@ -128,6 +128,25 @@ const arma = (min: [number, number], max: [number, number]): SpellFormula => ({
   min,
   max,
 });
+/**
+ * [nosso] Os magos no modelo do cavaleiro (24/11/2026, pedido do dono): a varinha é a base e
+ * cresce com o magic level (spells.ts WAND_ML); as magias de ataque são a menor parte do dano,
+ * porque o renascimento cresce a árvore sem teto. A fórmula do TFS fica escrita e leva esta
+ * fração: as de um alvo 0,3 (recarga ×4), as de área 0,45 (recarga ×3), para as salas cheias
+ * ainda caírem juntas (com 0,3 o feiticeiro levava 13% mais dano na Cidadela).
+ */
+const MAGE_ATTACK = 0.3;
+const MAGE_AREA = 0.45;
+const magiaX = (
+  min: [number, number],
+  max: [number, number],
+  k: number,
+): SpellFormula => ({
+  type: "magia",
+  min: [min[0] * k, min[1] * k],
+  max: [max[0] * k, max[1] * k],
+});
+
 const tiro = (min: number, max: number): SpellFormula => ({
   type: "tiro",
   min,
@@ -253,8 +272,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "energia",
     mana: 20,
-    cooldownMs: 2000,
-    formula: magia([1.4, 8], [2.2, 14]),
+    cooldownMs: 8000,
+    formula: magiaX([1.4, 8], [2.2, 14], MAGE_ATTACK),
     source: "energy_strike.lua",
     blurb: "Energia no alvo do grupo.",
   },
@@ -265,8 +284,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "fogo",
     mana: 20,
-    cooldownMs: 2000,
-    formula: magia([1.4, 8], [2.2, 14]),
+    cooldownMs: 8000,
+    formula: magiaX([1.4, 8], [2.2, 14], MAGE_ATTACK),
     source: "flame_strike.lua",
     blurb: "Fogo no alvo do grupo.",
   },
@@ -277,8 +296,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "area",
     element: "fogo",
     mana: 25,
-    cooldownMs: 4000,
-    formula: magia([1.2, 7], [2, 12]),
+    cooldownMs: 12_000,
+    formula: magiaX([1.2, 7], [2, 12], MAGE_AREA),
     source: "fire_wave.lua",
     blurb: "Uma onda de fogo que pega todos os monstros da sala.",
   },
@@ -302,8 +321,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "gelo",
     mana: 20,
-    cooldownMs: 2000,
-    formula: magia([1.4, 8], [2.2, 14]),
+    cooldownMs: 8000,
+    formula: magiaX([1.4, 8], [2.2, 14], MAGE_ATTACK),
     source: "ice_strike.lua",
     blurb: "Gelo no alvo do grupo.",
   },
@@ -314,8 +333,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "area",
     element: "gelo",
     mana: 25,
-    cooldownMs: 4000,
-    formula: magia([0.8, 5], [2, 12]),
+    cooldownMs: 12_000,
+    formula: magiaX([0.8, 5], [2, 12], MAGE_AREA),
     source: "ice_wave.lua",
     blurb: "Uma onda de gelo que pega todos os monstros da sala.",
   },
@@ -620,7 +639,7 @@ export const TREE: readonly TreeNode[] = [
       name: "Chama solar",
       effect: {
         t: "formula",
-        formula: magia([2.8, 16], [4.4, 28]),
+        formula: magiaX([2.8, 16], [4.4, 28], MAGE_ATTACK),
         mana: 60,
         name: "Chama solar",
         source: "strong_flame_strike.lua",
@@ -635,7 +654,7 @@ export const TREE: readonly TreeNode[] = [
       name: "Grande onda",
       effect: {
         t: "formula",
-        formula: magia([2.8, 16], [4.4, 28]),
+        formula: magiaX([2.8, 16], [4.4, 28], MAGE_AREA),
         mana: 120,
         name: "Grande onda de fogo",
         source: "great_fire_wave.lua",
@@ -704,7 +723,7 @@ export const TREE: readonly TreeNode[] = [
       name: "Onda de raízes",
       effect: {
         t: "formula",
-        formula: magia([3.25, 5], [6.75, 30]),
+        formula: magiaX([3.25, 5], [6.75, 30], MAGE_AREA),
         mana: 170,
         name: "Onda de raízes",
         source: "terra_wave.lua",

@@ -484,8 +484,8 @@ const solo = (archer: number | null = null): Dungeon["comfort"]["solo"] => ({
   4: null,
 });
 const COMFORT: Readonly<Record<string, Dungeon["comfort"]>> = {
-  "pantano-dos-afogados": { group: 85, solo: solo() },
-  "fortaleza-partida": { group: 100, solo: solo(140) },
+  "pantano-dos-afogados": { group: 88, solo: solo() },
+  "fortaleza-partida": { group: 110, solo: solo(140) },
   "deserto-de-vidro": { group: 120, solo: solo() },
   "picos-trovejantes": { group: 145, solo: solo() },
   "floresta-sombria": { group: 170, solo: solo() },

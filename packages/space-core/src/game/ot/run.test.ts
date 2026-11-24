@@ -573,8 +573,9 @@ test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (cha
         "elmo-de-aco",
       ],
     }),
-    hero(2, 40, 10, { ml: 50, owned: ["cajado-de-pedra", "manto-azul"] }),
-    hero(1, 40, 10, { ml: 50, owned: ["varinha-ardente", "manto-azul"] }),
+    // 24/11/2026: magic level 15 (com o 50, a varinha nova limpava a Forja antes de um golpe).
+    hero(2, 40, 10, { ml: 15, owned: ["cajado-de-pedra", "manto-azul"] }),
+    hero(1, 40, 10, { ml: 15, owned: ["varinha-ardente", "manto-azul"] }),
   ];
   let casts = 0;
   let checked = 0;

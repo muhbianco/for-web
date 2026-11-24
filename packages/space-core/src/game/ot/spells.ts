@@ -31,6 +31,29 @@ export type SpellFormula =
    */
   | { type: "tiro"; min: number; max: number };
 
+/**
+ * [nosso] A varinha no modelo do cavaleiro (24/11/2026, pedido do dono): o ataque normal do mago
+ * cresce com o magic level, como a espada com a skill e o arco com a distância, e as magias são
+ * a menor parte do dano (o renascimento cresce a árvore sem teto). A conta é a das magias do TFS
+ * (`level/5 + magicLevel·a + b`), com o dano da varinha no lugar do `b`: no TFS a varinha é fixa.
+ * Medido no level 60 de árvore cheia (scripts/rebirth-lab.ts): as magias ficam com 22% (druida) e
+ * 26% (feiticeiro) do dano, antes 93–94%; 400 renascimentos dão ×1,25, antes ×2,0 a ×2,4.
+ */
+export const WAND_ML: [number, number] = [8.5, 10];
+
+/** A faixa do tiro da varinha [nosso, ver WAND_ML]. */
+export function wandRange(
+  wand: { min: number; max: number },
+  level: number,
+  magicLevel: number,
+): [number, number] {
+  const l = level / 5;
+  return [
+    Math.trunc(l + magicLevel * WAND_ML[0] + wand.min),
+    Math.trunc(l + magicLevel * WAND_ML[1] + wand.max),
+  ];
+}
+
 /** Quanto tempo o desafio prende o monstro [TFS monster.cpp challengeCreature: 8000 ms]. */
 export const CHALLENGE_FOCUS_MS = 8000;
 

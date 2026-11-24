@@ -54,7 +54,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cripta-do-musgo",
     name: "Cripta do Musgo",
     minLevel: 1,
-    comfort: { group: 1, solo: { 1: 3, 2: 3, 3: 1, 4: 1 } },
+    comfort: { group: 1, solo: { 1: 2, 2: 2, 3: 1, 4: 1 } },
     blurb:
       "Ratos, esqueletos e a Matriarca do Musgo no fundo. A primeira descida.",
     stages: [
@@ -89,7 +89,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "toca-dos-javalis",
     name: "Toca dos Javalis",
     minLevel: 4,
-    comfort: { group: 4, solo: { 1: 5, 2: 6, 3: 4, 4: 4 } },
+    comfort: { group: 4, solo: { 1: 4, 2: 4, 3: 4, 4: 4 } },
     blurb: "Lobos, javalis e quem caça nas tocas. O Rei Javali guarda o fundo.",
     stages: [
       {
@@ -123,7 +123,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "galerias-afogadas",
     name: "Galerias Afogadas",
     minLevel: 8,
-    comfort: { group: 8, solo: { 1: 10, 2: 10, 3: 8, 4: 10 } },
+    comfort: { group: 8, solo: { 1: 8, 2: 8, 3: 8, 4: 10 } },
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
     stages: [
       {
@@ -157,7 +157,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "ninho-das-aranhas",
     name: "Ninho das Aranhas",
     minLevel: 13,
-    comfort: { group: 13, solo: { 1: 13, 2: 15, 3: 13, 4: 17 } },
+    comfort: { group: 13, solo: { 1: 13, 2: 13, 3: 13, 4: 17 } },
     blurb: "Teias, veneno e casulos. Fogo ajuda; a Rainha cura a si mesma.",
     stages: [
       {
@@ -194,7 +194,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    comfort: { group: 20, solo: { 1: 24, 2: 22, 3: 20, 4: 26 } },
+    comfort: { group: 20, solo: { 1: 24, 2: 20, 3: 20, 4: 26 } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [
@@ -229,7 +229,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "mina-assombrada",
     name: "Mina Assombrada",
     minLevel: 27,
-    comfort: { group: 27, solo: { 1: 34, 2: 31, 3: 34, 4: 46 } },
+    comfort: { group: 27, solo: { 1: 37, 2: 34, 3: 34, 4: 46 } },
     blurb:
       "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
     stages: [
@@ -264,7 +264,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "bosque-petrificado",
     name: "Bosque Petrificado",
     minLevel: 35,
-    comfort: { group: 35, solo: { 1: 35, 2: 35, 3: 35, 4: 50 } },
+    comfort: { group: 35, solo: { 1: 41, 2: 35, 3: 35, 4: 50 } },
     blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
     stages: [
       {
@@ -298,7 +298,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 45, solo: { 1: 81, 2: 66, 3: 63, 4: 78 } },
+    comfort: { group: 51, solo: { 1: null, 2: 75, 3: 63, 4: 78 } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -334,7 +334,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "abismo-gelado",
     name: "Abismo Gelado",
     minLevel: 55,
-    comfort: { group: 55, solo: { 1: 94, 2: 79, 3: 70, 4: 94 } },
+    comfort: { group: 55, solo: { 1: 91, 2: 73, 3: 70, 4: 94 } },
     blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
     stages: [
       { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },

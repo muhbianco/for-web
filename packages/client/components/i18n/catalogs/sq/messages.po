@@ -518,12 +518,20 @@ msgid "{m} min"
 msgstr ""
 
 #: components/space/game/itemUi.ts
-msgid "{min} a {max} de {e} por tiro"
+#~ msgid "{min} a {max} de {e} por tiro"
+#~ msgstr ""
+
+#: components/space/game/itemUi.ts
+msgid "{min} a {max} de {e} por tiro, mais {a} a {b} por magic level"
 msgstr ""
 
 #: components/space/game/itemUi.ts
-msgid "{min} a {max} de {e} por tiro; {mana} de mana"
+msgid "{min} a {max} de {e} por tiro, mais {a} a {b} por magic level; {mana} de mana"
 msgstr ""
+
+#: components/space/game/itemUi.ts
+#~ msgid "{min} a {max} de {e} por tiro; {mana} de mana"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{ms} ms/s"

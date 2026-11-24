@@ -70,7 +70,7 @@ import { rollLoot } from "./loot.ts";
 import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
 import { canShare, sharedExperience } from "./party.ts";
 import { lowLevelBonus } from "./progression.ts";
-import { spellRange } from "./spells.ts";
+import { spellRange, wandRange } from "./spells.ts";
 import { damageClass, itemAbsorb, monsterResist } from "./resist.ts";
 import { STAMINA, staminaMultiplier } from "./stamina.ts";
 
@@ -107,7 +107,7 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 10,
+  engine: 11,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -1097,8 +1097,10 @@ export function simulateRun(input: RunInput): RunResult {
       spendMana(h, w.wand.mana);
       const pct =
         h.d.magicPct[0] + (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
+      // [nosso] 24/11/2026: a faixa cresce com o magic level (spells.ts wandRange).
+      const [wMin, wMax] = wandRange(w.wand, h.h.level, h.h.magicLevel);
       const raw = Math.floor(
-        normalRandom(rng, w.wand.min, w.wand.max) * (1 + pct / 100) * h.refine,
+        normalRandom(rng, wMin, wMax) * (1 + pct / 100) * h.refine,
       );
       const r = monsterElement(m.def, w.wand.element, raw, "none");
       ev.push({
