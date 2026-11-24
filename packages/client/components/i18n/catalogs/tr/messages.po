@@ -8544,6 +8544,10 @@ msgstr "Doğrulandı"
 msgid "Verifying your account…"
 msgstr "Hesabınız doğrulanıyor…"
 
+#: components/space/SpacePage.tsx
+msgid "Versão nova do Muchat · Recarregar"
+msgstr ""
+
 #: components/app/interface/settings/user/Native.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Version:"

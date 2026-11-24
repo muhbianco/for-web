@@ -57,6 +57,7 @@ import { ServerHome } from "./interface/ServerHome";
 const SpacePage = lazy(() => import("@revolt/space/SpacePage"));
 import { ChannelPage } from "./interface/channels/ChannelPage";
 import "./serviceWorkerInterface";
+import "./staleBuild";
 import { watchBootSplash } from "./splash";
 
 attachDevtoolsOverlay();

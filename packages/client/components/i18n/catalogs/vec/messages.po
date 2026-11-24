@@ -8540,6 +8540,10 @@ msgstr ""
 msgid "Verifying your account…"
 msgstr "Drio verifegar to conta…"
 
+#: components/space/SpacePage.tsx
+msgid "Versão nova do Muchat · Recarregar"
+msgstr ""
+
 #: components/app/interface/settings/user/Native.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Version:"

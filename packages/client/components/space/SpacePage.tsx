@@ -39,6 +39,8 @@ import { LAYOUT_SECTIONS } from "@revolt/state/stores/Layout";
 import { Button, IconButton } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
+import { reloadForUpdate, staleBuild } from "../../src/staleBuild";
+
 import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
 import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
@@ -761,6 +763,16 @@ function ServerSpace(props: { serverId: string }) {
    */
   const actionChips = () => (
     <>
+          {/*
+            A tab from before a deploy can't load the dialogs it hasn't opened yet (the
+            files changed on the server): offer the reload here, where the taps fail.
+          */}
+          <Show when={staleBuild()}>
+            <PromptChip type="button" onClick={reloadForUpdate}>
+              <Symbol size={16}>refresh</Symbol>
+              {t`Versão nova do Muchat · Recarregar`}
+            </PromptChip>
+          </Show>
           <Show when={view() && (ui()?.rpg?.hero?.vocation ?? 0) !== 0}>
             <PromptChip
               type="button"
