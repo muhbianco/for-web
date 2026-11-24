@@ -88,11 +88,11 @@ export function effectText(e: NodeEffect, n: number, heal: boolean): string {
   const k = Math.max(1, n);
   switch (e.t) {
     case "power": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return heal ? t`+${pct}% de cura` : t`+${pct}% de dano`;
     }
     case "cost": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return t`−${pct}% de mana`;
     }
     case "cooldown": {
@@ -100,19 +100,19 @@ export function effectText(e: NodeEffect, n: number, heal: boolean): string {
       return t`−${s} s de recarga`;
     }
     case "targets": {
-      const m = e.n * k;
+      const m = num(e.n * k, 0);
       return t`acerta mais ${m} monstro(s) da sala`;
     }
     case "echo": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return t`um segundo golpe com ${pct}% do primeiro`;
     }
     case "leech": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return t`${pct}% do dano volta como vida`;
     }
     case "stun": {
-      const pct = Math.min(100, e.chance * k);
+      const pct = num(Math.min(100, e.chance * k));
       const s = num(e.ms / 1000);
       return t`${pct}% de chance de atrasar o ataque do monstro em ${s} s`;
     }
@@ -124,11 +124,11 @@ export function effectText(e: NodeEffect, n: number, heal: boolean): string {
       return t`vira ${name} (${mana} de mana)`;
     }
     case "trigger": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return t`cura mais cedo: +${pct} pontos no limite da vida`;
     }
     case "group": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return t`cura também o resto do grupo, com ${pct}% do valor`;
     }
     case "focus": {
@@ -136,7 +136,7 @@ export function effectText(e: NodeEffect, n: number, heal: boolean): string {
       return t`prende os monstros por mais ${s} s`;
     }
     case "guard": {
-      const pct = e.pct * k;
+      const pct = num(e.pct * k);
       return t`−${pct}% de dano recebido enquanto os monstros estão presos`;
     }
   }

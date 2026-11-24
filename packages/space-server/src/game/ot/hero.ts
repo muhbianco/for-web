@@ -38,6 +38,7 @@ import {
   freshStats,
   jobTier,
   reqPointTries,
+  rebirthScale,
   resetCost,
   statPointsFree,
   statPointsSpent,
@@ -129,6 +130,11 @@ export interface RpgHeroDoc {
   experience: number;
   health_max: number;
   mana_max: number;
+  /**
+   * A mana de um level já entrou (24/11/2026): no TFS a mana começa em 0 e só cresce do level 2,
+   * e o mago de level 1 não lançava nada nem bebia poção de mana (máximo 0).
+   */
+  mana_base?: boolean;
   cap: number;
   skills: Record<SkillId, SkillState>;
   magic: MagicState;
@@ -317,6 +323,11 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (x.bank && x.bank.ms < TRAINING.maxBankMs) x.bank = { ms: TRAINING.maxBankMs, at: x.bank.at };
   if (!Array.isArray(x.loot_skip)) x.loot_skip = [];
   if (!validMastery(x.mastery)) x.mastery = {};
+  // O herói de antes ganha a mana de um level uma vez (no level 1 ela era 0; mana_base).
+  if (x.vocation !== 0 && !x.mana_base) {
+    x.mana_max += VOCATIONS[x.vocation].gainMana;
+    x.mana_base = true;
+  }
   if (!Number.isInteger(x.rebirths) || x.rebirths < 0) x.rebirths = 0;
   // Versão 3: o herói de antes começa com os atributos em 1 e os pontos do level livres.
   if (!validStats(x.stats, x.level)) x.stats = freshStats();
@@ -548,6 +559,9 @@ export function applyVocation(d: RpgHeroDoc, vocation: VocationId): RpgOutcome {
   if (vocation < 1 || vocation > 4)
     return { ok: false, reason: "bad_vocation" };
   d.vocation = vocation;
+  // A mana de um level, já no 1 (24/11/2026; mana_base).
+  d.mana_max += VOCATIONS[vocation].gainMana;
+  d.mana_base = true;
   const kit = starterInventory(VOCATIONS[vocation].base);
   // O que já estava na bolsa continua (o herói sem vocação não ganha nada, mas por garantia).
   for (const x of d.inv.pack) kit.pack.push({ ...x });
@@ -964,7 +978,7 @@ export function creditTraining(
   if (creditedSeconds === t.creditedSeconds) return false;
   t.creditedSeconds = creditedSeconds;
   if (t.skill === "habilidade") {
-    d.points = addPointTries(d.points, gain.main);
+    d.points = addPointTries(d.points, gain.main, rebirthScale(d.rebirths));
     return true;
   }
   if (t.skill === "magia") d.magic = addManaSpent(voc, d.magic, gain.main);
@@ -1067,7 +1081,7 @@ export function rpgHeroView(
       earned: d.points.points,
       free: freeSkillPoints(d),
       tries: d.points.tries,
-      next: reqPointTries(d.points.points + 1),
+      next: reqPointTries(d.points.points + 1, rebirthScale(d.rebirths)),
     },
     job: heroTier(d),
     resets: { ...d.resets },

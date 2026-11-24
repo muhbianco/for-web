@@ -43,6 +43,16 @@ msgstr "dddd [at] LT"
 msgid " · abaixo do nível {0}"
 msgstr " · abaixo do nível {0}"
 
+#. placeholder {0}: num(m() * MASTERY_PCT)
+#: components/space/game/SkillTree.tsx
+msgid " · maestria: +{0}% de poder na habilidade"
+msgstr " · maestria: +{0}% de poder na habilidade"
+
+#. placeholder {0}: num(m() * MASTERY_PCT)
+#: components/space/game/SkillTree.tsx
+msgid " · maestria: +{0}% em cada ponto"
+msgstr " · maestria: +{0}% em cada ponto"
+
 #: components/space/game/itemUi.ts
 msgid " ou "
 msgstr " ou "
@@ -861,8 +871,13 @@ msgid "A armadura de {b} segurou {a}"
 msgstr "A armadura de {b} segurou {a}"
 
 #: components/space/game/NpcDialog.tsx
-msgid "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render {MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro."
-msgstr "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render {MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro."
+#~ msgid "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render {MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro."
+#~ msgstr "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render {MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro."
+
+#. placeholder {0}: num(MASTERY_PCT)
+#: components/space/game/NpcDialog.tsx
+msgid "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam). Escolha UM adereço de UMA habilidade: cada ponto dele rende {0}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o treino de habilidade fica 1% mais lento a cada renascimento."
+msgstr "A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam). Escolha UM adereço de UMA habilidade: cada ponto dele rende {0}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o treino de habilidade fica 1% mais lento a cada renascimento."
 
 #: components/space/game/NpcDialog.tsx
 msgid "A árvore precisa estar cheia: todos os adereços da sua classe no último ponto."
@@ -1091,8 +1106,8 @@ msgid "Add status text"
 msgstr "Add status text"
 
 #: components/space/game/NpcDialog.tsx
-msgid "Adereço"
-msgstr "Adereço"
+#~ msgid "Adereço"
+#~ msgstr "Adereço"
 
 #: components/space/game/NpcDialog.tsx
 msgid "Adereço que ganha a maestria"
@@ -2048,6 +2063,10 @@ msgstr "Chegue mais perto do dummy para treinar."
 msgid "Chegue mais perto para falar."
 msgstr "Chegue mais perto para falar."
 
+#: components/space/game/TvMenu.tsx
+msgid "Cheio"
+msgstr "Cheio"
+
 #: components/auth/src/flows/FlowLogin.tsx
 msgid "Choose a username"
 msgstr "Choose a username"
@@ -2203,8 +2222,8 @@ msgstr "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas 
 
 #. placeholder {0}: h().rebirths ?? 0
 #: components/space/game/NpcDialog.tsx
-msgid "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
-msgstr "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
+#~ msgid "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
+#~ msgstr "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
 
 #: components/space/game/labels.ts
 #~ msgid "Combate"
@@ -3486,8 +3505,8 @@ msgstr "Equipamento"
 #~ msgstr "Equipar"
 
 #: components/space/game/NpcDialog.tsx
-msgid "Escolha"
-msgstr "Escolha"
+#~ msgid "Escolha"
+#~ msgstr "Escolha"
 
 #: components/space/game/NpcDialog.tsx
 msgid "Escolha a vocação do seu herói num dummy de treino primeiro."
@@ -3649,8 +3668,12 @@ msgid "Esse adereço já está no máximo."
 msgstr "Esse adereço já está no máximo."
 
 #: components/space/game/NpcDialog.tsx
-msgid "Esse adereço não ganha maestria (só os de número: força, economia, recarga...)."
-msgstr "Esse adereço não ganha maestria (só os de número: força, economia, recarga...)."
+#~ msgid "Esse adereço não ganha maestria (só os de número: força, economia, recarga...)."
+#~ msgstr "Esse adereço não ganha maestria (só os de número: força, economia, recarga...)."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Esse adereço não ganha maestria."
+msgstr "Esse adereço não ganha maestria."
 
 #: components/space/game/rpgUi.ts
 #~ msgid "Esse atributo já está no máximo (99)."
@@ -3841,11 +3864,20 @@ msgstr "Falhou: a arma voltou para +{to}."
 msgid "Falta level para a evolução."
 msgstr "Falta level para a evolução."
 
+#: components/space/game/NpcDialog.tsx
+msgid "Falta: chegar à 3ª classe."
+msgstr "Falta: chegar à 3ª classe."
+
 #. placeholder {0}: money(-left())
 #. placeholder {0}: money(cost() - carried() - bank())
 #: components/space/game/NpcDialog.tsx
 msgid "Faltam {0}"
 msgstr "Faltam {0}"
+
+#. placeholder {0}: missing()
+#: components/space/game/NpcDialog.tsx
+msgid "Faltam {0} pontos na árvore."
+msgstr "Faltam {0} pontos na árvore."
 
 #: components/space/game/rpgUi.ts
 msgid "Faltam pontos para isso."
@@ -4641,6 +4673,10 @@ msgstr "level {lv}"
 msgid "Level + AGI contra o acerto do monstro (2 × o level dele). Cai com 3 ou mais monstros em cima."
 msgstr "Level + AGI contra o acerto do monstro (2 × o level dele). Cai com 3 ou mais monstros em cima."
 
+#: components/space/game/TvMenu.tsx
+msgid "Level baixo"
+msgstr "Level baixo"
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Libera 30 dias de VIP."
 msgstr "Libera 30 dias de VIP."
@@ -4785,6 +4821,11 @@ msgstr "Machado"
 #: components/space/game/labels.ts
 #~ msgid "Madeira"
 #~ msgstr "Madeira"
+
+#. placeholder {0}: m()
+#: components/space/game/NpcDialog.tsx
+msgid "Maestria {0}"
+msgstr "Maestria {0}"
 
 #. placeholder {0}: m()
 #. placeholder {1}: num(m() * MASTERY_PCT)
@@ -5299,6 +5340,12 @@ msgstr "My Account"
 msgid "My Bots"
 msgstr "My Bots"
 
+#. placeholder {0}: num(MASTERY_PCT)
+#. placeholder {1}: h().rebirths ?? 0
+#: components/space/game/NpcDialog.tsx
+msgid "Na 3ª classe, com a árvore inteira cheia (todos os adereços das três classes no último ponto), a árvore pode renascer: ela e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e você escolhe UM adereço de UMA habilidade para render {0}% a mais por ponto, para sempre. Cada renascimento deixa o treino de habilidade 1% mais lento. {1} renascimentos até agora."
+msgstr "Na 3ª classe, com a árvore inteira cheia (todos os adereços das três classes no último ponto), a árvore pode renascer: ela e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e você escolhe UM adereço de UMA habilidade para render {0}% a mais por ponto, para sempre. Cada renascimento deixa o treino de habilidade 1% mais lento. {1} renascimentos até agora."
+
 #: components/space/game/SkillTree.tsx
 msgid "Na dungeon: a árvore volta quando a corrida acabar."
 msgstr "Na dungeon: a árvore volta quando a corrida acabar."
@@ -5729,6 +5776,11 @@ msgstr "O que os atributos dão"
 #: components/space/DecorPanel.tsx
 #~ msgid "O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão \"Aventura\". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
 #~ msgstr "O RPG do Espaço: cada pessoa tem um herói, treina e sai em expedições pelo botão \"Aventura\". Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
+
+#. placeholder {0}: blindLeft()
+#: components/space/game/RunPanel.tsx
+msgid "O servidor do jogo reiniciou no meio desta corrida e não consegue mostrar a luta. O resultado já está decidido e sai em {0}."
+msgstr "O servidor do jogo reiniciou no meio desta corrida e não consegue mostrar a luta. O resultado já está decidido e sai em {0}."
 
 #: components/space/game/rpgUi.ts
 msgid "O tempo do grupo acabou. Monte de novo."
@@ -6392,6 +6444,10 @@ msgstr "Quantidade de {0}"
 msgid "Quem decora, configura objetos e controla a TV agora é definido nos cargos do servidor (grupo \"Espaço\") e, para cada sala, nas permissões do canal dela. Quem gerencia o servidor sempre pode decorar."
 msgstr "Quem decora, configura objetos e controla a TV agora é definido nos cargos do servidor (grupo \"Espaço\") e, para cada sala, nas permissões do canal dela. Quem gerencia o servidor sempre pode decorar."
 
+#: components/space/game/TvMenu.tsx
+msgid "Quem entra agora vai na próxima corrida."
+msgstr "Quem entra agora vai na próxima corrida."
+
 #. placeholder {0}: room.title
 #: components/space/SpacePage.tsx
 msgid "Quem está em {0}"
@@ -6703,6 +6759,10 @@ msgstr "Renascer"
 #: components/space/game/NpcDialog.tsx
 msgid "Renascer a árvore"
 msgstr "Renascer a árvore"
+
+#: components/space/game/NpcDialog.tsx
+msgid "Renascer a árvore só na 3ª classe, com a árvore inteira cheia."
+msgstr "Renascer a árvore só na 3ª classe, com a árvore inteira cheia."
 
 #: components/space/game/LobbyChip.tsx
 #: components/space/game/TvMenu.tsx

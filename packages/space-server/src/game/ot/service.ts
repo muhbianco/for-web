@@ -119,7 +119,8 @@ export interface RpgHost {
     dungeon: string,
     member: RpgLobbyMember,
   ): LobbyResult;
-  lobbyJoin(tv: string, member: RpgLobbyMember): LobbyResult;
+  /** No grupo `id` da TV (sem id: o primeiro da TV com vaga). */
+  lobbyJoin(tv: string, id: string | undefined, member: RpgLobbyMember): LobbyResult;
   lobbyLeave(userId: string): void;
   /** O líder começa; `auto`: pelo loop (a sala não recebe o aviso de novo a cada corrida). */
   lobbyStart(userId: string, auto?: boolean): LobbyResult;
@@ -127,15 +128,14 @@ export interface RpgHost {
   lobbyDisband(userId: string): LobbyResult;
   lobbyDungeon(userId: string, dungeon: string): LobbyResult;
   lobbyLoop(userId: string, on: boolean): LobbyResult;
-  lobbyRunning(tv: string, runId: string): void;
-  lobbyAbort(tv: string): void;
+  lobbyRunning(id: string, runId: string): void;
+  lobbyAbort(id: string): void;
   lobbyRunEnded(
-    tv: string,
     runId: string,
     outcome: RunOutcome,
     levels: Record<string, number>,
   ): void;
-  lobbyLoopFailed(tv: string, why: RpgLoopStop, detail?: string): void;
+  lobbyLoopFailed(id: string, why: RpgLoopStop, detail?: string): void;
   /** No mapa agora ou dentro do tempo de reconexão. */
   isPresent(userId: string): boolean;
   /** O grupo em que a pessoa está, sem mexer nele (para validar antes de começar). */
@@ -483,13 +483,13 @@ export class RpgService {
         const res =
           cmd.t === "rpg.lobby.create"
             ? host.lobbyCreate(cmd.d.tv, spot.room, cmd.d.dungeon, member)
-            : host.lobbyJoin(cmd.d.tv, member);
+            : host.lobbyJoin(cmd.d.tv, cmd.d.id, member);
         if (!res.ok) return fail("rpg_invalid", res.reason);
         return session.send({
           v: 1,
           t: "rpg.lobby",
           re: cmd.id,
-          d: { tv: res.lobby.tv, lobby: lobbyView(res.lobby) },
+          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
         });
       }
       case "rpg.run.leave": {
@@ -518,7 +518,7 @@ export class RpgService {
         // O loop do grupo para: a próxima traria de volta quem acabou de sair.
         const lobby = host.lobbyOf(userId);
         if (lobby && lobby.runId === runId && lobby.loop)
-          host.lobbyLoopFailed(lobby.tv, "retreat");
+          host.lobbyLoopFailed(lobby.id, "retreat");
         // Todos saíram: a corrida acaba agora (fora desta fila: o fechamento usa as filas).
         if (run.doc.heroes.every((h) => run.left.has(h.userId)))
           void this.settleRunDoc(run);
@@ -531,7 +531,7 @@ export class RpgService {
           v: 1,
           t: "rpg.lobby",
           re: cmd.id,
-          d: { tv: res.lobby.tv, lobby: lobbyView(res.lobby) },
+          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
         });
       }
       case "rpg.lobby.loop": {
@@ -546,7 +546,7 @@ export class RpgService {
           v: 1,
           t: "rpg.lobby",
           re: cmd.id,
-          d: { tv: res.lobby.tv, lobby: lobbyView(res.lobby) },
+          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
         });
       }
       case "rpg.lobby.leave": {
@@ -778,6 +778,7 @@ export class RpgService {
           re: cmd.id,
           d: {
             tv: res.lobby.tv,
+            id: res.lobby.id,
             // O grupo fica montado (24/11/2026), agora correndo.
             lobby: lobbyView(res.lobby),
             ended: "started",
@@ -837,27 +838,27 @@ export class RpgService {
    * Ninguém do grupo no mapa (nem reconectando): o loop para, em vez de correr sozinho para
    * sempre. Não conseguiu começar (level, alguém em outra corrida): para, com o motivo.
    */
-  loopDue(host: RpgHost, leader: string, tv: string): void {
+  loopDue(host: RpgHost, leader: string, lobbyId: string): void {
     this.enqueue(
       leader,
       async () => {
         const lobby = host.lobbyOf(leader);
-        if (!lobby || lobby.tv !== tv || lobby.leader !== leader) return;
+        if (!lobby || lobby.id !== lobbyId || lobby.leader !== leader) return;
         if (!lobby.members.some((m) => host.isPresent(m.user_id))) {
-          host.lobbyLoopFailed(tv, "offline");
+          host.lobbyLoopFailed(lobbyId, "offline");
           return;
         }
         const started = await this.startRun(host, leader, true);
         if (!started.ok) {
-          host.lobbyLoopFailed(tv, "start_failed", started.reason ?? started.code);
+          host.lobbyLoopFailed(lobbyId, "start_failed", started.reason ?? started.code);
           this.log.info("rpg lobby loop stopped", {
             server: host.serverId,
-            tv,
+            tv: lobby.tv,
             reason: started.reason ?? started.code,
           });
         }
       },
-      () => host.lobbyLoopFailed(tv, "start_failed", "internal"),
+      () => host.lobbyLoopFailed(lobbyId, "start_failed", "internal"),
     );
   }
 
@@ -929,10 +930,10 @@ export class RpgService {
       await this.runStore.create(doc);
     } catch (err) {
       this.log.error("rpg run create failed", { err: String(err) });
-      host.lobbyAbort(res.lobby.tv);
+      host.lobbyAbort(res.lobby.id);
       return { ok: false, code: "internal" };
     }
-    host.lobbyRunning(res.lobby.tv, doc._id);
+    host.lobbyRunning(res.lobby.id, doc._id);
     const mark = { id: doc._id, dungeon: dungeon.id, ends_at: doc.ends_at };
     await Promise.all(
       members.map(async (m) => {
@@ -1063,7 +1064,9 @@ export class RpgService {
               potions: potionsAt(run.doc.heroes, frames, sec),
               exp: expAt(run.doc.heroes.length, frames, sec),
             }
-          : {}),
+          : end
+            ? {}
+            : { blind: true }),
         ...(end ? { end } : {}),
       },
     };
@@ -1129,7 +1132,7 @@ export class RpgService {
       await this.runStore.settle(doc._id, now);
       this.active.delete(doc._id);
       // O grupo fica pronto para a próxima (e o loop marca a próxima, se ligado).
-      host?.lobbyRunEnded(doc.tv, doc._id, abandoned ? "retirada" : doc.outcome, levels);
+      host?.lobbyRunEnded(doc._id, abandoned ? "retirada" : doc.outcome, levels);
       const end: RpgRunEndView = {
         outcome: abandoned ? "retirada" : doc.outcome,
         members: doc.heroes.map((h, i) => {

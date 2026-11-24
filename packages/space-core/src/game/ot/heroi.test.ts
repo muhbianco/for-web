@@ -314,3 +314,17 @@ test("maestria: cada vez escolhido, o adereço rende 0,5% a mais por ponto; alvo
     abilityNow(ray, t2).targets,
   );
 });
+
+test("cada renascimento deixa o treino de habilidade 1% mais lento, um sobre o outro", async () => {
+  const { reqPointTries, rebirthScale, addPointTries } = await import("./training.ts");
+  assert.equal(rebirthScale(0), 1);
+  assert.ok(Math.abs(rebirthScale(1) - 1.01) < 1e-12);
+  assert.ok(Math.abs(rebirthScale(2) - 1.0201) < 1e-12, "composto");
+  // O ponto 30 pede 1% a mais com um renascimento.
+  assert.equal(reqPointTries(30, rebirthScale(1)), Math.floor(50 * Math.pow(1.1, 29) * 1.01));
+  assert.ok(reqPointTries(30, rebirthScale(1)) > reqPointTries(30));
+  // As mesmas tentativas rendem um pouco menos depois de renascer.
+  const plain = addPointTries({ points: 0, tries: 0 }, 50_000);
+  const slower = addPointTries({ points: 0, tries: 0 }, 50_000, rebirthScale(10));
+  assert.ok(slower.points < plain.points || (slower.points === plain.points && slower.tries < plain.tries));
+});

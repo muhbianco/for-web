@@ -73,11 +73,19 @@ export const RpgLobbyCreateCmd = z.object({
     .strict(),
 });
 
-/** Entra no grupo da TV `tv` (ao lado dela). */
+/**
+ * Entra no grupo `id` da TV `tv` (ao lado dela). Sem `id`: o primeiro grupo da TV com vaga,
+ * fora de corrida (uma TV tem vários grupos desde 24/11/2026).
+ */
 export const RpgLobbyJoinCmd = z.object({
   ...env,
   t: z.literal("rpg.lobby.join"),
-  d: z.object({ tv: z.string().min(1).max(40) }).strict(),
+  d: z
+    .object({
+      tv: z.string().min(1).max(40),
+      id: z.string().min(1).max(64).optional(),
+    })
+    .strict(),
 });
 
 /**
@@ -464,6 +472,8 @@ export type RpgLoopStop =
  * primeira corrida, "running" com uma corrida rolando, "ready" entre uma e outra.
  */
 export interface RpgLobbyView {
+  /** O grupo (uma TV tem vários desde 24/11/2026). */
+  id: string;
   tv: string;
   room: string;
   dungeon: string;
@@ -496,6 +506,8 @@ export interface RpgLobbyEvent {
   t: "rpg.lobby";
   d: {
     tv: string;
+    /** O grupo do evento (com `lobby` null: o que acabou). */
+    id?: string;
     lobby: RpgLobbyView | null;
     ended?: "started" | "cancelled" | "expired";
     started?: { dungeon: string; members: RpgLobbyMember[] };
@@ -577,6 +589,11 @@ export interface RpgRunEvent {
     potions?: PotionCounts[];
     /** A experiência crua de cada herói até `frame` (a barra da tela; entra no fim). */
     exp?: number[];
+    /**
+     * Sem quadros (24/11/2026): a corrida começou antes de um reinício que mudou as regras; o
+     * resultado já está gravado e sai no fim, mas a luta não dá para mostrar.
+     */
+    blind?: boolean;
     end?: RpgRunEndView;
   };
 }

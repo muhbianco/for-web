@@ -103,6 +103,21 @@ export default function RunPanel(props: {
     return l;
   };
   const partyLeader = () => party()?.leader === props.myId;
+  // A corrida sem quadros (começou antes de um reinício): a contagem até o resultado.
+  const [blindNow, setBlindNow] = createSignal(Date.now());
+  createEffect(() => {
+    if (!props.state.blind || props.state.end) return;
+    setBlindNow(Date.now());
+    const id = setInterval(() => setBlindNow(Date.now()), 1000);
+    onCleanup(() => clearInterval(id));
+  });
+  const blindLeft = () => {
+    const s = Math.max(
+      0,
+      Math.ceil((props.state.run.ends_at - blindNow()) / 1000),
+    );
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  };
   const [nowMs, setNowMs] = createSignal(Date.now());
   createEffect(() => {
     const l = party();
@@ -591,6 +606,16 @@ export default function RunPanel(props: {
             }
           </For>
         </Loot>
+
+        {/* Sem quadros: a corrida começou antes de um reinício do servidor (24/11/2026). */}
+        <Show when={props.state.blind && !end()}>
+          <Blind role="status">
+            <Symbol size={20}>update</Symbol>
+            <span>
+              {t`O servidor do jogo reiniciou no meio desta corrida e não consegue mostrar a luta. O resultado já está decidido e sai em ${blindLeft()}.`}
+            </span>
+          </Blind>
+        </Show>
 
         {/* O fim: o resultado e o que cada um levou, por cima da cena. */}
         <Show when={end()}>
@@ -1104,6 +1129,27 @@ const Clock = styled("span", {
     borderRadius: "999px",
     background: "rgba(14, 12, 10, 0.72)",
     fontSize: "0.75rem",
+    fontVariantNumeric: "tabular-nums",
+  },
+});
+
+const Blind = styled("div", {
+  base: {
+    position: "absolute",
+    left: "50%",
+    top: "42%",
+    transform: "translate(-50%, -50%)",
+    zIndex: 4,
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    maxWidth: "min(460px, 86%)",
+    padding: "12px 16px",
+    borderRadius: "10px",
+    background: "rgba(14, 12, 10, 0.88)",
+    boxShadow: "0 0 0 1px rgba(217, 180, 90, 0.5)",
+    fontSize: "0.9em",
+    lineHeight: 1.4,
     fontVariantNumeric: "tabular-nums",
   },
 });

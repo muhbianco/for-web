@@ -9,6 +9,7 @@ import {
   addSkillTries,
   JOB_NAMES,
   reqPointTries,
+  rebirthScale,
   reqMana,
   reqSkillTries,
   TRAINING,
@@ -189,12 +190,19 @@ export function projectTraining(
   const shield = { ...sh, next: reqSkillTries(voc, "escudo", sh.level + 1) };
   if (tr.skill === "habilidade") {
     // Treino de habilidade (24/11/2026): o "nível" é o total de pontos ganhos.
+    // Cada renascimento deixa o treino 1% mais lento (training.ts rebirthScale).
+    const scale = rebirthScale(hero.rebirths ?? 0);
     const p = addPointTries(
       { points: hero.skill_points.earned, tries: hero.skill_points.tries },
       gain.main,
+      scale,
     );
     return {
-      skill: { level: p.points, tries: p.tries, next: reqPointTries(p.points + 1) },
+      skill: {
+        level: p.points,
+        tries: p.tries,
+        next: reqPointTries(p.points + 1, scale),
+      },
       shield,
       remainingMs,
     };

@@ -9,6 +9,8 @@ import {
   EVOLUTION,
   JOB_NAMES,
   MASTERY_PCT,
+  isShapeNode,
+  masteryFactor,
   treeOf,
   treePointsSpent,
   VOCATIONS,
@@ -138,9 +140,29 @@ export function SkillTree(props: {
                                       )}
                                     </Show>
                                     <NodeText>
+                                      {/* Com a maestria, o efeito já cresce (24/11/2026). */}
                                       {rank() > 0
-                                        ? effectText(node.effect, rank(), heal)
+                                        ? effectText(
+                                            node.effect,
+                                            isShapeNode(node.id)
+                                              ? rank()
+                                              : rank() *
+                                                  masteryFactor(
+                                                    props.hero.mastery,
+                                                    node.id,
+                                                  ),
+                                            heal,
+                                          )
                                         : effectText(node.effect, 1, heal)}
+                                      <Show when={props.hero.mastery?.[node.id]}>
+                                        {(m) => (
+                                          <MasteryNote>
+                                            {isShapeNode(node.id)
+                                              ? t` · maestria: +${num(m() * MASTERY_PCT)}% de poder na habilidade`
+                                              : t` · maestria: +${num(m() * MASTERY_PCT)}% em cada ponto`}
+                                          </MasteryNote>
+                                        )}
+                                      </Show>
                                       <Show
                                         when={
                                           node.ranks > 1 && rank() < node.ranks
@@ -261,6 +283,10 @@ const Node = styled("div", {
       boxShadow: "inset 3px 0 0 var(--md-sys-color-primary)",
     },
   },
+});
+
+const MasteryNote = styled("span", {
+  base: { color: "#ffd66b" },
 });
 
 const Mastery = styled("span", {

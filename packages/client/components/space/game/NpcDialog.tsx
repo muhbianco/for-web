@@ -8,6 +8,7 @@ import {
   type JobTier,
   type RpgHeroView,
   type Slot,
+  abilitiesOf,
   abilityDef,
   canDrink,
   cannotEvolve,
@@ -15,7 +16,6 @@ import {
   EVOLUTION,
   itemDef,
   MASTERY_PCT,
-  masteryNode,
   MERCHANT_OFFERS,
   merchantBuys,
   REFINE_MAX,
@@ -46,6 +46,7 @@ import {
   statsLine,
 } from "./itemUi";
 import { useModalKeys } from "./modalKeys";
+import { effectText, num } from "./heroUi";
 import { className, rpgLabels, vocationName } from "./rpgUi";
 
 /**
@@ -151,8 +152,10 @@ export default function NpcDialog(props: {
         return t`Essa arma já está no +${REFINE_MAX}.`;
       case "not_full":
         return t`A árvore precisa estar cheia: todos os adereços da sua classe no último ponto.`;
+      case "not_last_tier":
+        return t`Renascer a árvore só na 3ª classe, com a árvore inteira cheia.`;
       case "not_mastery":
-        return t`Esse adereço não ganha maestria (só os de número: força, economia, recarga...).`;
+        return t`Esse adereço não ganha maestria.`;
       case "not_node":
       case "not_class":
         return t`Escolha um adereço da sua classe.`;
@@ -927,82 +930,99 @@ export default function NpcDialog(props: {
                     )}
                   </Show>
                   <strong>{t`Renascer a árvore`}</strong>
-                  <Show
-                    when={treeFull(
-                      h().tree,
-                      VOCATIONS[h().vocation].base,
-                      tier(),
-                    )}
-                    fallback={
-                      <Muted>
-                        {t`Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render ${MASTERY_PCT}% a mais por ponto, para sempre. ${h().rebirths ?? 0} renascimentos até agora.`}
-                      </Muted>
-                    }
-                  >
-                    {(_) => {
-                      const options = () =>
-                        TREE.filter(
-                          (n) =>
-                            abilityDef(n.ability)?.cls ===
-                              VOCATIONS[h().vocation].base &&
-                            n.tier <= tier() &&
-                            masteryNode(n.id),
-                        );
-                      const label = (id: string) => {
-                        const n = TREE.find((x) => x.id === id);
-                        const m = h().mastery?.[id] ?? 0;
-                        const ab = n ? (abilityDef(n.ability)?.name ?? "") : "";
-                        return m > 0
-                          ? `${ab} · ${n?.name ?? id} (maestria ${m})`
-                          : `${ab} · ${n?.name ?? id}`;
-                      };
-                      return (
-                        <>
-                          <Muted>
-                            {t`A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam); o adereço escolhido passa a render ${MASTERY_PCT}% a mais por ponto, para sempre. Não custa ouro.`}
-                          </Muted>
-                          <Field>
-                            <span>{t`Adereço`}</span>
-                            <select
-                              value={node()}
-                              aria-label={t`Adereço que ganha a maestria`}
-                              onChange={(e) => {
-                                setConfirm(null);
-                                setNode(e.currentTarget.value);
-                              }}
-                            >
-                              <option value="">{t`Escolha`}</option>
-                              <For each={options()}>
-                                {(n) => (
-                                  <option value={n.id}>{label(n.id)}</option>
-                                )}
-                              </For>
-                            </select>
-                          </Field>
-                          <Row>
-                            <Button
-                              size="xs"
-                              variant="filled"
-                              isDisabled={busy() || inRun() || !node()}
-                              onPress={() => {
-                                if (confirm() !== "rebirth")
-                                  return setConfirm("rebirth");
-                                send(
-                                  "rpg.rebirth",
-                                  { node: node() },
-                                  t`A árvore renasceu.`,
-                                );
-                              }}
-                            >
-                              {confirm() === "rebirth"
-                                ? t`Confirmar: renascer a árvore`
-                                : t`Renascer`}
-                            </Button>
-                          </Row>
-                        </>
+                  {(() => {
+                    // 24/11/2026: só na 3ª classe e com a árvore inteira cheia; escolhe UM
+                    // adereço de UMA habilidade (qualquer um: força, economia, flecha perfurante...).
+                    const cls = () => VOCATIONS[h().vocation].base;
+                    const missing = () =>
+                      TREE.filter((n) => abilityDef(n.ability)?.cls === cls()).reduce(
+                        (a, n) => a + Math.max(0, n.ranks - (h().tree[n.id] ?? 0)),
+                        0,
                       );
-                    }}
-                  </Show>
+                    const ready = () =>
+                      tier() === 3 && treeFull(h().tree, cls(), 3);
+                    return (
+                      <Show
+                        when={ready()}
+                        fallback={
+                          <>
+                            <Muted>
+                              {t`Na 3ª classe, com a árvore inteira cheia (todos os adereços das três classes no último ponto), a árvore pode renascer: ela e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e você escolhe UM adereço de UMA habilidade para render ${num(MASTERY_PCT)}% a mais por ponto, para sempre. Cada renascimento deixa o treino de habilidade 1% mais lento. ${h().rebirths ?? 0} renascimentos até agora.`}
+                            </Muted>
+                            <Muted data-status="">
+                              {tier() < 3
+                                ? t`Falta: chegar à 3ª classe.`
+                                : t`Faltam ${missing()} pontos na árvore.`}
+                            </Muted>
+                          </>
+                        }
+                      >
+                        <Muted>
+                          {t`A árvore está cheia. Renascer zera a árvore e os pontos de habilidade ganhos (os livres ficam). Escolha UM adereço de UMA habilidade: cada ponto dele rende ${num(MASTERY_PCT)}% a mais, para sempre; nos de forma (como Flecha perfurante), é o poder da habilidade. Não custa ouro, mas o treino de habilidade fica 1% mais lento a cada renascimento.`}
+                        </Muted>
+                        <Picker
+                          role="radiogroup"
+                          aria-label={t`Adereço que ganha a maestria`}
+                        >
+                          <For each={abilitiesOf(cls())}>
+                            {(ab) => (
+                              <fieldset>
+                                <legend>{ab.name}</legend>
+                                <For each={TREE.filter((n) => n.ability === ab.id)}>
+                                  {(n) => {
+                                    const m = () => h().mastery?.[n.id] ?? 0;
+                                    const heal =
+                                      ab.kind === "cura" || ab.kind === "cura-outro";
+                                    return (
+                                      <label data-on={node() === n.id ? "" : undefined}>
+                                        <input
+                                          type="radio"
+                                          name="rpg-mastery"
+                                          value={n.id}
+                                          checked={node() === n.id}
+                                          onChange={() => {
+                                            setConfirm(null);
+                                            setNode(n.id);
+                                          }}
+                                        />
+                                        <span>
+                                          <strong>{n.name}</strong>{" "}
+                                          <Muted>{effectText(n.effect, 1, heal)}</Muted>
+                                          <Show when={m() > 0}>
+                                            <Star title={t`Maestria ${m()}`}>{`★${m()}`}</Star>
+                                          </Show>
+                                        </span>
+                                      </label>
+                                    );
+                                  }}
+                                </For>
+                              </fieldset>
+                            )}
+                          </For>
+                        </Picker>
+                        <Row>
+                          <Button
+                            size="xs"
+                            variant="filled"
+                            isDisabled={busy() || inRun() || !node()}
+                            onPress={() => {
+                              if (confirm() !== "rebirth")
+                                return setConfirm("rebirth");
+                              send(
+                                "rpg.rebirth",
+                                { node: node() },
+                                t`A árvore renasceu.`,
+                              );
+                            }}
+                          >
+                            {confirm() === "rebirth"
+                              ? t`Confirmar: renascer a árvore`
+                              : t`Renascer`}
+                          </Button>
+                        </Row>
+                      </Show>
+                    );
+                  })()}
                   <strong>{t`Redistribuir`}</strong>
                   <Muted>
                     {t`Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level.`}
@@ -1376,6 +1396,39 @@ const Qty = styled("input", {
     color: "inherit",
     "@media (pointer: coarse)": { minHeight: "44px", width: "76px" },
   },
+});
+
+const Picker = styled("div", {
+  base: {
+    display: "grid",
+    gap: "8px",
+    maxHeight: "320px",
+    overflowY: "auto",
+    "& fieldset": {
+      margin: 0,
+      padding: "6px 8px",
+      border: "1px solid rgba(217, 180, 90, 0.25)",
+      borderRadius: "8px",
+      display: "grid",
+      gap: "2px",
+    },
+    "& legend": { padding: "0 4px", fontWeight: 600 },
+    "& label": {
+      display: "grid",
+      gridTemplateColumns: "auto 1fr",
+      gap: "8px",
+      alignItems: "start",
+      padding: "4px 6px",
+      borderRadius: "6px",
+      cursor: "pointer",
+    },
+    "& label[data-on]": { background: "rgba(217, 180, 90, 0.18)" },
+    "& input": { marginTop: "3px", accentColor: "#d9b45a" },
+  },
+});
+
+const Star = styled("span", {
+  base: { marginLeft: "6px", color: "#ffd66b", fontWeight: 600 },
 });
 
 const Field = styled("label", {

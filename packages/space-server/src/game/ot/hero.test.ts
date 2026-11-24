@@ -625,27 +625,58 @@ test("refino no Ferreiro: só a arma empunhada, até +10; até o +4 não falha, 
   assert.deepEqual(refineWeapon(d, 0, 0), { ok: false, reason: "no_money" });
 });
 
-test("renascimento da árvore: só cheia; zera a árvore e os pontos ganhos; o adereço ganha maestria", async () => {
+test("renascimento da árvore: só na 3ª classe e com a árvore inteira cheia; qualquer adereço de uma habilidade ganha a maestria", async () => {
   const { rebirthTree, heroRunSnapshot } = await import("./hero.ts");
-  const { TREE, abilityDef } = await import("@muchat/space-core/game/ot");
+  const { TREE, abilityDef, abilityNow, VOCATIONS } = await import("@muchat/space-core/game/ot");
   const d = newRpgHero("N", 0);
   applyVocation(d, 3);
-  d.level = 10;
-  const mine = TREE.filter((n) => abilityDef(n.ability)?.cls === 3 && n.tier === 1);
-  const full: Record<string, number> = {};
-  for (const n of mine) full[n.id] = n.ranks;
-  const spent = Object.values(full).reduce((a, b) => a + b, 0);
+  d.level = 60;
+  const fill = (tier: number) => {
+    const t: Record<string, number> = {};
+    for (const n of TREE) if (abilityDef(n.ability)?.cls === 3 && n.tier <= tier) t[n.id] = n.ranks;
+    return t;
+  };
+  const all = fill(3);
+  const spent = Object.values(all).reduce((a, b) => a + b, 0);
   d.points = { points: spent + 2, tries: 7 };
-  d.tree = { ...full, [mine[0]!.id]: mine[0]!.ranks - 1 };
+  // 24/11/2026: a árvore da 1ª classe cheia não basta (umas 2 h de dummy; quebrava o jogo).
+  d.tree = fill(1);
+  assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: false, reason: "not_last_tier" });
+  // Na 3ª classe, só a parte da 1ª cheia: falta a árvore inteira.
+  d.vocation = VOCATIONS[3].promotion!;
+  d.third = true;
   assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: false, reason: "not_full" });
-  d.tree = full;
-  assert.deepEqual(rebirthTree(d, "rajada-dupla.perfurante", 0), { ok: false, reason: "not_mastery" });
+  d.tree = all;
   assert.deepEqual(rebirthTree(d, "golpe-brutal.forca", 0), { ok: false, reason: "not_class" });
-  assert.deepEqual(rebirthTree(d, "rajada-dupla.forca", 0), { ok: true });
+  // Qualquer adereço vale, inclusive os de forma (Flecha perfurante).
+  assert.deepEqual(rebirthTree(d, "rajada-dupla.perfurante", 0), { ok: true });
   assert.deepEqual(d.tree, {});
   assert.deepEqual(d.points, { points: 2, tries: 7 }, "os livres ficam; os postos voltam a ser treinados");
-  assert.deepEqual(d.mastery, { "rajada-dupla.forca": 1 });
+  assert.deepEqual(d.mastery, { "rajada-dupla.perfurante": 1 });
   assert.equal(d.rebirths, 1);
-  assert.deepEqual(heroRunSnapshot(d, "N", 0).mastery, { "rajada-dupla.forca": 1 });
+  assert.deepEqual(heroRunSnapshot(d, "N", 0).mastery, { "rajada-dupla.perfurante": 1 });
   assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).rebirths, 1);
+  // A maestria de um adereço de forma soma 0,5% ao poder da habilidade, com ele aprendido.
+  const def = abilityDef("rajada-dupla")!;
+  const tree = { "rajada-dupla.forca": 5, "rajada-dupla.perfurante": 1 };
+  const plain = abilityNow(def, tree).power;
+  const mastered = abilityNow(def, tree, d.mastery).power;
+  assert.ok(Math.abs(mastered - plain * 1.005) < 1e-9, `${plain} → ${mastered}`);
+  assert.equal(abilityNow(def, { "rajada-dupla.forca": 5 }, d.mastery).power, abilityNow(def, { "rajada-dupla.forca": 5 }).power, "sem o adereço aprendido, nada");
+});
+
+test("mana de um level já no 1 (24/11/2026): o mago de level 1 lança e bebe poção; o herói de antes ganha uma vez", async () => {
+  const { normalizeHero } = await import("./hero.ts");
+  const d = newRpgHero("M", 0);
+  assert.equal(d.mana_max, 0);
+  applyVocation(d, 1);
+  assert.equal(d.mana_max, 30, "feiticeiro: a mana de um level");
+  // Gravado antes da regra: mana 0 no level 1, sem a marca; a leitura soma uma vez só.
+  const old = newRpgHero("O", 0);
+  old.vocation = 2;
+  old.mana_max = 0;
+  delete old.mana_base;
+  normalizeHero(old);
+  normalizeHero(old);
+  assert.equal(old.mana_max, 30);
 });

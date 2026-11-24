@@ -162,6 +162,8 @@ export interface RunState {
   potionAt?: number[];
   /** Each hero's raw experience so far (null: not sent); it is credited at the end. */
   exp?: number[] | null;
+  /** No frames (the run began before a restart that changed the rules): the result comes at the end. */
+  blind?: boolean;
 }
 
 /** How much of the run log the app keeps. */
@@ -626,14 +628,17 @@ export class SpaceView {
         const lobbies = { ...this.state.lobbies };
         const lobby = (d.lobby ?? null) as RpgLobbyView | null;
         const me = this.world.me?.userId;
-        // Our own group wherever it is (24/11/2026: it stays formed between runs and follows
-        // us around the map); the others, only our room's.
+        // Keyed by the group (a TV holds several since 24/11/2026; an older server sends no id).
+        const key = lobby?.id ?? (typeof d.id === "string" ? d.id : "") ?? "";
+        // Our own group wherever it is (it stays formed between runs and follows us around
+        // the map); the others, only our room's.
         if (
           lobby &&
           (lobby.room === this.world.me?.room ||
             lobby.members.some((m) => m.user_id === me))
         )
-          lobbies[lobby.tv] = lobby;
+          lobbies[key || lobby.tv] = lobby;
+        else if (key) delete lobbies[key];
         else if (tv) delete lobbies[tv];
         else if (d.lobby === null && typeof e.re === "string") {
           // Our own "leave": drop the group we were in.
@@ -685,6 +690,7 @@ export class SpaceView {
             : null,
           potionAt,
           exp: Array.isArray(d.exp) ? [...(d.exp as number[])] : null,
+          blind: d.blind === true && !d.end,
         };
         // Runs that ended go once another one arrives, unless their summary is open.
         const runs: Record<string, RunState> = {};

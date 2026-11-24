@@ -50,23 +50,40 @@ export interface PointTraining {
   tries: number;
 }
 
-export function reqPointTries(n: number): number {
-  return Math.floor(SKILL_POINT.base * Math.pow(SKILL_POINT.multiplier, n - 1));
+/**
+ * Cada renascimento da árvore deixa o treino de habilidade 1% mais lento, um sobre o outro
+ * (24/11/2026, pelo dono: "cada reset precisa exigir 1% a mais de tempo"): 1,01^renascimentos.
+ */
+export const REBIRTH_TRAINING_PCT = 1;
+
+export function rebirthScale(rebirths: number): number {
+  return Math.pow(1 + REBIRTH_TRAINING_PCT / 100, Math.max(0, rebirths));
+}
+
+/** Tentativas do ponto `n`; `scale` é o do renascimento (rebirthScale). */
+export function reqPointTries(n: number, scale = 1): number {
+  return Math.floor(
+    SKILL_POINT.base * Math.pow(SKILL_POINT.multiplier, n - 1) * scale,
+  );
 }
 
 /** [nosso] Teto dos pontos ganhos (a árvore inteira de uma classe pede bem menos). */
 export const MAX_SKILL_POINTS = 200;
 
-export function addPointTries(p: PointTraining, count: number): PointTraining {
+export function addPointTries(
+  p: PointTraining,
+  count: number,
+  scale = 1,
+): PointTraining {
   let { points, tries } = p;
   if (count <= 0 || points >= MAX_SKILL_POINTS) return p;
-  let next = reqPointTries(points + 1);
+  let next = reqPointTries(points + 1, scale);
   while (tries + count >= next) {
     count -= next - tries;
     points++;
     tries = 0;
     if (points >= MAX_SKILL_POINTS) return { points, tries: 0 };
-    next = reqPointTries(points + 1);
+    next = reqPointTries(points + 1, scale);
   }
   return { points, tries: tries + count };
 }

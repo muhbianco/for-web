@@ -442,7 +442,7 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   assert.equal(lobbyEvents(cai).at(-1)?.tv, tv.id);
   // Bia entra e depois sai da sala: continua no grupo (24/11/2026) e segue recebendo.
   const BIA = "01JB1A00000000000000000000";
-  assert.equal(rt.lobbyJoin(tv.id, lobbyMember(BIA, "Bia")).ok, true);
+  assert.equal(rt.lobbyJoin(tv.id, undefined, lobbyMember(BIA, "Bia")).ok, true);
   assert.equal(lobbyEvents(ana).at(-1)?.lobby?.members.length, 2);
   placeAt(rt, BIA, rt.map.spawns[0]!, null);
   assert.equal(rt.lobbies.of(BIA)?.tv, tv.id, "andar não tira do grupo");
@@ -453,10 +453,10 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   // A líder desconecta: o grupo espera a reconexão; passado o prazo, Bia lidera.
   rt.leave(ana);
   rt.tick();
-  assert.equal(rt.lobbies.get(tv.id)?.leader, ANA);
+  assert.equal(rt.lobbies.atTv(tv.id)[0]?.leader, ANA);
   now += 61_000;
   rt.tick();
-  assert.equal(rt.lobbies.get(tv.id)?.leader, BIA);
+  assert.equal(rt.lobbies.atTv(tv.id)[0]?.leader, BIA);
   assert.deepEqual(
     lobbyEvents(bia)
       .at(-1)
@@ -466,20 +466,20 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   // O loop vencido chama o jogo pelo líder.
   const due: string[] = [];
   rt.onLobbyDue = (leader, at) => due.push(`${leader}@${at}`);
-  const l = rt.lobbies.get(tv.id)!;
+  const l = rt.lobbies.atTv(tv.id)[0]!;
   rt.lobbyStart(BIA);
-  rt.lobbyRunning(tv.id, "run-1");
+  rt.lobbyRunning(l.id, "run-1");
   rt.lobbyLoop(BIA, true);
-  rt.lobbyRunEnded(tv.id, "run-1", "vitoria", { [BIA]: 9 });
+  rt.lobbyRunEnded("run-1", "vitoria", { [BIA]: 9 });
   assert.equal(l.members[0]!.level, 9, "o level de depois da corrida");
   now += 13_000;
   rt.tick();
-  assert.deepEqual(due, [`${BIA}@${tv.id}`]);
+  assert.deepEqual(due, [`${BIA}@${l.id}`]);
   rt.tick();
   assert.equal(due.length, 1, "uma vez só");
   // A líder desfaz: quem está na sala vê o fim.
   rt.lobbyDisband(BIA);
-  assert.equal(rt.lobbies.get(tv.id), undefined);
+  assert.equal(rt.lobbies.atTv(tv.id)[0], undefined);
   assert.equal(lobbyEvents(cai).at(-1)?.ended, "cancelled");
   // Prazo: Cai cria, ninguém começa, o tick depois de 5 min encerra.
   assert.equal(
@@ -493,6 +493,6 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   );
   now += 5 * 60 * 1000;
   rt.tick();
-  assert.equal(rt.lobbies.get(tv.id), undefined);
+  assert.equal(rt.lobbies.atTv(tv.id)[0], undefined);
   assert.equal(lobbyEvents(cai).at(-1)?.ended, "expired");
 });

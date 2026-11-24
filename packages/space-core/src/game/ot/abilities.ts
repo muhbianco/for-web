@@ -852,9 +852,11 @@ export function validTree(t: unknown, cls: number, tier: JobTier): t is Tree {
 
 /**
  * O renascimento da árvore (pedido do dono, 24/11/2026: "pro dummy nunca perder utilidade"):
- * com a árvore cheia, a pessoa zera a árvore e os pontos de habilidade ganhos (o treino no dummy
- * recomeça) e escolhe um adereço; cada vez que um adereço é escolhido, o efeito de cada ponto dele
- * cresce `MASTERY_PCT`% para sempre (a maestria). Sem teto: dá para escolher o mesmo de novo.
+ * na última classe (a 3ª) e com a árvore inteira cheia, a pessoa zera a árvore e os pontos de
+ * habilidade ganhos (o treino no dummy recomeça) e escolhe UM adereço de UMA habilidade; cada vez
+ * que ele é escolhido, o efeito de cada ponto dele cresce `MASTERY_PCT`% para sempre (a
+ * maestria). Sem teto: dá para escolher o mesmo de novo. Antes de 24/11 à noite bastava a árvore
+ * da classe de agora (na 1ª, umas 2 h de dummy: quebrava o jogo, pelo dono).
  */
 export const MASTERY_PCT = 0.5;
 
@@ -867,14 +869,19 @@ export function masteryFactor(m: Mastery | undefined, id: string): number {
 }
 
 /**
- * O adereço aceita maestria? Só os de número (força, economia, recarga, eco, dreno, atordoar,
- * reflexo, grupo, fôlego, guarda); os de forma (alvos a mais, elemento, troca de magia) não.
+ * O adereço aceita maestria? Todos (24/11/2026, pelo dono: "força, economia, flecha perfurante,
+ * etc."). Nos de número (força, economia, recarga, eco...) ela cresce o efeito de cada ponto; nos
+ * de forma (alvo a mais, elemento, troca de magia), que não têm número, ela soma o mesmo % ao
+ * poder da habilidade enquanto o adereço está aprendido (`isShapeNode`).
  */
 export function masteryNode(id: string): boolean {
+  return treeNode(id) !== undefined;
+}
+
+/** Adereço de forma: o efeito não tem número para a maestria crescer. */
+export function isShapeNode(id: string): boolean {
   const t = treeNode(id)?.effect.t;
-  return (
-    t !== undefined && t !== "targets" && t !== "element" && t !== "formula"
-  );
+  return t === "targets" || t === "element" || t === "formula";
 }
 
 /** A árvore está cheia: todos os adereços da classe até a evolução de agora no último ponto. */
@@ -887,14 +894,15 @@ export function treeFull(t: Tree, cls: number, tier: JobTier): boolean {
   );
 }
 
-/** Por que não renasce agora (null: pode, com o adereço `node`). */
+/** Por que não renasce agora (null: pode, com o adereço `node`): só na 3ª classe, árvore cheia. */
 export function cannotRebirth(
   t: Tree,
   cls: number,
   tier: JobTier,
   node: string,
-): "not_full" | "not_node" | "not_class" | "not_mastery" | null {
-  if (!treeFull(t, cls, tier)) return "not_full";
+): "not_last_tier" | "not_full" | "not_node" | "not_class" | "not_mastery" | null {
+  if (tier < 3) return "not_last_tier";
+  if (!treeFull(t, cls, 3)) return "not_full";
   const n = treeNode(node);
   if (!n) return "not_node";
   if (abilityDef(n.ability)?.cls !== cls) return "not_class";
@@ -1029,6 +1037,11 @@ export function abilityNow(
         break;
     }
   }
+  // A maestria dos adereços de forma (alvo a mais, elemento, troca de magia): o mesmo % no poder
+  // da habilidade, enquanto o adereço está aprendido.
+  for (const node of treeOf(def.id))
+    if ((t[node.id] ?? 0) > 0 && isShapeNode(node.id))
+      out.power *= masteryFactor(mastery, node.id);
   out.mana = Math.max(
     0,
     Math.floor((out.mana * (100 - Math.min(90, cost))) / 100),

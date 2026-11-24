@@ -1040,7 +1040,14 @@ function ServerSpace(props: { serverId: string }) {
                     view={view()!}
                     request={request()}
                     hero={ui()?.rpg?.hero ?? null}
-                    lobby={ui()?.lobbies[request().instance] ?? null}
+                    lobbies={Object.values(ui()?.lobbies ?? {}).filter(
+                      (l) => l.tv === request().instance,
+                    )}
+                    mine={
+                      Object.values(ui()?.lobbies ?? {}).find((l) =>
+                        l.members.some((m) => m.user_id === client().user?.id),
+                      ) ?? null
+                    }
                     board={ui()?.board ?? null}
                     roomTitle={(roomId) => {
                       for (const w of ui()?.list ?? [])

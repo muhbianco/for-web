@@ -51,7 +51,10 @@ export default function TvMenu(props: {
   view: SpaceView;
   request: { instance: string; title: string };
   hero: RpgHeroView | null;
-  lobby: RpgLobbyView | null;
+  /** Os grupos desta TV (uma TV tem vários desde 24/11/2026). */
+  lobbies: RpgLobbyView[];
+  /** O meu grupo, nesta TV ou em outra. */
+  mine: RpgLobbyView | null;
   /** O quadro do Espaço: grupos se formando e partidas rodando (o menu pede de 5 em 5 s). */
   board: SpaceUiState["board"];
   /** O nome de uma sala pelo id (a lista de salas do app); null se a pessoa não a vê. */
@@ -71,9 +74,11 @@ export default function TvMenu(props: {
     () => props.onClose(),
   );
   const vocation = () => props.hero?.vocation ?? 0;
-  const mine = () =>
-    props.lobby?.members.some((m) => m.user_id === props.myId) ?? false;
-  const leader = () => props.lobby?.leader === props.myId;
+  const mine = () => !!props.mine;
+  const leader = () => props.mine?.leader === props.myId;
+  // Os grupos desta TV em que dá para entrar (os outros; o meu aparece inteiro).
+  const joinable = () =>
+    props.lobbies.filter((l) => l.id !== props.mine?.id);
   // A tela inicial com os apps; o Idle Hunt abre o menu da dungeon.
   const [app, setApp] = createSignal<"home" | "idle">("home");
   const openIdle = () => {
@@ -139,7 +144,7 @@ export default function TvMenu(props: {
     const n = runs().length;
     if (n === 1) return t`1 partida rolando`;
     if (n > 1) return t`${n} partidas rolando`;
-    const l = props.lobby;
+    const l = props.mine ?? props.lobbies[0];
     if (l) return t`Grupo se formando · ${l.members.length}/${l.max}`;
     return t`Dungeons em grupo`;
   };
@@ -173,7 +178,7 @@ export default function TvMenu(props: {
 
   // O grupo muda por fora (alguém entrou, saiu, começou): o botão focado pode ter sumido.
   // Em memos: as props leem o estado inteiro, que muda a cada atualização.
-  const lobbyNow = createMemo(() => props.lobby);
+  const lobbyNow = createMemo(() => props.mine);
   const vocationNow = createMemo(vocation);
   createEffect(
     on([lobbyNow, vocationNow], () => queueMicrotask(refocus), {
@@ -182,12 +187,12 @@ export default function TvMenu(props: {
   );
 
   const bonusPct = () => {
-    const vocs = props.lobby?.members.map((m) => m.vocation) ?? [];
+    const vocs = props.mine?.members.map((m) => m.vocation) ?? [];
     return vocs.length > 1 ? Math.round((sharedMultiplier(vocs) - 1) * 100) : 0;
   };
   // A divisão [TFS party.cpp]: todos com pelo menos 2/3 do maior level. Sem ela, cada um leva
   // pelo dano que causa (24/11/2026: o grupo de levels 24 e 14 não dividia e ninguém sabia).
-  const levels = () => props.lobby?.members.map((m) => m.level) ?? [];
+  const levels = () => props.mine?.members.map((m) => m.level) ?? [];
   const shares = () => levels().length < 2 || canShare(levels());
   const shareMin = () => minShareLevel(Math.max(0, ...levels()));
 
@@ -306,9 +311,52 @@ export default function TvMenu(props: {
             }
           >
             <Show
-              when={props.lobby}
+              when={props.mine}
               fallback={
                 <>
+                  {/* Os grupos desta TV: entrar num deles, ou montar o seu logo abaixo. */}
+                  <Show when={joinable().length > 0}>
+                    <For each={joinable()}>
+                      {(l) => {
+                        const full = () => l.members.length >= l.max;
+                        const low = () =>
+                          (props.hero?.level ?? 0) <
+                          (dungeonOf(l.dungeon)?.minLevel ?? 0);
+                        return (
+                          <Item data-lobby={l.id}>
+                            <span>
+                              <strong>{dungeonOf(l.dungeon)?.name ?? l.dungeon}</strong>{" "}
+                              <Badge data-state={l.state ?? "forming"}>
+                                {partyState(l, now())}
+                              </Badge>{" "}
+                              <Muted>{`${l.members.length}/${l.max}`}</Muted>
+                            </span>
+                            <Muted>{names(l.members)}</Muted>
+                            <Show when={l.state === "running"}>
+                              <Muted>{t`Quem entra agora vai na próxima corrida.`}</Muted>
+                            </Show>
+                            <Button
+                              size="xs"
+                              variant="filled"
+                              isDisabled={busy() || full() || low()}
+                              onPress={() =>
+                                send("rpg.lobby.join", {
+                                  tv: props.request.instance,
+                                  id: l.id,
+                                })
+                              }
+                            >
+                              {full()
+                                ? t`Cheio`
+                                : low()
+                                  ? t`Level baixo`
+                                  : t`Entrar no grupo`}
+                            </Button>
+                          </Item>
+                        );
+                      }}
+                    </For>
+                  </Show>
                   <Muted>{t`Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas. Depois da corrida o grupo continua montado: o líder começa a próxima quando quiser, ou liga o Repetir.`}</Muted>
                   <For each={DUNGEONS}>
                     {(d) => {
