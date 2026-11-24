@@ -216,3 +216,60 @@ test("applyDecorOp mirrors every op and never mutates the input", () => {
   assert.equal(s6.items.length, 0);
   assert.equal(s6.rev, 6);
 });
+
+test("sala do jogo (24/11/2026): \"Idle Hunt\" se mobilia com a TV, os 3 bonecos e os 4 NPCs; as outras não", async () => {
+  const { isGameRoom } = await import("./theme.ts");
+  assert.equal(isGameRoom("Idle Hunt"), true);
+  assert.equal(isGameRoom("  iddle   HUNT "), true);
+  assert.equal(isGameRoom("Idle"), false);
+  const map = generateLayout({
+    templateVersion: 2,
+    wings: [
+      {
+        index: 0,
+        title: "Geral",
+        slots: [
+          { roomId: fakeUlid(11), label: "Idle Hunt", size: "M" },
+          { roomId: fakeUlid(12), label: "Lounge", size: "M" },
+        ],
+      },
+      {
+        index: 1,
+        title: "Outra",
+        slots: [
+          { roomId: fakeUlid(13), label: "Iddle hunt", size: "M" },
+          { roomId: fakeUlid(14), label: "Idle Hunt", size: "L" },
+        ],
+      },
+    ],
+  });
+  const ix = indexMap(map);
+  const zones = zonesOf(map);
+  const d = defaultDecor(ix, { serverName: "Teste" });
+  const GAME = [
+    "dummy-habilidade",
+    "dummy-wood",
+    "dummy-target",
+    "npc-mercador",
+    "npc-banqueiro",
+    "npc-mestre",
+    "npc-ferreiro",
+  ];
+  for (const id of [fakeUlid(11), fakeUlid(13), fakeUlid(14)]) {
+    const inRoom = d.items.filter((i) => i.zone === roomZoneKey(id)).map((i) => i.item);
+    for (const item of GAME) assert.ok(inRoom.includes(item), `${id}: falta ${item} (${inRoom.join(",")})`);
+    assert.ok(
+      d.items.some((i) => i.zone === roomZoneKey(id) && itemOf(CATALOG, i.item)?.smartTv),
+      `${id}: sem TV`,
+    );
+  }
+  // A sala comum segue o tema de sempre, sem os objetos do jogo.
+  const lounge = d.items.filter((i) => i.zone === roomZoneKey(fakeUlid(12))).map((i) => i.item);
+  assert.ok(lounge.length > 0 && !lounge.some((i) => GAME.includes(i)));
+  // Tudo válido e todas as portas alcançáveis.
+  for (const item of d.items) {
+    const others = { ...d, items: d.items.filter((i) => i.id !== item.id) };
+    assert.equal(validatePlacement({ ix, zones, catalog: CATALOG, state: others }, item), null, `${item.item} em ${item.zone}`);
+  }
+  assert.equal(allReachable(map, solidMask(map, zones, CATALOG, d.items)), true);
+});
