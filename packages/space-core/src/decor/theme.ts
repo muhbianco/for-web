@@ -219,6 +219,53 @@ function spineSpecs(width: number, height: number): Spec[] {
   return out;
 }
 
+/**
+ * A sala padrão do jogo (24/11/2026, pedido do dono: "todo server tem uma sala chamada Idle Hunt
+ * já equipada com tudo que precisa pro jogo"). O nome decide, sem acento nem maiúscula; "Iddle
+ * Hunt" também vale. O canal é criado pelo invite-bot em todo servidor (muchat).
+ */
+export const GAME_ROOM_NAME = "Idle Hunt";
+
+export function isGameRoom(label: string): boolean {
+  const n = label
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  return n === "idle hunt" || n === "iddle hunt";
+}
+
+/**
+ * O que a sala do jogo leva, cada um com as posições a tentar em ordem (a validação pula o que
+ * fecharia a porta ou o caminho): a TV na parede, os bonecos de vocação e o de habilidade numa
+ * lateral, o mercador, o banqueiro, o Mestre de evolução e o Ferreiro na outra (como o dojo do
+ * Alopa). Interior de 7 de largura; a altura muda com o tamanho da sala.
+ */
+function gameRoomPlan(room: CompiledRoom): { item: string; at: [number, number][] }[] {
+  const w = room.interior.x1 - room.interior.x0 + 1;
+  const h = room.interior.y1 - room.interior.y0 + 1;
+  const right = w - 1;
+  const rows = (x: number) =>
+    Array.from({ length: h }, (_, y) => [x, y] as [number, number]);
+  const everywhere: [number, number][] = [];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) everywhere.push([x, y]);
+  const prefer = (first: [number, number][], ...rest: [number, number][][]) => [
+    ...first,
+    ...rest.flat(),
+    ...everywhere,
+  ];
+  return [
+    { item: "dummy-habilidade", at: prefer([[0, 1]], rows(0)) },
+    { item: "dummy-wood", at: prefer([[0, 3]], rows(0)) },
+    { item: "dummy-target", at: prefer([[0, 5]], rows(0)) },
+    { item: "npc-mercador", at: prefer([[right, 1]], rows(right)) },
+    { item: "npc-banqueiro", at: prefer([[right, 3]], rows(right)) },
+    { item: "npc-mestre", at: prefer([[right, 5]], rows(right)) },
+    { item: "npc-ferreiro", at: prefer([[right - 2, h - 1]], rows(right), rows(right - 2)) },
+  ];
+}
+
 export interface ThemeOptions {
   serverName?: string;
   catalog?: Catalog;
@@ -274,10 +321,36 @@ export function furnish(ix: MapIndex, state: DecorState, opts: ThemeOptions = {}
   for (const r of map.rooms) {
     const key = roomZoneKey(r.roomId);
     if (!wants(key)) continue;
-    place(key, roomSpecs(r, hash(r.roomId)));
+    if (isGameRoom(r.label)) placeGameRoom(key, r);
+    else place(key, roomSpecs(r, hash(r.roomId)));
     ensureTv(key, r);
   }
   return next;
+
+  /** A sala do jogo: cada objeto na primeira posição livre da lista dele (gameRoomPlan). */
+  function placeGameRoom(key: string, room: CompiledRoom) {
+    if (!zones.byKey.get(key)) return;
+    // A TV primeiro, na parede de cima (as do jogo ficam nas laterais).
+    ensureTv(key, room);
+    gameRoomPlan(room).forEach((p, n) => {
+      for (const [x, y] of p.at) {
+        const inst: DecorInstance = {
+          id: `t-${hash(key).toString(36)}-g${n}`,
+          item: p.item,
+          zone: key,
+          x,
+          y,
+          rot: 0,
+        };
+        if (validatePlacement(ctx(), inst) !== null) continue;
+        items.push(inst);
+        next = { ...next, items: [...items] };
+        return;
+      }
+    });
+    furnished.add(key);
+    next = { ...next, furnished: [...furnished] };
+  }
 
   /**
    * Every room has its own TV (ADR 0008). When the room's look left it without
