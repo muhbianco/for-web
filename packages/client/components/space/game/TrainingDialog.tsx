@@ -13,7 +13,7 @@ import { styled } from "styled-system/jsx";
 
 import { Button } from "@revolt/ui";
 
-import { VocationPicker } from "./VocationPicker";
+import { gameFrame } from "./gameTheme";
 import { useModalKeys } from "./modalKeys";
 import {
   bankNow,
@@ -24,6 +24,7 @@ import {
   rpgLabels,
   serverNow,
 } from "./rpgUi";
+import { VocationPicker } from "./VocationPicker";
 
 /**
  * Usar um dummy de treino (docs/espaco/jogo/ot): na primeira vez escolhe a vocação
@@ -32,7 +33,11 @@ import {
  */
 export default function TrainingDialog(props: {
   view: SpaceView;
-  request: { instance: string; title: string; dummy?: "vocacao" | "habilidade" };
+  request: {
+    instance: string;
+    title: string;
+    dummy?: "vocacao" | "habilidade";
+  };
   rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
   onClose: () => void;
 }) {
@@ -102,6 +107,7 @@ export default function TrainingDialog(props: {
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
       <Card
+        style={gameFrame}
         ref={card}
         role="dialog"
         aria-modal="true"

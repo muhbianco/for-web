@@ -33,6 +33,11 @@ export const MERCHANT_SELLS: readonly ShopOffer[] = [
   { item: "bolsa", price: 4 },
   { item: "mochila", price: 20 },
   { item: "arco-de-caca", price: 200 },
+  // 24/11/2026: o começo do kit do Ragnarok (o resto cai nas dungeons) [nosso].
+  { item: "bandana", price: 150 },
+  { item: "sandalias", price: 80 },
+  { item: "chapeu-de-aprendiz", price: 120 },
+  { item: "traje-de-aventureiro", price: 300 },
   { item: "besta-leve", price: 360 },
   { item: "amuleto-do-escudeiro", price: 700 },
   { item: "anel-do-folego", price: 900 },

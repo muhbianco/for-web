@@ -31,7 +31,8 @@ export interface Dungeon {
    * só informação para o menu). Medido em 24/11/2026 com scripts/comfort-levels.ts (60 sementes
    * por level), no herói dos atributos e da árvore: os 5 pontos por level na construção típica
    * da classe, min(60, level) pontos na árvore, o melhor equipamento já ao alcance no level,
-   * skill e magic level do treino de produção e as poções da faixa. `group` é o trio cavaleiro +
+   * skill e magic level do treino de produção e as poções da faixa; desde os itens com atributos
+   * (24/11/2026, engine 8), os atributos deles e o melhor anel e colar. `group` é o trio cavaleiro +
    * arqueiro + druida; `solo`, por vocação base (null: sozinho não dá).
    */
   comfort: {
@@ -82,7 +83,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "toca-dos-javalis",
     name: "Toca dos Javalis",
     minLevel: 4,
-    comfort: { group: 4, solo: { 1: 5, 2: 6, 3: 4, 4: 4 } },
+    comfort: { group: 4, solo: { 1: 6, 2: 6, 3: 4, 4: 4 } },
     blurb: "Lobos, javalis e quem caça nas tocas. O Rei Javali guarda o fundo.",
     stages: [
       {
@@ -150,7 +151,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "ninho-das-aranhas",
     name: "Ninho das Aranhas",
     minLevel: 13,
-    comfort: { group: 13, solo: { 1: 13, 2: 15, 3: 15, 4: 17 } },
+    comfort: { group: 13, solo: { 1: 13, 2: 13, 3: 15, 4: 17 } },
     blurb: "Teias, veneno e casulos. Fogo ajuda; a Rainha cura a si mesma.",
     stages: [
       {
@@ -187,7 +188,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    comfort: { group: 20, solo: { 1: 26, 2: 22, 3: 26, 4: 26 } },
+    comfort: { group: 20, solo: { 1: 26, 2: 20, 3: 26, 4: 26 } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [
@@ -222,7 +223,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "mina-assombrada",
     name: "Mina Assombrada",
     minLevel: 27,
-    comfort: { group: 27, solo: { 1: 31, 2: 31, 3: 40, 4: 43 } },
+    comfort: { group: 27, solo: { 1: 31, 2: 31, 3: 37, 4: 40 } },
     blurb:
       "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
     stages: [
@@ -257,7 +258,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "bosque-petrificado",
     name: "Bosque Petrificado",
     minLevel: 35,
-    comfort: { group: 35, solo: { 1: 35, 2: 41, 3: 44, 4: 50 } },
+    comfort: { group: 35, solo: { 1: 35, 2: 38, 3: 41, 4: 47 } },
     blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
     stages: [
       {
@@ -291,7 +292,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 48, solo: { 1: 54, 2: 51, 3: 63, 4: 63 } },
+    comfort: { group: 45, solo: { 1: 54, 2: 51, 3: 57, 4: 60 } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -327,7 +328,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "abismo-gelado",
     name: "Abismo Gelado",
     minLevel: 55,
-    comfort: { group: 55, solo: { 1: 61, 2: 67, 3: 67, 4: 67 } },
+    comfort: { group: 55, solo: { 1: 55, 2: 64, 3: 64, 4: 67 } },
     blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
     stages: [
       { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },
@@ -355,7 +356,7 @@ export const DUNGEONS: readonly Dungeon[] = [
     id: "trono-do-vazio",
     name: "Trono do Vazio",
     minLevel: 70,
-    comfort: { group: 70, solo: { 1: 85, 2: 82, 3: 103, 4: 97 } },
+    comfort: { group: 70, solo: { 1: 82, 2: 79, 3: 94, 4: 91 } },
     blurb: "O fim do caminho. O que vive aqui come a luz.",
     stages: [
       { name: "Limiar", monsters: [{ id: "sombra-vazia", count: 2 }] },

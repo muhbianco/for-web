@@ -38,9 +38,18 @@ msgstr "[Last] dddd [at] LT"
 msgid "dddd [at] LT"
 msgstr "dddd [at] LT"
 
+#. placeholder {0}: shareMin()
+#: components/space/game/TvMenu.tsx
+msgid " · abaixo do nível {0}"
+msgstr " · abaixo do nível {0}"
+
 #: components/space/game/itemUi.ts
 msgid " ou "
 msgstr " ou "
+
+#: components/space/game/NpcDialog.tsx
+msgid "\"O que não serve\": o que sua vocação ou level não usa, o que é pior que o vestido e os frascos vazios. Confira antes de vender: a venda não volta."
+msgstr "\"O que não serve\": o que sua vocação ou level não usa, o que é pior que o vestido e os frascos vazios. Confira antes de vender: a venda não volta."
 
 #: components/app/interface/settings/server/roles/ServerRoleOverview.tsx
 msgid "(changes are being saved…)"
@@ -132,7 +141,6 @@ msgstr "{0} {1} · {2}%"
 msgid "{0} and {1} are typing…"
 msgstr "{0} and {1} are typing…"
 
-#. placeholder {0}: money(o.price)
 #. placeholder {0}: money(r.price!)
 #: components/space/game/NpcDialog.tsx
 msgid "{0} cada"
@@ -826,6 +834,11 @@ msgstr "A conexão de {0} está instável"
 msgid "a experiência desta corrida se perdeu"
 msgstr "a experiência desta corrida se perdeu"
 
+#. placeholder {0}: shareMin()
+#: components/space/game/TvMenu.tsx
+msgid "A experiência não vai ser dividida: para dividir, todos precisam de nível {0} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa."
+msgstr "A experiência não vai ser dividida: para dividir, todos precisam de nível {0} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa."
+
 #. placeholder {0}: Math.ceil((retryMs ?? 0) / 1000)
 #: components/space/game/labels.ts
 #~ msgid "A luta ainda está acontecendo. Mais {0} s."
@@ -972,6 +985,10 @@ msgid "acerta mais {m} monstro(s) da sala"
 msgstr "acerta mais {m} monstro(s) da sala"
 
 #: components/space/game/itemUi.ts
+msgid "acerto"
+msgstr "acerto"
+
+#: components/space/game/itemUi.ts
 msgid "Acerto +{h}%"
 msgstr "Acerto +{h}%"
 
@@ -1031,6 +1048,7 @@ msgstr "Advanced"
 #~ msgstr "Afiar: +{0}% de dano"
 
 #: components/space/game/heroUi.ts
+#: components/space/game/itemUi.ts
 msgid "AGI"
 msgstr "AGI"
 
@@ -1140,6 +1158,10 @@ msgstr "Ancião"
 #~ msgid "Andarilho ferido pede {price} de ouro: +10% de vida máxima."
 #~ msgstr "Andarilho ferido pede {price} de ouro: +10% de vida máxima."
 
+#: components/space/game/NpcDialog.tsx
+msgid "Anéis e colares"
+msgstr "Anéis e colares"
+
 #: components/space/game/itemUi.ts
 msgid "Anel"
 msgstr "Anel"
@@ -1223,6 +1245,10 @@ msgstr "Arma"
 msgid "Arma, escudo, armaduras, mochila e munição, a cada volta da dungeon. Colar e anel ficam com você."
 msgstr "Arma, escudo, armaduras, mochila e munição, a cada volta da dungeon. Colar e anel ficam com você."
 
+#: components/space/game/itemUi.ts
+msgid "armadura"
+msgstr "armadura"
+
 #: components/space/game/labels.ts
 #~ msgid "Armadura"
 #~ msgstr "Armadura"
@@ -1272,6 +1298,10 @@ msgstr "Assistir"
 #: components/space/DecorPanel.tsx
 msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
 msgstr "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
+
+#: components/space/game/itemUi.ts
+msgid "ataque"
+msgstr "ataque"
 
 #. placeholder {0}: h().combat.atk
 #. placeholder {1}: h().combat.armor
@@ -1540,8 +1570,8 @@ msgstr "Blocked User"
 
 #. placeholder {0}: bonusPct()
 #: components/space/game/TvMenu.tsx
-msgid "Bônus de experiência do grupo: +{0}% (cresce com vocações diferentes)."
-msgstr "Bônus de experiência do grupo: +{0}% (cresce com vocações diferentes)."
+#~ msgid "Bônus de experiência do grupo: +{0}% (cresce com vocações diferentes)."
+#~ msgstr "Bônus de experiência do grupo: +{0}% (cresce com vocações diferentes)."
 
 #: components/app/interface/channels/text/Message.tsx
 msgid "Bot"
@@ -2124,9 +2154,15 @@ msgstr "Compra o loot e o kit; o que ele vende, recompra pela metade. Vende muni
 #~ msgid "Compra o loot e vende munição, mochilas, anéis e colares."
 #~ msgstr "Compra o loot e vende munição, mochilas, anéis e colares."
 
+#. placeholder {0}: n()
+#. placeholder {1}: itemName(o.item)
 #: components/space/game/NpcDialog.tsx
-msgid "Comprado."
-msgstr "Comprado."
+msgid "Comprado: {0}× {1}."
+msgstr "Comprado: {0}× {1}."
+
+#: components/space/game/NpcDialog.tsx
+#~ msgid "Comprado."
+#~ msgstr "Comprado."
 
 #: components/space/game/NpcDialog.tsx
 msgid "Comprar"
@@ -2134,8 +2170,13 @@ msgstr "Comprar"
 
 #. placeholder {0}: money(total())
 #: components/space/game/NpcDialog.tsx
-msgid "Comprar por {0}"
-msgstr "Comprar por {0}"
+msgid "Comprar · {0}"
+msgstr "Comprar · {0}"
+
+#. placeholder {0}: money(total())
+#: components/space/game/NpcDialog.tsx
+#~ msgid "Comprar por {0}"
+#~ msgstr "Comprar por {0}"
 
 #: components/space/game/labels.ts
 #~ msgid "comum"
@@ -2191,6 +2232,11 @@ msgstr "Confirm action"
 msgid "Confirmar"
 msgstr "Confirmar"
 
+#. placeholder {0}: money(total())
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: {0}"
+msgstr "Confirmar: {0}"
+
 #: components/space/game/NpcDialog.tsx
 msgid "Confirmar: atributos (grátis)"
 msgstr "Confirmar: atributos (grátis)"
@@ -2202,8 +2248,8 @@ msgstr "Confirmar: atributos por {0}"
 
 #. placeholder {0}: money(total())
 #: components/space/game/NpcDialog.tsx
-msgid "Confirmar: comprar por {0}"
-msgstr "Confirmar: comprar por {0}"
+#~ msgid "Confirmar: comprar por {0}"
+#~ msgstr "Confirmar: comprar por {0}"
 
 #. placeholder {0}: money(n().cost)
 #: components/space/game/NpcDialog.tsx
@@ -2231,6 +2277,12 @@ msgstr "Confirmar: jogar fora"
 #: components/space/game/NpcDialog.tsx
 msgid "Confirmar: transferir {0}"
 msgstr "Confirmar: transferir {0}"
+
+#. placeholder {0}: picked().length
+#. placeholder {1}: money(pickedTotal())
+#: components/space/game/NpcDialog.tsx
+msgid "Confirmar: vender {0} por {1}"
+msgstr "Confirmar: vender {0} por {1}"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Connect"
@@ -2598,6 +2650,10 @@ msgstr "Dano {0}–{1}"
 #~ msgid "Dano constante à distância; esquiva os golpes com facilidade."
 #~ msgstr "Dano constante à distância; esquiva os golpes com facilidade."
 
+#: components/space/game/itemUi.ts
+msgid "dano da varinha"
+msgstr "dano da varinha"
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Dark"
@@ -2667,6 +2723,10 @@ msgstr "DeepFilterNet strength"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Default"
 msgstr "Default"
+
+#: components/space/game/itemUi.ts
+msgid "defesa"
+msgstr "defesa"
 
 #: components/space/game/itemUi.ts
 msgid "Defesa {dfn}"
@@ -2781,6 +2841,7 @@ msgid "Depositar tudo ({0})"
 msgstr "Depositar tudo ({0})"
 
 #: components/space/game/heroUi.ts
+#: components/space/game/itemUi.ts
 msgid "DES"
 msgstr "DES"
 
@@ -2820,6 +2881,7 @@ msgid "Desligar para todos"
 msgstr "Desligar para todos"
 
 #: components/space/DecorPanel.tsx
+#: components/space/game/NpcDialog.tsx
 msgid "Desmarcar"
 msgstr "Desmarcar"
 
@@ -2936,6 +2998,10 @@ msgstr "Donate to Muchat"
 #: components/modal/modals/MFARecovery.tsx
 msgid "Done"
 msgstr "Done"
+
+#: components/space/game/StatsPanel.tsx
+msgid "Dos itens vestidos"
+msgstr "Dos itens vestidos"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Drugs or illegal goods"
@@ -3233,6 +3299,7 @@ msgstr "Equilibrado (recomendado)"
 #~ msgstr "Equipado"
 
 #: components/space/game/HeroSheet.tsx
+#: components/space/game/NpcDialog.tsx
 msgid "Equipamento"
 msgstr "Equipamento"
 
@@ -3507,6 +3574,11 @@ msgstr "Evoluiu!"
 #~ msgid "Experiência"
 #~ msgstr "Experiência"
 
+#. placeholder {0}: bonusPct()
+#: components/space/game/TvMenu.tsx
+msgid "Experiência dividida igualmente, com bônus do grupo de +{0}% (cresce com vocações diferentes)."
+msgstr "Experiência dividida igualmente, com bônus do grupo de +{0}% (cresce com vocações diferentes)."
+
 #: components/space/game/labels.ts
 #~ msgid "Explosão"
 #~ msgstr "Explosão"
@@ -3554,6 +3626,11 @@ msgstr "Fale um pouco para medir"
 #: components/space/game/NpcDialog.tsx
 msgid "Falta level para a evolução."
 msgstr "Falta level para a evolução."
+
+#. placeholder {0}: money(-left())
+#: components/space/game/NpcDialog.tsx
+msgid "Faltam {0}"
+msgstr "Faltam {0}"
 
 #: components/space/game/rpgUi.ts
 msgid "Faltam pontos para isso."
@@ -3663,6 +3740,7 @@ msgid "fogo"
 msgstr "fogo"
 
 #: components/space/game/heroUi.ts
+#: components/space/game/itemUi.ts
 msgid "FOR"
 msgstr "FOR"
 
@@ -3988,6 +4066,10 @@ msgstr "Idle"
 msgid "Idle Hunt"
 msgstr "Idle Hunt"
 
+#: components/space/game/NpcDialog.tsx
+msgid "igual ao que você veste"
+msgstr "igual ao que você veste"
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Illegal hacking or cracking"
 msgstr "Illegal hacking or cracking"
@@ -4025,6 +4107,7 @@ msgid "Instead of closing, Muchat will hide in your tray."
 msgstr "Instead of closing, Muchat will hide in your tray."
 
 #: components/space/game/heroUi.ts
+#: components/space/game/itemUi.ts
 msgid "INT"
 msgstr "INT"
 
@@ -4490,6 +4573,10 @@ msgstr "Magias, curas e varinhas: INT + (INT/7)² até INT + (INT/5)². Cada pon
 #~ msgid "Mágico"
 #~ msgstr "Mágico"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Mais"
+msgstr "Mais"
+
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Major Outage"
 msgstr "Major Outage"
@@ -4570,6 +4657,15 @@ msgstr "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um pon
 #~ msgid "Marca da presa"
 #~ msgstr "Marca da presa"
 
+#. placeholder {0}: itemName(r.x.item)
+#: components/space/game/NpcDialog.tsx
+msgid "Marcar {0} para vender"
+msgstr "Marcar {0} para vender"
+
+#: components/space/game/NpcDialog.tsx
+msgid "Marcar o que não serve"
+msgstr "Marcar o que não serve"
+
 #: components/modal/modals/ChannelToggleMature.tsx
 msgid "Mark as mature"
 msgstr "Mark as mature"
@@ -4603,6 +4699,10 @@ msgstr "MATQ"
 #: components/space/game/labels.ts
 #~ msgid "Matriarca do Musgo"
 #~ msgstr "Matriarca do Musgo"
+
+#: components/space/game/NpcDialog.tsx
+msgid "máx"
+msgstr "máx"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "max {maxMs} ms"
@@ -4645,6 +4745,10 @@ msgstr "Members"
 #: components/app/interface/channels/text/CompositionInfo.tsx
 msgid "Members can send one message every {0}."
 msgstr "Members can send one message every {0}."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Menos"
+msgstr "Menos"
 
 #: components/space/game/rpgUi.ts
 msgid "menos de 1 min"
@@ -4830,6 +4934,10 @@ msgstr "More Contrast"
 msgid "morte"
 msgstr "morte"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Mostrar"
+msgstr "Mostrar"
+
 #: components/space/SpacePage.tsx
 msgid "Mostrar lista de salas"
 msgstr "Mostrar lista de salas"
@@ -4863,6 +4971,7 @@ msgid "Multi-factor authentication is already enabled for this account."
 msgstr "Multi-factor authentication is already enabled for this account."
 
 #: components/space/game/itemUi.ts
+#: components/space/game/NpcDialog.tsx
 msgid "Munição"
 msgstr "Munição"
 
@@ -4955,9 +5064,17 @@ msgstr "Na sala, fora da chamada"
 msgid "Nada encontrado."
 msgstr "Nada encontrado."
 
+#: components/space/game/HeroSheet.tsx
+msgid "nada muda"
+msgstr "nada muda"
+
 #: components/space/game/NpcDialog.tsx
 msgid "Nada na mochila que ele compre."
 msgstr "Nada na mochila que ele compre."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Nada nesta categoria para o seu herói."
+msgstr "Nada nesta categoria para o seu herói."
 
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "Nada para mostrar nesta aba."
@@ -5140,6 +5257,10 @@ msgstr "Nivelamento de volume"
 msgid "No GIFs found"
 msgstr "No GIFs found"
 
+#: components/space/game/HeroSheet.tsx
+msgid "No lugar vazio:"
+msgstr "No lugar vazio:"
+
 #. placeholder {0}: effectText(node.effect, node.ranks, heal)
 #: components/space/game/SkillTree.tsx
 msgid "no máximo: {0}"
@@ -5264,6 +5385,10 @@ msgstr "O intervalo cai (4 × AGI + DES)/1000."
 #: components/space/game/rpgUi.ts
 msgid "O jogo está desligado neste servidor."
 msgstr "O jogo está desligado neste servidor."
+
+#: components/space/game/NpcDialog.tsx
+msgid "O máximo que o dinheiro paga (até 100)"
+msgstr "O máximo que o dinheiro paga (até 100)"
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O Mercado Pago pede e-mail no apoio mensal."
@@ -5516,6 +5641,10 @@ msgstr "Palco de mídia"
 msgid "Para entrar, vá até a TV de {0}."
 msgstr "Para entrar, vá até a TV de {0}."
 
+#: components/space/game/NpcDialog.tsx
+msgid "Para mim"
+msgstr "Para mim"
+
 #: components/space/SpacePage.tsx
 msgid "Para o som da TV só para você; a sala continua assistindo"
 msgstr "Para o som da TV só para você; a sala continua assistindo"
@@ -5757,6 +5886,10 @@ msgstr "Please select a reason"
 #~ msgid "Poção abaixo de (%)"
 #~ msgstr "Poção abaixo de (%)"
 
+#: components/space/game/NpcDialog.tsx
+msgid "Poções"
+msgstr "Poções"
+
 #: components/space/game/RunHud.tsx
 msgid "Poções de mana"
 msgstr "Poções de mana"
@@ -5908,8 +6041,13 @@ msgid "Quality"
 msgstr "Quality"
 
 #: components/space/game/NpcDialog.tsx
-msgid "Quantidade"
-msgstr "Quantidade"
+#~ msgid "Quantidade"
+#~ msgstr "Quantidade"
+
+#. placeholder {0}: itemName(o.item)
+#: components/space/game/NpcDialog.tsx
+msgid "Quantidade de {0}"
+msgstr "Quantidade de {0}"
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Quarto"
@@ -6855,6 +6993,11 @@ msgstr "Só quem montou o grupo pode começar."
 msgid "Sobe para o nível {0} quando a corrida acabar"
 msgstr "Sobe para o nível {0} quando a corrida acabar"
 
+#. placeholder {0}: money(left())
+#: components/space/game/NpcDialog.tsx
+msgid "Sobra {0}"
+msgstr "Sobra {0}"
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "software"
 msgstr "software"
@@ -6877,6 +7020,7 @@ msgid "Something went wrong! {error}"
 msgstr "Something went wrong! {error}"
 
 #: components/space/game/heroUi.ts
+#: components/space/game/itemUi.ts
 msgid "SOR"
 msgstr "SOR"
 
@@ -7446,6 +7590,11 @@ msgstr "Treinar"
 msgid "Trending GIFs"
 msgstr "Trending GIFs"
 
+#. placeholder {0}: itemName(inv().equip[d().slot!]!.item)
+#: components/space/game/HeroSheet.tsx
+msgid "Trocando pelo que veste ({0}):"
+msgstr "Trocando pelo que veste ({0}):"
+
 #: components/space/game/itemUi.ts
 msgid "Trocar 1 por 100 {name}"
 msgstr "Trocar 1 por 100 {name}"
@@ -7461,6 +7610,10 @@ msgstr "Trocar vídeo"
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Troubleshooting"
 msgstr "Troubleshooting"
+
+#: components/space/game/NpcDialog.tsx
+msgid "Tudo"
+msgstr "Tudo"
 
 #: components/app/interface/settings/user/voice/TextToSpeechOptions.tsx
 msgid "Turn off to keep seeing /tts messages without hearing them."
@@ -7749,15 +7902,31 @@ msgstr "vazia"
 msgid "Vender"
 msgstr "Vender"
 
+#. placeholder {0}: money(r.price! * r.x.count)
+#: components/space/game/NpcDialog.tsx
+msgid "Vender · {0}"
+msgstr "Vender · {0}"
+
 #. placeholder {0}: sellValue(props.item)
 #: components/space/game/GamePanel.tsx
 #~ msgid "Vender ({0})"
 #~ msgstr "Vender ({0})"
 
+#. placeholder {0}: picked().length
+#. placeholder {1}: money(pickedTotal())
+#: components/space/game/NpcDialog.tsx
+msgid "Vender {0} · {1}"
+msgstr "Vender {0} · {1}"
+
 #. placeholder {0}: money(r.price! * r.x.count)
 #: components/space/game/NpcDialog.tsx
-msgid "Vender por {0}"
-msgstr "Vender por {0}"
+#~ msgid "Vender por {0}"
+#~ msgstr "Vender por {0}"
+
+#. placeholder {0}: money(gold)
+#: components/space/game/NpcDialog.tsx
+msgid "Vendido: {sold} itens por {0}."
+msgstr "Vendido: {sold} itens por {0}."
 
 #: components/space/game/NpcDialog.tsx
 msgid "Vendido."
@@ -7891,6 +8060,7 @@ msgstr "virotes"
 #~ msgstr "Visual ainda não conquistado."
 
 #: components/space/game/heroUi.ts
+#: components/space/game/itemUi.ts
 msgid "VIT"
 msgstr "VIT"
 

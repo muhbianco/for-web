@@ -26,6 +26,7 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 import {
   SLOT_ICON,
   coinAction,
+  compareItems,
   inventoryError,
   itemIcon,
   itemLines,
@@ -33,6 +34,8 @@ import {
   oz,
   slotLabels,
 } from "./itemUi";
+import { gameFrame } from "./gameTheme";
+import { Deltas } from "./ItemBits";
 import { PotionBelt } from "./RunHud";
 import { SkillTree } from "./SkillTree";
 import { StatsPanel } from "./StatsPanel";
@@ -205,6 +208,7 @@ export default function HeroSheet(props: {
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
       <Card
+        style={gameFrame}
         ref={card}
         role="dialog"
         aria-modal="true"
@@ -459,6 +463,34 @@ export default function HeroSheet(props: {
                         {(line) => <li>{line}</li>}
                       </For>
                     </ul>
+                  )}
+                </Show>
+                {/* Da mochila: o que muda trocando pelo vestido no mesmo lugar (24/11/2026). */}
+                <Show
+                  when={
+                    p().where === "pack" &&
+                    def()?.slot &&
+                    def()!.slot !== "mochila" &&
+                    def()!.slot !== "municao"
+                      ? def()
+                      : null
+                  }
+                >
+                  {(d) => (
+                    <Versus>
+                      <Muted>
+                        {inv().equip[d().slot!]
+                          ? t`Trocando pelo que veste (${itemName(inv().equip[d().slot!]!.item)}):`
+                          : t`No lugar vazio:`}
+                      </Muted>
+                      <Deltas
+                        list={compareItems(
+                          d(),
+                          itemDef(inv().equip[d().slot!]?.item ?? ""),
+                        )}
+                        empty={t`nada muda`}
+                      />
+                    </Versus>
                   )}
                 </Show>
                 <Row>
@@ -905,6 +937,10 @@ const Details = styled("div", {
       fontSize: "0.9em",
     },
   },
+});
+
+const Versus = styled("div", {
+  base: { display: "flex", flexDirection: "column", gap: "2px" },
 });
 
 const Skills = styled("div", {

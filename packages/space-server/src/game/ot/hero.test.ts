@@ -571,3 +571,21 @@ test("corrida: entra com a vida, a mana e a capacidade dos atributos, e com a á
   assert.equal(r.stats?.int, 51);
   assert.deepEqual(r.tree, { "seiva.cura-leve": 1 });
 });
+
+test("itens com atributos: o que veste soma na vida, na mana e na corrida; a capacidade fica nos pontos", async () => {
+  const { heroRunSnapshot, capOf } = await import("./hero.ts");
+  const d = newRpgHero("D", 0);
+  applyVocation(d, 4);
+  d.level = 20;
+  const before = rpgHeroView(d, DEFAULT_RATES, 0);
+  const cap = capOf(d);
+  d.inv.equip.colar = { item: "colar-do-campeao", count: 1 };
+  const view = rpgHeroView(d, DEFAULT_RATES, 0);
+  assert.deepEqual(view.gear_stats, { for: 2, vit: 2 });
+  assert.equal(view.stats.vit, before.stats.vit, "os pontos postos não mudam");
+  assert.ok(view.health_max > before.health_max, "VIT do colar entra na vida");
+  const r = heroRunSnapshot(d, "D", 0);
+  assert.equal(r.stats?.for, d.stats.for + 2);
+  assert.equal(r.healthMax, view.health_max);
+  assert.equal(capOf(d), cap, "a FOR do item não mexe na capacidade");
+});

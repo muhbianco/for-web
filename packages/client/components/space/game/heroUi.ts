@@ -12,6 +12,7 @@ import {
   itemDef,
   spellRange,
   VOCATIONS,
+  withGearStats,
   withInt,
   withVit,
 } from "@muchat/space-core/game/ot";
@@ -52,15 +53,20 @@ export function statInfo(): Record<StatId, { name: string; blurb: string }> {
 }
 
 /** O que os atributos dão, com vida, mana e capacidade já somadas. */
+/**
+ * Os números do herói com os pontos `stats` (os postos, com ou sem os marcados). Os itens vestidos
+ * entram por cima (24/11/2026), como no servidor; a capacidade conta só a FOR dos pontos.
+ */
 export function heroDerived(hero: RpgHeroView, stats: Stats) {
-  const d: Derived = derive(stats, hero.level);
+  const eff = withGearStats(stats, hero.gear_stats ?? {});
+  const d: Derived = derive(eff, hero.level);
   const attackMs =
     VOCATIONS[hero.vocation].attackSpeedMs * Math.max(0.25, d.aspd);
   return {
     d,
-    health: withVit(hero.base.health, stats),
-    mana: withInt(hero.base.mana, stats),
-    cap: hero.base.cap + d.capBonus,
+    health: withVit(hero.base.health, eff),
+    mana: withInt(hero.base.mana, eff),
+    cap: hero.base.cap + derive(stats, hero.level).capBonus,
     attacksPerSecond: 1000 / Math.max(500, attackMs),
   };
 }

@@ -5,6 +5,8 @@ import type { SpaceView } from "@muchat/space-client";
 import { type RpgLobbyView, dungeonOf } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
+import { gameChip } from "./gameTheme";
+
 /**
  * O grupo da dungeon na sala (docs/espaco/jogo/ot, etapa O4): quem está nele vê e age (líder
  * começa, todos podem sair); quem está na sala vê o convite para ir até a TV.
@@ -38,7 +40,11 @@ export default function LobbyChip(props: {
   return (
     <Show when={lobby()}>
       {(l) => (
-        <Chip role="status" data-mine={mine() ? "" : undefined}>
+        <Chip
+          style={gameChip}
+          role="status"
+          data-mine={mine() ? "" : undefined}
+        >
           <span aria-hidden="true">🛡</span>
           <Show
             when={mine()}

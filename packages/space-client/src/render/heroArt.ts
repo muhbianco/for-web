@@ -210,13 +210,27 @@ const WEAR: Readonly<Record<string, string>> = {
   "calca-de-malha": "#8f98a3",
   "botas-de-couro": "#4a3020",
   "botas-de-viajante": "#2f3a44",
+  // 24/11/2026: o kit do Ragnarok.
+  bandana: "#a8322d",
+  "chapeu-de-aprendiz": "#7a5a3a",
+  "chapeu-de-mago": "#3c2f72",
+  "tiara-do-sabio": "#d9b45a",
+  "coroa-do-vidente": "#e3c15a",
+  "traje-de-aventureiro": "#6d5a3e",
+  "calca-de-linho": "#ddd6c4",
+  "calca-de-cacador": "#4d5a38",
+  sandalias: "#a07850",
+  "botas-do-mago": "#3c2f72",
+  "botas-aladas": "#e9e4d4",
 };
+/** O que vai na cabeça sem cobrir o cabelo (os óculos). */
+const NO_COVER = new Set(["oculos-de-cacador"]);
 /** Túnica e manto descem até os pés: a calça fica da cor deles. */
 const ROBES = new Set(["tunica-de-linho", "manto-azul"]);
 const METAL_HELMS = new Set(["elmo-de-ferro", "elmo-de-aco"]);
 
 function wear(item: string | undefined): string | null {
-  if (!item) return null;
+  if (!item || NO_COVER.has(item)) return null;
   return WEAR[item] ?? "#8f98a3";
 }
 

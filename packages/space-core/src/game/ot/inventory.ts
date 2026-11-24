@@ -1,3 +1,4 @@
+import { type Stats, STATS } from "./attributes.ts";
 import type { VocationId } from "./data.ts";
 import {
   type AmmoType,
@@ -9,6 +10,7 @@ import {
   SLOTS,
   cannotUse,
   itemDef,
+  itemStats,
   starterKit,
 } from "./items.ts";
 
@@ -459,4 +461,16 @@ export function validInventory(inv: unknown): inv is Inventory {
     if (x.equip[s] !== undefined && !ok(x.equip[s])) return false;
   if (!x.pack.every(ok)) return false;
   return x.pack.length <= packSize(x);
+}
+
+/** Os atributos que o que está vestido dá (24/11/2026, itens no modelo do Ragnarok). */
+export function gearStats(inv: Inventory): Partial<Stats> {
+  return itemStats(SLOTS.map((s) => inv.equip[s]?.item));
+}
+
+/** Os atributos do herói com os dos itens por cima (o que entra nas contas). */
+export function withGearStats(stats: Stats, gear: Partial<Stats>): Stats {
+  const out = { ...stats };
+  for (const k of STATS) out[k] += gear[k] ?? 0;
+  return out;
 }

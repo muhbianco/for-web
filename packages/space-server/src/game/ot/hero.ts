@@ -52,6 +52,8 @@ import {
   COINS,
   compactPack,
   DEFAULT_SUPPLIES,
+  gearStats,
+  withGearStats,
   discardItem,
   equipItem,
   freshSkill,
@@ -382,13 +384,15 @@ export function heroRunSnapshot(
   now: number,
 ): RunHero {
   const inv = cloneInventory(d.inv);
+  // Os atributos com os dos itens vestidos (24/11/2026): a vida, a mana e as contas da corrida.
+  const stats = withGearStats(d.stats, gearStats(inv));
   return {
     userId: d._id,
     name,
     vocation: d.vocation,
     level: d.level,
-    healthMax: withVit(d.health_max, d.stats),
-    manaMax: withInt(d.mana_max, d.stats),
+    healthMax: withVit(d.health_max, stats),
+    manaMax: withInt(d.mana_max, stats),
     skills: skillLevels(d),
     magicLevel: d.magic.level,
     stamina: staminaNow(d, now),
@@ -397,7 +401,7 @@ export function heroRunSnapshot(
     cap: capOf(d),
     supplies: structuredClone(d.supplies),
     lootSkip: [...d.loot_skip],
-    stats: { ...d.stats },
+    stats,
     tree: { ...d.tree },
   };
 }
@@ -957,15 +961,18 @@ export function rpgHeroView(
       next: reqSkillTries(voc, s, st.level + 1),
     };
   }
+  const gear = gearStats(d.inv);
+  const eff = withGearStats(d.stats, gear);
   return {
     vocation: d.vocation,
     level: d.level,
     experience: d.experience,
-    health_max: withVit(d.health_max, d.stats),
-    mana_max: withInt(d.mana_max, d.stats),
+    health_max: withVit(d.health_max, eff),
+    mana_max: withInt(d.mana_max, eff),
     cap: capOf(d),
     base: { health: d.health_max, mana: d.mana_max, cap: d.cap },
     stats: { ...d.stats },
+    gear_stats: gear,
     stat_points: statPointsFree(d.stats, d.level),
     tree: { ...d.tree },
     skill_points: {

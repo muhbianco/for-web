@@ -1,3 +1,4 @@
+import type { Stats } from "./attributes.ts";
 import type { SkillId, VocationId } from "./data.ts";
 
 /**
@@ -92,6 +93,11 @@ export interface ItemDef {
   charges?: number;
   /** Segundos de uso do anel [TFS duration]; [nosso] só corre na dungeon. */
   duration?: number;
+  /**
+   * Atributos a mais enquanto veste (24/11/2026, itens no modelo do Ragnarok [RO item_db bonus
+   * bStr, bAgi, bVit, bInt, bDex, bLuk]): entram nas contas do herói como os pontos postos.
+   */
+  stats?: Readonly<Partial<Stats>>;
   /** Skill a mais enquanto veste [TFS skillSword, skillAxe, skillClub]. */
   skillBonus?: Readonly<Partial<Record<SkillId, number>>>;
   /** % do dano que some, por elemento [TFS absorbPercent*]; negativo = dano a mais. */
@@ -154,7 +160,7 @@ export const CRYSTAL = "moeda-de-cristal";
 /** Da menor para a maior; cada uma vale 100 da anterior [TFS change_gold.lua]. */
 export const COINS: readonly string[] = [GOLD, PLATINUM, CRYSTAL];
 
-const LIST: readonly ItemDef[] = [
+const BASE: readonly ItemDef[] = [
   // Moedas: 0,10 oz cada [TFS items.xml 2148, 2152, 2160], pilha de até 100.
   {
     id: GOLD,
@@ -1348,6 +1354,366 @@ const LIST: readonly ItemDef[] = [
     value: 12_000,
   },
 ];
+
+/**
+ * Atributos dos itens (24/11/2026, "um kit de itens do Ragnarok, onde cada item traz consigo uma
+ * quantidade de status"). Cada equipamento soma atributos enquanto está vestido, como no
+ * Ragnarok [RO item_db: bonus bStr, bDex...], na escala dos nossos heróis: +1 a +2 nos itens dos
+ * primeiros levels e até +8 nos do vazio. O cavaleiro leva FOR e VIT; o paladino, que no OT
+ * atira e também usa magia sagrada, leva DES com INT; os magos, INT. O kit inicial fica sem.
+ */
+const BONUS: Readonly<Record<string, Readonly<Partial<Stats>>>> = {
+  // Até o level 10.
+  "espada-de-ferro": { for: 1 },
+  "maca-cravejada": { for: 1 },
+  "machado-de-lenhador": { for: 1 },
+  "escudo-de-bronze": { vit: 1 },
+  "elmo-de-ferro": { vit: 1 },
+  "colete-de-escamas": { vit: 1 },
+  "tunica-de-linho": { int: 1 },
+  "besta-leve": { des: 1 },
+  "varinha-de-brasa": { int: 1 },
+  "bastao-de-raiz": { int: 1 },
+  // Galerias e Ninho (12–15).
+  "espada-larga": { for: 2 },
+  "machado-de-batalha": { for: 2 },
+  "martelo-de-guerra": { for: 1, vit: 1 },
+  "escudo-de-aco": { vit: 2 },
+  "cota-de-malha": { vit: 2 },
+  "calca-de-malha": { vit: 1 },
+  "botas-de-viajante": { agi: 1 },
+  "arco-composto": { des: 2 },
+  "varinha-de-geada": { int: 2 },
+  "manto-azul": { int: 2 },
+  // Forja (20–25).
+  "lamina-da-forja": { for: 3 },
+  "machado-rachado": { for: 3 },
+  "malho-de-brasa": { for: 2, vit: 1 },
+  "escudo-da-forja": { vit: 3 },
+  "placa-de-ferreiro": { vit: 3 },
+  "elmo-de-aco": { vit: 2 },
+  "arco-de-guerra": { des: 2, int: 1 },
+  "varinha-ardente": { int: 3 },
+  "cajado-de-pedra": { int: 2, vit: 1 },
+  // Mina e Bosque (30–40).
+  "espada-runica": { for: 3, agi: 2 },
+  "machado-runico": { for: 5 },
+  "maca-runica": { for: 3, vit: 2 },
+  "escudo-runico": { vit: 3, sor: 1 },
+  "couraca-runica": { vit: 4 },
+  "elmo-runico": { vit: 2, des: 1 },
+  "calca-de-placas": { vit: 2 },
+  "botas-de-ferro": { vit: 1, agi: 1 },
+  "couraca-de-cacador": { des: 3, agi: 1 },
+  "arco-de-teixo": { des: 3, int: 1 },
+  "besta-pesada": { des: 4 },
+  "varinha-da-tempestade": { int: 4, des: 1 },
+  "cajado-de-espinhos": { int: 3, vit: 2 },
+  "tunica-runica": { int: 3, des: 1 },
+  // Cidadela e Abismo (45–50).
+  "espada-de-cinzas": { for: 4, agi: 2 },
+  "machado-de-cinzas": { for: 6 },
+  "martelo-de-cinzas": { for: 4, vit: 2 },
+  "escudo-de-cinzas": { vit: 4 },
+  "armadura-de-cinzas": { vit: 5 },
+  "elmo-de-cinzas": { vit: 3 },
+  "calca-de-cinzas": { vit: 3 },
+  "botas-de-cinzas": { agi: 2, vit: 1 },
+  "couraca-de-escamas-negras": { des: 4, agi: 2 },
+  "arco-de-cinzas": { des: 4, int: 2 },
+  "varinha-do-inferno": { int: 5, des: 1 },
+  "cajado-glacial": { int: 4, vit: 2 },
+  "manto-de-cinzas": { int: 4, des: 1 },
+  // Trono do vazio (60–65).
+  "lamina-do-vazio": { for: 5, agi: 3 },
+  "machado-do-vazio": { for: 8 },
+  "malho-do-vazio": { for: 5, vit: 3 },
+  "escudo-do-vazio": { vit: 5, sor: 2 },
+  "placa-do-vazio": { vit: 6 },
+  "elmo-do-vazio": { vit: 4 },
+  "arco-do-vazio": { des: 5, int: 3 },
+  "varinha-do-vazio": { int: 6, des: 2 },
+  "cajado-do-vazio": { int: 5, vit: 3 },
+  "manto-do-vazio": { int: 5, des: 2 },
+};
+
+/**
+ * Os itens do kit do Ragnarok (24/11/2026): os acessórios de um atributo só, os chapéus de mago,
+ * a bandana, os óculos e as sandálias, o broquel, a faca e o estoque, o arco sagrado do paladino.
+ * São os arquétipos do Ragnarok com nomes e números nossos; caem nas dungeons da faixa deles.
+ */
+const RO_KIT: readonly ItemDef[] = [
+  // Anéis: um atributo (level 10) e dois (level 30). Sem tempo nem cargas: ficam no dedo.
+  ring("anel-de-forca", "Anel de força", { for: 2 }, 10, 400),
+  ring("anel-da-agilidade", "Anel da agilidade", { agi: 2 }, 10, 400),
+  ring("anel-do-sabio", "Anel do sábio", { int: 2 }, 10, 400),
+  ring("anel-do-arqueiro", "Anel do arqueiro", { des: 2 }, 10, 400),
+  ring("anel-da-sorte", "Anel da sorte", { sor: 2 }, 10, 400),
+  ring("anel-do-guerreiro", "Anel do guerreiro", { for: 3, vit: 1 }, 30, 2000),
+  ring("anel-do-cacador", "Anel do caçador", { des: 3, agi: 1 }, 30, 2000),
+  ring("anel-arcano", "Anel arcano", { int: 3, des: 1 }, 30, 2000),
+  // Colares.
+  {
+    id: "colar-da-vitalidade",
+    name: "Colar da vitalidade",
+    slot: "colar",
+    stats: { vit: 2 },
+    minLevel: 10,
+    weight: 300,
+    value: 400,
+  },
+  {
+    id: "rosario",
+    name: "Rosário",
+    slot: "colar",
+    stats: { sor: 2 },
+    absorb: { sagrado: 5, morte: 5 },
+    minLevel: 15,
+    weight: 300,
+    value: 600,
+  },
+  {
+    id: "colar-do-campeao",
+    name: "Colar do campeão",
+    slot: "colar",
+    stats: { for: 2, vit: 2 },
+    minLevel: 45,
+    weight: 400,
+    value: 5000,
+  },
+  {
+    id: "colar-do-vidente",
+    name: "Colar do vidente",
+    slot: "colar",
+    stats: { int: 3, sor: 1 },
+    minLevel: 45,
+    weight: 400,
+    value: 5000,
+  },
+  // Cabeça.
+  {
+    id: "bandana",
+    name: "Bandana",
+    slot: "cabeca",
+    armor: 1,
+    stats: { for: 1 },
+    minLevel: 5,
+    weight: 600,
+    value: 60,
+  },
+  {
+    id: "chapeu-de-aprendiz",
+    name: "Chapéu de aprendiz",
+    slot: "cabeca",
+    armor: 1,
+    stats: { int: 1 },
+    vocations: MAGES,
+    weight: 800,
+    value: 50,
+  },
+  {
+    id: "chapeu-de-mago",
+    name: "Chapéu de mago",
+    slot: "cabeca",
+    armor: 2,
+    stats: { int: 2 },
+    minLevel: 15,
+    vocations: MAGES,
+    weight: 1000,
+    value: 300,
+  },
+  {
+    id: "oculos-de-cacador",
+    name: "Óculos de caçador",
+    slot: "cabeca",
+    armor: 2,
+    stats: { des: 2 },
+    minLevel: 18,
+    vocations: PALADIN,
+    weight: 500,
+    value: 400,
+  },
+  {
+    id: "tiara-do-sabio",
+    name: "Tiara do sábio",
+    slot: "cabeca",
+    armor: 3,
+    stats: { int: 3, des: 1 },
+    minLevel: 35,
+    vocations: MAGES,
+    weight: 900,
+    value: 1500,
+  },
+  {
+    id: "coroa-do-vidente",
+    name: "Coroa do vidente",
+    slot: "cabeca",
+    armor: 4,
+    stats: { int: 4, sor: 2 },
+    minLevel: 55,
+    vocations: MAGES,
+    weight: 1200,
+    value: 8000,
+  },
+  // Corpo, pernas e pés.
+  {
+    id: "traje-de-aventureiro",
+    name: "Traje de aventureiro",
+    slot: "corpo",
+    armor: 4,
+    stats: { agi: 1, vit: 1 },
+    minLevel: 8,
+    weight: 2500,
+    value: 120,
+  },
+  {
+    id: "calca-de-linho",
+    name: "Calça de linho",
+    slot: "pernas",
+    armor: 2,
+    stats: { int: 1 },
+    minLevel: 10,
+    vocations: MAGES,
+    weight: 1500,
+    value: 80,
+  },
+  {
+    id: "calca-de-cacador",
+    name: "Calça de caçador",
+    slot: "pernas",
+    armor: 4,
+    stats: { des: 2, agi: 1 },
+    minLevel: 25,
+    vocations: PALADIN,
+    weight: 2500,
+    value: 700,
+  },
+  {
+    id: "sandalias",
+    name: "Sandálias",
+    slot: "pes",
+    armor: 1,
+    stats: { agi: 1 },
+    minLevel: 3,
+    weight: 600,
+    value: 30,
+  },
+  {
+    id: "botas-do-mago",
+    name: "Botas do mago",
+    slot: "pes",
+    armor: 2,
+    stats: { int: 1, agi: 1 },
+    minLevel: 20,
+    vocations: MAGES,
+    weight: 900,
+    value: 600,
+  },
+  {
+    id: "botas-aladas",
+    name: "Botas aladas",
+    slot: "pes",
+    armor: 2,
+    stats: { agi: 3 },
+    minLevel: 40,
+    weight: 800,
+    value: 3000,
+  },
+  // Escudos do cavaleiro.
+  {
+    id: "broquel",
+    name: "Broquel",
+    slot: "escudo",
+    defense: 15,
+    stats: { agi: 1 },
+    minLevel: 6,
+    vocations: KNIGHT,
+    weight: 3000,
+    value: 80,
+  },
+  {
+    id: "escudo-espelhado",
+    name: "Escudo espelhado",
+    slot: "escudo",
+    defense: 29,
+    stats: { vit: 2, int: 1 },
+    absorb: magic(5),
+    minLevel: 40,
+    vocations: KNIGHT,
+    weight: 5500,
+    value: 2500,
+  },
+  // Armas leves do cavaleiro (AGI) e o arco sagrado do paladino (DES e INT).
+  {
+    id: "faca-de-combate",
+    name: "Faca de combate",
+    slot: "arma",
+    kind: "espada",
+    attack: 14,
+    defense: 8,
+    stats: { agi: 2 },
+    minLevel: 6,
+    vocations: KNIGHT,
+    weight: 1500,
+    value: 80,
+  },
+  {
+    id: "estoque",
+    name: "Estoque",
+    slot: "arma",
+    kind: "espada",
+    attack: 27,
+    defense: 14,
+    stats: { agi: 3, des: 1 },
+    minLevel: 25,
+    vocations: KNIGHT,
+    weight: 2500,
+    value: 800,
+  },
+  {
+    id: "arco-sagrado",
+    name: "Arco sagrado",
+    slot: "arma",
+    kind: "distancia",
+    twoHanded: true,
+    ammo: "flecha",
+    attack: 6,
+    hitChance: 5,
+    stats: { des: 3, int: 3 },
+    minLevel: 45,
+    vocations: PALADIN,
+    weight: 4000,
+    value: 4500,
+  },
+];
+
+function ring(
+  id: string,
+  name: string,
+  stats: Partial<Stats>,
+  minLevel: number,
+  value: number,
+): ItemDef {
+  return { id, name, slot: "anel", stats, minLevel, weight: 90, value };
+}
+
+const LIST: readonly ItemDef[] = [...BASE, ...RO_KIT].map((i) =>
+  BONUS[i.id] ? { ...i, stats: BONUS[i.id] } : i,
+);
+
+/** Os atributos que a soma de itens dá (vazio: nenhum). */
+export function itemStats(
+  ids: readonly (string | undefined)[],
+): Partial<Stats> {
+  const out: Partial<Stats> = {};
+  for (const id of ids) {
+    const s = id ? ITEMS[id]?.stats : undefined;
+    if (!s) continue;
+    for (const [k, v] of Object.entries(s) as [keyof Stats, number][])
+      out[k] = (out[k] ?? 0) + v;
+  }
+  return out;
+}
 
 export const ITEMS: Readonly<Record<string, ItemDef>> = Object.fromEntries(
   LIST.map((i) => [i.id, i]),

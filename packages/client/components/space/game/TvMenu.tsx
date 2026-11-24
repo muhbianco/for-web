@@ -19,7 +19,9 @@ import {
   type RpgLobbyView,
   DUNGEONS,
   VOCATIONS,
+  canShare,
   dungeonOf,
+  minShareLevel,
   missingAmmo,
   sharedMultiplier,
 } from "@muchat/space-core/game/ot";
@@ -28,9 +30,10 @@ import { styled } from "styled-system/jsx";
 import { Button } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
-import { VocationPicker } from "./VocationPicker";
+import { gameFrame } from "./gameTheme";
 import { useModalKeys } from "./modalKeys";
 import { duration, rpgLabels, vocationName } from "./rpgUi";
+import { VocationPicker } from "./VocationPicker";
 
 /**
  * A TV com o jogo ligado (docs/espaco/jogo/ot): a tela inicial de uma Smart TV com os apps
@@ -173,6 +176,11 @@ export default function TvMenu(props: {
     const vocs = props.lobby?.members.map((m) => m.vocation) ?? [];
     return vocs.length > 1 ? Math.round((sharedMultiplier(vocs) - 1) * 100) : 0;
   };
+  // A divisão [TFS party.cpp]: todos com pelo menos 2/3 do maior level. Sem ela, cada um leva
+  // pelo dano que causa (24/11/2026: o grupo de levels 24 e 14 não dividia e ninguém sabia).
+  const levels = () => props.lobby?.members.map((m) => m.level) ?? [];
+  const shares = () => levels().length < 2 || canShare(levels());
+  const shareMin = () => minShareLevel(Math.max(0, ...levels()));
 
   return (
     <Backdrop
@@ -183,6 +191,7 @@ export default function TvMenu(props: {
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
       <Card
+        style={gameFrame}
         ref={card}
         role="dialog"
         aria-modal="true"
@@ -343,12 +352,24 @@ export default function TvMenu(props: {
                             ? ` ${t`(líder)`}`
                             : ""}{" "}
                           <Muted>{t`${vocationName(m.vocation)} · Nv ${m.level}`}</Muted>
+                          <Show when={!shares() && m.level < shareMin()}>
+                            <Warn>{t` · abaixo do nível ${shareMin()}`}</Warn>
+                          </Show>
                         </li>
                       )}
                     </For>
                   </Members>
-                  <Show when={bonusPct() > 0}>
-                    <Muted>{t`Bônus de experiência do grupo: +${bonusPct()}% (cresce com vocações diferentes).`}</Muted>
+                  <Show
+                    when={shares()}
+                    fallback={
+                      <ShareNote role="note">
+                        {t`A experiência não vai ser dividida: para dividir, todos precisam de nível ${shareMin()} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa.`}
+                      </ShareNote>
+                    }
+                  >
+                    <Show when={bonusPct() > 0}>
+                      <Muted>{t`Experiência dividida igualmente, com bônus do grupo de +${bonusPct()}% (cresce com vocações diferentes).`}</Muted>
+                    </Show>
                   </Show>
                   <Row>
                     <Show when={leader()}>
@@ -416,6 +437,21 @@ const Backdrop = styled("div", {
     background: "rgba(0, 0, 0, 0.55)",
     zIndex: 6,
     padding: "var(--gap-lg)",
+  },
+});
+
+const Warn = styled("span", {
+  base: { color: "var(--md-sys-color-error)", fontSize: "0.85em" },
+});
+
+const ShareNote = styled("p", {
+  base: {
+    margin: 0,
+    padding: "6px 10px",
+    borderRadius: "10px",
+    background: "rgba(255, 138, 122, 0.12)",
+    boxShadow: "inset 0 0 0 1px rgba(255, 138, 122, 0.35)",
+    fontSize: "0.88em",
   },
 });
 

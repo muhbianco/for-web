@@ -4,6 +4,8 @@ import {
   type ItemDef,
   type ItemStack,
   type Slot,
+  type StatId,
+  type Stats,
   type VocationId,
   COINS,
   itemDef,
@@ -85,6 +87,71 @@ function mmss(seconds: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
+/** As siglas dos atributos, na ordem do painel (como no Ragnarok). */
+const STAT_ORDER: readonly StatId[] = [
+  "for",
+  "agi",
+  "vit",
+  "int",
+  "des",
+  "sor",
+];
+export function statAbbr(k: StatId): string {
+  switch (k) {
+    case "for":
+      return t`FOR`;
+    case "agi":
+      return t`AGI`;
+    case "vit":
+      return t`VIT`;
+    case "int":
+      return t`INT`;
+    case "des":
+      return t`DES`;
+    default:
+      return t`SOR`;
+  }
+}
+
+/** "FOR +2 · VIT +1" (vazio: sem atributos). */
+export function statsLine(stats: Partial<Stats> | undefined): string {
+  if (!stats) return "";
+  return STAT_ORDER.filter((k) => stats[k])
+    .map((k) => `${statAbbr(k)} ${stats[k]! > 0 ? "+" : ""}${stats[k]}`)
+    .join(" · ");
+}
+
+/** Uma diferença entre dois itens: o nome do número e quanto o novo dá a mais (ou a menos). */
+export interface ItemDelta {
+  label: string;
+  delta: number;
+}
+
+/**
+ * O que trocar o vestido (`current`, ou nada) por `def` muda (24/11/2026): ataque, defesa,
+ * armadura, acerto e cada atributo. Só o que muda entra; o mais alto é melhor em todos.
+ */
+export function compareItems(
+  def: ItemDef,
+  current: ItemDef | undefined,
+): ItemDelta[] {
+  const out: ItemDelta[] = [];
+  const add = (label: string, a = 0, b = 0) => {
+    if (a !== b) out.push({ label, delta: a - b });
+  };
+  add(t`ataque`, def.attack, current?.attack);
+  add(t`defesa`, def.defense, current?.defense);
+  add(t`armadura`, def.armor, current?.armor);
+  add(t`acerto`, def.hitChance, current?.hitChance);
+  if (def.wand || current?.wand) {
+    const avg = (d?: ItemDef) => (d?.wand ? (d.wand.min + d.wand.max) / 2 : 0);
+    add(t`dano da varinha`, Math.round(avg(def)), Math.round(avg(current)));
+  }
+  for (const k of STAT_ORDER)
+    add(statAbbr(k), def.stats?.[k], current?.stats?.[k]);
+  return out;
+}
+
 /** O que o item faz, linha a linha, para a ficha. */
 export function itemLines(
   def: ItemDef,
@@ -93,6 +160,8 @@ export function itemLines(
 ): string[] {
   const el = elementLabels();
   const out: string[] = [];
+  const stats = statsLine(def.stats);
+  if (stats) out.push(stats);
   const atk = def.attack ?? 0;
   const dfn = def.defense ?? 0;
   if (def.slot === "arma" && def.kind !== "distancia" && def.kind !== "varinha")

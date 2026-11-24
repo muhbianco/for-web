@@ -4,8 +4,11 @@ import { useLingui } from "@lingui/solid/macro";
 import type { GameWireEvent, SpaceView } from "@muchat/space-client";
 import type { NpcKind } from "@muchat/space-core";
 import {
+  type ItemDef,
   type JobTier,
   type RpgHeroView,
+  type Slot,
+  canDrink,
   cannotEvolve,
   cannotUse,
   EVOLUTION,
@@ -22,7 +25,16 @@ import { styled } from "styled-system/jsx";
 import { Button } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
-import { inventoryError, itemIcon, itemLines, itemName } from "./itemUi";
+import { gameFrame } from "./gameTheme";
+import { Deltas } from "./ItemBits";
+import {
+  compareItems,
+  inventoryError,
+  itemIcon,
+  itemLines,
+  itemName,
+  statsLine,
+} from "./itemUi";
 import { useModalKeys } from "./modalKeys";
 import { className, rpgLabels, vocationName } from "./rpgUi";
 
@@ -124,6 +136,131 @@ export default function NpcDialog(props: {
   }
 
   const money = (n: number) => n.toLocaleString();
+
+  // ---- mercador (24/11/2026) ----
+  const [filter, setFilter] = createSignal<ShopFilter>("mine");
+  const [picked, setPicked] = createSignal<string[]>([]);
+  const base = () => VOCATIONS[hero()?.vocation ?? 0].base;
+  const level = () => hero()?.level ?? 1;
+  const equipped = (slot: Slot) =>
+    itemDef(hero()?.inventory.equip[slot]?.item ?? "");
+  /** O herói usa? Poção: pode beber; munição: a da arma vestida; o resto: vocação e level. */
+  const usable = (d: ItemDef) => {
+    if (d.potion) return canDrink(d, base(), level());
+    if (d.slot === "municao")
+      return !!d.ammo && equipped("arma")?.ammo === d.ammo;
+    // A mochila só se for maior que a vestida.
+    if (d.slot === "mochila")
+      return (d.container ?? 0) > (equipped("mochila")?.container ?? 0);
+    if (d.slot === null) return true;
+    return cannotUse(d, base(), level()) === null;
+  };
+  const offers = (f: ShopFilter) =>
+    MERCHANT_SELLS.filter((o) => {
+      const d = itemDef(o.item);
+      if (!d) return false;
+      if (f === "all") return true;
+      if (f === "mine") return usable(d);
+      return shopCategory(d) === f;
+    });
+  const filterLabel = (f: ShopFilter) => {
+    switch (f) {
+      case "mine":
+        return t`Para mim`;
+      case "gear":
+        return t`Equipamento`;
+      case "acc":
+        return t`Anéis e colares`;
+      case "potions":
+        return t`Poções`;
+      case "ammo":
+        return t`Munição`;
+      default:
+        return t`Tudo`;
+    }
+  };
+  /** A troca pelo vestido no mesmo lugar (null: não se veste, ou não há herói). */
+  const compareTo = (d: ItemDef | undefined) =>
+    d && d.slot && d.slot !== "mochila" && d.slot !== "municao" && hero()
+      ? compareItems(d, equipped(d.slot))
+      : null;
+  /** O que não serve: o que a vocação não usa, o pior que o vestido e o frasco vazio. */
+  const isJunk = (d: ItemDef | undefined) => {
+    if (!d) return false;
+    if (d.id.startsWith("frasco")) return true;
+    if (!d.slot || d.slot === "mochila" || d.slot === "municao") return false;
+    const why = cannotUse(d, base(), level());
+    // O de level mais alto ainda vai servir: fica.
+    if (why === "vocation") return true;
+    if (why !== null) return false;
+    return !compareItems(d, equipped(d.slot)).some((x) => x.delta > 0);
+  };
+  const markJunk = () => {
+    setConfirm(null);
+    setPicked([
+      ...new Set(
+        sellable()
+          .filter((r) => isJunk(itemDef(r.x.item)))
+          .map((r) => r.x.item),
+      ),
+    ]);
+  };
+  const pickedTotal = () =>
+    sellable()
+      .filter((r) => picked().includes(r.x.item))
+      .reduce((n, r) => n + r.price! * r.x.count, 0);
+  /** Um comando e a resposta dele (a venda em lote espera uma antes da outra: a mochila muda). */
+  const request = (type: string, d: Record<string, unknown>) =>
+    new Promise<GameWireEvent>((resolve) => {
+      const id = props.view.gameSend(type, {
+        npc: props.request.instance,
+        ...d,
+      });
+      const stop = props.view.onGame((e) => {
+        if (e.re !== id) return;
+        stop();
+        clearTimeout(timer);
+        resolve(e);
+      });
+      const timer = setTimeout(() => {
+        stop();
+        resolve({ t: "error", d: { code: "internal" } });
+      }, 10_000);
+    });
+  async function sellMany() {
+    if (busy()) return;
+    setBusy(true);
+    setError(null);
+    setDone(null);
+    setConfirm(null);
+    let sold = 0;
+    let gold = 0;
+    try {
+      for (const item of picked()) {
+        // Todas as pilhas do item, uma por vez (o índice muda a cada venda).
+        for (let k = 0; k < 20; k++) {
+          const pack = hero()?.inventory.pack ?? [];
+          const index = pack.findIndex((x) => x.item === item);
+          if (index < 0) break;
+          const count = pack[index]!.count;
+          const res = await request("rpg.shop.sell", { index, item, count });
+          if (res.t === "error") {
+            const d = res.d as { code?: string; reason?: string };
+            setError(npcError(d.code, d.reason));
+            return;
+          }
+          sold += count;
+          gold += (merchantBuys(item) ?? 0) * count;
+        }
+      }
+    } finally {
+      setPicked([]);
+      setBusy(false);
+      queueMicrotask(refocus);
+      if (sold > 0) setDone(t`Vendido: ${sold} itens por ${money(gold)}.`);
+    }
+  }
+
   const sellable = createMemo(() =>
     (hero()?.inventory.pack ?? [])
       .map((x, index) => ({ x, index, price: merchantBuys(x.item) }))
@@ -147,6 +284,7 @@ export default function NpcDialog(props: {
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
       <Card
+        style={gameFrame}
         ref={card}
         role="dialog"
         aria-modal="true"
@@ -186,7 +324,7 @@ export default function NpcDialog(props: {
             </Notice>
           </Show>
 
-          {/* ---- mercador ---- */}
+          {/* ---- mercador (24/11/2026: filtros, comparação, quantidade e venda em lote) ---- */}
           <Show when={props.request.npc === "mercador"}>
             <Tabs role="tablist">
               <TabBtn
@@ -204,16 +342,57 @@ export default function NpcDialog(props: {
                 onClick={() => setTab("sell")}
               >
                 {t`Vender`}
+                <Show when={sellable().length > 0}>
+                  <Count>{sellable().length}</Count>
+                </Show>
               </TabBtn>
             </Tabs>
             <Show when={tab() === "buy"}>
+              <Filters role="group" aria-label={t`Mostrar`}>
+                <For each={SHOP_FILTERS}>
+                  {(f) => (
+                    <FilterBtn
+                      type="button"
+                      aria-pressed={filter() === f}
+                      onClick={() => setFilter(f)}
+                    >
+                      {filterLabel(f)}
+                      <Count>{offers(f).length}</Count>
+                    </FilterBtn>
+                  )}
+                </For>
+              </Filters>
               <Rows>
-                <For each={MERCHANT_SELLS}>
+                <For
+                  each={offers(filter())}
+                  fallback={
+                    <Muted>{t`Nada nesta categoria para o seu herói.`}</Muted>
+                  }
+                >
                   {(o) => {
                     const def = itemDef(o.item);
                     const stack = !!def?.stackable;
-                    const n = () => qty()[o.item] ?? (stack ? 100 : 1);
+                    const most = () =>
+                      Math.max(
+                        1,
+                        Math.min(
+                          100,
+                          Math.floor((carried() + bank()) / o.price),
+                        ),
+                      );
+                    // A pilha começa no que o dinheiro paga (até 50), não num número que falta.
+                    const n = () =>
+                      qty()[o.item] ?? (stack ? Math.min(50, most()) : 1);
                     const total = () => o.price * n();
+                    const left = () => carried() + bank() - total();
+                    const setN = (v: number) =>
+                      setQty({
+                        ...qty(),
+                        [o.item]: Math.max(
+                          1,
+                          Math.min(100, Math.floor(v) || 1),
+                        ),
+                      });
                     // O que o herói não usa (vocação ou level): aviso à vista e confirmação.
                     const why = () => {
                       const h = hero();
@@ -225,19 +404,26 @@ export default function NpcDialog(props: {
                       );
                       return r === "vocation" || r === "level" ? r : null;
                     };
+                    const versus = () => compareTo(def);
                     const key = `buy:${o.item}`;
                     return (
-                      <ShopRow
-                        title={
-                          def
-                            ? itemLines(def, null, vocationName).join("\n")
-                            : ""
-                        }
-                      >
-                        <Symbol size={20}>{itemIcon(def)}</Symbol>
-                        <span>
+                      <ShopRow data-off={why() ? "" : undefined}>
+                        <ItemIcon aria-hidden="true">
+                          <Symbol size={22}>{itemIcon(def)}</Symbol>
+                        </ItemIcon>
+                        <Info>
                           <strong>{itemName(o.item)}</strong>
-                          <Muted>{t`${money(o.price)} cada`}</Muted>
+                          <Muted>
+                            {def ? itemLines(def, null, vocationName)[0] : ""}
+                          </Muted>
+                          <Show when={versus()}>
+                            {(v) => (
+                              <Deltas
+                                list={v()}
+                                empty={t`igual ao que você veste`}
+                              />
+                            )}
+                          </Show>
                           <Show when={why()}>
                             {(w) => (
                               <Warn>
@@ -247,48 +433,69 @@ export default function NpcDialog(props: {
                               </Warn>
                             )}
                           </Show>
-                        </span>
-                        <Show when={stack} fallback={<span />}>
-                          <Qty
-                            type="number"
-                            min={1}
-                            max={100}
-                            value={n()}
-                            aria-label={t`Quantidade`}
-                            onInput={(e) => {
-                              const v = Math.max(
-                                1,
-                                Math.min(
-                                  100,
-                                  Math.floor(
-                                    Number(e.currentTarget.value) || 1,
-                                  ),
-                                ),
+                        </Info>
+                        <Buy>
+                          <Show when={stack}>
+                            <Stepper>
+                              <button
+                                type="button"
+                                aria-label={t`Menos`}
+                                disabled={n() <= 1}
+                                onClick={() => setN(n() - (n() > 10 ? 10 : 1))}
+                              >
+                                −
+                              </button>
+                              <input
+                                type="number"
+                                min={1}
+                                max={100}
+                                value={n()}
+                                aria-label={t`Quantidade de ${itemName(o.item)}`}
+                                onInput={(e) =>
+                                  setN(Number(e.currentTarget.value))
+                                }
+                              />
+                              <button
+                                type="button"
+                                aria-label={t`Mais`}
+                                disabled={n() >= 100}
+                                onClick={() => setN(n() + (n() >= 10 ? 10 : 1))}
+                              >
+                                +
+                              </button>
+                              <button
+                                type="button"
+                                title={t`O máximo que o dinheiro paga (até 100)`}
+                                onClick={() => setN(most())}
+                              >
+                                {t`máx`}
+                              </button>
+                            </Stepper>
+                          </Show>
+                          <Button
+                            size="xs"
+                            variant={why() ? "tonal" : "filled"}
+                            isDisabled={busy() || inRun() || left() < 0}
+                            onPress={() => {
+                              if (why() && confirm() !== key)
+                                return setConfirm(key);
+                              send(
+                                "rpg.shop.buy",
+                                { item: o.item, count: n() },
+                                t`Comprado: ${n()}× ${itemName(o.item)}.`,
                               );
-                              setQty({ ...qty(), [o.item]: v });
                             }}
-                          />
-                        </Show>
-                        <Button
-                          size="xs"
-                          variant="tonal"
-                          isDisabled={
-                            busy() || inRun() || total() > carried() + bank()
-                          }
-                          onPress={() => {
-                            if (why() && confirm() !== key)
-                              return setConfirm(key);
-                            send(
-                              "rpg.shop.buy",
-                              { item: o.item, count: n() },
-                              t`Comprado.`,
-                            );
-                          }}
-                        >
-                          {why() && confirm() === key
-                            ? t`Confirmar: comprar por ${money(total())}`
-                            : t`Comprar por ${money(total())}`}
-                        </Button>
+                          >
+                            {why() && confirm() === key
+                              ? t`Confirmar: ${money(total())}`
+                              : t`Comprar · ${money(total())}`}
+                          </Button>
+                          <Muted data-short={left() < 0 ? "" : undefined}>
+                            {left() < 0
+                              ? t`Faltam ${money(-left())}`
+                              : t`Sobra ${money(left())}`}
+                          </Muted>
+                        </Buy>
                       </ShopRow>
                     );
                   }}
@@ -303,40 +510,108 @@ export default function NpcDialog(props: {
                 when={sellable().length > 0}
                 fallback={<Muted>{t`Nada na mochila que ele compre.`}</Muted>}
               >
+                <SellBar>
+                  <Button
+                    size="xs"
+                    variant="tonal"
+                    isDisabled={busy() || inRun()}
+                    onPress={markJunk}
+                  >
+                    {t`Marcar o que não serve`}
+                  </Button>
+                  <Show when={picked().length > 0}>
+                    <Button
+                      size="xs"
+                      variant="text"
+                      isDisabled={busy()}
+                      onPress={() => {
+                        setPicked([]);
+                        setConfirm(null);
+                      }}
+                    >
+                      {t`Desmarcar`}
+                    </Button>
+                    <Button
+                      size="xs"
+                      variant="filled"
+                      isDisabled={busy() || inRun()}
+                      onPress={() => {
+                        if (confirm() !== "sell-many")
+                          return setConfirm("sell-many");
+                        void sellMany();
+                      }}
+                    >
+                      {confirm() === "sell-many"
+                        ? t`Confirmar: vender ${picked().length} por ${money(pickedTotal())}`
+                        : t`Vender ${picked().length} · ${money(pickedTotal())}`}
+                    </Button>
+                  </Show>
+                </SellBar>
+                <Muted>
+                  {t`"O que não serve": o que sua vocação ou level não usa, o que é pior que o vestido e os frascos vazios. Confira antes de vender: a venda não volta.`}
+                </Muted>
                 <Rows>
                   <For each={sellable()}>
-                    {(r) => (
-                      <ShopRow>
-                        <Symbol size={20}>{itemIcon(itemDef(r.x.item))}</Symbol>
-                        <span>
-                          <strong>
-                            {r.x.count > 1
-                              ? `${r.x.count}× ${itemName(r.x.item)}`
-                              : itemName(r.x.item)}
-                          </strong>
-                          <Muted>{t`${money(r.price!)} cada`}</Muted>
-                        </span>
-                        <span />
-                        <Button
-                          size="xs"
-                          variant="tonal"
-                          isDisabled={busy() || inRun()}
-                          onPress={() =>
-                            send(
-                              "rpg.shop.sell",
-                              {
-                                index: r.index,
-                                item: r.x.item,
-                                count: r.x.count,
-                              },
-                              t`Vendido.`,
-                            )
-                          }
-                        >
-                          {t`Vender por ${money(r.price! * r.x.count)}`}
-                        </Button>
-                      </ShopRow>
-                    )}
+                    {(r) => {
+                      const def = itemDef(r.x.item);
+                      const on = () => picked().includes(r.x.item);
+                      return (
+                        <ShopRow data-picked={on() ? "" : undefined}>
+                          <Pick>
+                            <input
+                              type="checkbox"
+                              checked={on()}
+                              aria-label={t`Marcar ${itemName(r.x.item)} para vender`}
+                              onChange={(e) => {
+                                setConfirm(null);
+                                setPicked(
+                                  e.currentTarget.checked
+                                    ? [...picked(), r.x.item]
+                                    : picked().filter((x) => x !== r.x.item),
+                                );
+                              }}
+                            />
+                            <ItemIcon aria-hidden="true">
+                              <Symbol size={22}>{itemIcon(def)}</Symbol>
+                            </ItemIcon>
+                          </Pick>
+                          <Info>
+                            <strong>
+                              {r.x.count > 1
+                                ? `${r.x.count}× ${itemName(r.x.item)}`
+                                : itemName(r.x.item)}
+                            </strong>
+                            <Muted>
+                              {t`${money(r.price!)} cada`}
+                              {def?.stats ? ` · ${statsLine(def.stats)}` : ""}
+                            </Muted>
+                            <Show when={compareTo(def)}>
+                              {(v) => <Deltas list={v()} />}
+                            </Show>
+                          </Info>
+                          <Buy>
+                            <Button
+                              size="xs"
+                              variant="tonal"
+                              isDisabled={busy() || inRun()}
+                              onPress={() =>
+                                send(
+                                  "rpg.shop.sell",
+                                  {
+                                    index: r.index,
+                                    item: r.x.item,
+                                    count: r.x.count,
+                                  },
+                                  t`Vendido.`,
+                                )
+                              }
+                            >
+                              {t`Vender · ${money(r.price! * r.x.count)}`}
+                            </Button>
+                          </Buy>
+                        </ShopRow>
+                      );
+                    }}
                   </For>
                 </Rows>
               </Show>
@@ -577,6 +852,23 @@ export default function NpcDialog(props: {
   );
 }
 
+type ShopFilter = "mine" | "gear" | "acc" | "potions" | "ammo" | "all";
+const SHOP_FILTERS: readonly ShopFilter[] = [
+  "mine",
+  "gear",
+  "acc",
+  "potions",
+  "ammo",
+  "all",
+];
+
+function shopCategory(d: ItemDef): ShopFilter {
+  if (d.potion) return "potions";
+  if (d.slot === "municao") return "ammo";
+  if (d.slot === "anel" || d.slot === "colar") return "acc";
+  return "gear";
+}
+
 const Backdrop = styled("div", {
   base: {
     position: "absolute",
@@ -593,7 +885,7 @@ const Card = styled("div", {
   base: {
     // Lays itself out by its own width (container queries), not the window's.
     containerType: "inline-size",
-    maxWidth: "520px",
+    maxWidth: "600px",
     width: "100%",
     maxHeight: "100%",
     display: "flex",
@@ -666,6 +958,9 @@ const TabBtn = styled("button", {
     borderRadius: "999px",
     padding: "4px 14px",
     cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
     '&[aria-selected="true"]': {
       background: "var(--md-sys-color-secondary-container)",
       color: "var(--md-sys-color-on-secondary-container)",
@@ -677,25 +972,147 @@ const Rows = styled("div", {
   base: { display: "flex", flexDirection: "column", gap: "6px" },
 });
 
+/** Uma linha da loja: o ícone, o item (o que faz e a troca pelo vestido) e a compra. */
 const ShopRow = styled("div", {
   base: {
     display: "grid",
-    gridTemplateColumns: "auto 1fr auto auto",
+    gridTemplateColumns: "auto minmax(0, 1fr) auto",
     alignItems: "center",
-    gap: "8px",
-    padding: "6px 10px",
-    borderRadius: "10px",
+    gap: "10px",
+    padding: "8px 10px",
+    borderRadius: "12px",
     background: "var(--md-sys-color-surface-container)",
-    "& > span": { display: "flex", flexDirection: "column" },
-    // A phone: the name (and its warning) on its own line, quantity and
-    // button below it, instead of a name squeezed into a sliver.
+    boxShadow: "inset 0 0 0 1px rgba(255, 255, 255, 0.05)",
+    transition: "box-shadow 0.15s ease",
+    "&:hover": { boxShadow: "inset 0 0 0 1px rgba(217, 180, 90, 0.35)" },
+    "&[data-off]": { opacity: 0.75 },
+    "&[data-picked]": { boxShadow: "inset 0 0 0 2px #d9b45a" },
+    // Estreito: a compra desce para a linha de baixo, inteira.
     "@container (max-width: 460px)": {
-      gridTemplateColumns: "auto auto 1fr",
-      "& > :nth-child(2)": { gridColumn: "2 / -1" },
-      "& > :nth-child(3)": { gridColumn: "2" },
-      "& > :nth-child(4)": { gridColumn: "3", justifySelf: "end" },
+      gridTemplateColumns: "auto minmax(0, 1fr)",
+      "& > :last-child": { gridColumn: "1 / -1", justifyItems: "stretch" },
     },
   },
+});
+
+const ItemIcon = styled("span", {
+  base: {
+    display: "grid",
+    placeItems: "center",
+    width: "40px",
+    height: "40px",
+    borderRadius: "10px",
+    background: "radial-gradient(circle at 40% 30%, #3a3128, #15110d)",
+    boxShadow: "0 0 0 1px rgba(122, 100, 64, 0.6)",
+    color: "#e9d7ad",
+  },
+});
+
+const Info = styled("span", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "1px",
+    minWidth: 0,
+    "& > strong": { fontSize: "0.95em" },
+  },
+});
+
+const Buy = styled("span", {
+  base: {
+    display: "grid",
+    justifyItems: "end",
+    gap: "4px",
+    "& [data-short]": { color: "var(--md-sys-color-error)" },
+  },
+});
+
+const Pick = styled("label", {
+  base: {
+    display: "flex",
+    alignItems: "center",
+    gap: "8px",
+    cursor: "pointer",
+    "& input": { width: "18px", height: "18px", accentColor: "#d9b45a" },
+    "@media (pointer: coarse)": {
+      "& input": { width: "24px", height: "24px" },
+    },
+  },
+});
+
+/** Quantidade: −, o número, + e o máximo que o dinheiro paga. */
+const Stepper = styled("span", {
+  base: {
+    display: "inline-flex",
+    alignItems: "stretch",
+    borderRadius: "8px",
+    overflow: "hidden",
+    boxShadow: "0 0 0 1px var(--md-sys-color-outline-variant)",
+    "& button": {
+      minWidth: "28px",
+      padding: "0 6px",
+      border: "none",
+      background: "var(--md-sys-color-surface-container-highest)",
+      color: "inherit",
+      cursor: "pointer",
+      fontSize: "0.85em",
+    },
+    "& button:disabled": { opacity: 0.4, cursor: "default" },
+    "& input": {
+      width: "46px",
+      border: "none",
+      textAlign: "center",
+      background: "var(--md-sys-color-surface-container-low)",
+      color: "inherit",
+      fontVariantNumeric: "tabular-nums",
+      appearance: "textfield",
+    },
+    "@media (pointer: coarse)": {
+      "& button, & input": { minHeight: "40px" },
+      "& button": { minWidth: "40px" },
+    },
+  },
+});
+
+const Filters = styled("div", {
+  base: { display: "flex", flexWrap: "wrap", gap: "6px" },
+});
+
+const FilterBtn = styled("button", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "3px 10px",
+    borderRadius: "999px",
+    border: "1px solid var(--md-sys-color-outline-variant)",
+    background: "transparent",
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: "0.85em",
+    '&[aria-pressed="true"]': {
+      background: "var(--md-sys-color-primary-container)",
+      color: "var(--md-sys-color-on-primary-container)",
+      borderColor: "var(--md-sys-color-primary)",
+    },
+    "@media (pointer: coarse)": { minHeight: "36px" },
+  },
+});
+
+const Count = styled("span", {
+  base: {
+    minWidth: "18px",
+    padding: "0 5px",
+    borderRadius: "999px",
+    background: "rgba(255, 255, 255, 0.1)",
+    fontSize: "0.75em",
+    lineHeight: "16px",
+    textAlign: "center",
+  },
+});
+
+const SellBar = styled("div", {
+  base: { display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px" },
 });
 
 const Qty = styled("input", {

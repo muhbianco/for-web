@@ -103,7 +103,7 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 7,
+  engine: 8,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -182,6 +182,27 @@ export function weaponScore(
  * defesa (o cavaleiro; com arma de duas mãos, nenhum), a maior armadura de cada peça e a
  * munição da arma. Colar e anel ficam como a pessoa deixou: gastam carga e tempo.
  */
+/**
+ * Quanto um atributo vale para cada vocação base [nosso] (o que ela mais usa pesa 1): a escolha
+ * automática compara itens por ataque, defesa e armadura e, desde os itens com atributos
+ * (24/11/2026), soma isto. Meio ponto de armadura vale um atributo do que a vocação mais usa.
+ */
+const STAT_WEIGHT: Readonly<Record<number, Readonly<Partial<Stats>>>> = {
+  1: { int: 1, des: 0.6, vit: 0.5, agi: 0.3, sor: 0.3 },
+  2: { int: 1, vit: 0.7, des: 0.5, agi: 0.3, sor: 0.3 },
+  3: { des: 1, int: 0.7, agi: 0.7, vit: 0.5, sor: 0.3, for: 0.2 },
+  4: { for: 1, vit: 0.8, agi: 0.6, des: 0.4, sor: 0.3 },
+};
+
+export function statScore(d: ItemDef, base: VocationId): number {
+  if (!d.stats) return 0;
+  const w = STAT_WEIGHT[base] ?? {};
+  let n = 0;
+  for (const [k, v] of Object.entries(d.stats) as [keyof Stats, number][])
+    n += v * (w[k] ?? 0);
+  return n;
+}
+
 export function autoEquip(
   inv: Inventory,
   vocation: VocationId,
@@ -243,10 +264,12 @@ export function autoEquip(
   };
 
   wear(better("mochila", (d) => d.container ?? 0));
+  // 24/11/2026: os atributos do item contam, pesados pelo que a vocação usa (statScore).
   const weapon = better(
     "arma",
     (d) =>
       weaponScore(d, voc, level, skills, manaMax, ammoFor(d.ammo)) * 1000 +
+      statScore(d, base) * 300 +
       (d.defense ?? 0),
   );
   if (weapon) {
@@ -257,8 +280,9 @@ export function autoEquip(
   }
   const w = usable(inv.equip.arma);
   if (!w?.twoHanded && base === 4)
-    wear(better("escudo", (d) => d.defense ?? 0));
-  for (const s of ARMOR_SLOTS) wear(better(s, (d) => d.armor ?? 0));
+    wear(better("escudo", (d) => (d.defense ?? 0) + statScore(d, base)));
+  for (const s of ARMOR_SLOTS)
+    wear(better(s, (d) => (d.armor ?? 0) + statScore(d, base) / 2));
   // A munição da arma: a melhor que houver, a maior pilha dela.
   const ammo = ammoFor(w?.ammo);
   if (ammo && inv.equip.municao?.item !== ammo.id) {

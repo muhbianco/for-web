@@ -29,6 +29,9 @@ import {
   expForLevel,
   freshStats,
   gearOf,
+  gearStats,
+  statScore,
+  withGearStats,
   ITEMS,
   MERCHANT_SELLS,
   monsterDef,
@@ -195,6 +198,23 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
       ? strong ? "pocao-forte-de-mana" : "pocao-de-mana"
       : strong ? "pocao-forte-de-vida" : level < 10 ? "pocao-pequena-de-vida" : "pocao-de-vida";
   autoEquip(inv, promoted, st.level, skills, st.manaMax);
+  // 24/11/2026: o melhor anel e o melhor colar de atributos (a escolha automática não mexe neles;
+  // quem joga põe à mão). E os atributos dos itens entram, como no servidor (hero.ts).
+  for (const slot of ["anel", "colar"] as const) {
+    let best: string | null = null;
+    let score = 0;
+    for (const x of inv.pack) {
+      const d = ITEMS[x.item];
+      if (d?.slot !== slot || !d.stats) continue;
+      const v = statScore(d, VOCATIONS[vocation].base);
+      if (v > score) {
+        score = v;
+        best = d.id;
+      }
+    }
+    if (best) inv.equip[slot] = { item: best, count: 1 };
+  }
+  const eff = withGearStats(stats, gearStats(inv));
   inv.pack = inv.pack.filter((x) => ITEMS[x.item]?.ammo !== undefined && ITEMS[x.item]?.slot === "municao");
   if (potions) addItem(inv, Infinity, pot, potions);
   return {
@@ -202,8 +222,8 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
     name: `H${vocation}`,
     vocation: promoted,
     level: st.level,
-    healthMax: withVit(st.healthMax, stats),
-    manaMax: withInt(st.manaMax, stats),
+    healthMax: withVit(st.healthMax, eff),
+    manaMax: withInt(st.manaMax, eff),
     skills,
     magicLevel: ml,
     stamina: 2520,
@@ -215,7 +235,7 @@ function heroAt(vocation: VocationId, level: number, potions = level < 10 ? 5 : 
       mana: { item: potions && cls <= 2 ? pot : null, below: 30 },
     },
     lootSkip: [],
-    stats,
+    stats: eff,
     tree,
   };
 }

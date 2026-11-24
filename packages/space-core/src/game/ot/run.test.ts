@@ -13,9 +13,12 @@ import {
   addItem,
   emptyInventory,
   gearOf,
+  gearStats,
+  withGearStats,
   starterInventory,
 } from "./inventory.ts";
 import { type Stats, withInt, withVit } from "./attributes.ts";
+import { ITEMS } from "./items.ts";
 import {
   applyPotionEvent,
   expAt,
@@ -495,8 +498,10 @@ test("anel e colar: o tempo do anel corre na dungeon; o colar gasta uma carga po
 
 test("poções: abaixo do limite bebe a que mais cura, uma por segundo; o frasco volta [TFS potions.lua]", () => {
   const k = hero(4, 1, 10);
+  // Capacidade de sobra: o loot não toma o lugar do frasco (que só volta se couber).
+  k.cap = 100_000;
   addItem(k.inv, 100_000, "pocao-pequena-de-vida", 10);
-  addItem(k.inv, 100_000, "pocao-de-vida", 10);
+  addItem(k.inv, 100_000, "pocao-de-vida", 30);
   addItem(k.inv, 100_000, "pocao-forte-de-vida", 5);
   k.supplies = {
     health: { item: null, below: 90 },
@@ -690,4 +695,44 @@ test("experiência na tela: a soma dos abates bate com a da corrida e a taxa dá
         assert.ok(Math.abs(shown - reward.exp) <= 1, `${shown} x ${reward.exp}`);
       });
     }
+});
+
+test("itens com atributos: todo equipamento fora do kit inicial soma atributos, e a soma entra no herói", () => {
+  const wearable = ["arma", "escudo", "cabeca", "corpo", "pernas", "pes"];
+  for (const d of Object.values(ITEMS)) {
+    if (!d.slot || !wearable.includes(d.slot) || d.starter) continue;
+    assert.ok(d.stats && Object.keys(d.stats).length > 0, `${d.id} sem atributos`);
+  }
+  // O vestido soma; o da mochila não.
+  const inv = emptyInventory();
+  inv.equip.cabeca = { item: "bandana", count: 1 };
+  inv.equip.anel = { item: "anel-do-guerreiro", count: 1 };
+  inv.pack.push({ item: "anel-de-forca", count: 1 });
+  assert.deepEqual(gearStats(inv), { for: 4, vit: 1 });
+  const base: Stats = { for: 10, agi: 1, vit: 5, int: 1, des: 1, sor: 1 };
+  assert.deepEqual(withGearStats(base, gearStats(inv)), {
+    for: 14,
+    agi: 1,
+    vit: 6,
+    int: 1,
+    des: 1,
+    sor: 1,
+  });
+});
+
+test("escolha automática: com a armadura igual, fica o item com o atributo que a vocação usa", () => {
+  const skills = hero(4, 6, 20).skills;
+  const inv = starterInventory(VOCATIONS[4].base, "mochila");
+  addItem(inv, 100_000, "sandalias", 1);
+  autoEquip(inv, 4, 6, skills, 0);
+  assert.equal(inv.equip.pes?.item, "sandalias", "AGI conta para o cavaleiro");
+  // Armadura maior ainda ganha de um atributo: botas de viajante (2, AGI+1) > sandálias (1, AGI+1).
+  addItem(inv, 100_000, "botas-de-viajante", 1);
+  autoEquip(inv, 4, 6, skills, 0);
+  assert.equal(inv.equip.pes?.item, "botas-de-viajante");
+  // O mago leva o chapéu de aprendiz (INT) no lugar do capuz de couro (mesma armadura).
+  const mage = starterInventory(VOCATIONS[1].base, "mochila");
+  addItem(mage, 100_000, "chapeu-de-aprendiz", 1);
+  autoEquip(mage, 1, 1, skills, 50);
+  assert.equal(mage.equip.cabeca?.item, "chapeu-de-aprendiz");
 });

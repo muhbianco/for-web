@@ -164,7 +164,17 @@ export function StatsPanel(props: {
               return (
                 <StatRow data-marked={marked() ? "" : undefined}>
                   <Name title={info[k].blurb}>{info[k].name}</Name>
-                  <Value>{value()}</Value>
+                  <Value>
+                    {value()}
+                    {/* O que os itens vestidos somam (24/11/2026), como o "+5" do Ragnarok. */}
+                    <Show when={props.hero.gear_stats?.[k]}>
+                      {(g) => (
+                        <Bonus title={t`Dos itens vestidos`}>
+                          {g() > 0 ? ` +${g()}` : ` ${g()}`}
+                        </Bonus>
+                      )}
+                    </Show>
+                  </Value>
                   <Step
                     type="button"
                     aria-label={t`Tirar um ponto de ${info[k].name}`}
@@ -283,7 +293,12 @@ const Value = styled("span", {
     fontVariantNumeric: "tabular-nums",
     fontWeight: 600,
     textAlign: "right",
+    whiteSpace: "nowrap",
   },
+});
+
+const Bonus = styled("span", {
+  base: { color: "#7ee08a", fontWeight: 700, fontSize: "0.9em" },
 });
 
 const Step = styled("button", {

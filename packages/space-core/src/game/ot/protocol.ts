@@ -347,6 +347,8 @@ export interface RpgHeroView {
   base: { health: number; mana: number; cap: number };
   /** 24/11/2026: atributos e pontos livres do level. */
   stats: Stats;
+  /** O que os itens vestidos somam aos atributos (já dentro da vida e da mana acima). */
+  gear_stats?: Partial<Stats>;
   stat_points: number;
   /** A árvore, os pontos do treino de habilidade (ganhos, livres e o progresso) e a classe. */
   tree: Tree;

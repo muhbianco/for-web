@@ -1007,8 +1007,107 @@ const LIST: readonly MonsterDef[] = [
   },
 ];
 
+/**
+ * O kit do Ragnarok no loot (24/11/2026, items.ts RO_KIT): cada item cai na dungeon da faixa
+ * dele, raro nos monstros comuns (0,5–2%) e mais fácil no chefe (3–10%), como os outros.
+ */
+const RO_LOOT: Readonly<Record<string, readonly [string, number][]>> = {
+  "ossada-inquieta": [["bandana", 1500], ["sandalias", 1500]],
+  "matriarca-do-musgo": [
+    ["chapeu-de-aprendiz", 8000],
+    ["bandana", 8000],
+    ["sandalias", 8000],
+    ["faca-de-combate", 8000],
+  ],
+  "lobo-cinzento": [["sandalias", 2000]],
+  "javali-bravo": [["traje-de-aventureiro", 1500]],
+  "cacador-da-toca": [["chapeu-de-aprendiz", 2000]],
+  "rei-javali": [
+    ["faca-de-combate", 6000],
+    ["broquel", 6000],
+    ["traje-de-aventureiro", 6000],
+    ["bandana", 6000],
+  ],
+  "caranguejo-de-pedra": [["broquel", 1500]],
+  "troll-do-lodo": [["anel-de-forca", 500], ["colar-da-vitalidade", 500]],
+  "serpente-da-comporta": [["anel-do-sabio", 500], ["calca-de-linho", 2000]],
+  "rei-das-comportas": [
+    ["anel-da-agilidade", 3000],
+    ["anel-do-arqueiro", 3000],
+    ["anel-do-sabio", 3000],
+    ["colar-da-vitalidade", 3000],
+    ["calca-de-linho", 8000],
+  ],
+  "aranha-tecela": [["chapeu-de-mago", 1000], ["anel-da-sorte", 500]],
+  "aranha-saltadora": [["anel-da-agilidade", 600]],
+  "larva-gigante": [["rosario", 500]],
+  "rainha-aranha": [
+    ["chapeu-de-mago", 8000],
+    ["oculos-de-cacador", 8000],
+    ["rosario", 4000],
+    ["anel-de-forca", 4000],
+    ["anel-da-sorte", 4000],
+  ],
+  "automato-de-ferro": [["oculos-de-cacador", 1200]],
+  "brasa-viva": [["botas-do-mago", 1200]],
+  martelador: [["anel-de-forca", 800]],
+  "guardiao-da-forja": [
+    ["botas-do-mago", 8000],
+    ["oculos-de-cacador", 8000],
+    ["estoque", 8000],
+    ["calca-de-cacador", 8000],
+  ],
+  "mineiro-espectral": [["calca-de-cacador", 1500]],
+  "golem-de-carvao": [["anel-do-guerreiro", 500]],
+  "morcego-vampiro": [["anel-arcano", 500]],
+  "capataz-espectral": [
+    ["estoque", 8000],
+    ["anel-do-guerreiro", 4000],
+    ["anel-do-cacador", 4000],
+    ["anel-arcano", 4000],
+    ["tiara-do-sabio", 6000],
+  ],
+  "harpia-de-granito": [["botas-aladas", 600], ["anel-do-cacador", 600]],
+  basilisco: [["tiara-do-sabio", 1000]],
+  "ent-de-pedra": [["escudo-espelhado", 800]],
+  "medusa-ancia": [
+    ["botas-aladas", 6000],
+    ["escudo-espelhado", 8000],
+    ["tiara-do-sabio", 8000],
+  ],
+  "cavaleiro-de-cinzas": [["colar-do-campeao", 500]],
+  "demonio-menor": [["colar-do-vidente", 500]],
+  "senhor-das-cinzas": [
+    ["arco-sagrado", 8000],
+    ["colar-do-campeao", 4000],
+    ["colar-do-vidente", 4000],
+    ["escudo-espelhado", 6000],
+  ],
+  "lobo-glacial": [["botas-aladas", 1000]],
+  "espirito-da-nevasca": [["coroa-do-vidente", 600]],
+  "wyrm-de-gelo": [
+    ["arco-sagrado", 10000],
+    ["coroa-do-vidente", 8000],
+    ["colar-do-campeao", 5000],
+  ],
+  "arauto-do-vazio": [["coroa-do-vidente", 1000]],
+  "imperador-do-vazio": [
+    ["coroa-do-vidente", 8000],
+    ["colar-do-vidente", 6000],
+    ["colar-do-campeao", 6000],
+  ],
+};
+
 export const MONSTERS: Readonly<Record<string, MonsterDef>> =
-  Object.fromEntries(LIST.map((m) => [m.id, m]));
+  Object.fromEntries(
+    LIST.map((m) => {
+      const extra = RO_LOOT[m.id];
+      const def = extra
+        ? { ...m, loot: [...m.loot, ...extra.map(([i, c]) => drop(i, c))] }
+        : m;
+      return [m.id, def];
+    }),
+  );
 
 export function monsterDef(id: string): MonsterDef | undefined {
   return MONSTERS[id];

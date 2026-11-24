@@ -5,6 +5,7 @@ import type { RunState, SpaceView } from "@muchat/space-client";
 import { dungeonOf } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
+import { gameChip } from "./gameTheme";
 import { outcomeLabel } from "./runUi";
 
 /**
@@ -42,7 +43,11 @@ export default function RunChip(props: {
   return (
     <Show when={pick()}>
       {(r) => (
-        <Chip role="status" data-end={r().end ? "" : undefined}>
+        <Chip
+          style={gameChip}
+          role="status"
+          data-end={r().end ? "" : undefined}
+        >
           <span aria-hidden="true">⚔</span>
           <Text title={label(r())}>{label(r())}</Text>
           <Act

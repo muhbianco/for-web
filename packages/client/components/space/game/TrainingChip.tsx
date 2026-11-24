@@ -5,6 +5,8 @@ import type { SpaceView } from "@muchat/space-client";
 import type { RpgHeroView } from "@muchat/space-core/game/ot";
 import { styled } from "styled-system/jsx";
 
+import { gameChip } from "./gameTheme";
+
 import {
   duration,
   percent,
@@ -45,7 +47,7 @@ export default function TrainingChip(props: {
   return (
     <Show when={view()}>
       {(v) => (
-        <Chip role="status">
+        <Chip style={gameChip} role="status">
           <span aria-hidden="true">⚔</span>
           <span>
             {t`${L.skill[v().hero.training!.skill]} ${v().p.skill?.level ?? 0} · ${percent(v().p.skill?.tries ?? 0, v().p.skill?.next ?? 0)}%`}
