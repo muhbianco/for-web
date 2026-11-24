@@ -56,7 +56,7 @@ import {
   type ZoneIndex,
   zonesOf,
 } from "@muchat/space-core";
-import type { RpgLobbyMember, RpgLoopStop, RunOutcome } from "@muchat/space-core/game/ot";
+import { type RpgLobbyMember, type RpgLoopStop, type RunOutcome, TRAIN_REACH_TILES as REACH } from "@muchat/space-core/game/ot";
 
 import { type Lobby, type LobbyResult, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
 import type { Log } from "../log.ts";
@@ -122,8 +122,8 @@ export interface HeroLook {
   gear: AvatarGear;
 }
 
-/** How far from the dummy a hero keeps training, inside the dummy's zone (tiles). */
-export const TRAIN_REACH_TILES = 5;
+/** How far from the dummy a hero keeps training, inside the dummy's zone (tiles; space-core). */
+export const TRAIN_REACH_TILES = REACH;
 
 /** LiveKit's view of one admitted participant (sweeper, every 5 s). */
 interface SeenInLiveKit {
@@ -231,7 +231,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
    * Idle game (docs/espaco/jogo/ot): who trains at which dummy here. The hero document
    * holds the authoritative session; this only notices when the avatar walks away.
    */
-  private readonly trainingAt = new Map<string, string>();
+  /** Who trains where: the dummy and, training at both (24/11/2026), the other one. */
+  private readonly trainingAt = new Map<string, { at: string; also?: string }>();
   /** Called when a trainer leaves the dummy (walked off, moved, evicted, dummy removed). */
   onTrainingLeft: ((userId: string) => void) | null = null;
   /** Called when someone enters the map where the game is on (to show their hero's level). */
@@ -657,8 +658,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
 
   // ---- idle game: training dummies (docs/espaco/jogo/ot) -----------------------
 
-  /** A training dummy: exists, is a dummy, the person may use it and stands next to it. */
-  trainSpot(viewer: Viewer, instanceId: string): { ok: true; zone: string; dummy: "vocacao" | "habilidade" } | { ok: false; code: string; reason?: string } {
+  /**
+   * A training dummy: exists, is a dummy, the person may use it and stands next to it. `near`:
+   * inside its zone within TRAIN_REACH_TILES (the second dummy when training at both).
+   */
+  trainSpot(viewer: Viewer, instanceId: string, reach: "beside" | "near" = "beside"): { ok: true; zone: string; dummy: "vocacao" | "habilidade" } | { ok: false; code: string; reason?: string } {
     const a = this.avatars.get(viewer.user._id);
     if (!a || !a.session) return { ok: false, code: "not_allowed" };
     const inst = this.decor.items.find((i) => i.id === instanceId);
@@ -666,7 +670,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;
     if (!inst || !item || !zone || item.interaction !== "train") return { ok: false, code: "not_found" };
     if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
-    if (!this.besideInstance(a, instanceId)) return { ok: false, code: "not_allowed", reason: "too_far" };
+    const ok = reach === "near" ? this.besideInstance(a, instanceId, "train", TRAIN_REACH_TILES) : this.besideInstance(a, instanceId);
+    if (!ok) return { ok: false, code: "not_allowed", reason: "too_far" };
     return { ok: true, zone: inst.zone, dummy: item.dummy ?? "vocacao" };
   }
 
@@ -682,13 +687,14 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return { ok: true };
   }
 
-  isTrainingAt(userId: string, instanceId: string): boolean {
-    return this.trainingAt.get(userId) === instanceId;
+  isTrainingAt(userId: string, instanceId: string, also?: string): boolean {
+    const t = this.trainingAt.get(userId);
+    return !!t && t.at === instanceId && (t.also ?? null) === (also ?? null);
   }
 
-  setTraining(userId: string, instanceId: string | null): void {
+  setTraining(userId: string, instanceId: string | null, also?: string): void {
     if (instanceId === null) this.trainingAt.delete(userId);
-    else this.trainingAt.set(userId, instanceId);
+    else this.trainingAt.set(userId, also ? { at: instanceId, also } : { at: instanceId });
     this.markHero(userId);
   }
 
@@ -704,8 +710,12 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const a = this.avatars.get(userId);
     if (!a) return;
     const look = a.heroLook;
-    const at = this.trainingAt.get(userId);
-    const hero: AvatarHero | null = !look ? null : at === undefined ? { level: look.level, training: false } : { level: look.level, training: true, at, vocation: look.vocation, gear: look.gear };
+    const t = this.trainingAt.get(userId);
+    const hero: AvatarHero | null = !look
+      ? null
+      : t === undefined
+        ? { level: look.level, training: false }
+        : { level: look.level, training: true, at: t.at, ...(t.also ? { also: t.also } : {}), vocation: look.vocation, gear: look.gear };
     if (JSON.stringify(hero) === JSON.stringify(a.hero)) return;
     a.hero = hero;
     a.dirty = true;
@@ -727,12 +737,16 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return tx >= rect.x0 - reach && tx <= rect.x1 + reach && ty >= rect.y0 - reach && ty <= rect.y1 + reach;
   }
 
-  /** A trainer who left the dummy's zone or walked more than TRAIN_REACH_TILES away (or is gone) stops training. */
+  /**
+   * A trainer who left the dummy's zone or walked more than TRAIN_REACH_TILES away (or is gone)
+   * stops training. Training at both dummies, leaving either one stops it all.
+   */
   private checkTraining(userId: string): void {
-    const instanceId = this.trainingAt.get(userId);
-    if (instanceId === undefined) return;
+    const t = this.trainingAt.get(userId);
+    if (t === undefined) return;
     const a = this.avatars.get(userId);
-    if (a && !a.evicted && this.besideInstance(a, instanceId, "train", TRAIN_REACH_TILES)) return;
+    const near = (id: string) => !!a && this.besideInstance(a, id, "train", TRAIN_REACH_TILES);
+    if (a && !a.evicted && near(t.at) && (t.also === undefined || near(t.also))) return;
     this.trainingAt.delete(userId);
     this.markHero(userId);
     this.onTrainingLeft?.(userId);

@@ -7,6 +7,7 @@ import {
   addManaSpent,
   addPointTries,
   addSkillTries,
+  DUAL_EFFICIENCY,
   JOB_NAMES,
   reqPointTries,
   rebirthScale,
@@ -86,6 +87,8 @@ export function rpgLabels() {
       return t`O herói está numa dungeon agora. Espere a corrida acabar.`;
     if (code === "rpg_invalid" && reason === "changed")
       return t`O grupo mudou enquanto começava. Confira e comece de novo.`;
+    if (code === "rpg_invalid" && reason === "same_dummy")
+      return t`Para treinar nos dois, use um dummy de vocação e um de habilidade.`;
     if (code === "rpg_invalid" && reason === "wrong_dummy")
       return t`Este dummy não treina isso: as armas e a magia são no dummy de vocação; a habilidade, no dummy de habilidade.`;
     if (code === "rpg_invalid" && reason === "no_points")
@@ -160,6 +163,8 @@ export function serverNow(
 export interface Projected {
   /** Nível, tentativas e requisito do próximo, já com o treino desde o último crédito. */
   skill: { level: number; tries: number; next: number } | null;
+  /** Treino nos dois dummies: os pontos de habilidade que vêm junto (null fora dele). */
+  points: { level: number; tries: number; next: number } | null;
   shield: { level: number; tries: number; next: number };
   /** Tempo de treino que ainda cabe no orçamento desta sessão. */
   remainingMs: number;
@@ -176,10 +181,41 @@ export function projectTraining(
   const ms = Math.min(Math.max(0, now - tr.started_at), tr.budget_ms);
   const seconds = Math.floor(ms / 1000);
   const remainingMs = Math.max(0, tr.budget_ms - ms);
-  const gain =
-    seconds * 1000 < TRAINING.minCreditMs
-      ? { main: 0, escudo: 0 }
-      : trainingDelta(voc, tr.skill, tr.credited_s, seconds, hero.rates);
+  // Nos dois dummies, cada um rende DUAL_EFFICIENCY (training.ts), como no servidor.
+  const eff = tr.also ? DUAL_EFFICIENCY : 1;
+  const counts = seconds * 1000 >= TRAINING.minCreditMs;
+  const gain = counts
+    ? trainingDelta(voc, tr.skill, tr.credited_s, seconds, hero.rates, eff)
+    : { main: 0, escudo: 0 };
+  // Cada renascimento deixa o treino de habilidade 1% mais lento (training.ts rebirthScale).
+  const scale = rebirthScale(hero.rebirths ?? 0);
+  const pointsAfter = (tries: number) => {
+    const p = addPointTries(
+      { points: hero.skill_points.earned, tries: hero.skill_points.tries },
+      tries,
+      scale,
+    );
+    return {
+      level: p.points,
+      tries: p.tries,
+      next: reqPointTries(p.points + 1, scale),
+    };
+  };
+  const points =
+    tr.also && counts
+      ? pointsAfter(
+          trainingDelta(
+            voc,
+            "habilidade",
+            tr.credited_s,
+            seconds,
+            hero.rates,
+            eff,
+          ).main,
+        )
+      : tr.also
+        ? pointsAfter(0)
+        : null;
   const sh0 = hero.skills.escudo;
   const sh = addSkillTries(
     voc,
@@ -190,22 +226,7 @@ export function projectTraining(
   const shield = { ...sh, next: reqSkillTries(voc, "escudo", sh.level + 1) };
   if (tr.skill === "habilidade") {
     // Treino de habilidade (24/11/2026): o "nível" é o total de pontos ganhos.
-    // Cada renascimento deixa o treino 1% mais lento (training.ts rebirthScale).
-    const scale = rebirthScale(hero.rebirths ?? 0);
-    const p = addPointTries(
-      { points: hero.skill_points.earned, tries: hero.skill_points.tries },
-      gain.main,
-      scale,
-    );
-    return {
-      skill: {
-        level: p.points,
-        tries: p.tries,
-        next: reqPointTries(p.points + 1, scale),
-      },
-      shield,
-      remainingMs,
-    };
+    return { skill: pointsAfter(gain.main), points: null, shield, remainingMs };
   }
   if (tr.skill === "magia") {
     const m = addManaSpent(
@@ -219,6 +240,7 @@ export function projectTraining(
         tries: m.manaSpent,
         next: reqMana(voc, m.level + 1),
       },
+      points,
       shield,
       remainingMs,
     };
@@ -232,6 +254,7 @@ export function projectTraining(
   );
   return {
     skill: { ...s, next: reqSkillTries(voc, tr.skill, s.level + 1) },
+    points,
     shield,
     remainingMs,
   };
@@ -250,10 +273,17 @@ export function bankNow(hero: RpgHeroView, now: number): number {
   );
 }
 
-/** Horas de dummy até o próximo nível da skill, pela regra do treino (para escolher). */
-export function hoursToNext(hero: RpgHeroView, skill: TrainingSkill): number {
+/**
+ * Horas de dummy até o próximo nível da skill, pela regra do treino (para escolher).
+ * `efficiency`: DUAL_EFFICIENCY no treino nos dois dummies.
+ */
+export function hoursToNext(
+  hero: RpgHeroView,
+  skill: TrainingSkill,
+  efficiency = 1,
+): number {
   const voc = VOCATIONS[hero.vocation];
-  const perHour = trainingGain(voc, skill, 3600, hero.rates).main;
+  const perHour = trainingGain(voc, skill, 3600, hero.rates, efficiency).main;
   if (perHour <= 0) return Number.POSITIVE_INFINITY;
   const left =
     skill === "habilidade"

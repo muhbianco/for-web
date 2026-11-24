@@ -123,8 +123,10 @@ msgstr "{0} · nível {1}"
 msgid "{0} · Nv {1}"
 msgstr "{0} · Nv {1}"
 
+#. placeholder {0}: hero()!.skill_points.earned
 #. placeholder {0}: level()
 #. placeholder {1}: pct()
+#. placeholder {1}: percent(hero()!.skill_points.tries, hero()!.skill_points.next)
 #: components/space/game/TrainingDialog.tsx
 msgid "{0} ({1}%)"
 msgstr "{0} ({1}%)"
@@ -148,9 +150,9 @@ msgstr "{0} (level {1}+) · falta level: {2}"
 #~ msgid "{0} {1}"
 #~ msgstr "{0} {1}"
 
-#. placeholder {0}: L.skill[v().hero.training!.skill]
-#. placeholder {1}: v().p.skill?.level ?? 0
-#. placeholder {2}: percent(v().p.skill?.tries ?? 0, v().p.skill?.next ?? 0)
+#. placeholder {0}: L.skill[v.hero.training!.skill]
+#. placeholder {1}: v.p.skill?.level ?? 0
+#. placeholder {2}: percent(v.p.skill?.tries ?? 0, v.p.skill?.next ?? 0)
 #: components/space/game/TrainingChip.tsx
 msgid "{0} {1} · {2}%"
 msgstr "{0} {1} · {2}%"
@@ -633,6 +635,12 @@ msgstr "{v} oz"
 msgid "+ e − mudam o zoom. Esc cancela o caminho."
 msgstr "+ e − mudam o zoom. Esc cancela o caminho."
 
+#. placeholder {0}: pts().level
+#. placeholder {1}: percent(pts().tries, pts().next)
+#: components/space/game/TrainingChip.tsx
+#~ msgid "+ Habilidade {0} · {1}%"
+#~ msgstr "+ Habilidade {0} · {1}%"
+
 #. placeholder {0}: coins(ev.n)
 #: components/space/game/RunPanel.tsx
 msgid "+{0}"
@@ -841,6 +849,10 @@ msgstr "1 person reacted"
 #: components/space/game/StatsPanel.tsx
 msgid "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura. Nunca passa de 60%."
 msgstr "1% + SOR/3: o golpe sai no máximo e passa pela defesa e pela armadura. Nunca passa de 60%."
+
+#: components/space/game/TrainingDialog.tsx
+msgid "100% do treino dele"
+msgstr "100% do treino dele"
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "12 hours"
@@ -2225,6 +2237,10 @@ msgstr "Colocar, mover, girar e remover objetos no hall e nos corredores (e nas 
 #~ msgid "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
 #~ msgstr "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
 
+#: components/space/game/TrainingDialog.tsx
+msgid "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
+msgstr "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
+
 #: components/space/game/labels.ts
 #~ msgid "Combate"
 #~ msgstr "Combate"
@@ -2266,6 +2282,10 @@ msgstr "Como a rede está se comportando agora, por pessoa. Abra isto durante um
 #: components/space/Onboarding.tsx
 msgid "Como andar"
 msgstr "Como andar"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Como treinar"
+msgstr "Como treinar"
 
 #: components/space/SpacePage.tsx
 #~ msgid "compartilhando a tela"
@@ -3727,6 +3747,11 @@ msgstr "Este dummy não está mais aqui."
 msgid "Este dummy não treina isso: as armas e a magia são no dummy de vocação; a habilidade, no dummy de habilidade."
 msgstr "Este dummy não treina isso: as armas e a magia são no dummy de vocação; a habilidade, no dummy de habilidade."
 
+#. placeholder {0}: other().title
+#: components/space/game/TrainingDialog.tsx
+msgid "Este e o {0}: {pct}% de cada"
+msgstr "Este e o {0}: {pct}% de cada"
+
 #: components/space/game/TrainingDialog.tsx
 msgid "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação."
 msgstr "Este é o dummy de habilidade: cada ponto ganho vai para a árvore das suas 4 habilidades (ficha do herói, aba Habilidades). As armas e a magia treinam no dummy de vocação."
@@ -3962,6 +3987,10 @@ msgstr "Ficou no corpo (sem espaço): {left}."
 #: components/ui/components/utils/Form2.tsx
 msgid "File must be smaller than {0}"
 msgstr "File must be smaller than {0}"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Fique perto dos dois dummies para treinar nos dois."
+msgstr "Fique perto dos dois dummies para treinar nos dois."
 
 #: components/space/game/itemUi.ts
 msgid "físico"
@@ -4243,6 +4272,12 @@ msgstr "Há transferências demais a caminho. Espere um pouco."
 #: components/space/game/rpgUi.ts
 msgid "Habilidade"
 msgstr "Habilidade"
+
+#. placeholder {0}: pts().level
+#. placeholder {1}: percent(pts().tries, pts().next)
+#: components/space/game/TrainingChip.tsx
+msgid "Habilidade {0} · {1}%"
+msgstr "Habilidade {0} · {1}%"
 
 #: components/space/game/HeroSheet.tsx
 #: components/space/game/NpcDialog.tsx
@@ -5262,6 +5297,10 @@ msgstr "Muchat for Desktop"
 msgid "Muchat will start in the system tray."
 msgstr "Muchat will start in the system tray."
 
+#: components/space/game/TrainingDialog.tsx
+msgid "Mudar o treino"
+msgstr "Mudar o treino"
+
 #: components/space/SmartTv.tsx
 msgid "Muitas trocas de vídeo seguidas; espere um pouco."
 msgstr "Muitas trocas de vídeo seguidas; espere um pouco."
@@ -5617,6 +5656,15 @@ msgstr "normal"
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Normal"
 msgstr "Normal"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Nos dois dummies"
+msgstr "Nos dois dummies"
+
+#. placeholder {0}: duration(v().elapsed)
+#: components/space/game/TrainingChip.tsx
+msgid "Nos dois dummies, 50% em cada · há {0}"
+msgstr "Nos dois dummies, 50% em cada · há {0}"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Not in a call"
@@ -6012,6 +6060,10 @@ msgstr "Para o som da TV só para você; a sala continua assistindo"
 #: components/space/game/NpcDialog.tsx
 msgid "Para quem"
 msgstr "Para quem"
+
+#: components/space/game/rpgUi.ts
+msgid "Para treinar nos dois, use um dummy de vocação e um de habilidade."
+msgstr "Para treinar nos dois, use um dummy de vocação e um de habilidade."
 
 #: components/space/game/itemUi.ts
 msgid "Para trocar ouro por platina, junte 100 moedas na mesma pilha."
@@ -7466,6 +7518,10 @@ msgstr "Só armas se refinam."
 #~ msgid "Só dá para se retirar num descanso."
 #~ msgstr "Só dá para se retirar num descanso."
 
+#: components/space/game/TrainingDialog.tsx
+msgid "Só neste dummy"
+msgstr "Só neste dummy"
+
 #: components/space/InteractionDialog.tsx
 msgid "Só páginas https podem ser mostradas aqui."
 msgstr "Só páginas https podem ser mostradas aqui."
@@ -8075,9 +8131,20 @@ msgstr "Treinando {0} aqui há {1}."
 #~ msgid "Treinando {0} aqui. Restam {1} de saldo."
 #~ msgstr "Treinando {0} aqui. Restam {1} de saldo."
 
+#. placeholder {0}: L.skill[tr().skill]
+#. placeholder {1}: L.skill.habilidade
+#. placeholder {2}: duration(Math.max(0, now() - tr().started_at))
+#: components/space/game/TrainingDialog.tsx
+msgid "Treinando {0} e {1} nos dois dummies ({pct}% de cada) há {2}."
+msgstr "Treinando {0} e {1} nos dois dummies ({pct}% de cada) há {2}."
+
 #: components/space/game/TrainingDialog.tsx
 msgid "Treinar"
 msgstr "Treinar"
+
+#: components/space/game/TrainingDialog.tsx
+msgid "Treinar nos dois"
+msgstr "Treinar nos dois"
 
 #. placeholder {0}: L().dummy[h().training.tier]
 #: components/space/game/GamePanel.tsx
@@ -8400,6 +8467,11 @@ msgstr "vazia"
 #: components/space/game/labels.ts
 #~ msgid "velocidade +{0}%"
 #~ msgstr "velocidade +{0}%"
+
+#. placeholder {0}: duration(pointsEta())
+#: components/space/game/TrainingDialog.tsx
+msgid "Vem junto: ≈ {0} para o próximo ponto"
+msgstr "Vem junto: ≈ {0} para o próximo ponto"
 
 #: components/space/game/NpcDialog.tsx
 msgid "Vender"

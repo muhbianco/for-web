@@ -85,10 +85,14 @@ import type { RpgStore } from "./store.ts";
 export interface RpgHost {
   readonly serverId: string;
   gameAccess(viewer: Viewer): "ok" | "disabled" | "not_allowed";
-  /** O dummy `instanceId` existe, é de treino, a pessoa pode usá-lo e está ao lado dele (e o que ele treina). */
+  /**
+   * O dummy `instanceId` existe, é de treino, a pessoa pode usá-lo e está ao lado dele (e o que ele
+   * treina). `near`: basta estar na sala dele, até TRAIN_REACH_TILES (o 2º do treino nos dois).
+   */
   trainSpot(
     viewer: Viewer,
     instanceId: string,
+    reach?: "beside" | "near",
   ):
     | { ok: true; zone: string; dummy?: "vocacao" | "habilidade" }
     | { ok: false; code: string; reason?: string };
@@ -98,9 +102,9 @@ export interface RpgHost {
     instanceId: string,
     kind: NpcKind,
   ): { ok: true } | { ok: false; code: string; reason?: string };
-  /** O runtime ainda vê a pessoa treinando neste dummy. */
-  isTrainingAt(userId: string, instanceId: string): boolean;
-  setTraining(userId: string, instanceId: string | null): void;
+  /** O runtime ainda vê a pessoa treinando neste dummy (e no outro, se treina nos dois). */
+  isTrainingAt(userId: string, instanceId: string, also?: string): boolean;
+  setTraining(userId: string, instanceId: string | null, also?: string): void;
   /** The hero under the person's name on the map and what they wear (null: no hero). */
   setHero(
     userId: string,
@@ -403,7 +407,11 @@ export class RpgService {
         const stale =
           cur?.training &&
           (cur.training.server !== host.serverId ||
-            !host.isTrainingAt(userId, cur.training.instance) ||
+            !host.isTrainingAt(
+              userId,
+              cur.training.instance,
+              cur.training.alsoAt,
+            ) ||
             trainingExpired(cur, now));
         if (!cur || !stale) {
           this.push(session, cur, cmd.id, host);
@@ -431,6 +439,14 @@ export class RpgService {
       case "rpg.train.start": {
         const spot = host.trainSpot(session.viewer, cmd.d.instance);
         if (!spot.ok) return fail(spot.code, spot.reason);
+        // Nos dois dummies: o outro na mesma sala, até TRAIN_REACH_TILES (24/11/2026).
+        let also: { instance: string; dummy: "vocacao" | "habilidade" } | undefined;
+        if (cmd.d.with !== undefined) {
+          const other = host.trainSpot(session.viewer, cmd.d.with, "near");
+          if (!other.ok) return fail(other.code, other.reason);
+          if (other.zone !== spot.zone) return fail("not_allowed", "too_far");
+          also = { instance: cmd.d.with, dummy: other.dummy ?? "vocacao" };
+        }
         const where = {
           instance: cmd.d.instance,
           server: host.serverId,
@@ -444,11 +460,12 @@ export class RpgService {
             now,
             this.rates,
             spot.dummy ?? "vocacao",
+            also,
           ),
         );
         if (!out) return fail("conflict");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
-        host.setTraining(userId, cmd.d.instance);
+        host.setTraining(userId, cmd.d.instance, also?.instance);
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
       }

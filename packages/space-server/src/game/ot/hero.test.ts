@@ -544,6 +544,54 @@ test("treino de habilidade: só no dummy de habilidade; os pontos vão para a á
   assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).skill_points.free, 0);
 });
 
+test("nos dois dummies: um de cada tipo; 1 h dá metade da espada, do escudo e dos pontos", () => {
+  const d = newRpgHero("D", 0);
+  applyVocation(d, 4);
+  const HAB = { instance: "hab-1", dummy: "habilidade" as const };
+  // Dois do mesmo tipo, ou o mesmo dummy duas vezes, não.
+  assert.deepEqual(
+    startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "vocacao", { instance: "dummy-2", dummy: "vocacao" }),
+    { ok: false, reason: "same_dummy" },
+  );
+  assert.deepEqual(
+    startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "vocacao", { instance: "dummy-1", dummy: "habilidade" }),
+    { ok: false, reason: "same_dummy" },
+  );
+  // Nos dois, escolhe-se a skill do dummy de vocação (a habilidade vem junto).
+  assert.deepEqual(
+    startTraining(d, SPOT, "habilidade", 0, DEFAULT_RATES, "vocacao", HAB),
+    { ok: false, reason: "wrong_dummy" },
+  );
+  assert.deepEqual(startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "vocacao", HAB), { ok: true });
+  assert.equal(d.training?.dual, true);
+  assert.equal(d.training?.alsoAt, "hab-1");
+  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).training?.also, "hab-1");
+  // Repetir o mesmo pedido não reinicia; o mesmo dummy sem o outro, sim.
+  const started = d.training!.startedAt;
+  assert.deepEqual(startTraining(d, SPOT, "espada", 60_000, DEFAULT_RATES, "vocacao", HAB), { ok: true });
+  assert.equal(d.training!.startedAt, started);
+  stopTraining(d, H, DEFAULT_RATES);
+  // 900 tentativas de espada (metade de 1800), 900 de escudo e 900 de ponto.
+  const ref = newRpgHero("R", 0);
+  applyVocation(ref, 4);
+  startTraining(ref, SPOT, "espada", 0, DEFAULT_RATES);
+  stopTraining(ref, H / 2, DEFAULT_RATES);
+  assert.deepEqual(d.skills.espada, ref.skills.espada, "a espada de 1 h nos dois = 30 min num só");
+  assert.deepEqual(d.skills.escudo, ref.skills.escudo, "o escudo também");
+  const pts = newRpgHero("P", 0);
+  applyVocation(pts, 4);
+  startTraining(pts, { ...SPOT, instance: "hab-1" }, "habilidade", 0, DEFAULT_RATES, "habilidade");
+  stopTraining(pts, H / 2, DEFAULT_RATES);
+  assert.deepEqual(d.points, pts.points, "os pontos de 1 h nos dois = 30 min no dummy de habilidade");
+  assert.ok(d.points.points > 0);
+  // Começar o treino num dummy só, de novo, deixa de ser nos dois.
+  startTraining(d, SPOT, "espada", H, DEFAULT_RATES, "vocacao", HAB);
+  startTraining(d, SPOT, "espada", H + 60_000, DEFAULT_RATES);
+  assert.equal(d.training?.dual, undefined);
+  assert.equal(d.training?.alsoAt, undefined);
+  assert.equal(rpgHeroView(d, DEFAULT_RATES, H).training?.also, undefined);
+});
+
 test("Mestre: redistribuir é de graça na primeira vez e depois cobra 500 por level", async () => {
   const { allocateStats, learnNode, resetHero } = await import("./hero.ts");
   const d = newRpgHero("R", 0);

@@ -450,6 +450,8 @@ export interface AvatarHero {
   training: boolean;
   /** The dummy instance they train at (the map throws the attack at it). */
   at?: string;
+  /** Training at both dummies (24/11/2026): the other one; the map alternates the shots. */
+  also?: string;
   vocation?: number;
   gear?: AvatarGear;
 }

@@ -140,9 +140,11 @@ export default function HeroSheet(props: {
   // Treino de habilidade aberto: os pontos que ele já rendeu (o servidor credita ao aprender).
   const projectedPoints = () => {
     const h = hero();
-    if (!h || h.training?.skill !== "habilidade") return undefined;
-    return projectTraining(h, serverNow(props.rpg.serverNow, props.rpg.at))
-      ?.skill?.level;
+    if (!h?.training) return undefined;
+    const p = projectTraining(h, serverNow(props.rpg.serverNow, props.rpg.at));
+    if (h.training.skill === "habilidade") return p?.skill?.level;
+    // Nos dois dummies, os pontos vêm junto (24/11/2026).
+    return h.training.also ? p?.points?.level : undefined;
   };
   const levelPct = () => {
     const h = hero();

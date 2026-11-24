@@ -36,6 +36,19 @@ export function dummyTrains(kind: DummyKind, skill: TrainingSkill): boolean {
 }
 
 /**
+ * Treino nos dois dummies ao mesmo tempo [nosso] (24/11/2026, pedido do dono): "se bater em um
+ * único dummy, ganha 100% dele; se bater em dois, ganha 50% de cada". A skill escolhida no dummy
+ * de vocação (com o escudo junto) e os pontos do dummy de habilidade rendem esta fração cada.
+ */
+export const DUAL_EFFICIENCY = 0.5;
+
+/**
+ * Até onde o herói segue treinando longe do dummy, dentro da sala dele (tiles). Também é o
+ * alcance do segundo dummy no treino nos dois: ao lado de um, até esta distância do outro.
+ */
+export const TRAIN_REACH_TILES = 5;
+
+/**
  * Pontos de habilidade [nosso, no molde das skills do TFS, vocation.cpp:141-148]: o ponto `n`
  * pede `50 × 1,1^(n − 1)` tentativas, e o dummy de habilidade rende como o treino de uma arma
  * corpo a corpo (uma tentativa a cada dois ataques, × a taxa de skill). Com a taxa 2: o 1º ponto
@@ -123,13 +136,16 @@ export interface TrainingGain {
  * - magia: `segundos × manaAmount / (manaTicks da vocação do topo × 2)` de mana;
  * - escudo: `segundos / 4`.
  * Cada valor é truncado como no repasse do Lua para o uint64 e só então multiplicado pela
- * taxa [TFS data/events/scripts/player.lua:222-233].
+ * taxa [TFS data/events/scripts/player.lua:222-233]. `efficiency` (treino nos dois dummies,
+ * DUAL_EFFICIENCY) multiplica o resultado, truncado de novo; como o crédito é a diferença dos
+ * ganhos acumulados (trainingDelta), creditar em pedaços não perde nada.
  */
 export function trainingGain(
   voc: Vocation,
   skill: TrainingSkill,
   seconds: number,
   rates: Rates,
+  efficiency = 1,
 ): TrainingGain {
   if (seconds <= 0) return { main: 0, escudo: 0 };
   const top = topVocation(voc);
@@ -145,7 +161,11 @@ export function trainingGain(
   }
   const escudo =
     main > 0 && skill !== "habilidade" ? Math.floor(seconds / 4) * rates.skill : 0;
-  return { main, escudo };
+  if (efficiency === 1) return { main, escudo };
+  return {
+    main: Math.floor(main * efficiency),
+    escudo: Math.floor(escudo * efficiency),
+  };
 }
 
 /**
@@ -159,9 +179,10 @@ export function trainingDelta(
   fromSeconds: number,
   toSeconds: number,
   rates: Rates,
+  efficiency = 1,
 ): TrainingGain {
-  const a = trainingGain(voc, skill, Math.max(0, fromSeconds), rates);
-  const b = trainingGain(voc, skill, Math.max(0, toSeconds), rates);
+  const a = trainingGain(voc, skill, Math.max(0, fromSeconds), rates, efficiency);
+  const b = trainingGain(voc, skill, Math.max(0, toSeconds), rates, efficiency);
   return {
     main: Math.max(0, b.main - a.main),
     escudo: Math.max(0, b.escudo - a.escudo),
@@ -187,11 +208,19 @@ export function bankNow(_bank: TrainingBank, _now: number): number {
 
 /** Uma sessão no dummy: começou em `startedAt` com `budgetMs` de saldo disponível. */
 export interface TrainingSession {
+  /** No treino nos dois dummies, a skill do dummy de vocação (nunca "habilidade"). */
   skill: TrainingSkill;
   startedAt: number;
   budgetMs: number;
   /** Segundos já creditados nesta sessão (para o crédito incremental). */
   creditedSeconds: number;
+  /** Nos dois dummies: `skill` e os pontos de habilidade, cada um a DUAL_EFFICIENCY. */
+  dual?: boolean;
+}
+
+/** Quanto cada treino da sessão rende (1 num dummy, DUAL_EFFICIENCY nos dois). */
+export function sessionEfficiency(s: Pick<TrainingSession, "dual">): number {
+  return s.dual ? DUAL_EFFICIENCY : 1;
 }
 
 /** Abre uma sessão: o orçamento é o saldo agora, até 12 h. */
@@ -199,12 +228,14 @@ export function startSession(
   bank: TrainingBank,
   skill: TrainingSkill,
   now: number,
+  dual = false,
 ): TrainingSession {
   return {
     skill,
     startedAt: now,
     budgetMs: Math.min(TRAINING.maxSessionMs, bankNow(bank, now)),
     creditedSeconds: 0,
+    ...(dual ? { dual: true } : {}),
   };
 }
 
@@ -224,17 +255,28 @@ export function settleSession(
   s: TrainingSession,
   now: number,
   rates: Rates,
-): { gain: TrainingGain; creditedSeconds: number; spentMs: number } {
+): {
+  gain: TrainingGain;
+  /** Tentativas de ponto de habilidade do treino nos dois dummies (0 fora dele). */
+  points: number;
+  creditedSeconds: number;
+  spentMs: number;
+} {
   const seconds = sessionSeconds(s, now);
   if (seconds * 1000 < TRAINING.minCreditMs) {
     return {
       gain: { main: 0, escudo: 0 },
+      points: 0,
       creditedSeconds: s.creditedSeconds,
       spentMs: 0,
     };
   }
-  const gain = trainingDelta(voc, s.skill, s.creditedSeconds, seconds, rates);
-  return { gain, creditedSeconds: seconds, spentMs: seconds * 1000 };
+  const eff = sessionEfficiency(s);
+  const gain = trainingDelta(voc, s.skill, s.creditedSeconds, seconds, rates, eff);
+  const points = s.dual
+    ? trainingDelta(voc, "habilidade", s.creditedSeconds, seconds, rates, eff).main
+    : 0;
+  return { gain, points, creditedSeconds: seconds, spentMs: seconds * 1000 };
 }
 
 /**

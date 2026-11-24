@@ -107,6 +107,8 @@ export interface RpgTraining extends TrainingSession {
   instance: string;
   server: string;
   zone: string;
+  /** Treino nos dois dummies (`dual`): o outro dummy, do outro tipo. */
+  alsoAt?: string;
 }
 
 /** O herói está numa dungeon até `ends_at` (etapa O5). */
@@ -974,9 +976,12 @@ export function creditTraining(
   const t = d.training;
   if (!t) return false;
   const voc = VOCATIONS[d.vocation];
-  const { gain, creditedSeconds } = settleSession(voc, t, now, rates);
+  const { gain, points, creditedSeconds } = settleSession(voc, t, now, rates);
   if (creditedSeconds === t.creditedSeconds) return false;
   t.creditedSeconds = creditedSeconds;
+  // Nos dois dummies, os pontos de habilidade (já a 50%) e a skill de vocação (abaixo).
+  if (points > 0)
+    d.points = addPointTries(d.points, points, rebirthScale(d.rebirths));
   if (t.skill === "habilidade") {
     d.points = addPointTries(d.points, gain.main, rebirthScale(d.rebirths));
     return true;
@@ -1011,7 +1016,11 @@ export function stopTraining(
   return true;
 }
 
-/** Começa a treinar (fecha antes o treino anterior, se houver). */
+/**
+ * Começa a treinar (fecha antes o treino anterior, se houver). Com `also`, nos dois dummies
+ * (24/11/2026): um de cada tipo, `skill` é a do dummy de vocação, e a skill (com o escudo) e os
+ * pontos de habilidade rendem DUAL_EFFICIENCY cada.
+ */
 export function startTraining(
   d: RpgHeroDoc,
   where: { instance: string; server: string; zone: string },
@@ -1019,9 +1028,15 @@ export function startTraining(
   now: number,
   rates: Rates,
   dummy: DummyKind = "vocacao",
+  also?: { instance: string; dummy: DummyKind },
 ): RpgOutcome {
   if (d.vocation === 0) return { ok: false, reason: "no_vocation" };
-  if (!dummyTrains(dummy, skill)) return { ok: false, reason: "wrong_dummy" };
+  if (also) {
+    if (also.dummy === dummy || also.instance === where.instance)
+      return { ok: false, reason: "same_dummy" };
+    if (skill === "habilidade") return { ok: false, reason: "wrong_dummy" };
+  } else if (!dummyTrains(dummy, skill))
+    return { ok: false, reason: "wrong_dummy" };
   if (inRun(d, now)) return { ok: false, reason: "in_run" };
   const t = d.training;
   if (
@@ -1029,6 +1044,7 @@ export function startTraining(
     t.instance === where.instance &&
     t.server === where.server &&
     t.skill === skill &&
+    (t.alsoAt ?? null) === (also?.instance ?? null) &&
     now < t.startedAt + t.budgetMs
   ) {
     return { ok: true };
@@ -1036,9 +1052,9 @@ export function startTraining(
   stopTraining(d, now, rates);
   const bank = bankNow(d.bank, now);
   if (bank < TRAINING.minCreditMs) return { ok: false, reason: "no_bank" };
-  const s = startSession({ ms: bank, at: now }, skill, now);
+  const s = startSession({ ms: bank, at: now }, skill, now, !!also);
   d.bank = { ms: bank, at: now };
-  d.training = { ...s, ...where };
+  d.training = { ...s, ...where, ...(also ? { alsoAt: also.instance } : {}) };
   return { ok: true };
 }
 
@@ -1100,6 +1116,7 @@ export function rpgHeroView(
       ? {
           skill: d.training.skill,
           instance: d.training.instance,
+          ...(d.training.alsoAt ? { also: d.training.alsoAt } : {}),
           started_at: d.training.startedAt,
           budget_ms: d.training.budgetMs,
           credited_s: d.training.creditedSeconds,

@@ -50,15 +50,25 @@ class FakeHost implements RpgHost {
   access: "ok" | "disabled" | "not_allowed" = "ok";
   near = true;
   readonly training = new Map<string, string>();
+  /** Treino nos dois dummies: o outro dummy de cada um. */
+  readonly trainingAlso = new Map<string, string>();
   readonly sessions = new Map<string, SessionPort>();
   gameAccess() {
     return this.access;
   }
-  trainSpot(_v: Viewer, instanceId: string) {
+  /**
+   * Dummies: "nope" não existe; "hab…" é de habilidade; "…outra" fica em outra sala; "…longe"
+   * fica além do alcance do segundo dummy (só o "near" olha isso).
+   */
+  trainSpot(_v: Viewer, instanceId: string, reach: "beside" | "near" = "beside") {
     if (instanceId === "nope") return { ok: false as const, code: "not_found" };
-    return this.near
-      ? { ok: true as const, zone: "room:R1" }
-      : { ok: false as const, code: "not_allowed", reason: "too_far" };
+    const far = reach === "near" ? instanceId.endsWith("longe") : !this.near;
+    if (far) return { ok: false as const, code: "not_allowed", reason: "too_far" };
+    return {
+      ok: true as const,
+      zone: instanceId.endsWith("outra") ? "room:R2" : "room:R1",
+      dummy: instanceId.startsWith("hab") ? ("habilidade" as const) : ("vocacao" as const),
+    };
   }
   /** NPCs: "nope" não existe; "longe" fica longe; o tipo vem do prefixo ("banqueiro-1"). */
   npcSpot(_v: Viewer, instanceId: string, kind: string) {
@@ -68,12 +78,17 @@ class FakeHost implements RpgHost {
       return { ok: false as const, code: "not_allowed", reason: "too_far" };
     return { ok: true as const };
   }
-  isTrainingAt(userId: string, instanceId: string) {
-    return this.training.get(userId) === instanceId;
+  isTrainingAt(userId: string, instanceId: string, also?: string) {
+    return (
+      this.training.get(userId) === instanceId &&
+      (this.trainingAlso.get(userId) ?? null) === (also ?? null)
+    );
   }
-  setTraining(userId: string, instanceId: string | null) {
+  setTraining(userId: string, instanceId: string | null, also?: string) {
     if (instanceId === null) this.training.delete(userId);
     else this.training.set(userId, instanceId);
+    if (instanceId !== null && also) this.trainingAlso.set(userId, also);
+    else this.trainingAlso.delete(userId);
   }
   readonly levels = new Map<string, number | null>();
   readonly looks = new Map<string, unknown>();
@@ -236,6 +251,38 @@ test("treinar: perto do dummy começa; longe ou sem vocação é recusado", asyn
   await send("rpg.train.start", { instance: "d1", skill: "espada" });
   assert.equal(s.lastHero()?.training?.instance, "d1");
   assert.equal(host.training.get("U1"), "d1");
+});
+
+test("treinar nos dois dummies: o outro na mesma sala e perto, de outro tipo; o mapa sabe dos dois", async () => {
+  const { s, host, send, clock } = await setup();
+  await send("rpg.vocation", { vocation: 4 });
+  const far = await send("rpg.train.start", { instance: "d1", skill: "espada", with: "hab-longe" });
+  assert.deepEqual(s.errors(far), [{ code: "not_allowed", reason: "too_far" }]);
+  const room = await send("rpg.train.start", { instance: "d1", skill: "espada", with: "hab-outra" });
+  assert.deepEqual(s.errors(room), [{ code: "not_allowed", reason: "too_far" }]);
+  const same = await send("rpg.train.start", { instance: "d1", skill: "espada", with: "d2" });
+  assert.deepEqual(s.errors(same), [{ code: "rpg_invalid", reason: "same_dummy" }]);
+  const gone = await send("rpg.train.start", { instance: "d1", skill: "espada", with: "nope" });
+  assert.deepEqual(s.errors(gone), [{ code: "not_found" }]);
+  assert.equal(host.training.has("U1"), false);
+  // Ao lado do dummy de habilidade, com o de vocação perto: vale também.
+  await send("rpg.train.start", { instance: "hab-1", skill: "espada", with: "d1" });
+  const hero = s.lastHero()!;
+  assert.equal(hero.training?.instance, "hab-1");
+  assert.equal(hero.training?.also, "d1");
+  assert.equal(host.training.get("U1"), "hab-1");
+  assert.equal(host.trainingAlso.get("U1"), "d1");
+  // Reabrir com o runtime vendo os dois: o treino segue.
+  clock.advance(H);
+  await send("rpg.open");
+  assert.equal(s.lastHero()?.training?.also, "d1");
+  // O runtime perdeu o segundo dummy (reinício, outro caminho): fecha ao abrir, creditando.
+  host.trainingAlso.delete("U1");
+  await send("rpg.open");
+  const closed = s.lastHero()!;
+  assert.equal(closed.training, null);
+  assert.ok(closed.skills.espada.level > 10);
+  assert.ok(closed.skill_points.earned > 0);
 });
 
 test("parar credita o tempo treinado; sair de perto do dummy também", async () => {

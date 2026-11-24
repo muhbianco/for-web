@@ -35,9 +35,12 @@ import {
 } from "./attributes.ts";
 import { DEFAULT_RATES, VOCATIONS } from "./data.ts";
 import {
+  DUAL_EFFICIENCY,
   addPointTries,
   dummyTrains,
   reqPointTries,
+  settleSession,
+  startSession,
   trainingGain,
 } from "./training.ts";
 
@@ -270,6 +273,43 @@ test("treino de habilidade: só no dummy de habilidade, um ponto a cada 50 × 1,
   ).main;
   const p = addPointTries({ points: 0, tries: 0 }, day).points;
   assert.ok(p >= 38 && p <= 41, `pontos em 12 h: ${p}`);
+});
+
+test("nos dois dummies (24/11/2026): a skill, o escudo e os pontos rendem 50% cada; num só, 100%", () => {
+  assert.equal(DUAL_EFFICIENCY, 0.5);
+  const H = 3600;
+  const knight = VOCATIONS[4];
+  // Um dummy só: 1800 de espada e de escudo por hora; nos dois, metade.
+  assert.deepEqual(trainingGain(knight, "espada", H, DEFAULT_RATES), { main: 1800, escudo: 1800 });
+  assert.deepEqual(trainingGain(knight, "espada", H, DEFAULT_RATES, DUAL_EFFICIENCY), { main: 900, escudo: 900 });
+  const sess = startSession({ ms: 10 * H * 1000, at: 0 }, "espada", 0, true);
+  assert.equal(sess.dual, true);
+  const once = settleSession(knight, sess, H * 1000, DEFAULT_RATES);
+  assert.deepEqual(once.gain, { main: 900, escudo: 900 });
+  assert.equal(once.points, 900, "os pontos de habilidade vêm junto, também a 50%");
+  // Sem "dual", nada de pontos.
+  const single = startSession({ ms: 10 * H * 1000, at: 0 }, "espada", 0);
+  assert.equal(single.dual, undefined);
+  assert.equal(settleSession(knight, single, H * 1000, DEFAULT_RATES).points, 0);
+  // Creditar em pedaços (de 7 em 7 s, número que não divide a truncagem) dá o mesmo total.
+  let s = { ...sess };
+  let main = 0;
+  let shield = 0;
+  let points = 0;
+  for (let t = 61; t <= H; t += 7) {
+    const r = settleSession(knight, s, t * 1000, DEFAULT_RATES);
+    main += r.gain.main;
+    shield += r.gain.escudo;
+    points += r.points;
+    s = { ...s, creditedSeconds: r.creditedSeconds };
+  }
+  const last = settleSession(knight, s, H * 1000, DEFAULT_RATES);
+  main += last.gain.main;
+  shield += last.gain.escudo;
+  points += last.points;
+  assert.deepEqual({ main, shield, points }, { main: 900, shield: 900, points: 900 });
+  // A magia também: 9000 de mana por hora no feiticeiro vira 4500.
+  assert.equal(trainingGain(VOCATIONS[1], "magia", H, DEFAULT_RATES, DUAL_EFFICIENCY).main, 4500);
 });
 
 test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da corrida", async () => {

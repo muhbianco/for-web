@@ -186,7 +186,12 @@ const inst = (
 });
 
 /** Põe um dummy ao lado do spawn da Ana (primeira posição livre em volta). */
-async function placeDummy(rt: SpaceRuntime, ana: FakeSession, id: string) {
+async function placeDummy(
+  rt: SpaceRuntime,
+  ana: FakeSession,
+  id: string,
+  item = "dummy-wood",
+) {
   const spawn = rt.map.spawns[0]!;
   for (const [dx, dy] of [
     [-1, 0],
@@ -203,7 +208,7 @@ async function placeDummy(rt: SpaceRuntime, ana: FakeSession, id: string) {
       kind: "place",
       item: inst(
         id,
-        "dummy-wood",
+        item,
         "hall",
         spawn.tx + dx - rt.map.hall.x0,
         spawn.ty + dy - rt.map.hall.y0,
@@ -284,6 +289,47 @@ test("dummy: sair de perto, ser tirado do Espaço ou o dummy sumir encerram o tr
   rt.setTraining(ANA, "dummy-2");
   rt.evict(ANA);
   assert.deepEqual(left, [ANA, ANA, ANA]);
+});
+
+test("dummy nos dois (24/11/2026): o segundo vale de perto; tirar qualquer um encerra; o mapa leva os dois", async () => {
+  const { rt } = await space();
+  const left: string[] = [];
+  rt.onTrainingLeft = (userId) => left.push(userId);
+  const ana = enter(rt, ANA, "Ana");
+  await placeDummy(rt, ana, "dummy-1");
+  const hab = await placeDummy(rt, ana, "hab-1", "dummy-habilidade");
+  assert.deepEqual(rt.trainSpot(ana.viewer, "hab-1", "near"), {
+    ok: true,
+    zone: "hall",
+    dummy: "habilidade",
+  });
+  rt.setTraining(ANA, "dummy-1", "hab-1");
+  assert.ok(rt.isTrainingAt(ANA, "dummy-1", "hab-1"));
+  assert.equal(rt.isTrainingAt(ANA, "dummy-1"), false, "o runtime sabe que são dois");
+  const hero = () =>
+    (rt as unknown as { avatars: Map<string, { hero: unknown }> }).avatars.get(ANA)!.hero;
+  rt.setHero(ANA, { level: 3, vocation: 4, gear: {} });
+  assert.deepEqual(hero(), {
+    level: 3,
+    training: true,
+    at: "dummy-1",
+    also: "hab-1",
+    vocation: 4,
+    gear: {},
+  });
+  // O editor tira o segundo dummy: o treino nos dois acaba.
+  await run(rt, ana, "rm-hab", { kind: "remove", id: "hab-1" });
+  assert.deepEqual(left, [ANA]);
+  assert.equal(rt.isTrainingAt(ANA, "dummy-1", "hab-1"), false);
+  // Longe do segundo, ele não serve nem como "perto".
+  const again = await placeDummy(rt, ana, "hab-2", "dummy-habilidade");
+  moveTo(rt, ANA, again.tx + 7, again.ty);
+  assert.deepEqual(rt.trainSpot(ana.viewer, "hab-2", "near"), {
+    ok: false,
+    code: "not_allowed",
+    reason: "too_far",
+  });
+  void hab;
 });
 
 test("dummy: desconectar não encerra (segue como o treino offline); reconectar longe encerra", async () => {

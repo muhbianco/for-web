@@ -50,6 +50,11 @@ export const RpgTrainStartCmd = z.object({
     .object({
       instance: z.string().min(1).max(40),
       skill: z.enum(TRAINING_SKILLS as [TrainingSkill, ...TrainingSkill[]]),
+      /**
+       * Treinar nos dois dummies (24/11/2026): o outro dummy, do outro tipo, na mesma sala e até
+       * TRAIN_REACH_TILES. `skill` é a do dummy de vocação; cada um rende DUAL_EFFICIENCY.
+       */
+      with: z.string().min(1).max(40).optional(),
     })
     .strict(),
 });
@@ -382,8 +387,11 @@ export interface RpgSkillView {
 
 /** O treino em andamento: o app projeta o progresso pelo relógio com as regras puras. */
 export interface RpgTrainingView {
+  /** Nos dois dummies, a skill do dummy de vocação (os pontos de habilidade vêm junto). */
   skill: TrainingSkill;
   instance: string;
+  /** Treino nos dois dummies: o outro dummy (cada um rende DUAL_EFFICIENCY). */
+  also?: string;
   started_at: number;
   budget_ms: number;
   credited_s: number;
