@@ -72,7 +72,7 @@ import { rollLoot } from "./loot.ts";
 import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
 import { canShare, sharedExperience } from "./party.ts";
 import { lowLevelBonus } from "./progression.ts";
-import { spellRange, wandRange } from "./spells.ts";
+import { type NormalHitKind, normalHitRange, spellRange, wandRange } from "./spells.ts";
 import { damageClass, itemAbsorb, monsterResist } from "./resist.ts";
 import { STAMINA, staminaMultiplier } from "./stamina.ts";
 
@@ -126,7 +126,7 @@ export const RUN = {
    */
   protect: { from: 40, span: 80, max: 0.5 },
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 13,
+  engine: 14,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -671,9 +671,18 @@ function addTo(
   else list.push({ item, count: n });
 }
 
-/** A recarga de uma habilidade com a DES [nosso]: a que a corrida usa. */
+/**
+ * [nosso] O teto do corte de recarga (24/11/2026, pedido do dono: "capada com algum teto razoável,
+ * baseada no level máximo 500"): a DES, o Ritmo da árvore e a maestria do renascimento juntos
+ * nunca tiram mais que isto da recarga de base da habilidade. Sem teto, o Ritmo com renascimentos
+ * infinitos levaria toda recarga ao mínimo.
+ */
+export const COOLDOWN_CUT_MAX = 0.4;
+
+/** A recarga de uma habilidade com a DES e o teto [nosso]: a que a corrida usa. */
 export function abilityCooldownMs(s: AbilityNow, d: Derived): number {
-  return Math.max(MIN_COOLDOWN_MS, Math.round(s.cooldownMs * d.cooldown));
+  const floor = Math.max(MIN_COOLDOWN_MS, Math.round(s.def.cooldownMs * (1 - COOLDOWN_CUT_MAX)));
+  return Math.max(floor, Math.round(s.cooldownMs * d.cooldown));
 }
 
 /**
@@ -1088,29 +1097,32 @@ export function simulateRun(input: RunInput): RunResult {
   }
 
   /**
-   * O tiro máximo do arco com a flecha que está pronta, sem gastar nem mexer na flecha: é a base
-   * das habilidades do arqueiro (fórmula "tiro"). Sem arco ou sem flecha: 0.
+   * O golpe normal do herói agora (spells.ts normalHitRange), sem gastar nem mexer na flecha: a
+   * base das habilidades de ataque (fórmula "golpe"). A flecha é a que o arco atiraria.
    */
-  function rangedMax(h: HeroRt): number {
+  function normalHit(h: HeroRt): { lo: number; hi: number; kind: NormalHitKind } {
     const w = h.weapon;
-    if (w?.kind !== "distancia" || !w.ammo) return 0;
-    const fits = (d: ItemDef | undefined) =>
-      !!d && d.ammo === w.ammo && canUse(d, h.voc.base, h.h.level);
-    const slot = h.inv.equip.municao ? itemDef(h.inv.equip.municao.item) : undefined;
-    const ammo = fits(slot)
-      ? slot!
-      : h.inv.pack.map((x) => itemDef(x.item)).find(fits);
-    if (!ammo) return 0;
-    return Math.trunc(
-      maxWeaponDamage(
-        h.h.level,
-        h.sk.distancia,
-        (ammo.attack ?? 0) + (w.attack ?? 0),
-        ATTACK_FACTOR[RUN.fightMode],
-      ) *
-        h.voc.distDamage *
-        h.refine,
-    );
+    let ammoAttack: number | null = null;
+    if (w?.kind === "distancia" && w.ammo) {
+      const fits = (d: ItemDef | undefined) =>
+        !!d && d.ammo === w.ammo && canUse(d, h.voc.base, h.h.level);
+      const slot = h.inv.equip.municao ? itemDef(h.inv.equip.municao.item) : undefined;
+      const ammo = fits(slot) ? slot! : h.inv.pack.map((x) => itemDef(x.item)).find(fits);
+      if (ammo) ammoAttack = ammo.attack ?? 0;
+    }
+    return normalHitRange({
+      level: h.h.level,
+      magicLevel: h.h.magicLevel,
+      cls: h.voc.base,
+      meleeDamage: h.voc.meleeDamage,
+      distDamage: h.voc.distDamage,
+      weapon: w ?? null,
+      refine: h.refine,
+      ammoAttack,
+      skills: h.sk,
+      minRoll: h.d.minRoll,
+      attackFactor: ATTACK_FACTOR[RUN.fightMode],
+    });
   }
 
   /** A Concentração está valendo agora? */
@@ -1353,7 +1365,7 @@ export function simulateRun(input: RunInput): RunResult {
     h.cooldown.set(s.def.id, tMs + abilityCooldownMs(s, h.d));
   }
 
-  type HeroNumbers = Parameters<typeof spellRange>[1];
+  type HeroNumbers = Parameters<typeof spellRange>[1] & { baseKind?: NormalHitKind };
 
   /**
    * O valor de uma habilidade: a faixa da magia do TFS [onGetFormulaValues] × a força dos
@@ -1363,15 +1375,16 @@ export function simulateRun(input: RunInput): RunResult {
   function abilityValue(h: HeroRt, s: AbilityNow, hero: HeroNumbers): number {
     const raw = normalRandom(rng, ...spellRange(s, hero));
     const f = s.formula.type;
+    // A fórmula "golpe" leva a % do golpe normal de onde ela sai (arma pela FOR, arco pela DES e a
+    // Concentração, varinha pela INT); as do TFS, a da fórmula.
+    const from: NormalHitKind | "magia" =
+      f === "golpe" ? (hero.baseKind ?? "melee") : f === "arma" ? "melee" : f === "distancia" ? "ranged" : "magia";
     const pct =
-      f === "arma"
+      from === "melee"
         ? h.d.meleePct
-        : f === "distancia"
-          ? h.d.rangedPct
-          : f === "tiro"
-            ? h.d.rangedPct + (focused(h) ? h.focusDmg : 0)
-            : h.d.magicPct[0] +
-              (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
+        : from === "ranged"
+          ? h.d.rangedPct + (f === "golpe" && focused(h) ? h.focusDmg : 0)
+          : h.d.magicPct[0] + (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
     // O adereço de crítico (24/11/2026): a habilidade sai CRIT_MULT vezes mais forte.
     const crit = s.crit > 0 && uniformRandom(rng, 1, 1000) <= Math.round(s.crit * 10);
     return Math.max(
@@ -1478,8 +1491,10 @@ export function simulateRun(input: RunInput): RunResult {
       weaponSkill: weaponSkill(h.weapon, h.sk),
       weaponAttack: h.weapon?.attack ?? 7,
       distance: h.sk.distancia,
-      rangedMax: rangedMax(h),
     };
+    const normal = normalHit(h);
+    hero.baseHit = [normal.lo, normal.hi];
+    hero.baseKind = normal.kind;
     if (tMs >= h.healGroup) {
       // Cura num companheiro: o mais ferido abaixo do limite (40%, mais os adereços) [nosso].
       let healed = false;
@@ -1509,7 +1524,7 @@ export function simulateRun(input: RunInput): RunResult {
       m &&
       boost &&
       !focused(h) &&
-      hero.rangedMax! > 0 &&
+      hero.baseKind === "ranged" &&
       ready(h, boost, tMs, healReserve(h))
     ) {
       spendMana(h, boost.mana);

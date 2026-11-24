@@ -124,32 +124,21 @@ const magia = (
   mlCap === undefined
     ? { type: "magia", min, max }
     : { type: "magia", min, max, mlCap };
-const arma = (min: [number, number], max: [number, number]): SpellFormula => ({
-  type: "arma",
-  min,
-  max,
-});
 /**
- * [nosso] Os magos no modelo do cavaleiro (24/11/2026, pedido do dono): a varinha é a base e
- * cresce com o magic level (spells.ts WAND_ML); as magias de ataque são a menor parte do dano,
- * porque o renascimento cresce a árvore sem teto. A fórmula do TFS fica escrita e leva esta
- * fração: as de um alvo 0,3 (recarga ×4), as de área 0,45 (recarga ×3), para as salas cheias
- * ainda caírem juntas (com 0,3 o feiticeiro levava 13% mais dano na Cidadela).
+ * [nosso] 24/11/2026, à noite (pedido do dono: "a habilidade deveria pegar o dano base e bater em
+ * cima"): toda habilidade de ataque é `min`–`max` vezes o golpe normal do herói (a arma, o arco
+ * com a flecha, a varinha; spells.ts normalHitRange). Antes cada uma tinha a conta dela, cortada
+ * para ficar a menor parte do dano, e o Golpe de gelo do druida de level 27 saía com 37 contra 333
+ * da varinha. Agora o golpe é forte e o que dosa é a recarga; os magos tiram mais das magias que
+ * da varinha, e quanto mais perto do fim do jogo (árvore em ups, renascimento), mais elas contam.
  */
-const MAGE_ATTACK = 0.3;
-const MAGE_AREA = 0.45;
-const magiaX = (
-  min: [number, number],
-  max: [number, number],
-  k: number,
-): SpellFormula => ({
-  type: "magia",
-  min: [min[0] * k, min[1] * k],
-  max: [max[0] * k, max[1] * k],
-});
-
-const tiro = (min: number, max: number): SpellFormula => ({
-  type: "tiro",
+// As recargas saem de scripts/ability-tune.ts: no level 27, no grupo completo, a parte do dano que
+// vem das habilidades fica em ~45% no cavaleiro e no arqueiro e ~55% nos magos, com o dano total
+// de antes (a base do golpe normal acerta o total: data.ts ARCHER_DIST_DAMAGE, spells.ts WAND_ML).
+// Uma corrida do grupo completo na entrada dura ~30 s e tudo sai pronto no começo: recarga mais
+// longa quase não baixa a parte; o controle dela é o par recarga + multiplicador.
+const golpe = (min: number, max: number): SpellFormula => ({
+  type: "golpe",
   min,
   max,
 });
@@ -163,8 +152,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "fisico",
     mana: 30,
-    cooldownMs: 6000,
-    formula: arma([0.02, 4], [0.04, 9]),
+    cooldownMs: 5500,
+    formula: golpe(1.5, 1.8),
     blockArmor: true,
     source: "brutal_strike.lua",
     blurb: "Um golpe forte com a arma no alvo do grupo.",
@@ -176,8 +165,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "area",
     element: "fisico",
     mana: 35,
-    cooldownMs: 4000,
-    formula: arma([0.02, 5], [0.04, 9]),
+    cooldownMs: 7500,
+    formula: golpe(0.35, 0.45),
     blockArmor: true,
     source: "berserk.lua",
     blurb: "Gira a arma e acerta todos os monstros da sala.",
@@ -208,12 +197,9 @@ export const ABILITIES: readonly AbilityDef[] = [
       "Quando um monstro bate em outra pessoa, puxa a sala inteira para si por 8 s.",
   },
   // ---- Arqueiro (24/11/2026: o Arqueiro do Ragnarok, físico, sem magia nem cura) ----
-  // O dano sai do tiro do arco com a flecha (fórmula "tiro"); a mana paga cada uma.
-  // [nosso] 24/11/2026, à noite (pedido do dono): no modelo do cavaleiro, as habilidades são a
-  // menor parte do dano e o tiro normal é a base (data.ts ARCHER_DIST_DAMAGE). Antes saíam a cada
-  // 2 a 6 s com 1 a 2,3 tiros máximos e faziam 84% do dano no level 60; agora são tiros especiais
-  // de recarga longa (a DES ainda corta até a metade), ~30% do dano, e 400 renascimentos dão
-  // ×1,2, como no cavaleiro (scripts/rebirth-lab.ts). Os fatores são do tiro máximo já com o multiplicador do arqueiro.
+  // O dano sai do tiro normal do arco com a flecha (fórmula "golpe"); a mana paga cada uma. A
+  // Rajada dupla é um golpe só com as duas flechas. As recargas são as mais longas porque a árvore
+  // do arqueiro multiplica muito cada uso (a Flecha perfurante soma um alvo inteiro em 5 ups).
   {
     id: "rajada-dupla",
     name: "Rajada dupla",
@@ -221,8 +207,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "fisico",
     mana: 30,
-    cooldownMs: 16_000,
-    formula: tiro(0.2, 0.27),
+    cooldownMs: 21_000,
+    formula: golpe(1.5, 1.8),
     blockArmor: true,
     source: "RO AC_DOUBLE (Double Strafe)",
     blurb: "Duas flechas seguidas no alvo do grupo, pelo dano do arco.",
@@ -234,8 +220,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "area",
     element: "fisico",
     mana: 45,
-    cooldownMs: 24_000,
-    formula: tiro(0.1, 0.15),
+    cooldownMs: 34_000,
+    formula: golpe(0.3, 0.4),
     blockArmor: true,
     source: "RO AC_SHOWER (Arrow Shower)",
     blurb: "Uma chuva de flechas em todos os monstros da sala.",
@@ -247,8 +233,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "fisico",
     mana: 40,
-    cooldownMs: 32_000,
-    formula: tiro(0.31, 0.42),
+    cooldownMs: 43_000,
+    formula: golpe(2.5, 2.9),
     blockArmor: true,
     source: "RO AC_CHARGEARROW (Arrow Repel)",
     blurb: "Um tiro tenso e forte no alvo do grupo.",
@@ -273,8 +259,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "energia",
     mana: 20,
-    cooldownMs: 8000,
-    formula: magiaX([1.4, 8], [2.2, 14], MAGE_ATTACK),
+    cooldownMs: 13_500,
+    formula: golpe(1.5, 1.8),
     source: "energy_strike.lua",
     blurb: "Energia no alvo do grupo.",
   },
@@ -285,8 +271,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "fogo",
     mana: 20,
-    cooldownMs: 8000,
-    formula: magiaX([1.4, 8], [2.2, 14], MAGE_ATTACK),
+    cooldownMs: 13_500,
+    formula: golpe(1.5, 1.8),
     source: "flame_strike.lua",
     blurb: "Fogo no alvo do grupo.",
   },
@@ -297,8 +283,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "area",
     element: "fogo",
     mana: 25,
-    cooldownMs: 12_000,
-    formula: magiaX([1.2, 7], [2, 12], MAGE_AREA),
+    cooldownMs: 22_500,
+    formula: golpe(0.4, 0.5),
     source: "fire_wave.lua",
     blurb: "Uma onda de fogo que pega todos os monstros da sala.",
   },
@@ -322,8 +308,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "ataque",
     element: "gelo",
     mana: 20,
-    cooldownMs: 8000,
-    formula: magiaX([1.4, 8], [2.2, 14], MAGE_ATTACK),
+    cooldownMs: 7500,
+    formula: golpe(1.5, 1.8),
     source: "ice_strike.lua",
     blurb: "Gelo no alvo do grupo.",
   },
@@ -334,8 +320,8 @@ export const ABILITIES: readonly AbilityDef[] = [
     kind: "area",
     element: "gelo",
     mana: 25,
-    cooldownMs: 12_000,
-    formula: magiaX([0.8, 5], [2, 12], MAGE_AREA),
+    cooldownMs: 13_000,
+    formula: golpe(0.4, 0.5),
     source: "ice_wave.lua",
     blurb: "Uma onda de gelo que pega todos os monstros da sala.",
   },
@@ -698,7 +684,7 @@ export const TREE: readonly TreeNode[] = [
       name: "Chama solar",
       effect: {
         t: "formula",
-        formula: magiaX([2.8, 16], [4.4, 28], MAGE_ATTACK),
+        formula: golpe(2.2, 2.6),
         mana: 60,
         name: "Chama solar",
         source: "strong_flame_strike.lua",
@@ -715,7 +701,7 @@ export const TREE: readonly TreeNode[] = [
       name: "Grande onda",
       effect: {
         t: "formula",
-        formula: magiaX([2.8, 16], [4.4, 28], MAGE_AREA),
+        formula: golpe(0.6, 0.7),
         mana: 120,
         name: "Grande onda de fogo",
         source: "great_fire_wave.lua",
@@ -789,7 +775,7 @@ export const TREE: readonly TreeNode[] = [
       name: "Onda de raízes",
       effect: {
         t: "formula",
-        formula: magiaX([3.25, 5], [6.75, 30], MAGE_AREA),
+        formula: golpe(0.55, 0.65),
         mana: 170,
         name: "Onda de raízes",
         source: "terra_wave.lua",

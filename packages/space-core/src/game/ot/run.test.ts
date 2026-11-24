@@ -774,7 +774,7 @@ test("o arqueiro usa a Flecha carregada: ela rende mais por uso que a Rajada dup
   const charge = abilityDef("flecha-carregada")!;
   const strafe = abilityDef("rajada-dupla")!;
   const avg = (d: typeof charge) =>
-    d.formula.type === "tiro" ? (d.formula.min + d.formula.max) / 2 : 0;
+    d.formula.type === "golpe" ? (d.formula.min + d.formula.max) / 2 : 0;
   // A Rajada com a Tripla (eco de 50%) ainda rende menos que a Flecha carregada sem nada.
   assert.ok(avg(charge) > avg(strafe) * 1.5, `${avg(charge)} x ${avg(strafe)}`);
 });

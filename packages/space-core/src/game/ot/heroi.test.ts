@@ -35,6 +35,7 @@ import {
 } from "./attributes.ts";
 import { DEFAULT_RATES, VOCATIONS } from "./data.ts";
 import { trainingGain } from "./training.ts";
+import { normalHitRange, spellRange, wandRange } from "./spells.ts";
 import { JOB, addJobExp, jobExpGain, jobLevelFor, jobPoints, rebirthScale } from "./job.ts";
 import { expForLevel } from "./progression.ts";
 import { TIER_MAX_UPS, nodeUnits, treeNode, CRIT_MULT, cannotRebirth } from "./abilities.ts";
@@ -182,7 +183,8 @@ test("adereços: força, economia, recarga, alvo, eco e fórmula nova", () => {
   const now = abilityNow(brutal, t);
   assert.ok(Math.abs(now.power - 1.7) < 1e-9);
   assert.equal(now.mana, 21);
-  assert.equal(now.cooldownMs, 4000);
+  // O Ritmo em 5 ups tira 2 s da recarga de base.
+  assert.equal(now.cooldownMs, brutal.cooldownMs - 2000);
   assert.equal(now.echo, 0.5);
   assert.deepEqual(now.stun, { chance: 30, ms: 2000 });
   // A cura troca de fórmula e de mana.
@@ -313,9 +315,10 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
     bar.map((b) => b.id),
     ["golpe-brutal", "giro-da-lamina", "atadura", "desafio"],
   );
-  // 30 de mana − 30% = 21; 6 s × (1 − a curva da DES 61), a mesma da corrida (derive).
-  const cd = Math.round(6000 * derive({ ...freshStats(), des: 61 }, 30).cooldown);
-  assert.ok(cd > 5000 && cd < 5300, `recarga ${cd}`);
+  // 30 de mana − 30% = 21; a recarga de base × (1 − a curva da DES 61), a mesma da corrida (derive).
+  const base = abilityDef("golpe-brutal")!.cooldownMs;
+  const cd = Math.round(base * derive({ ...freshStats(), des: 61 }, 30).cooldown);
+  assert.ok(cd > base * 0.8 && cd < base * 0.9, `recarga ${cd}`);
   // Sai com o custo e uma Atadura guardada (10).
   assert.deepEqual(bar[0], { id: "golpe-brutal", mana: 21, cd_ms: cd, at: 31 });
   assert.equal(bar[3]!.at, 40 + 10, "o Desafio guarda a cura");
@@ -324,9 +327,59 @@ test("barra da dungeon: mana e recarga com os adereços e a DES, as mesmas da co
   assert.equal(plain[0]!.id, "golpe-de-raio");
   assert.equal(
     plain[0]!.cd_ms,
-    // 24/11/2026: as magias de um alvo dos magos saem a cada 8 s (abilities.ts MAGE_ATTACK).
-    Math.round(8000 * derive(freshStats(), 5).cooldown),
+    Math.round(abilityDef("golpe-de-raio")!.cooldownMs * derive(freshStats(), 5).cooldown),
   );
+});
+
+test("teto da recarga: DES, Ritmo e maestria juntos não tiram mais que COOLDOWN_CUT_MAX", async () => {
+  const { abilityCooldownMs, COOLDOWN_CUT_MAX } = await import("./run.ts");
+  const brutal = abilityDef("golpe-brutal")!;
+  // O Ritmo no máximo, com 10 mil renascimentos nele, e DES de level 500.
+  const now = abilityNow(brutal, { "golpe-brutal.ritmo": 20 }, { "golpe-brutal.ritmo": 10_000 });
+  const d = derive({ ...freshStats(), des: 400 }, 500);
+  assert.equal(abilityCooldownMs(now, d), Math.round(brutal.cooldownMs * (1 - COOLDOWN_CUT_MAX)));
+  // Sem nada, a recarga de base (a DES 1 tira quase nada).
+  assert.ok(abilityCooldownMs(abilityNow(brutal, {}), derive(freshStats(), 1)) >= brutal.cooldownMs * 0.99);
+});
+
+test("fórmula golpe: a habilidade parte do golpe normal da classe e bate em cima", () => {
+  const hit = (cls: number, weapon: Parameters<typeof normalHitRange>[0]["weapon"], ammoAttack: number | null) =>
+    normalHitRange({
+      level: 27,
+      magicLevel: 30,
+      cls,
+      meleeDamage: 1,
+      distDamage: 1.6,
+      weapon,
+      refine: 1,
+      ammoAttack,
+      skills: { punhos: 10, espada: 10, machado: 48, maca: 10, distancia: 50 },
+      minRoll: 0.2,
+      attackFactor: 1,
+    });
+  // Druida com varinha: a base é a varinha (que cresce com o magic level).
+  const wand = hit(2, { kind: "varinha", wand: { min: 10, max: 20 } }, null);
+  assert.equal(wand.kind, "wand");
+  const [wMin, wMax] = wandRange({ min: 10, max: 20 }, 27, 30);
+  assert.deepEqual([wand.lo, wand.hi], [wMin, wMax]);
+  // Sem varinha, o mago segue o magic level (a conta da varinha sem o dano dela).
+  assert.ok(hit(1, null, null).hi > 0);
+  // Arqueiro com arco e flecha: o tiro; sem flecha, os punhos.
+  assert.equal(hit(3, { kind: "distancia", attack: 5 }, 20).kind, "ranged");
+  assert.equal(hit(3, { kind: "distancia", attack: 5 }, null).kind, "melee");
+  // Cavaleiro de machado: a skill de machado.
+  const axe = hit(4, { kind: "machado", attack: 30 }, null);
+  const fist = hit(4, null, null);
+  assert.ok(axe.hi > fist.hi * 3, `${axe.hi} x ${fist.hi}`);
+  // Toda habilidade de ataque de um alvo bate acima do golpe normal; a de área, por monstro, abaixo.
+  for (const a of ABILITIES) {
+    if (a.formula.type !== "golpe") continue;
+    const avg = (a.formula.min + a.formula.max) / 2;
+    if (a.kind === "ataque") assert.ok(avg >= 1.5, `${a.id} ×${avg}`);
+    if (a.kind === "area") assert.ok(avg < 1 && avg >= 0.3, `${a.id} ×${avg}`);
+  }
+  const [lo, hi] = spellRange({ formula: { type: "golpe", min: 1.5, max: 1.8 } }, { level: 27, magicLevel: 30, weaponSkill: 10, weaponAttack: 7, distance: 10, baseHit: [100, 200] });
+  assert.deepEqual([lo, hi], [150, 360]);
 });
 
 test("maestria: cada vez escolhido, o adereço rende 0,5% a mais por ponto; alvos a mais não mudam", () => {

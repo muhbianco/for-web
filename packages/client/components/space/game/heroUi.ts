@@ -7,11 +7,12 @@ import {
   type RpgHeroView,
   type StatId,
   type Stats,
+  abilityCooldownMs,
   abilityNow,
   ATTACK_FACTOR,
   derive,
   itemDef,
-  maxWeaponDamage,
+  normalHitRange,
   refineFactor,
   RUN,
   spellRange,
@@ -170,24 +171,33 @@ function weaponNumbers(hero: RpgHeroView): { skill: number; attack: number } {
 }
 
 /**
- * O tiro máximo do arco com a flecha vestida, como na corrida (run.ts rangedMax): a base das
- * habilidades do arqueiro. Sem arco ou sem a flecha dele: 0.
+ * O golpe normal do herói com o que veste, como na corrida (run.ts normalHit): a base das
+ * habilidades de ataque (fórmula "golpe"). A flecha é a vestida.
  */
-function rangedMax(hero: RpgHeroView): number {
+function normalHit(hero: RpgHeroView, d: Derived) {
   const eq = hero.inventory.equip;
   const w = eq.arma ? itemDef(eq.arma.item) : undefined;
   const ammo = eq.municao ? itemDef(eq.municao.item) : undefined;
-  if (w?.kind !== "distancia" || !w.ammo || ammo?.ammo !== w.ammo) return 0;
-  return Math.trunc(
-    maxWeaponDamage(
-      hero.level,
-      hero.skills.distancia.level,
-      (ammo.attack ?? 0) + (w.attack ?? 0),
-      ATTACK_FACTOR[RUN.fightMode],
-    ) *
-      VOCATIONS[hero.vocation].distDamage *
-      refineFactor(eq.arma?.refine ?? 0),
-  );
+  const voc = VOCATIONS[hero.vocation];
+  return normalHitRange({
+    level: hero.level,
+    magicLevel: hero.magic.level,
+    cls: voc.base,
+    meleeDamage: voc.meleeDamage,
+    distDamage: voc.distDamage,
+    weapon: w ?? null,
+    refine: refineFactor(eq.arma?.refine ?? 0),
+    ammoAttack: w?.kind === "distancia" && w.ammo && ammo?.ammo === w.ammo ? (ammo.attack ?? 0) : null,
+    skills: {
+      punhos: hero.skills.punhos.level,
+      espada: hero.skills.espada.level,
+      machado: hero.skills.machado.level,
+      maca: hero.skills.maca.level,
+      distancia: hero.skills.distancia.level,
+    },
+    minRoll: d.minRoll,
+    attackFactor: ATTACK_FACTOR[RUN.fightMode],
+  });
 }
 
 /** A habilidade agora: adereços, faixa de valor com os atributos, mana e recarga. */
@@ -201,22 +211,26 @@ export function abilityView(
   const now = abilityNow(def, tree, hero.mastery);
   const d = derive(withGearStats(stats, hero.gear_stats ?? {}), hero.level);
   const w = weaponNumbers(hero);
-  const cooldownS = Math.max(500, now.cooldownMs * d.cooldown) / 1000;
+  // A recarga com a DES e o teto (run.ts abilityCooldownMs), como na corrida.
+  const cooldownS = abilityCooldownMs(now, d) / 1000;
   if (def.kind === "desafio" || def.kind === "foco")
     return { now, range: null, cooldownS };
+  const normal = normalHit(hero, d);
   const [a, b] = spellRange(now, {
     level: hero.level,
     magicLevel: hero.magic.level,
     weaponSkill: w.skill,
     weaponAttack: w.attack,
     distance: hero.skills.distancia.level,
-    rangedMax: rangedMax(hero),
+    baseHit: [normal.lo, normal.hi],
   });
+  // A % dos atributos é a do golpe normal de onde a habilidade sai (run.ts abilityValue).
   const f = now.formula.type;
+  const from = f === "golpe" ? normal.kind : f === "arma" ? "melee" : f === "distancia" ? "ranged" : "wand";
   const [lo, hi] =
-    f === "arma"
+    from === "melee"
       ? [d.meleePct, d.meleePct]
-      : f === "distancia" || f === "tiro"
+      : from === "ranged"
         ? [d.rangedPct, d.rangedPct]
         : d.magicPct;
   return {

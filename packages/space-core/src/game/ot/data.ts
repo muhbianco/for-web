@@ -137,13 +137,13 @@ const COMMON = {
 } as const;
 
 /**
- * [nosso] O multiplicador do tiro do Arqueiro e do Caçador (24/11/2026). Com as habilidades
- * menores (abilities.ts), o tiro normal faz uns 72% do dano do arqueiro no level 60 de árvore
- * cheia e as habilidades 28%, como no cavaleiro (26%). O valor deixa o arqueiro uns 5–25% acima
- * dos magos do level 20 ao 120 (pedido do dono: "o archer está extremamente forte"; com 4 ele
- * fazia o dobro). Com o arco levando só metade da velocidade dos atributos (run.ts bowAspd).
+ * [nosso] O multiplicador do tiro do Arqueiro e do Caçador (24/11/2026). Desde a fórmula "golpe"
+ * (abilities.ts: as habilidades partem do tiro normal), ele acerta o dano total do arqueiro, e a
+ * recarga, a parte das habilidades: 1,6 deixa o level 27 do grupo completo com o dano de antes
+ * (era 2,3, com as habilidades fracas). Com o arco levando só metade da velocidade dos atributos
+ * (run.ts bowAspd).
  */
-export const ARCHER_DIST_DAMAGE = 2.3;
+export const ARCHER_DIST_DAMAGE = 1.6;
 
 /** As 9 vocações do TFS (vocations.xml:3-90), com os nossos nomes. */
 export const VOCATIONS: Readonly<Record<VocationId, Vocation>> = {
