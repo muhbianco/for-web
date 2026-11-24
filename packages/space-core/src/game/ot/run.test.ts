@@ -17,6 +17,7 @@ import {
   withGearStats,
   starterInventory,
 } from "./inventory.ts";
+import { abilityDef } from "./abilities.ts";
 import { type Stats, withInt, withVit } from "./attributes.ts";
 import { ITEMS } from "./items.ts";
 import {
@@ -749,4 +750,23 @@ test("escolha automática: com a armadura igual, fica o item com o atributo que 
   addItem(mage, 100_000, "chapeu-de-aprendiz", 1);
   autoEquip(mage, 1, 1, skills, 50);
   assert.equal(mage.equip.cabeca?.item, "chapeu-de-aprendiz");
+});
+
+test("o arqueiro usa a Flecha carregada: ela rende mais por uso que a Rajada dupla, que só preenche", () => {
+  // 24/11/2026: a Flecha carregada nunca saía (rendia menos que a Rajada, sempre pronta a cada 2 s).
+  const used = new Set<string>();
+  for (const seed of [1, 2, 3]) {
+    const archer = hero(3, 40, 60);
+    const r = run("mina-assombrada", [archer], seed);
+    for (const f of r.frames)
+      for (const e of f.e) if (e.k === "magia" && e.a === 0 && e.s) used.add(e.s);
+  }
+  assert.ok(used.has("rajada-dupla"), [...used].join(","));
+  assert.ok(used.has("flecha-carregada"), [...used].join(","));
+  const charge = abilityDef("flecha-carregada")!;
+  const strafe = abilityDef("rajada-dupla")!;
+  const avg = (d: typeof charge) =>
+    d.formula.type === "tiro" ? (d.formula.min + d.formula.max) / 2 : 0;
+  // A Rajada com a Tripla (eco de 50%) ainda rende menos que a Flecha carregada sem nada.
+  assert.ok(avg(charge) > avg(strafe) * 1.5, `${avg(charge)} x ${avg(strafe)}`);
 });
