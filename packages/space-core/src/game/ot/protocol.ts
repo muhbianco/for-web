@@ -80,18 +80,45 @@ export const RpgLobbyJoinCmd = z.object({
   d: z.object({ tv: z.string().min(1).max(40) }).strict(),
 });
 
-/** Sai do grupo (o líder saindo cancela). */
+/**
+ * Sai do grupo. O líder saindo passa a liderança a quem entrou primeiro; `disband` (só o
+ * líder) desfaz o grupo para todos.
+ */
 export const RpgLobbyLeaveCmd = z.object({
   ...env,
   t: z.literal("rpg.lobby.leave"),
-  d: z.object({}).strict().optional(),
+  d: z.object({ disband: z.boolean().optional() }).strict().optional(),
 });
 
-/** O líder começa a dungeon. */
+/** O líder começa a dungeon (a primeira ou a próxima, com o mesmo grupo). */
 export const RpgLobbyStartCmd = z.object({
   ...env,
   t: z.literal("rpg.lobby.start"),
   d: z.object({}).strict().optional(),
+});
+
+/** O líder troca a dungeon do grupo (entre uma corrida e outra; de qualquer lugar). */
+export const RpgLobbyDungeonCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lobby.dungeon"),
+  d: z.object({ dungeon: z.string().min(1).max(40) }).strict(),
+});
+
+/**
+ * Sai da corrida em andamento (24/11/2026, "abandonar o loot e sair da corrida"): o herói fica
+ * livre na hora, sem a experiência, o loot e as moedas dela; a mochila fica como no começo.
+ */
+export const RpgRunLeaveCmd = z.object({
+  ...env,
+  t: z.literal("rpg.run.leave"),
+  d: z.object({}).strict().optional(),
+});
+
+/** O líder liga ou desliga o loop: ao fim de cada vitória, a próxima começa sozinha. */
+export const RpgLobbyLoopCmd = z.object({
+  ...env,
+  t: z.literal("rpg.lobby.loop"),
+  d: z.object({ on: z.boolean() }).strict(),
 });
 
 // ---- inventário (etapa O7) ----------------------------------------------------
@@ -292,6 +319,9 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgLobbyJoinCmd,
   RpgLobbyLeaveCmd,
   RpgLobbyStartCmd,
+  RpgLobbyDungeonCmd,
+  RpgLobbyLoopCmd,
+  RpgRunLeaveCmd,
   RpgEquipCmd,
   RpgUnequipCmd,
   RpgAutoCmd,
@@ -420,7 +450,19 @@ export interface RpgLobbyMember {
   level: number;
 }
 
-/** A sala de preparação de uma TV. */
+/** Por que o loop parou sozinho (o grupo vê o motivo). */
+export type RpgLoopStop =
+  | "derrota"
+  | "retirada"
+  | "start_failed"
+  | "offline"
+  | "leader_left"
+  | "retreat";
+
+/**
+ * O grupo de uma TV (24/11/2026: fica montado entre as corridas). `state`: "forming" antes da
+ * primeira corrida, "running" com uma corrida rolando, "ready" entre uma e outra.
+ */
 export interface RpgLobbyView {
   tv: string;
   room: string;
@@ -428,7 +470,21 @@ export interface RpgLobbyView {
   leader: string;
   members: RpgLobbyMember[];
   max: number;
+  /** Quando o grupo se desfaz sozinho sem corrida (formando: 5 min; pronto: 30 min). */
   expires_at: number;
+  state?: "forming" | "running" | "ready";
+  /** A corrida rolando agora (state "running"). */
+  run_id?: string | null;
+  /** Corridas que este grupo já fez juntos. */
+  runs?: number;
+  loop?: boolean;
+  /** Com o loop ligado e o grupo pronto: quando a próxima começa sozinha. */
+  next_at?: number | null;
+  /** O último resultado, e o motivo se o loop parou sozinho. */
+  last?: "vitoria" | "derrota" | "retirada" | null;
+  stopped?: RpgLoopStop | null;
+  /** O motivo da recusa quando o loop não conseguiu começar (o mesmo código dos erros). */
+  stopped_detail?: string | null;
 }
 
 /**
@@ -473,6 +529,8 @@ export interface RpgRunView {
   started_at: number;
   ends_at: number;
   members: RpgRunMemberView[];
+  /** Começou pelo loop do grupo (o app não abre o painel de quem o fechou). */
+  auto?: boolean;
 }
 
 /** O que cada um levou, no fim (null em `reward`: caiu e perdeu a recompensa). */
@@ -481,6 +539,8 @@ export interface RpgRunEndView {
   members: {
     user_id: string;
     dead: boolean;
+    /** Saiu da corrida antes do fim e abriu mão da recompensa (24/11/2026). */
+    retreated?: boolean;
     /** Etapa O7: munição gasta e anéis ou colares que acabaram (mesmo quem caiu). */
     spent?: { item: string; count: number }[];
     /** Etapa O7: o que não coube e ficou no corpo. */

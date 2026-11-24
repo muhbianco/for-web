@@ -16,6 +16,7 @@ export * from "./protocol.ts";
 export * from "./run.ts";
 export * from "./shops.ts";
 export * from "./spells.ts";
+export * from "./resist.ts";
 export * from "./stamina.ts";
 export * from "./tiers.ts";
 export * from "./training.ts";

@@ -56,7 +56,7 @@ import {
   type ZoneIndex,
   zonesOf,
 } from "@muchat/space-core";
-import type { RpgLobbyMember } from "@muchat/space-core/game/ot";
+import type { RpgLobbyMember, RpgLoopStop, RunOutcome } from "@muchat/space-core/game/ot";
 
 import { type Lobby, type LobbyResult, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
 import type { Log } from "../log.ts";
@@ -240,6 +240,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
   readonly lobbies = new LobbyHub();
   /** Called when someone enters a room (walked in, joined inside it): a dungeon run there shows (stage O5). */
   onRoomEntered: ((userId: string, room: string) => void) | null = null;
+  /** The loop of a dungeon group is due: start the next run for its leader (24/11/2026). */
+  onLobbyDue: ((leader: string, tv: string) => void) | null = null;
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -499,16 +501,76 @@ export class SpaceRuntime implements MediaHost, TvHost {
   lobbyLeave(userId: string): void {
     const out = this.lobbies.leave(userId);
     if (!out) return;
-    this.broadcastLobby(out.lobby.tv, out.lobby.room, out.ended ? null : out.lobby, out.ended ? { ended: out.ended } : {});
+    this.broadcastLobby(out.lobby.tv, out.lobby.room, out.ended ? null : out.lobby, out.ended ? { ended: out.ended } : {}, undefined, out.lobby, [userId]);
   }
 
-  lobbyStart(userId: string): LobbyResult {
+  /** The leader ends the group for everyone. */
+  lobbyDisband(userId: string): LobbyResult {
+    const res = this.lobbies.disband(userId);
+    if (res.ok) this.broadcastLobby(res.lobby.tv, res.lobby.room, null, { ended: "cancelled" }, userId, res.lobby);
+    return res;
+  }
+
+  lobbyDungeon(userId: string, dungeon: string): LobbyResult {
+    const res = this.lobbies.setDungeon(userId, dungeon);
+    if (res.ok) this.broadcastLobby(res.lobby.tv, res.lobby.room, res.lobby, {}, userId);
+    return res;
+  }
+
+  lobbyLoop(userId: string, on: boolean): LobbyResult {
+    const res = this.lobbies.setLoop(userId, on, this.now());
+    if (res.ok) this.broadcastLobby(res.lobby.tv, res.lobby.room, res.lobby, {}, userId);
+    return res;
+  }
+
+  /** The group's run was saved: everyone sees it running. */
+  lobbyRunning(tv: string, runId: string): void {
+    this.lobbies.running(tv, runId);
+    const lobby = this.lobbies.get(tv);
+    if (lobby) this.broadcastLobby(tv, lobby.room, lobby, {});
+  }
+
+  /** The run could not be saved: the group waits again. */
+  lobbyAbort(tv: string): void {
+    const lobby = this.lobbies.abort(tv, this.now());
+    if (lobby) this.broadcastLobby(tv, lobby.room, lobby, {});
+  }
+
+  /** The group's run closed: ready for the next (levels refreshed; the loop schedules it). */
+  lobbyRunEnded(tv: string, runId: string, outcome: RunOutcome, levels: Record<string, number>): void {
+    const lobby = this.lobbies.runEnded(tv, runId, outcome, this.now());
+    if (!lobby) return;
+    for (const m of lobby.members) if (levels[m.user_id] !== undefined) m.level = levels[m.user_id]!;
+    this.broadcastLobby(tv, lobby.room, lobby, {});
+  }
+
+  /** The loop could not start the next run: it stops, and everyone sees why. */
+  lobbyLoopFailed(tv: string, why: RpgLoopStop, detail?: string): void {
+    const lobby = this.lobbies.loopFailed(tv, why, detail);
+    if (lobby) this.broadcastLobby(tv, lobby.room, lobby, {});
+  }
+
+  /** On the map now or within the reconnect grace (not gone for good). */
+  isPresent(userId: string): boolean {
+    const a = this.avatars.get(userId);
+    return !!a && !a.evicted;
+  }
+
+  /** The leader starts; `auto`: by the loop (the room is not told again on every run). */
+  lobbyStart(userId: string, auto = false): LobbyResult {
     const res = this.lobbies.start(userId, this.now());
     if (res.ok) {
-      this.broadcastLobby(res.lobby.tv, res.lobby.room, null, {
-        ended: "started",
-        started: { dungeon: res.lobby.dungeon, members: res.lobby.members.map((m) => ({ ...m })) },
-      });
+      this.broadcastLobby(
+        res.lobby.tv,
+        res.lobby.room,
+        res.lobby,
+        auto
+          ? {}
+          : {
+              ended: "started",
+              started: { dungeon: res.lobby.dungeon, members: res.lobby.members.map((m) => ({ ...m })) },
+            },
+      );
       this.log.info("rpg lobby started", {
         server: this.serverId,
         room: res.lobby.room,
@@ -520,10 +582,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return res;
   }
 
-  /** The person walked into another room: out of a group elsewhere; the new room's groups shown. */
+  /**
+   * The person walked into another room: the new room's groups shown. Their own group stays
+   * (24/11/2026: the group is theirs until they leave it, wherever they walk).
+   */
   private lobbyRoomChanged(userId: string, room: string | null) {
-    const mine = this.lobbies.of(userId);
-    if (mine && mine.room !== room) this.lobbyLeave(userId);
     const a = this.avatars.get(userId);
     if (room && a?.session) {
       this.sendLobbiesTo(a.session, room);
@@ -556,20 +619,43 @@ export class SpaceRuntime implements MediaHost, TvHost {
     }
   }
 
+  /** The room's groups, and the person's own group wherever it is. */
   private sendLobbiesTo(session: SessionPort, room: string) {
-    for (const l of this.lobbies.inRoom(room)) session.send({ v: 1, t: "rpg.lobby", d: { tv: l.tv, lobby: lobbyView(l) } });
+    const shown = this.lobbies.inRoom(room);
+    const mine = this.lobbies.of(session.viewer.user._id);
+    if (mine && !shown.includes(mine)) shown.push(mine);
+    for (const l of shown) session.send({ v: 1, t: "rpg.lobby", d: { tv: l.tv, lobby: lobbyView(l) } });
   }
 
-  /** The TV's group to everyone in its room (whoever acted gets it as the command's answer). */
+  /**
+   * The TV's group to everyone in its room and to its members wherever they are, once each
+   * (whoever acted gets it as the command's answer). `was`: the group as it was (members who
+   * must hear it ended); `also`: people who just left it.
+   */
   private broadcastLobby(
     tv: string,
     room: string,
     lobby: Lobby | null,
     extra: { ended?: "started" | "cancelled" | "expired"; started?: { dungeon: string; members: RpgLobbyMember[] } },
     exceptUserId?: string,
+    was?: Lobby,
+    also: readonly string[] = [],
   ) {
     const event = { v: 1, t: "rpg.lobby", d: { tv, lobby: lobby ? lobbyView(lobby) : null, ...extra } };
-    for (const s of this.sessionsIn(room)) if (s.viewer.user._id !== exceptUserId) s.send(event);
+    const seen = new Set<SessionPort>();
+    for (const s of this.sessionsIn(room)) {
+      seen.add(s);
+      if (s.viewer.user._id !== exceptUserId) s.send(event);
+    }
+    const ids = [...(lobby ?? was)?.members.map((m) => m.user_id) ?? [], ...also];
+    for (const id of ids) {
+      if (id === exceptUserId) continue;
+      const s = this.avatars.get(id)?.session;
+      if (s && !seen.has(s)) {
+        seen.add(s);
+        s.send(event);
+      }
+    }
   }
 
   // ---- idle game: training dummies (docs/espaco/jogo/ot) -----------------------
@@ -1450,8 +1536,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     a.disconnectedAt = this.now();
     a.dirty = true;
     this.presenceDirty = true;
-    // Disconnected while preparing a dungeon: out of the group.
-    this.lobbyLeave(a.userId);
+    // The dungeon group stays (24/11/2026): it goes only when the reconnect grace ends.
   }
 
   /**
@@ -1538,6 +1623,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
       if (!a.session && a.disconnectedAt !== null && now - a.disconnectedAt >= DISCONNECT_GRACE_MS) removed.push(a.userId);
     }
     for (const id of removed) {
+      // Gone for good (the grace ended): out of the dungeon group too.
+      this.lobbyLeave(id);
       this.avatars.delete(id);
       this.invalidatePerms(id);
       this.media?.sync(id, "refresh"); // no room any more: revoke
@@ -1545,7 +1632,12 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (removed.length) this.presenceDirty = true;
     this.flushPresence();
     this.tv.tick();
-    for (const lobby of this.lobbies.expire(now)) this.broadcastLobby(lobby.tv, lobby.room, null, { ended: "expired" });
+    for (const lobby of this.lobbies.expire(now)) this.broadcastLobby(lobby.tv, lobby.room, null, { ended: "expired" }, undefined, lobby);
+    // The loop's next run is due: the leader starts it (the game service checks everyone).
+    for (const lobby of this.lobbies.due(now)) {
+      lobby.nextAt = null;
+      this.onLobbyDue?.(lobby.leader, lobby.tv);
+    }
     const dirty = [...this.avatars.values()].filter((a) => a.dirty);
     if (dirty.length === 0 && removed.length === 0) return;
     for (const viewerAvatar of this.avatars.values()) {

@@ -71,6 +71,7 @@ import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
 import { canShare, sharedExperience } from "./party.ts";
 import { lowLevelBonus } from "./progression.ts";
 import { spellRange } from "./spells.ts";
+import { damageClass, itemAbsorb, monsterResist } from "./resist.ts";
 import { STAMINA, staminaMultiplier } from "./stamina.ts";
 
 /**
@@ -578,7 +579,15 @@ function heroDefense(
   );
 }
 
-/** Modificador de elemento do monstro [TFS monster.cpp:631-654]. */
+/**
+ * A resistência do monstro contra o dano de um herói, em % (24/11/2026, decisão do dono: só
+ * resistência física e resistência mágica; resist.ts). O elemento da magia não importa mais:
+ * o herói não escolhe a magia pelo monstro, o jogo é automático.
+ */
+export function heroElementMod(m: Pick<MonsterDef, "elements">, el: Element): number {
+  return monsterResist(m)[damageClass(el)];
+}
+
 function monsterElement(
   m: MonsterDef,
   el: Element,
@@ -586,7 +595,7 @@ function monsterElement(
   type: BlockType,
 ): { damage: number; type: BlockType } {
   if (damage === 0) return { damage, type };
-  const mod = m.elements?.[el] ?? 0;
+  const mod = heroElementMod(m, el);
   if (mod === 0) return { damage, type };
   const out = Math.round(damage * ((100 - mod) / 100));
   return out <= 0 ? { damage: 0, type: "armor" } : { damage: out, type };
@@ -1354,7 +1363,7 @@ export function simulateRun(input: RunInput): RunResult {
 
   /** O quanto do dano deste elemento entra no monstro (1 = tudo; 0 = imune) [TFS monster.cpp:631-654]. */
   function elementFactor(m: MonsterRt, el: Element | "cura"): number {
-    const mod = m.def.elements?.[el === "cura" ? "fisico" : el] ?? 0;
+    const mod = heroElementMod(m.def, el === "cura" ? "fisico" : el);
     return Math.max(0, (100 - mod) / 100);
   }
 
@@ -1438,7 +1447,13 @@ export function simulateRun(input: RunInput): RunResult {
       for (const x of [...h.attacks, ...h.areas]) {
         if (!ready(h, x, tMs, reserve)) continue;
         const score = attackScore(x, hero, m, alive);
-        if (score > best) {
+        // Empate (o Golpe de raio e o de chama, desde que o elemento não importa): a que saiu
+        // há mais tempo (24/11/2026; sem isso, a primeira da lista sairia sempre).
+        const tie =
+          s !== null &&
+          Math.abs(score - best) <= 1e-9 * Math.max(1, best) &&
+          (h.cooldown.get(x.def.id) ?? 0) < (h.cooldown.get(s.def.id) ?? 0);
+        if (score > best + 1e-9 * Math.max(1, best) || tie) {
           best = score;
           s = x;
         }
@@ -1567,22 +1582,25 @@ export function simulateRun(input: RunInput): RunResult {
   }
 
   /**
-   * Colar e anel absorvem parte do dano que passou pela defesa e pela armadura, e cada golpe
-   * absorvido gasta uma carga [TFS player.cpp:1997-2029, colar (2) antes do anel (9)].
+   * Colar, anel e escudo absorvem parte do dano que passou pela defesa e pela armadura, e cada
+   * golpe absorvido gasta uma carga [TFS player.cpp:1997-2029, colar (2) antes do anel (9)].
+   * Desde 24/11/2026 a proteção é física ou mágica (resist.ts); o escudo entrou (o Escudo
+   * espelhado prometia 5% de proteção mágica e não protegia).
    */
   function absorb(h: HeroRt, el: Element, damage: number): number {
     let d = damage;
-    for (const slot of ["colar", "anel"] as const) {
+    const cls = damageClass(el);
+    for (const slot of ["colar", "anel", "escudo"] as const) {
       const x = h.inv.equip[slot];
       const def = x ? itemDef(x.item) : undefined;
-      const pct = def?.absorb?.[el] ?? 0;
+      const pct = def ? itemAbsorb(def)[cls] : 0;
       if (!x || pct === 0) continue;
       d -= Math.ceil(d * (pct / 100));
       if (x.charges !== undefined) {
         x.charges--;
         const y = h.bare.equip[slot];
         if (y?.charges !== undefined) y.charges--;
-        if (x.charges <= 0) wearOut(h, slot);
+        if (x.charges <= 0 && slot !== "escudo") wearOut(h, slot);
       }
     }
     return Math.max(0, d);

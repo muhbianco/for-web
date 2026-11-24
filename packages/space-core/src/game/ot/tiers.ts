@@ -457,19 +457,19 @@ export function allTierDungeons(): Dungeon[] {
 // flechas, Flecha carregada, a reserva de uma cura) as corridas do trio ficaram de 5% a 28% mais
 // curtas; o acerto segue a mesma meta de experiência por segundo.
 const EXP_FIX: Readonly<Record<string, number>> = {
-  "pantano-dos-afogados": 0.89,
-  "fortaleza-partida": 0.53,
-  "deserto-de-vidro": 0.58,
-  "picos-trovejantes": 0.62,
-  "floresta-sombria": 0.7,
+  "pantano-dos-afogados": 0.63,
+  "fortaleza-partida": 0.6,
+  "deserto-de-vidro": 0.64,
+  "picos-trovejantes": 0.73,
+  "floresta-sombria": 0.78,
   "catacumbas-reais": 0.7,
   "vulcao-rubro": 0.67,
-  "abismo-coral": 0.87,
-  "cidade-celeste": 0.7,
-  "vale-dos-titas": 1.09,
-  "plano-etereo": 0.53,
+  "abismo-coral": 0.82,
+  "cidade-celeste": 0.78,
+  "vale-dos-titas": 0.68,
+  "plano-etereo": 0.58,
   "fenda-do-caos": 0.49,
-  "coracao-do-mundo": 0.58,
+  "coracao-do-mundo": 0.46,
 };
 
 /**
@@ -484,16 +484,16 @@ const solo = (archer: number | null = null): Dungeon["comfort"]["solo"] => ({
   4: null,
 });
 const COMFORT: Readonly<Record<string, Dungeon["comfort"]>> = {
-  "pantano-dos-afogados": { group: 88, solo: solo(120) },
-  "fortaleza-partida": { group: 100, solo: solo(140) },
+  "pantano-dos-afogados": { group: 85, solo: solo(120) },
+  "fortaleza-partida": { group: 110, solo: solo(140) },
   "deserto-de-vidro": { group: 120, solo: solo() },
   "picos-trovejantes": { group: 145, solo: solo() },
-  "floresta-sombria": { group: 170, solo: solo() },
+  "floresta-sombria": { group: 180, solo: solo() },
   "catacumbas-reais": { group: 200, solo: solo() },
   "vulcao-rubro": { group: 235, solo: solo() },
-  "abismo-coral": { group: 280, solo: solo() },
+  "abismo-coral": { group: 270, solo: solo() },
   "cidade-celeste": { group: 310, solo: solo() },
-  "vale-dos-titas": { group: 360, solo: solo() },
+  "vale-dos-titas": { group: 350, solo: solo() },
   "plano-etereo": { group: 400, solo: solo() },
   "fenda-do-caos": { group: 450, solo: solo() },
   "coracao-do-mundo": { group: 500, solo: solo() },

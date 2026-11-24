@@ -402,7 +402,7 @@ const lobbyMember = (id: string, name: string) => ({
   level: 5,
 });
 
-test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; sair da sala ou desconectar tira do grupo", async () => {
+test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo segue quem anda e quem cai até o fim da reconexão", async () => {
   let now = 1_000;
   const rt = new SpaceRuntime({
     serverId: SRV,
@@ -440,22 +440,45 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; sair da sal
   // Cai entra na sala: recebe o grupo que já existe.
   placeAt(rt, "01JCA100000000000000000000", tv.beside, PUB);
   assert.equal(lobbyEvents(cai).at(-1)?.tv, tv.id);
-  // Bia entra e depois sai da sala: sai do grupo, e quem fica vê.
-  assert.equal(
-    rt.lobbyJoin(tv.id, lobbyMember("01JB1A00000000000000000000", "Bia")).ok,
-    true,
-  );
+  // Bia entra e depois sai da sala: continua no grupo (24/11/2026) e segue recebendo.
+  const BIA = "01JB1A00000000000000000000";
+  assert.equal(rt.lobbyJoin(tv.id, lobbyMember(BIA, "Bia")).ok, true);
   assert.equal(lobbyEvents(ana).at(-1)?.lobby?.members.length, 2);
-  placeAt(rt, "01JB1A00000000000000000000", rt.map.spawns[0]!, null);
-  assert.equal(rt.lobbies.of("01JB1A00000000000000000000"), undefined);
+  placeAt(rt, BIA, rt.map.spawns[0]!, null);
+  assert.equal(rt.lobbies.of(BIA)?.tv, tv.id, "andar não tira do grupo");
+  const seen = lobbyEvents(bia).length;
+  rt.lobbyLoop(ANA, true);
+  assert.equal(lobbyEvents(bia).length, seen + 1, "fora da sala, o membro recebe");
+  rt.lobbyLoop(ANA, false);
+  // A líder desconecta: o grupo espera a reconexão; passado o prazo, Bia lidera.
+  rt.leave(ana);
+  rt.tick();
+  assert.equal(rt.lobbies.get(tv.id)?.leader, ANA);
+  now += 61_000;
+  rt.tick();
+  assert.equal(rt.lobbies.get(tv.id)?.leader, BIA);
   assert.deepEqual(
-    lobbyEvents(ana)
+    lobbyEvents(bia)
       .at(-1)
       ?.lobby?.members.map((m) => m.user_id),
-    [ANA],
+    [BIA],
   );
-  // A líder desconecta: o grupo é cancelado para quem está na sala.
-  rt.leave(ana);
+  // O loop vencido chama o jogo pelo líder.
+  const due: string[] = [];
+  rt.onLobbyDue = (leader, at) => due.push(`${leader}@${at}`);
+  const l = rt.lobbies.get(tv.id)!;
+  rt.lobbyStart(BIA);
+  rt.lobbyRunning(tv.id, "run-1");
+  rt.lobbyLoop(BIA, true);
+  rt.lobbyRunEnded(tv.id, "run-1", "vitoria", { [BIA]: 9 });
+  assert.equal(l.members[0]!.level, 9, "o level de depois da corrida");
+  now += 13_000;
+  rt.tick();
+  assert.deepEqual(due, [`${BIA}@${tv.id}`]);
+  rt.tick();
+  assert.equal(due.length, 1, "uma vez só");
+  // A líder desfaz: quem está na sala vê o fim.
+  rt.lobbyDisband(BIA);
   assert.equal(rt.lobbies.get(tv.id), undefined);
   assert.equal(lobbyEvents(cai).at(-1)?.ended, "cancelled");
   // Prazo: Cai cria, ninguém começa, o tick depois de 5 min encerra.

@@ -1140,6 +1140,12 @@ function ServerSpace(props: { serverId: string }) {
                   paletteOf={(id) =>
                     view()?.paletteOf(id) ?? defaultPalette(id)
                   }
+                  view={view()!}
+                  lobby={
+                    Object.values(ui()?.lobbies ?? {}).find((l) =>
+                      l.members.some((m) => m.user_id === client().user?.id),
+                    ) ?? null
+                  }
                   onClose={() => {
                     view()?.closeRun();
                     host?.focus();

@@ -8,6 +8,7 @@ import {
   type Stats,
   type VocationId,
   COINS,
+  itemAbsorb,
   itemDef,
   refineFactor,
 } from "@muchat/space-core/game/ot";
@@ -223,17 +224,10 @@ export function itemLines(
     out.push(t`${n} espaços`);
   }
   if (def.absorb) {
-    const entries = Object.entries(def.absorb) as [Element, number][];
-    const good = entries
-      .filter(([, v]) => v > 0)
-      .map(([k, v]) => `${v}% ${el[k]}`)
-      .join(", ");
-    const bad = entries
-      .filter(([, v]) => v < 0)
-      .map(([k, v]) => `${-v}% ${el[k]}`)
-      .join(", ");
-    if (good) out.push(t`Absorve ${good}`);
-    if (bad) out.push(t`Recebe a mais: ${bad}`);
+    // Só resistência física e mágica (24/11/2026, resist.ts).
+    const a = itemAbsorb(def);
+    if (a.fisico > 0) out.push(t`Protege ${a.fisico}% do dano físico`);
+    if (a.magia > 0) out.push(t`Protege ${a.magia}% do dano mágico`);
   }
   if (def.skillBonus) {
     const parts = Object.entries(def.skillBonus)

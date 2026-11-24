@@ -32,6 +32,12 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { gameFrame } from "./gameTheme";
 import { useModalKeys } from "./modalKeys";
+import {
+  dungeonChoices,
+  loopSeconds,
+  loopStopText,
+  partyState,
+} from "./partyUi";
 import { duration, rpgLabels, vocationName } from "./rpgUi";
 import { VocationPicker } from "./VocationPicker";
 
@@ -78,6 +84,9 @@ export default function TvMenu(props: {
   props.view.requestBoard();
   const boardTimer = setInterval(() => props.view.requestBoard(), 5000);
   onCleanup(() => clearInterval(boardTimer));
+  const [now, setNow] = createSignal(Date.now());
+  const clock = setInterval(() => setNow(Date.now()), 1000);
+  onCleanup(() => clearInterval(clock));
   const runs = () => props.board?.runs ?? [];
   const otherLobbies = () =>
     (props.board?.lobbies ?? []).filter((l) => l.tv !== props.request.instance);
@@ -300,7 +309,7 @@ export default function TvMenu(props: {
               when={props.lobby}
               fallback={
                 <>
-                  <Muted>{t`Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar.`}</Muted>
+                  <Muted>{t`Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas. Depois da corrida o grupo continua montado: o líder começa a próxima quando quiser, ou liga o Repetir.`}</Muted>
                   <For each={DUNGEONS}>
                     {(d) => {
                       const tooLow = () =>
@@ -333,85 +342,206 @@ export default function TvMenu(props: {
                 </>
               }
             >
-              {(lobby) => (
-                <>
-                  <p>
-                    <strong>
-                      {dungeonOf(lobby().dungeon)?.name ?? lobby().dungeon}
-                    </strong>{" "}
-                    <Muted>
-                      {t`${lobby().members.length}/${lobby().max} · fecha em ${duration(Math.max(0, lobby().expires_at - Date.now()))}`}
-                    </Muted>
-                  </p>
-                  <Members>
-                    <For each={lobby().members}>
-                      {(m) => (
-                        <li>
-                          {m.name}
-                          {m.user_id === lobby().leader
-                            ? ` ${t`(líder)`}`
-                            : ""}{" "}
-                          <Muted>{t`${vocationName(m.vocation)} · Nv ${m.level}`}</Muted>
-                          <Show when={!shares() && m.level < shareMin()}>
-                            <Warn>{t` · abaixo do nível ${shareMin()}`}</Warn>
-                          </Show>
-                        </li>
-                      )}
-                    </For>
-                  </Members>
-                  <Show
-                    when={shares()}
-                    fallback={
-                      <ShareNote role="note">
-                        {t`A experiência não vai ser dividida: para dividir, todos precisam de nível ${shareMin()} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa.`}
-                      </ShareNote>
-                    }
-                  >
-                    <Show when={bonusPct() > 0}>
-                      <Muted>{t`Experiência dividida igualmente, com bônus do grupo de +${bonusPct()}% (cresce com vocações diferentes).`}</Muted>
-                    </Show>
-                  </Show>
-                  <Row>
-                    <Show when={leader()}>
-                      <Button
-                        variant="filled"
-                        isDisabled={busy()}
-                        onPress={() =>
-                          send("rpg.lobby.start", {}, props.onClose)
-                        }
-                      >
-                        {t`Começar`}
-                      </Button>
-                    </Show>
+              {(lobby) => {
+                const st = () => lobby().state ?? "forming";
+                const counting = () => loopSeconds(lobby(), now()) !== null;
+                const expiry = () => {
+                  const l = lobby();
+                  if (st() === "running" || counting()) return "";
+                  const left = duration(Math.max(0, l.expires_at - now()));
+                  return st() === "forming"
+                    ? t`O grupo fecha em ${left} se ninguém começar.`
+                    : t`O grupo continua montado; desfaz sozinho em ${left} sem nenhuma corrida.`;
+                };
+                const watchRun = () => {
+                  const id = lobby().run_id;
+                  if (id) watch(id);
+                };
+                return (
+                  <>
+                    <PartyHead>
+                      <strong>
+                        {dungeonOf(lobby().dungeon)?.name ?? lobby().dungeon}
+                      </strong>
+                      <Badge data-state={st()}>
+                        {partyState(lobby(), now())}
+                      </Badge>
+                      <Show when={lobby().loop}>
+                        <Badge data-loop="">
+                          <Symbol size={14}>repeat_on</Symbol> {t`Repetir`}
+                        </Badge>
+                      </Show>
+                      <Muted>
+                        {t`${lobby().members.length}/${lobby().max}`}
+                        <Show when={(lobby().runs ?? 0) > 0}>
+                          {` · ${t`${lobby().runs ?? 0} corridas juntos`}`}
+                        </Show>
+                      </Muted>
+                    </PartyHead>
+                    <Members>
+                      <For each={lobby().members}>
+                        {(m) => (
+                          <li>
+                            {m.name}
+                            {m.user_id === lobby().leader
+                              ? ` ${t`(líder)`}`
+                              : ""}{" "}
+                            <Muted>{t`${vocationName(m.vocation)} · Nv ${m.level}`}</Muted>
+                            <Show when={!shares() && m.level < shareMin()}>
+                              <Warn>{t` · abaixo do nível ${shareMin()}`}</Warn>
+                            </Show>
+                          </li>
+                        )}
+                      </For>
+                    </Members>
                     <Show
-                      when={mine()}
+                      when={shares()}
                       fallback={
-                        <Button
-                          variant="filled"
-                          isDisabled={
-                            busy() || lobby().members.length >= lobby().max
-                          }
-                          onPress={() =>
-                            send("rpg.lobby.join", {
-                              tv: props.request.instance,
+                        <ShareNote role="note">
+                          {t`A experiência não vai ser dividida: para dividir, todos precisam de nível ${shareMin()} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa.`}
+                        </ShareNote>
+                      }
+                    >
+                      <Show when={bonusPct() > 0}>
+                        <Muted>{t`Experiência dividida igualmente, com bônus do grupo de +${bonusPct()}% (cresce com vocações diferentes).`}</Muted>
+                      </Show>
+                    </Show>
+                    <Show when={loopStopText(lobby())}>
+                      {(msg) => <ShareNote role="status">{msg()}</ShareNote>}
+                    </Show>
+                    {/* O líder entre as corridas: a dungeon e o Repetir. */}
+                    <Show when={leader() && st() !== "running"}>
+                      <Field>
+                        <label for="rpg-party-dungeon">{t`Dungeon`}</label>
+                        <select
+                          id="rpg-party-dungeon"
+                          value={lobby().dungeon}
+                          disabled={busy()}
+                          onChange={(e) =>
+                            send("rpg.lobby.dungeon", {
+                              dungeon: e.currentTarget.value,
                             })
                           }
                         >
-                          {t`Entrar no grupo`}
-                        </Button>
-                      }
-                    >
-                      <Button
-                        variant="text"
-                        isDisabled={busy()}
-                        onPress={() => send("rpg.lobby.leave", {})}
-                      >
-                        {leader() ? t`Cancelar grupo` : t`Sair do grupo`}
-                      </Button>
+                          <For each={dungeonChoices(lobby().members)}>
+                            {(c) => (
+                              <option
+                                value={c.d.id}
+                                disabled={c.below.length > 0}
+                              >
+                                {c.below.length > 0
+                                  ? t`${c.d.name} (level ${c.d.minLevel}+) · falta level: ${c.below.map((m) => m.name).join(", ")}`
+                                  : t`${c.d.name} (level ${c.d.minLevel}+)`}
+                              </option>
+                            )}
+                          </For>
+                        </select>
+                      </Field>
+                      <Toggle>
+                        <input
+                          id="rpg-party-loop"
+                          type="checkbox"
+                          role="switch"
+                          checked={!!lobby().loop}
+                          disabled={busy()}
+                          onChange={(e) =>
+                            send("rpg.lobby.loop", {
+                              on: e.currentTarget.checked,
+                            })
+                          }
+                        />
+                        <span>
+                          <label for="rpg-party-loop">
+                            <strong>{t`Repetir sem parar`}</strong>
+                          </label>
+                          <Muted>{t`Depois de cada vitória, a próxima começa sozinha em 12 s, com o mesmo grupo. Para em derrota, em retirada, se alguém não puder entrar ou se ninguém do grupo estiver conectado.`}</Muted>
+                        </span>
+                      </Toggle>
                     </Show>
-                  </Row>
-                </>
-              )}
+                    <Row>
+                      <Show when={st() === "running"}>
+                        <Button
+                          variant="filled"
+                          isDisabled={busy() || !lobby().run_id}
+                          onPress={watchRun}
+                        >
+                          {t`Assistir a corrida`}
+                        </Button>
+                      </Show>
+                      <Show when={leader() && st() !== "running"}>
+                        <Button
+                          variant="filled"
+                          isDisabled={busy()}
+                          onPress={() =>
+                            send("rpg.lobby.start", {}, props.onClose)
+                          }
+                        >
+                          {counting()
+                            ? t`Começar agora`
+                            : (lobby().runs ?? 0) > 0
+                              ? t`Começar de novo`
+                              : t`Começar`}
+                        </Button>
+                        <Show when={counting()}>
+                          <Button
+                            variant="tonal"
+                            isDisabled={busy()}
+                            onPress={() =>
+                              send("rpg.lobby.loop", { on: false })
+                            }
+                          >
+                            {t`Parar o Repetir`}
+                          </Button>
+                        </Show>
+                      </Show>
+                      <Show
+                        when={mine()}
+                        fallback={
+                          <Button
+                            variant="filled"
+                            isDisabled={
+                              busy() || lobby().members.length >= lobby().max
+                            }
+                            onPress={() =>
+                              send("rpg.lobby.join", {
+                                tv: props.request.instance,
+                              })
+                            }
+                          >
+                            {t`Entrar no grupo`}
+                          </Button>
+                        }
+                      >
+                        <Show when={leader()}>
+                          <Button
+                            variant="text"
+                            isDisabled={busy()}
+                            onPress={() =>
+                              send("rpg.lobby.leave", { disband: true })
+                            }
+                          >
+                            {t`Desfazer grupo`}
+                          </Button>
+                        </Show>
+                        <Show when={!leader() || lobby().members.length > 1}>
+                          <Button
+                            variant="text"
+                            isDisabled={busy()}
+                            onPress={() => send("rpg.lobby.leave", {})}
+                          >
+                            {leader()
+                              ? t`Sair (passar a liderança)`
+                              : t`Sair do grupo`}
+                          </Button>
+                        </Show>
+                      </Show>
+                    </Row>
+                    <Show when={expiry()}>
+                      <Muted>{expiry()}</Muted>
+                    </Show>
+                  </>
+                );
+              }}
             </Show>
           </Show>
         </Show>
@@ -427,6 +557,80 @@ export default function TvMenu(props: {
     </Backdrop>
   );
 }
+
+const PartyHead = styled("div", {
+  base: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "8px",
+    fontVariantNumeric: "tabular-nums",
+  },
+});
+
+const Badge = styled("span", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    padding: "1px 8px",
+    borderRadius: "999px",
+    fontSize: "0.8em",
+    background: "var(--md-sys-color-surface-container-highest)",
+    color: "var(--md-sys-color-on-surface)",
+    "&[data-state=running]": {
+      background: "var(--md-sys-color-tertiary-container)",
+      color: "var(--md-sys-color-on-tertiary-container)",
+    },
+    "&[data-state=ready]": {
+      background: "var(--md-sys-color-primary-container)",
+      color: "var(--md-sys-color-on-primary-container)",
+    },
+    "&[data-loop]": {
+      background: "var(--md-sys-color-secondary-container)",
+      color: "var(--md-sys-color-on-secondary-container)",
+    },
+  },
+});
+
+const Field = styled("div", {
+  base: {
+    display: "grid",
+    gap: "4px",
+    "& select": {
+      padding: "8px 10px",
+      borderRadius: "8px",
+      border: "1px solid var(--md-sys-color-outline)",
+      background: "var(--md-sys-color-surface-container)",
+      color: "var(--md-sys-color-on-surface)",
+      fontSize: "inherit",
+      // A finger needs room.
+      minHeight: "40px",
+    },
+    "& select:focus-visible": {
+      outline: "2px solid var(--md-sys-color-primary)",
+      outlineOffset: "2px",
+    },
+  },
+});
+
+const Toggle = styled("div", {
+  base: {
+    display: "grid",
+    gridTemplateColumns: "auto 1fr",
+    gap: "10px",
+    alignItems: "start",
+    "& input": {
+      width: "20px",
+      height: "20px",
+      marginTop: "2px",
+      accentColor: "var(--md-sys-color-primary)",
+      cursor: "pointer",
+    },
+    "& span": { display: "grid", gap: "2px" },
+    "& label": { cursor: "pointer" },
+  },
+});
 
 const Backdrop = styled("div", {
   base: {

@@ -33,6 +33,8 @@ export interface RpgRunDoc {
   rewards: (RunReward | null)[];
   status: "running" | "settled";
   settled_at: number | null;
+  /** Começou pelo loop do grupo (24/11/2026). */
+  auto?: boolean;
 }
 
 /** Quantas corridas em andamento voltam do banco ao subir (teto da consulta). */

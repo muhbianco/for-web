@@ -98,7 +98,7 @@ class FakeHost implements RpgHost {
     dungeon: string,
     member: Parameters<LobbyHub["create"]>[3],
   ) {
-    return this.lobbies.create(tv, room, dungeon, member, 0);
+    return this.lobbies.create(tv, room, dungeon, member, this.now());
   }
   lobbyJoin(tv: string, member: Parameters<LobbyHub["join"]>[1]) {
     return this.lobbies.join(tv, member);
@@ -106,8 +106,37 @@ class FakeHost implements RpgHost {
   lobbyLeave(userId: string) {
     this.lobbies.leave(userId);
   }
-  lobbyStart(userId: string) {
-    return this.lobbies.start(userId, 1);
+  /** O relógio do serviço (o setup liga). */
+  now: () => number = () => 1;
+  lobbyStart(userId: string, _auto?: boolean) {
+    return this.lobbies.start(userId, this.now());
+  }
+  lobbyDisband(userId: string) {
+    return this.lobbies.disband(userId);
+  }
+  lobbyDungeon(userId: string, dungeon: string) {
+    return this.lobbies.setDungeon(userId, dungeon);
+  }
+  lobbyLoop(userId: string, on: boolean) {
+    return this.lobbies.setLoop(userId, on, this.now());
+  }
+  lobbyRunning(tv: string, runId: string) {
+    this.lobbies.running(tv, runId);
+  }
+  lobbyAbort(tv: string) {
+    this.lobbies.abort(tv, this.now());
+  }
+  lobbyRunEnded(tv: string, runId: string, outcome: "vitoria" | "derrota" | "retirada", levels: Record<string, number>) {
+    const l = this.lobbies.runEnded(tv, runId, outcome, this.now());
+    if (l) for (const m of l.members) if (levels[m.user_id] !== undefined) m.level = levels[m.user_id]!;
+  }
+  lobbyLoopFailed(tv: string, why: "derrota" | "retirada" | "start_failed" | "offline" | "leader_left", detail?: string) {
+    this.lobbies.loopFailed(tv, why, detail);
+  }
+  /** Quem está "no mapa" (sessão aberta); `absent` tira alguém. */
+  readonly absent = new Set<string>();
+  isPresent(userId: string) {
+    return !this.absent.has(userId);
   }
   lobbyOf(userId: string) {
     return this.lobbies.of(userId);
@@ -146,6 +175,7 @@ function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
     autoTick: false,
   });
   const host = new FakeHost();
+  host.now = () => now;
   svc.setHosts(() => host);
   const viewer = {
     user: { _id: "U1", username: "ana", display_name: "Ana" },
@@ -360,11 +390,65 @@ test("grupo na TV: exige vocação e estar ao lado; cria, outra pessoa entra, s�
     { code: "rpg_invalid", reason: "not_leader" },
   ]);
   await send("rpg.lobby.start");
-  assert.equal(host.lobbies.get("tv1"), undefined);
+  // 24/11/2026: o grupo fica montado, correndo.
+  assert.equal(host.lobbies.get("tv1")?.state, "running");
+  assert.ok(host.lobbies.get("tv1")?.runId, "a corrida gravada fica no grupo");
   const started = ana.events.filter((e) => e.t === "rpg.lobby").at(-1)!.d as {
     ended?: string;
+    lobby?: { state?: string } | null;
   };
   assert.equal(started.ended, "started");
+  assert.equal(started.lobby?.state, "running");
+});
+
+test("grupo que fica: a corrida fecha e ele volta pronto; o loop começa a próxima sozinho e para sem ninguém", async () => {
+  const env = await startedRun();
+  const { svc, host, clock, send, ana, biaSend, bia } = env;
+  const [first] = svc.activeRuns();
+  clock.advance(first!.seconds * 1000 + 1000);
+  await svc.tickRuns();
+  await svc.idle("U1");
+  await svc.idle("U2");
+  const l = host.lobbies.get("tv1")!;
+  assert.equal(l.state, "ready");
+  assert.equal(l.runs, 1);
+  assert.equal(l.last, first!.outcome);
+  // Só o líder liga o loop e troca a dungeon.
+  await biaSend("b20", "rpg.lobby.loop", { on: true });
+  assert.deepEqual(bia.errors("b20"), [{ code: "rpg_invalid", reason: "not_leader" }]);
+  const d = await send("rpg.lobby.dungeon", { dungeon: "galerias-afogadas" });
+  assert.deepEqual(ana.errors(d), [{ code: "rpg_invalid", reason: "level" }]);
+  await send("rpg.lobby.loop", { on: true });
+  assert.equal(l.loop, true);
+  assert.ok(l.nextAt !== null, "pronto e com loop: a próxima marcada");
+  // O loop venceu: começa pelo líder, marcada como automática.
+  svc.loopDue(host, "U1", "tv1");
+  await svc.idle("U1");
+  await svc.idle("U2");
+  const runs = svc.activeRuns();
+  assert.equal(runs.length, 1);
+  assert.notEqual(runs[0]!._id, first!._id);
+  assert.equal(runs[0]!.auto, true);
+  assert.equal(l.state, "running");
+  // Fecha; ninguém do grupo no mapa na hora da próxima: o loop para, com o motivo.
+  clock.advance(runs[0]!.seconds * 1000 + 1000);
+  await svc.tickRuns();
+  await svc.idle("U1");
+  await svc.idle("U2");
+  if (l.loop) {
+    host.absent.add("U1");
+    host.absent.add("U2");
+    svc.loopDue(host, "U1", "tv1");
+    await svc.idle("U1");
+    assert.deepEqual([l.loop, l.stopped], [false, "offline"]);
+    assert.equal(svc.activeRuns().length, 0);
+  } else {
+    // A segunda corrida perdeu: o loop parou sozinho pelo resultado.
+    assert.ok(l.stopped === "derrota" || l.stopped === "retirada");
+  }
+  // Desfazer: só o líder; solta os dois.
+  await send("rpg.lobby.leave", { disband: true });
+  assert.equal(host.lobbies.get("tv1"), undefined);
 });
 
 /** Ana (cavaleiro) e Bia (feiticeira) montam o grupo na TV; Ana começa. */
@@ -745,4 +829,48 @@ test("quadro do Idle Hunt: partidas rodando e grupos abertos no Espaço; assisti
   clock.advance(2_000);
   await svc.tickRuns();
   assert.ok(caio.events.some((e) => e.t === "rpg.run.tick"));
+});
+
+test("sair da corrida: livre na hora, sem a recompensa e com a mochila do começo; todos saindo, ela acaba", async () => {
+  const env = await startedRun();
+  const { svc, store, host, clock, send, ana, bia, biaSend } = env;
+  const [run] = svc.activeRuns();
+  const before = structuredClone((await store.get("U2"))!);
+  host.lobbies.setLoop("U1", true, clock.now);
+  clock.advance(5_000);
+  await biaSend("b30", "rpg.run.leave");
+  assert.deepEqual(bia.errors("b30"), []);
+  // O loop para: a próxima traria Bia de volta.
+  assert.deepEqual(
+    [host.lobbies.get("tv1")!.loop, host.lobbies.get("tv1")!.stopped],
+    [false, "retreat"],
+  );
+  const b = (await store.get("U2"))!;
+  assert.equal(b.run, null, "Bia livre");
+  assert.equal(b.experience, before.experience);
+  assert.equal(b.level, before.level);
+  assert.deepEqual(b.inv, before.inv, "a mochila do começo");
+  assert.ok(b.stamina <= before.stamina);
+  // Ana segue na corrida; Bia de novo: não está em corrida.
+  assert.equal((await store.get("U1"))!.run?.id, run!._id);
+  await biaSend("b31", "rpg.run.leave");
+  assert.deepEqual(bia.errors("b31"), [{ code: "rpg_invalid", reason: "no_run" }]);
+  // Ana sai também: a corrida acaba agora, como retirada, sem recompensa para ninguém.
+  await send("rpg.run.leave");
+  await svc.idle("U1");
+  await svc.idle("U2");
+  assert.equal(svc.activeRuns().length, 0);
+  const end = ana.events.filter((e) => e.t === "rpg.run").at(-1)!.d as {
+    end?: { outcome: string; members: { retreated?: boolean; reward: unknown }[] };
+  };
+  assert.equal(end.end?.outcome, "retirada");
+  assert.deepEqual(
+    end.end?.members.map((m) => [m.retreated, m.reward]),
+    [
+      [true, null],
+      [true, null],
+    ],
+  );
+  const l = host.lobbies.get("tv1")!;
+  assert.deepEqual([l.state, l.last], ["ready", "retirada"]);
 });

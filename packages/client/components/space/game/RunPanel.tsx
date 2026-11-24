@@ -11,11 +11,12 @@ import {
 } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
-import type { RunState } from "@muchat/space-client";
+import type { RunState, SpaceView } from "@muchat/space-client";
 import type { DungeonRun, DungeonScene } from "@muchat/space-client/game";
 import { defaultPalette } from "@muchat/space-core";
 import {
   type RpgHeroView,
+  type RpgLobbyView,
   GOLD,
   MONSTER_BASE,
   VOCATIONS,
@@ -31,6 +32,7 @@ import { Button } from "@revolt/ui";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { itemIcon } from "./itemUi";
+import { loopSeconds, loopStopText, useGameAction } from "./partyUi";
 import { vocationName } from "./rpgUi";
 import { type RunXp, RunHud } from "./RunHud";
 import {
@@ -71,8 +73,44 @@ export default function RunPanel(props: {
   onClose: () => void;
   /** Paleta do avatar de cada pessoa no mapa (o herói na cena tem a cara dela). */
   paletteOf?: (userId: string) => number;
+  /** Para os comandos do grupo e da saída (24/11/2026). */
+  view?: SpaceView;
+  /** O meu grupo (fica montado entre as corridas): jogar de novo, o loop. */
+  lobby?: RpgLobbyView | null;
 }) {
   const { t } = useLingui();
+  // ---- o grupo e a saída (24/11/2026) ----
+  const act = props.view ? useGameAction(() => props.view!) : null;
+  const isMember = () =>
+    props.state.run.members.some((m) => m.user_id === props.myId);
+  const [confirmLeave, setConfirmLeave] = createSignal(false);
+  let stayBtn: HTMLButtonElement | undefined;
+  const askLeave = () => {
+    setConfirmLeave(true);
+    // O foco vai para a opção segura.
+    queueMicrotask(() => stayBtn?.focus());
+  };
+  const leave = () =>
+    act?.send("rpg.run.leave", {}, () => {
+      setConfirmLeave(false);
+      props.onClose();
+    });
+  // O grupo depois desta corrida (não a corrida dele que ainda está fechando).
+  const party = () => {
+    const l = props.lobby;
+    if (!l || !l.members.some((m) => m.user_id === props.myId)) return null;
+    if (l.state === "running" && l.run_id === props.state.run.id) return null;
+    return l;
+  };
+  const partyLeader = () => party()?.leader === props.myId;
+  const [nowMs, setNowMs] = createSignal(Date.now());
+  createEffect(() => {
+    const l = party();
+    if (!l || loopSeconds(l, Date.now()) === null) return;
+    setNowMs(Date.now());
+    const id = setInterval(() => setNowMs(Date.now()), 1000);
+    onCleanup(() => clearInterval(id));
+  });
   const run = () => props.state.run;
   const frame = () => props.state.frame;
   const end = () => props.state.end;
@@ -417,10 +455,57 @@ export default function RunPanel(props: {
                 </Clock>
               )}
             </Show>
+            {/* Sair da corrida (24/11/2026): abre mão da recompensa; pede confirmação. */}
+            <Show when={act && isMember() && !end()}>
+              <Show
+                when={confirmLeave()}
+                fallback={
+                  <Leave
+                    type="button"
+                    title={t`Sair da corrida e abrir mão da recompensa`}
+                    onClick={askLeave}
+                  >
+                    <Symbol size={18}>logout</Symbol>
+                    <span>{t`Sair`}</span>
+                  </Leave>
+                }
+              >
+                <Confirm
+                  role="alertdialog"
+                  aria-label={t`Sair da corrida?`}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape") {
+                      e.stopPropagation();
+                      setConfirmLeave(false);
+                    }
+                  }}
+                >
+                  <span>{t`Sair e perder a recompensa desta corrida?`}</span>
+                  <Leave
+                    type="button"
+                    data-danger=""
+                    disabled={act!.busy()}
+                    onClick={leave}
+                  >
+                    {t`Sair`}
+                  </Leave>
+                  <Leave
+                    type="button"
+                    ref={stayBtn}
+                    onClick={() => setConfirmLeave(false)}
+                  >
+                    {t`Ficar`}
+                  </Leave>
+                </Confirm>
+              </Show>
+            </Show>
             <Close type="button" aria-label={t`Fechar`} onClick={props.onClose}>
               <Symbol size={20}>close</Symbol>
             </Close>
           </Corner>
+          <Show when={act?.error()}>
+            {(msg) => <LeaveError role="alert">{msg()}</LeaveError>}
+          </Show>
         </Top>
 
         {/* Sem WebGL: as barras de texto no lugar da cena. */}
@@ -539,7 +624,9 @@ export default function RunPanel(props: {
                             when={r}
                             fallback={
                               <span>
-                                {t`Caiu e perdeu a recompensa desta dungeon.`}
+                                {m.retreated
+                                  ? t`Saiu da corrida e abriu mão da recompensa.`
+                                  : t`Caiu e perdeu a recompensa desta dungeon.`}
                               </span>
                             }
                           >
@@ -562,18 +649,112 @@ export default function RunPanel(props: {
                               </Rewards>
                             )}
                           </Show>
-                          <small>{hunt}</small>
-                          <Show when={spent}>
-                            <small>{t`Gastou: ${spent}.`}</small>
-                          </Show>
-                          <Show when={left}>
-                            <small>{t`Ficou no corpo (sem espaço): ${left}.`}</small>
+                          {/* Quem saiu antes do fim não caçou o resto: sem as linhas da caçada. */}
+                          <Show when={!m.retreated}>
+                            <small>{hunt}</small>
+                            <Show when={spent}>
+                              <small>{t`Gastou: ${spent}.`}</small>
+                            </Show>
+                            <Show when={left}>
+                              <small>{t`Ficou no corpo (sem espaço): ${left}.`}</small>
+                            </Show>
                           </Show>
                         </li>
                       );
                     }}
                   </For>
                 </ul>
+                {/* O grupo segue montado (24/11/2026): a próxima, o loop. */}
+                <Show when={party()}>
+                  {(l) => {
+                    const secs = () => loopSeconds(l(), nowMs());
+                    const leaderName = () =>
+                      l().members.find((x) => x.user_id === l().leader)?.name ??
+                      "";
+                    return (
+                      <PartyBox role="group" aria-label={t`Grupo`}>
+                        <Show when={loopStopText(l())}>
+                          {(msg) => <p role="status">{msg()}</p>}
+                        </Show>
+                        <Show
+                          when={secs() !== null}
+                          fallback={
+                            <Show
+                              when={l().state === "ready" || l().state === "forming"}
+                              fallback={<p>{t`A próxima corrida já começou.`}</p>}
+                            >
+                              <Show
+                                when={partyLeader()}
+                                fallback={
+                                  <p>{t`Aguardando ${leaderName()} começar a próxima.`}</p>
+                                }
+                              >
+                                <PartyRow>
+                                  <Button
+                                    size="sm"
+                                    variant="filled"
+                                    isDisabled={act?.busy() ?? true}
+                                    onPress={() => act?.send("rpg.lobby.start")}
+                                  >
+                                    {t`Jogar de novo`}
+                                  </Button>
+                                  <LoopToggle>
+                                    <input
+                                      id="rpg-outcome-loop"
+                                      type="checkbox"
+                                      role="switch"
+                                      checked={!!l().loop}
+                                      disabled={act?.busy() ?? true}
+                                      onChange={(e) =>
+                                        act?.send("rpg.lobby.loop", {
+                                          on: e.currentTarget.checked,
+                                        })
+                                      }
+                                    />
+                                    <label for="rpg-outcome-loop">
+                                      {t`Repetir sem parar`}
+                                    </label>
+                                  </LoopToggle>
+                                </PartyRow>
+                              </Show>
+                            </Show>
+                          }
+                        >
+                          <p aria-live="off">
+                            <Symbol size={16}>repeat_on</Symbol>{" "}
+                            <span data-count="">
+                              {secs()! > 0
+                                ? t`Próxima corrida em ${secs()} s`
+                                : t`Começando a próxima…`}
+                            </span>
+                          </p>
+                          <Show when={partyLeader()}>
+                            <PartyRow>
+                              <Button
+                                size="sm"
+                                variant="filled"
+                                isDisabled={act?.busy() ?? true}
+                                onPress={() => act?.send("rpg.lobby.start")}
+                              >
+                                {t`Começar agora`}
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="tonal"
+                                isDisabled={act?.busy() ?? true}
+                                onPress={() =>
+                                  act?.send("rpg.lobby.loop", { on: false })
+                                }
+                              >
+                                {t`Parar o Repetir`}
+                              </Button>
+                            </PartyRow>
+                          </Show>
+                        </Show>
+                      </PartyBox>
+                    );
+                  }}
+                </Show>
                 <Button size="sm" variant="filled" onPress={props.onClose}>
                   {t`Fechar`}
                 </Button>
@@ -918,11 +1099,99 @@ const Corner = styled("div", {
 
 const Clock = styled("span", {
   base: {
+    whiteSpace: "nowrap",
     padding: "2px 8px",
     borderRadius: "999px",
     background: "rgba(14, 12, 10, 0.72)",
     fontSize: "0.75rem",
     fontVariantNumeric: "tabular-nums",
+  },
+});
+
+const Leave = styled("button", {
+  base: {
+    pointerEvents: "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "4px",
+    height: "32px",
+    padding: "0 10px",
+    border: "none",
+    borderRadius: "999px",
+    background: "rgba(14, 12, 10, 0.78)",
+    color: "inherit",
+    cursor: "pointer",
+    fontSize: "0.85em",
+    boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.12)",
+    "&:hover": { background: "rgba(40, 34, 28, 0.9)" },
+    "&:focus-visible": { outline: "2px solid #d9b45a", outlineOffset: "2px" },
+    "&[data-danger]": { background: "#8a2a22", color: "#fff" },
+    "&:disabled": { opacity: 0.6, cursor: "default" },
+    "@media (pointer: coarse)": { height: "44px", paddingInline: "14px" },
+  },
+});
+
+const Confirm = styled("div", {
+  base: {
+    pointerEvents: "auto",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    padding: "4px 4px 4px 12px",
+    borderRadius: "999px",
+    background: "rgba(14, 12, 10, 0.9)",
+    boxShadow: "0 0 0 1px rgba(217, 180, 90, 0.5)",
+    fontSize: "0.85em",
+  },
+});
+
+const LeaveError = styled("p", {
+  base: {
+    pointerEvents: "auto",
+    justifySelf: "end",
+    margin: 0,
+    padding: "4px 10px",
+    borderRadius: "8px",
+    background: "#8a2a22",
+    color: "#fff",
+    fontSize: "0.8em",
+  },
+});
+
+const PartyBox = styled("div", {
+  base: {
+    display: "grid",
+    gap: "6px",
+    padding: "8px 10px",
+    borderRadius: "8px",
+    background: "rgba(255, 255, 255, 0.05)",
+    boxShadow: "0 0 0 1px rgba(217, 180, 90, 0.25)",
+    fontVariantNumeric: "tabular-nums",
+    "& p": { margin: 0 },
+  },
+});
+
+const PartyRow = styled("div", {
+  base: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    gap: "10px",
+  },
+});
+
+const LoopToggle = styled("span", {
+  base: {
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    "& input": {
+      width: "18px",
+      height: "18px",
+      accentColor: "#d9b45a",
+      cursor: "pointer",
+    },
+    "& label": { cursor: "pointer" },
   },
 });
 

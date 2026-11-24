@@ -123,7 +123,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "galerias-afogadas",
     name: "Galerias Afogadas",
     minLevel: 8,
-    comfort: { group: 8, solo: { 1: 9, 2: 12, 3: 8, 4: 10 } },
+    comfort: { group: 8, solo: { 1: 9, 2: 10, 3: 8, 4: 10 } },
     blurb: "Túneis alagados e o que vive neles. Pede um grupo que se cure.",
     stages: [
       {
@@ -157,7 +157,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "ninho-das-aranhas",
     name: "Ninho das Aranhas",
     minLevel: 13,
-    comfort: { group: 13, solo: { 1: 13, 2: 13, 3: 13, 4: 17 } },
+    comfort: { group: 13, solo: { 1: 13, 2: 15, 3: 13, 4: 17 } },
     blurb: "Teias, veneno e casulos. Fogo ajuda; a Rainha cura a si mesma.",
     stages: [
       {
@@ -194,7 +194,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    comfort: { group: 20, solo: { 1: 26, 2: 20, 3: 22, 4: 26 } },
+    comfort: { group: 20, solo: { 1: 24, 2: 22, 3: 20, 4: 26 } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [
@@ -264,7 +264,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "bosque-petrificado",
     name: "Bosque Petrificado",
     minLevel: 35,
-    comfort: { group: 35, solo: { 1: 35, 2: 41, 3: 35, 4: 50 } },
+    comfort: { group: 35, solo: { 1: 35, 2: 35, 3: 35, 4: 50 } },
     blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
     stages: [
       {
@@ -298,7 +298,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 45, solo: { 1: 84, 2: 69, 3: 63, 4: 81 } },
+    comfort: { group: 45, solo: { 1: 75, 2: 66, 3: 63, 4: 81 } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [
@@ -334,7 +334,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "abismo-gelado",
     name: "Abismo Gelado",
     minLevel: 55,
-    comfort: { group: 55, solo: { 1: 85, 2: 85, 3: 70, 4: 94 } },
+    comfort: { group: 55, solo: { 1: 94, 2: 79, 3: 70, 4: 94 } },
     blurb: "Frio que corta e gigantes no escuro. Fogo é o que eles temem.",
     stages: [
       { name: "Borda do abismo", monsters: [{ id: "lobo-glacial", count: 2 }] },
@@ -398,4 +398,14 @@ export const LOBBY = {
   maxMembers: 4,
   /** A sala de preparação some sozinha se ninguém começar [nosso]. */
   ttlMs: 5 * 60 * 1000,
+  /**
+   * O grupo que já correu fica montado (24/11/2026, pedido do dono: "manter a pt quando a dg
+   * acaba"): desfaz sozinho só depois disto sem corrida nenhuma (a TV fica livre de novo).
+   */
+  idleMs: 30 * 60 * 1000,
+  /**
+   * O loop (24/11/2026): a próxima corrida começa sozinha depois disto, o tempo de ver o
+   * resultado e de parar se quiser.
+   */
+  loopDelayMs: 12 * 1000,
 } as const;

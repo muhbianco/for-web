@@ -420,8 +420,17 @@ export class SpaceView {
       switch (e.kind) {
         case "room_changed":
           if (e.local) v.media?.roomChanged(e.to);
-          // The groups shown are our room's; the server sends the new room's on entry.
-          if (Object.keys(v.state.lobbies).length) v.patch({ lobbies: {} });
+          // The groups shown are our room's (the server sends the new room's on entry);
+          // our own group stays.
+          if (Object.keys(v.state.lobbies).length) {
+            const me = v.world.me?.userId;
+            const kept = Object.fromEntries(
+              Object.entries(v.state.lobbies).filter(([, l]) =>
+                l.members.some((m) => m.user_id === me),
+              ),
+            );
+            v.patch({ lobbies: kept });
+          }
           // Runs of the room we left go; ours stay (the new room's come on entry).
           v.keepOwnRuns();
           v.patch({ announcement: announceRoomChange(v.world, e.from, e.to) });
@@ -616,7 +625,14 @@ export class SpaceView {
         const tv = typeof d.tv === "string" ? d.tv : "";
         const lobbies = { ...this.state.lobbies };
         const lobby = (d.lobby ?? null) as RpgLobbyView | null;
-        if (lobby && lobby.room === this.world.me?.room)
+        const me = this.world.me?.userId;
+        // Our own group wherever it is (24/11/2026: it stays formed between runs and follows
+        // us around the map); the others, only our room's.
+        if (
+          lobby &&
+          (lobby.room === this.world.me?.room ||
+            lobby.members.some((m) => m.user_id === me))
+        )
           lobbies[lobby.tv] = lobby;
         else if (tv) delete lobbies[tv];
         else if (d.lobby === null && typeof e.re === "string") {
@@ -675,8 +691,16 @@ export class SpaceView {
         for (const [id, r] of Object.entries(this.state.runs))
           if (!r.end || id === this.state.runOpen?.id) runs[id] = r;
         runs[run.id] = next;
+        // The loop's next run (run.auto) opens only for whoever still has the last one open
+        // (watching the summary); whoever closed the panel to chat keeps chatting.
+        const openNow = this.state.runOpen
+          ? this.state.runs[this.state.runOpen.id]
+          : null;
+        const follow =
+          !run.auto ||
+          (!!openNow?.end && openNow.run.members.some((m) => m.user_id === me));
         this.patch({ runs });
-        if (mine && !next.end) this.autoOpenRun(run.id);
+        if (mine && !next.end && follow) this.autoOpenRun(run.id);
         const re = typeof e.re === "string" ? e.re : undefined;
         if (re) this.gameCommands.delete(re);
         this.emitGame({ t: "rpg.run", re, d });

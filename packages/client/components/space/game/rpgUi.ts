@@ -90,7 +90,7 @@ export function rpgLabels() {
     if (code === "rpg_invalid" && reason === "no_points")
       return t`Faltam pontos para isso.`;
     if (code === "rpg_invalid" && reason === "stat_max")
-      return t`Esse atributo já está no máximo (99).`;
+      return t`Esse atributo já está no máximo.`;
     if (code === "rpg_invalid" && reason === "requires")
       return t`Aprenda antes o adereço de que este depende.`;
     if (code === "rpg_invalid" && reason === "tier")

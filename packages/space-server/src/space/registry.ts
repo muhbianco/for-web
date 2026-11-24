@@ -14,6 +14,7 @@ type RpgHooks = {
   trainingLeft: (runtime: SpaceRuntime, userId: string) => void;
   avatarJoined: (runtime: SpaceRuntime, userId: string) => void;
   roomEntered: (runtime: SpaceRuntime, userId: string, room: string) => void;
+  loopDue(host: SpaceRuntime, leader: string, tv: string): void;
 };
 
 /**
@@ -137,6 +138,7 @@ export class Registry implements RuntimeRegistry {
         rt.onTrainingLeft = (userId) => rpg.trainingLeft(rt, userId);
         rt.onAvatarJoined = (userId) => rpg.avatarJoined(rt, userId);
         rt.onRoomEntered = (userId, room) => rpg.roomEntered(rt, userId, room);
+        rt.onLobbyDue = (leader, tv) => rpg.loopDue(rt, leader, tv);
       }
       p = rt.init().then(() => {
         this.live.set(serverId, rt);

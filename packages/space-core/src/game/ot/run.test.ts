@@ -837,3 +837,36 @@ test("a habilidade sai com o custo (com Economia) mais uma cura guardada, e a ba
   const archer = Object.fromEntries(abilityBar(hero(3, 27, 50)).map((s) => [s.id, s]));
   assert.equal(archer["rajada-dupla"]!.at, 18, "sem cura, nada guardado");
 });
+
+test("resistência física e mágica (24/11/2026): o elemento não importa; itens protegem do físico ou da magia", async () => {
+  const { heroElementMod, monsterResist, itemAbsorb } = await import("./index.ts");
+  const { MONSTERS } = await import("./monsters.ts");
+  const all = Object.values(MONSTERS);
+  // Monstro: a mágica é a média nos seis elementos mágicos; qualquer magia leva a mesma.
+  const fire = all.find((m) => (m.elements?.fogo ?? 0) >= 100)!;
+  const r = monsterResist(fire);
+  for (const el of ["fogo", "gelo", "energia", "terra", "morte", "sagrado"] as const)
+    assert.equal(heroElementMod(fire, el), r.magia, el);
+  assert.ok(r.magia > 0 && r.magia < 100, `${fire.id} ${r.magia}`);
+  const hard = all.find((m) => (m.elements?.fisico ?? 0) > 0)!;
+  assert.equal(heroElementMod(hard, "fisico"), hard.elements!.fisico);
+  // Itens: o amuleto de +20% terra e -10% fogo protege 10% de toda magia, sem o lado ruim.
+  assert.deepEqual(itemAbsorb(ITEMS["amuleto-de-musgo"]!), { fisico: 0, magia: 10 });
+  assert.deepEqual(itemAbsorb(ITEMS["anel-da-firmeza"]!), { fisico: 20, magia: 20 });
+  assert.deepEqual(itemAbsorb(ITEMS["amuleto-de-pedra"]!), { fisico: 80, magia: 40 });
+  // Na Cidadela de Cinzas (fogo), a Onda de fogo do feiticeiro sai (antes: nenhuma vez), e o
+  // Golpe de raio e o de chama, iguais agora, se revezam.
+  const used = new Map<string, number>();
+  for (const seed of [1, 2, 3]) {
+    const run1 = run("cidadela-de-cinzas", [hero(4, 60, 80), hero(1, 60, 0, { ml: 60 })], seed);
+    for (const f of run1.frames) {
+      const once = new Set<string>();
+      for (const e of f.e) if (e.k === "magia" && e.a === 1 && e.s) once.add(e.s);
+      for (const id of once) used.set(id, (used.get(id) ?? 0) + 1);
+    }
+  }
+  assert.ok((used.get("onda-de-fogo") ?? 0) > 0, [...used.keys()].join(","));
+  const raio = used.get("golpe-de-raio") ?? 0;
+  const chama = used.get("golpe-de-chama") ?? 0;
+  assert.ok(raio > 0 && chama > 0 && Math.abs(raio - chama) <= Math.max(raio, chama) / 2, `raio ${raio}, chama ${chama}`);
+});

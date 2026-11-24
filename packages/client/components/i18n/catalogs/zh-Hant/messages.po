@@ -119,6 +119,19 @@ msgstr ""
 msgid "{0} ({1}%)"
 msgstr ""
 
+#. placeholder {0}: c.d.name
+#. placeholder {1}: c.d.minLevel
+#: components/space/game/TvMenu.tsx
+msgid "{0} (level {1}+)"
+msgstr ""
+
+#. placeholder {0}: c.d.name
+#. placeholder {1}: c.d.minLevel
+#. placeholder {2}: c.below.map((m) => m.name).join(", ")
+#: components/space/game/TvMenu.tsx
+msgid "{0} (level {1}+) · falta level: {2}"
+msgstr ""
+
 #. placeholder {0}: L().skill[h().training.skill]
 #. placeholder {1}: h().skills[h().training.skill].l
 #: components/space/game/GamePanel.tsx
@@ -173,6 +186,11 @@ msgstr ""
 #. placeholder {0}: s.name
 #: components/space/SpacePage.tsx
 msgid "{0} começou a compartilhar a tela."
+msgstr ""
+
+#. placeholder {0}: lobby().runs ?? 0
+#: components/space/game/TvMenu.tsx
+msgid "{0} corridas juntos"
 msgstr ""
 
 #. placeholder {0}: inv().pack.length
@@ -255,10 +273,10 @@ msgstr "{0} 任命 {1} 為新的群組擁有者"
 msgid "{0} min"
 msgstr ""
 
-#. placeholder {0}: leaderName()
-#. placeholder {1}: dungeonOf(l.dungeon)?.name ?? l.dungeon
-#. placeholder {2}: l.members.length
-#. placeholder {3}: l.max
+#. placeholder {0}: leaderName(l())
+#. placeholder {1}: name(l())
+#. placeholder {2}: l().members.length
+#. placeholder {3}: l().max
 #: components/space/game/LobbyChip.tsx
 msgid "{0} monta um grupo na TV: {1} · {2}/{3}"
 msgstr ""
@@ -348,10 +366,16 @@ msgstr ""
 
 #. placeholder {0}: lobby().members.length
 #. placeholder {1}: lobby().max
+#: components/space/game/TvMenu.tsx
+msgid "{0}/{1}"
+msgstr ""
+
+#. placeholder {0}: lobby().members.length
+#. placeholder {1}: lobby().max
 #. placeholder {2}: duration(Math.max(0, lobby().expires_at - Date.now()))
 #: components/space/game/TvMenu.tsx
-msgid "{0}/{1} · fecha em {2}"
-msgstr ""
+#~ msgid "{0}/{1} · fecha em {2}"
+#~ msgstr ""
 
 #. placeholder {0}: ev.v
 #: components/space/game/runUi.ts
@@ -908,6 +932,10 @@ msgstr ""
 #~ msgid "A promoção pede level {lv}."
 #~ msgstr ""
 
+#: components/space/game/RunPanel.tsx
+msgid "A próxima corrida já começou."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A reprodução neste computador está engasgando"
 msgstr ""
@@ -1003,8 +1031,8 @@ msgid "Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs
 msgstr ""
 
 #: components/space/game/itemUi.ts
-msgid "Absorve {good}"
-msgstr ""
+#~ msgid "Absorve {good}"
+#~ msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
 #: components/ui/components/features/voice/IncomingCallOverlay.tsx
@@ -1097,6 +1125,11 @@ msgstr ""
 
 #: components/space/game/heroUi.ts
 msgid "Agilidade: velocidade de ataque e esquiva (level + AGI)."
+msgstr ""
+
+#. placeholder {0}: leaderName()
+#: components/space/game/RunPanel.tsx
+msgid "Aguardando {0} começar a próxima."
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -1336,6 +1369,10 @@ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Assistir"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Assistir a corrida"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
@@ -1836,8 +1873,8 @@ msgid "Cancelar"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Cancelar grupo"
-msgstr ""
+#~ msgid "Cancelar grupo"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Cannot delete account until servers are deleted or transferred"
@@ -2173,6 +2210,14 @@ msgstr ""
 #~ msgid "Combate"
 #~ msgstr ""
 
+#: components/space/game/RunPanel.tsx
+msgid "Começando a próxima…"
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "começando…"
+msgstr ""
+
 #: components/space/game/LobbyChip.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Começar"
@@ -2181,6 +2226,15 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "Começar a iniciação"
 #~ msgstr ""
+
+#: components/space/game/RunPanel.tsx
+#: components/space/game/TvMenu.tsx
+msgid "Começar agora"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Começar de novo"
+msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Coming soon! 👀"
@@ -2760,6 +2814,10 @@ msgstr ""
 msgid "De +{0} para +{1}: chance de {2}%, dano de +{3}% para +{4}%."
 msgstr ""
 
+#: components/space/game/LobbyChip.tsx
+msgid "De novo"
+msgstr ""
+
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 #: components/ui/components/features/voice/VoiceDock.tsx
@@ -2915,6 +2973,10 @@ msgstr "刪除身份組"
 msgid "Delete Server"
 msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "Depois de cada vitória, a próxima começa sozinha em 12 s, com o mesmo grupo. Para em derrota, em retirada, se alguém não puder entrar ou se ninguém do grupo estiver conectado."
+msgstr ""
+
 #: components/space/game/StatsPanel.tsx
 msgid "Depois de confirmar, os pontos só voltam no Mestre de evolução (a primeira vez é de graça)."
 msgstr ""
@@ -2954,6 +3016,10 @@ msgstr ""
 #: components/space/DecorPanel.tsx
 #: components/space/game/StatsPanel.tsx
 msgid "Desfazer"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Desfazer grupo"
 msgstr ""
 
 #: components/app/interface/settings/UserSettings.tsx
@@ -3107,6 +3173,10 @@ msgstr ""
 msgid "Druida"
 msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "Dungeon"
+msgstr ""
+
 #: components/space/game/RunPanel.tsx
 #~ msgid "Dungeon em andamento"
 #~ msgstr ""
@@ -3220,6 +3290,10 @@ msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "Em andamento"
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "em corrida"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
@@ -3579,7 +3653,11 @@ msgid "Esse adereço não ganha maestria (só os de número: força, economia, r
 msgstr ""
 
 #: components/space/game/rpgUi.ts
-msgid "Esse atributo já está no máximo (99)."
+#~ msgid "Esse atributo já está no máximo (99)."
+#~ msgstr ""
+
+#: components/space/game/rpgUi.ts
+msgid "Esse atributo já está no máximo."
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -3836,6 +3914,10 @@ msgstr ""
 #~ msgid "Ferido: a vida volta sozinha em alguns minutos (precisa de {0}%)."
 #~ msgstr ""
 
+#: components/space/game/RunPanel.tsx
+msgid "Ficar"
+msgstr ""
+
 #: components/space/game/HeroSheet.tsx
 msgid "Ficha do herói"
 msgstr ""
@@ -4071,6 +4153,23 @@ msgstr "群組名稱"
 msgid "Grupo"
 msgstr ""
 
+#: components/space/game/LobbyChip.tsx
+msgid "Grupo da dungeon"
+msgstr ""
+
+#. placeholder {0}: name(l)
+#: components/space/game/LobbyChip.tsx
+msgid "Grupo em corrida na {0}."
+msgstr ""
+
+#: components/space/game/LobbyChip.tsx
+msgid "Grupo pronto; a próxima corrida começa sozinha."
+msgstr ""
+
+#: components/space/game/LobbyChip.tsx
+msgid "Grupo pronto."
+msgstr ""
+
 #. placeholder {0}: l.members.length
 #. placeholder {1}: l.max
 #: components/space/game/TvMenu.tsx
@@ -4081,8 +4180,8 @@ msgstr ""
 #. placeholder {1}: l().members.length
 #. placeholder {2}: l().max
 #: components/space/game/LobbyChip.tsx
-msgid "Grupo: {0} · {1}/{2}"
-msgstr ""
+#~ msgid "Grupo: {0} · {1}/{2}"
+#~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Grupos em outras TVs"
@@ -4361,6 +4460,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Jitter"
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Jogar de novo"
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
@@ -5066,12 +5169,20 @@ msgstr ""
 msgid "Monstros"
 msgstr ""
 
+#: components/space/game/partyUi.ts
+msgid "montando"
+msgstr ""
+
 #: components/space/game/TvMenu.tsx
 msgid "Montar grupo"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar."
+#~ msgid "Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar."
+#~ msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas. Depois da corrida o grupo continua montado: o líder começa a próxima quando quiser, ou liga o Repetir."
 msgstr ""
 
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
@@ -5494,12 +5605,20 @@ msgstr ""
 msgid "O grupo caiu"
 msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "O grupo continua montado; desfaz sozinho em {left} sem nenhuma corrida."
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "O grupo de {names} entrou na dungeon {dungeon}."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "O grupo está cheio."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "O grupo fecha em {left} se ninguém começar."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -5544,6 +5663,31 @@ msgstr ""
 
 #: components/space/game/rpgUi.ts
 msgid "O jogo está desligado neste servidor."
+msgstr ""
+
+#. placeholder {0}: L.error("rpg_invalid", l.stopped_detail ?? undefined)
+#: components/space/game/partyUi.ts
+msgid "O loop parou: {0}"
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "O loop parou: a liderança mudou de mãos."
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "O loop parou: alguém saiu da corrida."
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "O loop parou: ninguém do grupo estava conectado."
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "O loop parou: o grupo caiu. Confira poções e equipamento e ligue de novo."
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "O loop parou: o grupo se retirou sem conseguir ferir os monstros."
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
@@ -5821,6 +5965,7 @@ msgstr ""
 msgid "Para trocar ouro por platina, junte 100 moedas na mesma pilha."
 msgstr ""
 
+#: components/space/game/LobbyChip.tsx
 #: components/space/game/TrainingChip.tsx
 msgid "Parar"
 msgstr ""
@@ -5836,6 +5981,11 @@ msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
 msgid "Parar de treinar"
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+#: components/space/game/TvMenu.tsx
+msgid "Parar o Repetir"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -6158,12 +6308,35 @@ msgstr ""
 msgid "Pronouns"
 msgstr ""
 
+#: components/space/game/partyUi.ts
+msgid "pronto"
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Pronto"
 msgstr ""
 
+#. placeholder {0}: a.fisico
+#: components/space/game/itemUi.ts
+msgid "Protege {0}% do dano físico"
+msgstr ""
+
+#. placeholder {0}: a.magia
+#: components/space/game/itemUi.ts
+msgid "Protege {0}% do dano mágico"
+msgstr ""
+
 #: components/i18n/errors.tsx
 msgid "Provided email or password is wrong."
+msgstr ""
+
+#. placeholder {0}: secs()
+#: components/space/game/RunPanel.tsx
+msgid "Próxima corrida em {0} s"
+msgstr ""
+
+#: components/space/game/partyUi.ts
+msgid "próxima em {s} s"
 msgstr ""
 
 #: components/space/Onboarding.tsx
@@ -6329,8 +6502,8 @@ msgid "Recargas"
 msgstr ""
 
 #: components/space/game/itemUi.ts
-msgid "Recebe a mais: {bad}"
-msgstr ""
+#~ msgid "Recebe a mais: {bad}"
+#~ msgstr ""
 
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive notifications while the app is open and in the background."
@@ -6531,6 +6704,28 @@ msgstr ""
 msgid "Renascer a árvore"
 msgstr ""
 
+#: components/space/game/LobbyChip.tsx
+#: components/space/game/TvMenu.tsx
+msgid "Repetir"
+msgstr ""
+
+#: components/space/game/LobbyChip.tsx
+msgid "Repetir ligado"
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+#: components/space/game/TvMenu.tsx
+msgid "Repetir sem parar"
+msgstr ""
+
+#: components/space/game/LobbyChip.tsx
+msgid "Repetir: desligado."
+msgstr ""
+
+#: components/space/game/LobbyChip.tsx
+msgid "Repetir: ligado. A próxima começa sozinha depois de cada vitória."
+msgstr ""
+
 #: components/app/menus/MessageContextMenu.tsx
 msgid "Reply"
 msgstr "回覆"
@@ -6686,15 +6881,41 @@ msgid "sagrado"
 msgstr ""
 
 #: components/space/game/LobbyChip.tsx
+#: components/space/game/RunPanel.tsx
 msgid "Sair"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Sair (passar a liderança)"
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Sair da corrida e abrir mão da recompensa"
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Sair da corrida?"
 msgstr ""
 
 #: components/space/MediaStage.tsx
 msgid "Sair da tela cheia"
 msgstr ""
 
+#: components/space/game/LobbyChip.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Sair do grupo"
+msgstr ""
+
+#: components/space/game/LobbyChip.tsx
+msgid "Sair do grupo: a liderança passa para quem entrou depois."
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Sair e perder a recompensa desta corrida?"
+msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Saiu da corrida e abriu mão da recompensa."
 msgstr ""
 
 #. placeholder {0}: run().row + 1
