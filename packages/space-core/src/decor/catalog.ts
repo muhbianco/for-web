@@ -28,6 +28,7 @@ interface Def {
   tags?: readonly string[];
   smartTv?: boolean;
   npc?: NpcKind;
+  dummy?: "vocacao" | "habilidade";
 }
 
 const defaultLayer: Record<DecorCategory, DecorLayer> = {
@@ -58,6 +59,7 @@ function def(d: Def): DecorItem {
     ...(d.tags ? { tags: d.tags } : {}),
     ...(d.smartTv ? { smartTv: true } : {}),
     ...(d.npc ? { npc: d.npc } : {}),
+    ...(d.dummy ? { dummy: d.dummy } : {}),
   };
 }
 
@@ -161,11 +163,12 @@ const ITEMS: DecorItem[] = [
   // Treino do jogo idle (docs/espaco/jogo/ot): o herói ao lado treina a skill escolhida.
   def({ id: "dummy-wood", name: "Boneco de madeira", category: "equipment", interaction: "train", description: "Fique ao lado e use para o seu herói treinar enquanto você conversa.", tags: ["treino", "dummy", "boneco", "jogo"] }),
   def({ id: "dummy-target", name: "Alvo de treino", category: "equipment", interaction: "train", description: "Alvo para treinar distância e magia; também serve para as armas.", tags: ["treino", "dummy", "alvo", "jogo"] }),
+  def({ id: "dummy-habilidade", name: "Boneco de habilidade", category: "equipment", interaction: "train", dummy: "habilidade", description: "Treina as habilidades: é daqui que vêm os pontos da árvore do herói.", tags: ["treino", "dummy", "habilidade", "árvore", "jogo"] }),
   def({ id: "dummy-mannequin", name: "Manequim de combate", category: "equipment", rotations: 4, interaction: "train", description: "Manequim de armadura para treinar golpes.", tags: ["treino", "dummy", "manequim", "jogo"] }),
   // NPCs do jogo idle (etapa O8): o herói fala com eles ao lado, como no OT.
   def({ id: "npc-mercador", name: "Mercador", category: "equipment", interaction: "npc", npc: "mercador", description: "Compra o loot e vende munição, mochilas, anéis e colares.", tags: ["npc", "loja", "jogo"] }),
   def({ id: "npc-banqueiro", name: "Banqueiro", category: "equipment", interaction: "npc", npc: "banqueiro", description: "Guarda as moedas sem peso, devolve quando você pede e transfere para outra pessoa.", tags: ["npc", "banco", "jogo"] }),
-  def({ id: "npc-mestre", name: "Mestre das vocações", category: "equipment", interaction: "npc", npc: "mestre", description: "Promove o herói a partir do level 20.", tags: ["npc", "promoção", "jogo"] }),
+  def({ id: "npc-mestre", name: "Mestre de evolução", category: "equipment", interaction: "npc", npc: "mestre", description: "Evolui a classe do herói (level 20 e level 50) e redistribui atributos e habilidades.", tags: ["npc", "evolução", "classe", "jogo"] }),
 
   // ---- Especiais ------------------------------------------------------------
   def({ id: "portal-pad", name: "Portal", category: "special", layer: "rug", solid: false, interaction: "teleport", variants: NEON, description: "Leva para outro ambiente ao interagir." }),

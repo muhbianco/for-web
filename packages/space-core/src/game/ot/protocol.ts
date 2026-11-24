@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 import { MAX_FRAME_BYTES, PROTOCOL_VERSION } from "../../protocol/messages.ts";
+import type { JobTier, Tree } from "./abilities.ts";
+import { type StatId, type Stats, STAT_MAX, STATS } from "./attributes.ts";
 import type { SkillId, VocationId } from "./data.ts";
 import type { Gear, Inventory } from "./inventory.ts";
 import { type Slot, SLOTS } from "./items.ts";
@@ -186,7 +188,10 @@ export const RpgBankTransferCmd = z.object({
     .strict(),
 });
 
-/** Promoção no mestre das vocações. */
+/**
+ * Evolução de classe no Mestre (24/11/2026): da 1ª para a 2ª (a promoção da etapa O8) e da 2ª
+ * para a 3ª. O nome do comando ficou o da promoção.
+ */
 export const RpgPromoteCmd = z.object({
   ...env,
   t: z.literal("rpg.promote"),
@@ -232,6 +237,37 @@ export const RpgRunWatchCmd = z.object({
   d: z.object({ id: z.string().min(1).max(64) }).strict(),
 });
 
+// ---- herói: atributos, árvore e evolução (24/11/2026) ------------------------------
+
+const statAdd = z
+  .object(
+    Object.fromEntries(
+      STATS.map((k) => [k, z.number().int().min(0).max(STAT_MAX).optional()]),
+    ) as Record<StatId, z.ZodOptional<z.ZodNumber>>,
+  )
+  .strict();
+
+/** Põe pontos de atributo (fora da dungeon; o que já foi posto só volta no Mestre). */
+export const RpgStatsCmd = z.object({
+  ...env,
+  t: z.literal("rpg.stats"),
+  d: z.object({ add: statAdd }).strict(),
+});
+
+/** Põe um ponto de habilidade num adereço da árvore. */
+export const RpgLearnCmd = z.object({
+  ...env,
+  t: z.literal("rpg.learn"),
+  d: z.object({ node: z.string().min(1).max(60) }).strict(),
+});
+
+/** Redistribui no Mestre: os atributos ou a árvore voltam a ser pontos livres. */
+export const RpgResetCmd = z.object({
+  ...env,
+  t: z.literal("rpg.reset"),
+  d: z.object({ npc, what: z.enum(["stats", "tree"]) }).strict(),
+});
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgVocationCmd,
@@ -252,6 +288,9 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgBankWithdrawCmd,
   RpgBankTransferCmd,
   RpgPromoteCmd,
+  RpgStatsCmd,
+  RpgLearnCmd,
+  RpgResetCmd,
   RpgSuppliesCmd,
   RpgLootSkipCmd,
   RpgBoardCmd,
@@ -300,9 +339,20 @@ export interface RpgHeroView {
   vocation: VocationId;
   level: number;
   experience: number;
+  /** Vida, mana e capacidade com os atributos (VIT, INT e FOR); `base` é sem eles. */
   health_max: number;
   mana_max: number;
   cap: number;
+  base: { health: number; mana: number; cap: number };
+  /** 24/11/2026: atributos e pontos livres do level. */
+  stats: Stats;
+  stat_points: number;
+  /** A árvore, os pontos do treino de habilidade (ganhos, livres e o progresso) e a classe. */
+  tree: Tree;
+  skill_points: { earned: number; free: number; tries: number; next: number };
+  job: JobTier;
+  /** Quantas vezes já redistribuiu no Mestre (a primeira de cada é de graça). */
+  resets: { stats: number; tree: number };
   skills: Record<SkillId, RpgSkillView>;
   magic: { level: number; mana_spent: number; next: number };
   stamina: number;

@@ -273,7 +273,7 @@ test("herói de antes da O7: kit vestido, mochila de 20, os itens de mais valor 
     { item: "coisa-que-nao-existe", count: 1 },
   ];
   const d = normalizeHero(old as unknown as RpgHeroDoc);
-  assert.equal(d.v, 2);
+  assert.equal(d.v, 3);
   assert.equal(d.auto_equip, true);
   assert.equal(d.inv.equip.mochila?.item, "mochila");
   assert.ok(d.inv.pack.length <= 20);
@@ -394,15 +394,19 @@ test("NPCs: compra paga das moedas e do banco; venda pelo valor; depósito e saq
   assert.deepEqual(bankWithdraw(d, 30, 0), { ok: true });
   assert.equal(coinValue(d.inv), 30);
   assert.equal(d.bank_gold, 200);
-  // Promoção: level 20 e 20.000.
+  // Evolução para a 2ª classe (24/11/2026): level 20, 8 pontos na árvore e 20.000.
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "level" });
   d.level = 20;
+  assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "points" });
+  d.points = { points: 8, tries: 0 };
+  d.tree = { "lanca-eterea.forca": 5, "lanca-eterea.economia": 3 };
   assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "no_money" });
   d.bank_gold = 19_970;
   assert.deepEqual(promoteHero(d, 0), { ok: true });
   assert.equal(d.vocation, 7, "o arqueiro vira caçador");
   assert.equal(d.bank_gold + coinValue(d.inv), 0);
-  assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "promoted" });
+  // A 3ª pede level 50 e 24 pontos.
+  assert.deepEqual(promoteHero(d, 0), { ok: false, reason: "level" });
 });
 
 test("transferência: sai do saldo para a fila; crédito uma vez só; devolução se o destino sumiu", async () => {
@@ -463,4 +467,106 @@ test("poções e filtro: a escolha é guardada e vai para a corrida; moeda não 
   const n = normalizeHero(old as unknown as RpgHeroDoc);
   assert.deepEqual(n.supplies.mana, { item: null, below: 30 });
   assert.deepEqual(n.loot_skip, []);
+});
+
+test("herói 3 (24/11/2026): versão 2 vira 3 com atributos em 1 e os pontos do level livres", () => {
+  const old = newRpgHero("V2", 0) as RpgHeroDoc & Record<string, unknown>;
+  applyVocation(old, 4);
+  old.level = 12;
+  old.v = 2 as never;
+  delete old.stats;
+  delete old.tree;
+  delete old.points;
+  delete old.third;
+  delete old.resets;
+  const d = normalizeHero(old);
+  assert.equal(d.v, 3);
+  assert.deepEqual(d.stats, { for: 1, agi: 1, vit: 1, int: 1, des: 1, sor: 1 });
+  const v = rpgHeroView(d, DEFAULT_RATES, 0);
+  assert.equal(v.stat_points, 60);
+  assert.equal(v.job, 1);
+  assert.deepEqual(v.skill_points, { earned: 0, free: 0, tries: 0, next: 50 });
+  // Árvore com nó que não existe, ou de outra classe: zera na leitura.
+  const bad = { ...d, tree: { "golpe-de-raio.forca": 1 } };
+  assert.deepEqual(normalizeHero(bad).tree, {});
+});
+
+test("atributos: põe fora da dungeon; VIT, INT e FOR mudam vida, mana e capacidade", async () => {
+  const { allocateStats } = await import("./hero.ts");
+  const d = newRpgHero("S", 0);
+  assert.deepEqual(allocateStats(d, { for: 1 }, 0), { ok: false, reason: "no_vocation" });
+  applyVocation(d, 4);
+  d.level = 10;
+  assert.deepEqual(allocateStats(d, { vit: 30, for: 20 }, 0), { ok: true });
+  assert.deepEqual(allocateStats(d, { vit: 1 }, 0), { ok: false, reason: "no_points" });
+  const v = rpgHeroView(d, DEFAULT_RATES, 0);
+  assert.equal(v.stat_points, 0);
+  assert.equal(v.health_max, Math.floor(v.base.health * 1.31));
+  assert.equal(v.cap, v.base.cap + 210);
+  markRun(d, { id: "r", dungeon: "cripta-do-musgo", ends_at: 10 * H }, 1, DEFAULT_RATES);
+  d.level = 11;
+  assert.deepEqual(allocateStats(d, { vit: 1 }, 2), { ok: false, reason: "in_run" });
+});
+
+test("treino de habilidade: só no dummy de habilidade; os pontos vão para a árvore", async () => {
+  const { learnNode } = await import("./hero.ts");
+  const d = newRpgHero("T", 0);
+  applyVocation(d, 1);
+  assert.deepEqual(startTraining(d, SPOT, "habilidade", 0, DEFAULT_RATES, "vocacao"), {
+    ok: false,
+    reason: "wrong_dummy",
+  });
+  assert.deepEqual(startTraining(d, SPOT, "espada", 0, DEFAULT_RATES, "habilidade"), {
+    ok: false,
+    reason: "wrong_dummy",
+  });
+  assert.deepEqual(startTraining(d, SPOT, "habilidade", 0, DEFAULT_RATES, "habilidade"), { ok: true });
+  const sword = d.skills.espada.tries;
+  stopTraining(d, 10 * 60_000, DEFAULT_RATES);
+  assert.equal(d.skills.espada.tries, sword, "nenhuma skill de arma");
+  assert.equal(d.skills.escudo.tries, 0, "nem o escudo");
+  // 10 min = 300 tentativas: 50 + 55 + 60 + 66 = 231 dão 4 pontos (o 5º pede 73).
+  assert.equal(d.points.points, 4);
+  assert.deepEqual(learnNode(d, "golpe-de-raio.forca", 0), { ok: true });
+  assert.deepEqual(learnNode(d, "golpe-brutal.forca", 0), { ok: false, reason: "not_class" });
+  assert.deepEqual(learnNode(d, "golpe-de-raio.corrente", 0), { ok: false, reason: "tier" });
+  for (let i = 0; i < 3; i++) learnNode(d, "golpe-de-raio.forca", 0);
+  assert.deepEqual(learnNode(d, "golpe-de-raio.forca", 0), { ok: false, reason: "no_points" });
+  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).skill_points.free, 0);
+});
+
+test("Mestre: redistribuir é de graça na primeira vez e depois cobra 500 por level", async () => {
+  const { allocateStats, learnNode, resetHero } = await import("./hero.ts");
+  const d = newRpgHero("R", 0);
+  applyVocation(d, 4);
+  d.level = 10;
+  assert.deepEqual(resetHero(d, "stats", 0), { ok: false, reason: "nothing_to_reset" });
+  allocateStats(d, { for: 10 }, 0);
+  assert.deepEqual(resetHero(d, "stats", 0), { ok: true });
+  assert.equal(d.stats.for, 1);
+  allocateStats(d, { for: 10 }, 0);
+  assert.deepEqual(resetHero(d, "stats", 0), { ok: false, reason: "no_money" });
+  d.bank_gold = 5_000;
+  assert.deepEqual(resetHero(d, "stats", 0), { ok: true });
+  assert.equal(d.bank_gold, 0);
+  assert.deepEqual(d.resets, { stats: 2, tree: 0 });
+  d.points = { points: 3, tries: 0 };
+  learnNode(d, "desafio.presenca", 0);
+  assert.deepEqual(resetHero(d, "tree", 0), { ok: true });
+  assert.deepEqual(d.tree, {});
+  assert.equal(rpgHeroView(d, DEFAULT_RATES, 0).skill_points.free, 3);
+});
+
+test("corrida: entra com a vida, a mana e a capacidade dos atributos, e com a árvore", async () => {
+  const { allocateStats, heroRunSnapshot } = await import("./hero.ts");
+  const d = newRpgHero("C", 0);
+  applyVocation(d, 2);
+  d.level = 10;
+  allocateStats(d, { int: 50 }, 0);
+  d.points = { points: 1, tries: 0 };
+  d.tree = { "seiva.cura-leve": 1 };
+  const r = heroRunSnapshot(d, "C", 0);
+  assert.equal(r.manaMax, Math.floor(d.mana_max * 1.51));
+  assert.equal(r.stats?.int, 51);
+  assert.deepEqual(r.tree, { "seiva.cura-leve": 1 });
 });

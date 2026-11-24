@@ -1,9 +1,8 @@
-import { type VocationId, VOCATIONS } from "./data.ts";
 import { COINS, itemDef } from "./items.ts";
 
 /**
  * Os NPCs do jogo idle (docs/espaco/jogo/ot, etapa O8): o mercador, o banqueiro e o mestre
- * das vocações. Ficam na sala como objetos da decoração; o herói fala com eles ao lado, como
+ * (desde 24/11/2026, o da evolução de classe). Ficam na sala como objetos da decoração; o herói fala com eles ao lado, como
  * no OT.
  */
 
@@ -65,19 +64,7 @@ export function supplyPrice(itemId: string): number {
   return merchantOffer(itemId)?.price ?? itemDef(itemId)?.value ?? 0;
 }
 
-/** Promoção [TFS data/npc/scripts/promotion.lua: level 20, 20.000 de ouro]. */
-export const PROMOTION = { level: 20, cost: 20_000 } as const;
-
-/** Por que não pode promover: sem vocação, já promovido, level; null: pode. */
-export function cannotPromote(
-  vocation: VocationId,
-  level: number,
-): "no_vocation" | "promoted" | "level" | null {
-  if (vocation === 0) return "no_vocation";
-  if (VOCATIONS[vocation].promotion === null) return "promoted";
-  if (level < PROMOTION.level) return "level";
-  return null;
-}
+// A promoção virou a evolução de classe (abilities.ts EVOLUTION, 24/11/2026).
 
 /** Teto de um valor em ouro num comando (depósito, saque, transferência). */
 export const MONEY_MAX = 1_000_000_000;

@@ -44,6 +44,9 @@ import {
   newRpgHero,
   normalizeHero,
   promoteHero,
+  allocateStats,
+  learnNode,
+  resetHero,
   sellToMerchant,
   setLootSkip,
   setSupplies,
@@ -73,11 +76,13 @@ import type { RpgStore } from "./store.ts";
 export interface RpgHost {
   readonly serverId: string;
   gameAccess(viewer: Viewer): "ok" | "disabled" | "not_allowed";
-  /** O dummy `instanceId` existe, é de treino, a pessoa pode usá-lo e está ao lado dele. */
+  /** O dummy `instanceId` existe, é de treino, a pessoa pode usá-lo e está ao lado dele (e o que ele treina). */
   trainSpot(
     viewer: Viewer,
     instanceId: string,
-  ): { ok: true; zone: string } | { ok: false; code: string; reason?: string };
+  ):
+    | { ok: true; zone: string; dummy?: "vocacao" | "habilidade" }
+    | { ok: false; code: string; reason?: string };
   /** O NPC `instanceId` existe, é do tipo `kind`, a pessoa pode usá-lo e está ao lado (etapa O8). */
   npcSpot(
     viewer: Viewer,
@@ -405,7 +410,14 @@ export class RpgService {
           zone: spot.zone,
         };
         const out = await this.mutate(userId, true, (d) =>
-          startTraining(d, where, cmd.d.skill, now, this.rates),
+          startTraining(
+            d,
+            where,
+            cmd.d.skill,
+            now,
+            this.rates,
+            spot.dummy ?? "vocacao",
+          ),
         );
         if (!out) return fail("conflict");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
@@ -487,15 +499,29 @@ export class RpgService {
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
       }
+      case "rpg.stats":
+      case "rpg.learn": {
+        // Atributos e árvore (24/11/2026): em qualquer lugar, fora da dungeon.
+        const out = await this.mutate(userId, false, (d) =>
+          cmd.t === "rpg.stats"
+            ? allocateStats(d, cmd.d.add, now)
+            : learnNode(d, cmd.d.node, now),
+        );
+        if (!out) return fail("rpg_invalid", "no_vocation");
+        if ("reason" in out) return fail("rpg_invalid", out.reason);
+        this.remember(userId, cmd.id);
+        return this.push(session, out.doc, cmd.id, host);
+      }
       case "rpg.shop.buy":
       case "rpg.shop.sell":
       case "rpg.bank.deposit":
       case "rpg.bank.withdraw":
-      case "rpg.promote": {
+      case "rpg.promote":
+      case "rpg.reset": {
         // NPCs (etapa O8): o certo para o comando, ao lado do herói.
         const kind: NpcKind = cmd.t.startsWith("rpg.shop.")
           ? "mercador"
-          : cmd.t === "rpg.promote"
+          : cmd.t === "rpg.promote" || cmd.t === "rpg.reset"
             ? "mestre"
             : "banqueiro";
         const spot = host.npcSpot(session.viewer, cmd.d.npc, kind);
@@ -519,6 +545,8 @@ export class RpgService {
               return bankWithdraw(d, cmd.d.amount, now);
             case "rpg.promote":
               return promoteHero(d, now);
+            case "rpg.reset":
+              return resetHero(d, cmd.d.what, now);
           }
         });
         if (!out) return fail("rpg_invalid", "no_vocation");
@@ -530,6 +558,14 @@ export class RpgService {
             user: userId,
             from: before?.vocation,
             to: out.doc.vocation,
+            third: out.doc.third,
+          });
+        if (cmd.t === "rpg.reset")
+          this.log.info("rpg reset", {
+            server: host.serverId,
+            user: userId,
+            what: cmd.d.what,
+            count: out.doc.resets[cmd.d.what],
           });
         return this.push(session, out.doc, cmd.id, host);
       }

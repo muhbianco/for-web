@@ -575,7 +575,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
   // ---- idle game: training dummies (docs/espaco/jogo/ot) -----------------------
 
   /** A training dummy: exists, is a dummy, the person may use it and stands next to it. */
-  trainSpot(viewer: Viewer, instanceId: string): { ok: true; zone: string } | { ok: false; code: string; reason?: string } {
+  trainSpot(viewer: Viewer, instanceId: string): { ok: true; zone: string; dummy: "vocacao" | "habilidade" } | { ok: false; code: string; reason?: string } {
     const a = this.avatars.get(viewer.user._id);
     if (!a || !a.session) return { ok: false, code: "not_allowed" };
     const inst = this.decor.items.find((i) => i.id === instanceId);
@@ -584,7 +584,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (!inst || !item || !zone || item.interaction !== "train") return { ok: false, code: "not_found" };
     if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
     if (!this.besideInstance(a, instanceId)) return { ok: false, code: "not_allowed", reason: "too_far" };
-    return { ok: true, zone: inst.zone };
+    return { ok: true, zone: inst.zone, dummy: item.dummy ?? "vocacao" };
   }
 
   /** An NPC of the idle game (stage O8): exists, is that NPC, the person may use it and stands next to it. */

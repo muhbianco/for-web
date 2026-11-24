@@ -518,17 +518,10 @@ test("filtro de loot: o que o herói não pega fica no corpo, sem contar como fa
   }
 });
 
-test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (chance 0) o cavaleiro segura tudo; na Forja os monstros trocam e o Campeão os puxa de volta por 8 s", async () => {
-  const { spellsFor } = await import("./spells.ts");
-  assert.ok(
-    !spellsFor(4, 40).some((s) => s.id === "desafio"),
-    "sem promoção, sem desafio",
-  );
-  assert.ok(spellsFor(4, 20, true).some((s) => s.id === "desafio"));
-  assert.ok(
-    !spellsFor(4, 19, true).some((s) => s.id === "desafio"),
-    "level 20",
-  );
+test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (chance 0) o cavaleiro segura tudo; na Forja os monstros trocam e o desafio os puxa de volta por 8 s", async () => {
+  const { abilitiesOf } = await import("./abilities.ts");
+  // Desde 24/11/2026 o desafio é uma das 4 habilidades fixas do cavaleiro, de saída.
+  assert.ok(abilitiesOf(4).some((a) => a.id === "desafio"));
   // Cripta: ninguém além do cavaleiro leva golpe de um alvo só.
   const crypt = run("cripta-do-musgo", [hero(4, 8, 35), hero(3, 8, 30)], 5);
   const singleOnArcher = crypt.frames.flatMap((f) =>
@@ -558,7 +551,8 @@ test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (cha
       casts++;
       // Nos segundos seguintes (dentro dos 8 s), o corpo a corpo dos monstros é no cavaleiro.
       // A trava vence no 8º pensamento do monstro (o do próprio segundo conta): até o 6º seguinte.
-      for (const g of r.frames.slice(i + 1, i + 7))
+      // Só a mesma sala: os monstros da sala seguinte não foram desafiados.
+      for (const g of r.frames.slice(i + 1, i + 7).filter((g) => g.st === f.st))
         for (const e of g.e)
           if (e.k === "golpe" && e.a >= 100) {
             checked++;
@@ -568,10 +562,15 @@ test("troca de alvo e desafio [TFS onThinkTarget, challenge.lua]: na Cripta (cha
   }
   assert.ok(casts > 0, "o desafio saiu");
   assert.ok(checked > 0);
-  // Sem promoção os monstros trocam e alguém atrás leva golpe corpo a corpo.
+  // Sem o desafio (o cavaleiro sem mana) os monstros trocam e alguém atrás leva golpe corpo a corpo.
+  const noChallenge = () => {
+    const p = party(4);
+    p[0]!.manaMax = 0;
+    return p;
+  };
   let backHits = 0;
   for (let seed = 1; seed <= 20; seed++)
-    for (const f of run("forja-rachada", party(4), seed).frames)
+    for (const f of run("forja-rachada", noChallenge(), seed).frames)
       backHits += f.e.filter(
         (e) => e.k === "golpe" && e.a >= 100 && e.b > 0,
       ).length;

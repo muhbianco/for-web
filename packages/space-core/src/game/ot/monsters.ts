@@ -25,6 +25,11 @@ export interface MonsterDef {
   id: string;
   name: string;
   boss?: boolean;
+  /**
+   * Level do monstro [nosso, 24/11/2026]: o HIT dele contra a esquiva do herói é `2 × level`
+   * (no Ragnarok, level + DES; aqui a DES do monstro é o próprio level, attributes.ts).
+   */
+  level: number;
   health: number;
   experience: number;
   armor: number;
@@ -74,6 +79,7 @@ const LIST: readonly MonsterDef[] = [
   // ---- Cripta do Musgo ------------------------------------------------------
   {
     id: "rato-do-musgo",
+    level: 1,
     // [TFS rat.xml]
     targetChange: { intervalMs: 4000, chance: 0 },
     name: "Rato do musgo",
@@ -87,6 +93,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "morcego-da-cripta",
+    level: 2,
     // [TFS bat.xml]
     targetChange: { intervalMs: 4000, chance: 0 },
     name: "Morcego da cripta",
@@ -100,6 +107,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "ossada-inquieta",
+    level: 4,
     // [TFS skeleton.xml]
     targetChange: { intervalMs: 4000, chance: 0 },
     name: "Ossada inquieta",
@@ -131,6 +139,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "matriarca-do-musgo",
+    level: 6,
     // [TFS o mais comum dos monstros: 2000/5]
     targetChange: { intervalMs: 2000, chance: 5 },
     name: "Matriarca do Musgo",
@@ -176,6 +185,7 @@ const LIST: readonly MonsterDef[] = [
   // ---- Galerias Afogadas ----------------------------------------------------
   {
     id: "caranguejo-de-pedra",
+    level: 10,
     // [TFS crab.xml]
     targetChange: { intervalMs: 4000, chance: 0 },
     name: "Caranguejo de pedra",
@@ -193,6 +203,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "troll-do-lodo",
+    level: 9,
     // [TFS troll.xml]
     targetChange: { intervalMs: 4000, chance: 0 },
     name: "Troll do lodo",
@@ -211,6 +222,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "serpente-da-comporta",
+    level: 13,
     // [TFS bog_raider.xml, hydra.xml]
     targetChange: { intervalMs: 4000, chance: 10 },
     name: "Serpente da comporta",
@@ -243,6 +255,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "rei-das-comportas",
+    level: 16,
     // [TFS hydra.xml]
     targetChange: { intervalMs: 4000, chance: 10 },
     name: "Rei das Comportas",
@@ -288,6 +301,7 @@ const LIST: readonly MonsterDef[] = [
   // ---- Forja Rachada --------------------------------------------------------
   {
     id: "automato-de-ferro",
+    level: 24,
     // [TFS cyclops.xml]
     targetChange: { intervalMs: 4000, chance: 10 },
     name: "Autômato de ferro",
@@ -306,6 +320,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "brasa-viva",
+    level: 23,
     // [TFS dragon.xml]
     targetChange: { intervalMs: 4000, chance: 10 },
     name: "Brasa viva",
@@ -335,6 +350,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "martelador",
+    level: 27,
     // [TFS faixa 5000/8]
     targetChange: { intervalMs: 5000, chance: 8 },
     name: "Martelador",
@@ -354,6 +370,7 @@ const LIST: readonly MonsterDef[] = [
   },
   {
     id: "guardiao-da-forja",
+    level: 32,
     // [TFS demon.xml]
     targetChange: { intervalMs: 4000, chance: 20 },
     name: "Guardião da Forja",

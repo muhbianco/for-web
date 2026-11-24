@@ -1,6 +1,12 @@
 import {
   type Inventory,
+  type JobTier,
   type MagicState,
+  type PointTraining,
+  type StatId,
+  type Stats,
+  type Tree,
+  type DummyKind,
   type Rates,
   type RpgHeroView,
   type RunHero,
@@ -19,10 +25,27 @@ import {
   addMoney,
   addManaSpent,
   addSkillTries,
+  addPointTries,
+  addStats,
   autoEquip,
   bankAfter,
-  cannotPromote,
   bankNow,
+  cannotEvolve,
+  cannotLearn,
+  derive,
+  dummyTrains,
+  EVOLUTION,
+  freshStats,
+  jobTier,
+  reqPointTries,
+  resetCost,
+  statPointsFree,
+  statPointsSpent,
+  treePointsSpent,
+  validStats,
+  validTree,
+  withInt,
+  withVit,
   changeCoins,
   cloneInventory,
   coinValue,
@@ -42,7 +65,6 @@ import {
   newStack,
   packSize,
   payCoins,
-  PROMOTION,
   regenStamina,
   reqMana,
   reqSkillTries,
@@ -63,9 +85,11 @@ import {
 /**
  * O herói do jogo idle (docs/espaco/jogo/ot) no servidor: um por conta, criado no primeiro
  * uso, em `rpg_heroes`. Versão 2 (etapa O7): o inventário do OT no lugar da bolsa de moedas e
- * da lista de itens da etapa O5.
+ * da lista de itens da etapa O5. Versão 3 (24/11/2026): atributos do Ragnarok, árvore de
+ * habilidades, pontos do treino de habilidade, 3ª classe e redistribuições no Mestre. O herói
+ * das versões 1 e 2 vira 3 na leitura (normalizeHero), com os pontos do level todos livres.
  */
-export const RPG_VERSION = 2;
+export const RPG_VERSION = 3;
 
 /** O treino aberto: a sessão das regras mais onde ele acontece. */
 export interface RpgTraining extends TrainingSession {
@@ -116,6 +140,12 @@ export interface RpgHeroDoc {
   /** Etapa O9: quando beber poção e o que não pegar do loot. */
   supplies: RunSupplies;
   loot_skip: string[];
+  /** Versão 3: atributos, árvore, treino de habilidade, 3ª classe e redistribuições. */
+  stats: Stats;
+  tree: Tree;
+  points: PointTraining;
+  third: boolean;
+  resets: { stats: number; tree: number };
 }
 
 /** Quantos itens o filtro de loot guarda. */
@@ -169,7 +199,27 @@ export function newRpgHero(userId: string, now: number): RpgHeroDoc {
     inbox: [],
     supplies: structuredClone(DEFAULT_SUPPLIES),
     loot_skip: [],
+    stats: freshStats(),
+    tree: {},
+    points: { points: 0, tries: 0 },
+    third: false,
+    resets: { stats: 0, tree: 0 },
   };
+}
+
+/** A classe do herói: 1, 2 (promovido) ou 3. */
+export function heroTier(d: RpgHeroDoc): JobTier {
+  return jobTier(d.vocation, d.third);
+}
+
+/** Capacidade com a FOR (attributes.ts capBonus). */
+export function capOf(d: RpgHeroDoc): number {
+  return d.cap + derive(d.stats, d.level).capBonus;
+}
+
+/** Pontos de habilidade que sobram (ganhos no treino menos os postos na árvore). */
+export function freeSkillPoints(d: RpgHeroDoc): number {
+  return d.points.points - treePointsSpent(d.tree);
 }
 
 function skillLevels(d: { skills: Record<SkillId, SkillState> }) {
@@ -243,6 +293,30 @@ export function normalizeHero(d: RpgHeroDoc): RpgHeroDoc {
   if (!Array.isArray(x.inbox)) x.inbox = [];
   if (!validSupplies(x.supplies)) x.supplies = structuredClone(DEFAULT_SUPPLIES);
   if (!Array.isArray(x.loot_skip)) x.loot_skip = [];
+  // Versão 3: o herói de antes começa com os atributos em 1 e os pontos do level livres.
+  if (!validStats(x.stats, x.level)) x.stats = freshStats();
+  if (typeof x.third !== "boolean" || x.vocation === 0) x.third = false;
+  if (
+    typeof x.points !== "object" ||
+    x.points === null ||
+    !Number.isInteger(x.points.points) ||
+    !Number.isInteger(x.points.tries) ||
+    x.points.points < 0 ||
+    x.points.tries < 0
+  )
+    x.points = { points: 0, tries: 0 };
+  if (
+    !validTree(x.tree, VOCATIONS[x.vocation].base, jobTier(x.vocation, x.third)) ||
+    treePointsSpent(x.tree) > x.points.points
+  )
+    x.tree = {};
+  if (
+    typeof x.resets !== "object" ||
+    x.resets === null ||
+    !Number.isInteger(x.resets.stats) ||
+    !Number.isInteger(x.resets.tree)
+  )
+    x.resets = { stats: 0, tree: 0 };
   delete x.gold;
   delete x.bag;
   x.v = RPG_VERSION;
@@ -313,16 +387,18 @@ export function heroRunSnapshot(
     name,
     vocation: d.vocation,
     level: d.level,
-    healthMax: d.health_max,
-    manaMax: d.mana_max,
+    healthMax: withVit(d.health_max, d.stats),
+    manaMax: withInt(d.mana_max, d.stats),
     skills: skillLevels(d),
     magicLevel: d.magic.level,
     stamina: staminaNow(d, now),
     gear: gearOf(inv),
     inv,
-    cap: d.cap,
+    cap: capOf(d),
     supplies: structuredClone(d.supplies),
     lootSkip: [...d.loot_skip],
+    stats: { ...d.stats },
+    tree: { ...d.tree },
   };
 }
 
@@ -399,8 +475,8 @@ export function settleRun(
       compactPack(d.inv);
     } else settled.invMismatch = true;
   } else if (reward) {
-    for (const l of reward.loot) addItem(d.inv, d.cap, l.item, l.count);
-    addGold(d.inv, d.cap, reward.gold);
+    for (const l of reward.loot) addItem(d.inv, capOf(d), l.item, l.count);
+    addGold(d.inv, capOf(d), reward.gold);
   }
   if (reward) {
     const lv = addExperience(
@@ -518,7 +594,7 @@ export function changeHeroCoins(
 ): RpgOutcome {
   const g = invGuard(d, now) ?? samePack(d, index, item);
   if (g) return g;
-  return changeCoins(d.inv, d.cap, index);
+  return changeCoins(d.inv, capOf(d), index);
 }
 
 export function discardHeroItem(
@@ -542,11 +618,11 @@ export function discardHeroItem(
 function payTotal(d: RpgHeroDoc, inv: Inventory, amount: number): boolean {
   const carried = coinValue(inv);
   if (amount <= carried) {
-    d.bank_gold += payCoins(inv, d.cap, amount)!;
+    d.bank_gold += payCoins(inv, capOf(d), amount)!;
     return true;
   }
   if (amount > carried + d.bank_gold) return false;
-  payCoins(inv, d.cap, carried);
+  payCoins(inv, capOf(d), carried);
   d.bank_gold -= amount - carried;
   return true;
 }
@@ -563,7 +639,7 @@ export function buyFromMerchant(
   const offer = merchantOffer(item);
   if (!offer) return { ok: false, reason: "not_sold" };
   const trial = cloneInventory(d.inv);
-  if (addItem(trial, d.cap, item, count) !== count)
+  if (addItem(trial, capOf(d), item, count) !== count)
     return { ok: false, reason: "no_room" };
   const bank = d.bank_gold;
   if (!payTotal(d, trial, offer.price * count)) {
@@ -590,7 +666,7 @@ export function sellToMerchant(
   if (count > x.count) return { ok: false, reason: "not_enough" };
   x.count -= count;
   if (x.count <= 0) d.inv.pack.splice(index, 1);
-  d.bank_gold += addMoney(d.inv, d.cap, price * count);
+  d.bank_gold += addMoney(d.inv, capOf(d), price * count);
   return { ok: true };
 }
 
@@ -604,7 +680,7 @@ export function bankDeposit(
   if (g) return g;
   const value = amount === 0 ? coinValue(d.inv) : amount;
   if (value <= 0) return { ok: false, reason: "no_money" };
-  const change = payCoins(d.inv, d.cap, value);
+  const change = payCoins(d.inv, capOf(d), value);
   if (change === null) return { ok: false, reason: "no_money" };
   d.bank_gold += value + change;
   return { ok: true };
@@ -621,7 +697,7 @@ export function bankWithdraw(
   if (amount <= 0 || amount > d.bank_gold)
     return { ok: false, reason: "no_money" };
   const trial = cloneInventory(d.inv);
-  if (addMoney(trial, d.cap, amount) > 0) return { ok: false, reason: "no_room" };
+  if (addMoney(trial, capOf(d), amount) > 0) return { ok: false, reason: "no_room" };
   d.inv = trial;
   d.bank_gold -= amount;
   return { ok: true };
@@ -669,20 +745,82 @@ export function transferSettled(
   return { ok: true };
 }
 
-/** Promoção [TFS promotion.lua: level 20, 20.000 de ouro, das moedas e do banco]. */
+/** Paga do que carrega e do banco, sem mexer em nada se não tem (o Mestre cobra assim). */
+function charge(d: RpgHeroDoc, amount: number): boolean {
+  if (amount <= 0) return true;
+  const trial = cloneInventory(d.inv);
+  const bank = d.bank_gold;
+  if (!payTotal(d, trial, amount)) {
+    d.bank_gold = bank;
+    return false;
+  }
+  d.inv = trial;
+  return true;
+}
+
+/**
+ * Evolução de classe no Mestre (24/11/2026; a 2ª é a promoção [TFS promotion.lua: level 20 e
+ * 20.000 de ouro, das moedas e do banco], agora com pontos na árvore; a 3ª é nova):
+ * abilities.ts EVOLUTION.
+ */
 export function promoteHero(d: RpgHeroDoc, now: number): RpgOutcome {
   const g = invGuard(d, now);
   if (g) return g;
-  const why = cannotPromote(d.vocation, d.level);
+  const tier = heroTier(d);
+  const why = cannotEvolve(d.vocation, tier, d.level, treePointsSpent(d.tree));
   if (why) return { ok: false, reason: why };
-  const trial = cloneInventory(d.inv);
-  const bank = d.bank_gold;
-  if (!payTotal(d, trial, PROMOTION.cost)) {
-    d.bank_gold = bank;
+  const next = (tier + 1) as 2 | 3;
+  if (!charge(d, EVOLUTION[next].cost)) return { ok: false, reason: "no_money" };
+  if (next === 2) d.vocation = VOCATIONS[d.vocation].promotion!;
+  else d.third = true;
+  return { ok: true };
+}
+
+/** Põe pontos de atributo (attributes.ts addStats). */
+export function allocateStats(
+  d: RpgHeroDoc,
+  add: Partial<Record<StatId, number>>,
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const r = addStats(d.stats, add, d.level);
+  if (!r.ok) return r;
+  d.stats = r.stats;
+  return { ok: true };
+}
+
+/** Um ponto de habilidade num adereço (abilities.ts cannotLearn). */
+export function learnNode(d: RpgHeroDoc, node: string, now: number): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  const why = cannotLearn(
+    d.tree,
+    node,
+    VOCATIONS[d.vocation].base,
+    heroTier(d),
+    freeSkillPoints(d),
+  );
+  if (why) return { ok: false, reason: why };
+  d.tree = { ...d.tree, [node]: (d.tree[node] ?? 0) + 1 };
+  return { ok: true };
+}
+
+/** Redistribui no Mestre: atributos ou árvore voltam a ser pontos livres (abilities.ts resetCost). */
+export function resetHero(
+  d: RpgHeroDoc,
+  what: "stats" | "tree",
+  now: number,
+): RpgOutcome {
+  const g = invGuard(d, now);
+  if (g) return g;
+  if (what === "stats" ? statPointsSpent(d.stats) === 0 : treePointsSpent(d.tree) === 0)
+    return { ok: false, reason: "nothing_to_reset" };
+  if (!charge(d, resetCost(d.level, d.resets[what])))
     return { ok: false, reason: "no_money" };
-  }
-  d.inv = trial;
-  d.vocation = VOCATIONS[d.vocation].promotion!;
+  if (what === "stats") d.stats = freshStats();
+  else d.tree = {};
+  d.resets = { ...d.resets, [what]: d.resets[what] + 1 };
   return { ok: true };
 }
 
@@ -733,6 +871,10 @@ export function creditTraining(
   const { gain, creditedSeconds } = settleSession(voc, t, now, rates);
   if (creditedSeconds === t.creditedSeconds) return false;
   t.creditedSeconds = creditedSeconds;
+  if (t.skill === "habilidade") {
+    d.points = addPointTries(d.points, gain.main);
+    return true;
+  }
   if (t.skill === "magia") d.magic = addManaSpent(voc, d.magic, gain.main);
   else
     d.skills[t.skill] = addSkillTries(
@@ -770,8 +912,10 @@ export function startTraining(
   skill: TrainingSkill,
   now: number,
   rates: Rates,
+  dummy: DummyKind = "vocacao",
 ): RpgOutcome {
   if (d.vocation === 0) return { ok: false, reason: "no_vocation" };
+  if (!dummyTrains(dummy, skill)) return { ok: false, reason: "wrong_dummy" };
   if (inRun(d, now)) return { ok: false, reason: "in_run" };
   const t = d.training;
   if (
@@ -817,9 +961,21 @@ export function rpgHeroView(
     vocation: d.vocation,
     level: d.level,
     experience: d.experience,
-    health_max: d.health_max,
-    mana_max: d.mana_max,
-    cap: d.cap,
+    health_max: withVit(d.health_max, d.stats),
+    mana_max: withInt(d.mana_max, d.stats),
+    cap: capOf(d),
+    base: { health: d.health_max, mana: d.mana_max, cap: d.cap },
+    stats: { ...d.stats },
+    stat_points: statPointsFree(d.stats, d.level),
+    tree: { ...d.tree },
+    skill_points: {
+      earned: d.points.points,
+      free: freeSkillPoints(d),
+      tries: d.points.tries,
+      next: reqPointTries(d.points.points + 1),
+    },
+    job: heroTier(d),
+    resets: { ...d.resets },
     skills,
     magic: {
       level: d.magic.level,

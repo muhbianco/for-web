@@ -6,20 +6,70 @@ import { type Rates, type Vocation, topVocation } from "./data.ts";
  * src/player.h:152-155]. O tempo no dummy vale como o tempo treinado lá.
  */
 
-/** O que se treina no dummy: as escolhas da janela do TFS (game.cpp:54-58). */
+/**
+ * O que se treina no dummy: as escolhas da janela do TFS (game.cpp:54-58), no dummy de vocação;
+ * e `habilidade`, no dummy de habilidade (24/11/2026, pedido do dono: é esse treino que dá os
+ * pontos da árvore, não o level).
+ */
 export type TrainingSkill =
   | "espada"
   | "machado"
   | "maca"
   | "distancia"
-  | "magia";
+  | "magia"
+  | "habilidade";
 export const TRAINING_SKILLS: readonly TrainingSkill[] = [
   "espada",
   "machado",
   "maca",
   "distancia",
   "magia",
+  "habilidade",
 ];
+
+/** Os dois dummies: o de vocação (as armas e a magia) e o de habilidade. */
+export type DummyKind = "vocacao" | "habilidade";
+
+/** O dummy aceita este treino? */
+export function dummyTrains(kind: DummyKind, skill: TrainingSkill): boolean {
+  return kind === "habilidade" ? skill === "habilidade" : skill !== "habilidade";
+}
+
+/**
+ * Pontos de habilidade [nosso, no molde das skills do TFS, vocation.cpp:141-148]: o ponto `n`
+ * pede `50 × 1,1^(n − 1)` tentativas, e o dummy de habilidade rende como o treino de uma arma
+ * corpo a corpo (uma tentativa a cada dois ataques, × a taxa de skill). Com a taxa 2: o 1º ponto
+ * em 100 s, 24 em ~2,5 h, 40 em ~12 h, 50 em ~32 h e 60 em ~84 h de treino (a árvore de uma
+ * classe tem de 65 a 68 pontos).
+ */
+export const SKILL_POINT = { base: 50, multiplier: 1.1 } as const;
+
+/** O treino de habilidade: pontos ganhos e tentativas para o próximo. */
+export interface PointTraining {
+  points: number;
+  tries: number;
+}
+
+export function reqPointTries(n: number): number {
+  return Math.floor(SKILL_POINT.base * Math.pow(SKILL_POINT.multiplier, n - 1));
+}
+
+/** [nosso] Teto dos pontos ganhos (a árvore inteira de uma classe pede bem menos). */
+export const MAX_SKILL_POINTS = 200;
+
+export function addPointTries(p: PointTraining, count: number): PointTraining {
+  let { points, tries } = p;
+  if (count <= 0 || points >= MAX_SKILL_POINTS) return p;
+  let next = reqPointTries(points + 1);
+  while (tries + count >= next) {
+    count -= next - tries;
+    points++;
+    tries = 0;
+    if (points >= MAX_SKILL_POINTS) return { points, tries: 0 };
+    next = reqPointTries(points + 1);
+  }
+  return { points, tries: tries + count };
+}
 
 export const TRAINING = {
   /** Saldo máximo de treino: 12 h [TFS player.h:154]. */
@@ -37,7 +87,7 @@ export const TRAINING = {
 export interface TrainingGain {
   /** Tentativas da skill treinada, ou mana gasta no caso de "magia". */
   main: number;
-  /** Tentativas de escudo, sempre junto [TFS offline_training.lua:71-73]. */
+  /** Tentativas de escudo, sempre junto [TFS offline_training.lua:71-73]; no treino de habilidade, nada. */
   escudo: number;
 }
 
@@ -68,7 +118,8 @@ export function trainingGain(
       Math.floor(seconds / modifier / (skill === "distancia" ? 4 : 2)) *
       rates.skill;
   }
-  const escudo = main > 0 ? Math.floor(seconds / 4) * rates.skill : 0;
+  const escudo =
+    main > 0 && skill !== "habilidade" ? Math.floor(seconds / 4) * rates.skill : 0;
   return { main, escudo };
 }
 

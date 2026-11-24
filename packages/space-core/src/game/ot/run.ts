@@ -7,12 +7,10 @@ import {
   ammoHitChance,
   blockHit,
   defenseFactor,
-  distanceDamage,
   distanceHits,
   distanceSkillPoint,
   freshBlood,
   maxWeaponDamage,
-  meleeDamage,
   meleeSkillPoint,
   normalRandom,
   onOwnBlock,
@@ -56,11 +54,20 @@ import { type MonsterAttack, type MonsterDef, monsterDef } from "./monsters.ts";
 import { canShare, sharedExperience } from "./party.ts";
 import { lowLevelBonus } from "./progression.ts";
 import {
-  type SpellDef,
-  CHALLENGE_FOCUS_MS,
-  spellRange,
-  spellsFor,
-} from "./spells.ts";
+  type AbilityNow,
+  type Tree,
+  MIN_COOLDOWN_MS,
+  abilitiesOf,
+  abilityNow,
+} from "./abilities.ts";
+import {
+  type Derived,
+  type Stats,
+  derive,
+  freshStats,
+  monsterHitChance,
+} from "./attributes.ts";
+import { spellRange } from "./spells.ts";
 import { STAMINA, staminaMultiplier } from "./stamina.ts";
 
 /**
@@ -80,6 +87,9 @@ import { STAMINA, staminaMultiplier } from "./stamina.ts";
  *   corpo, como no OT); quando a munição do lugar acaba, o herói repõe da mochila; a pilha de
  *   100 moedas vira a moeda de cima (inventory.ts changeFullStacks); o tempo do anel só corre
  *   aqui dentro.
+ * - 24/11/2026: os atributos do Ragnarok (attributes.ts) entram no dano, no crítico, na
+ *   esquiva, na velocidade de ataque, na regeneração e na defesa; as 4 habilidades da classe,
+ *   com os adereços da árvore (abilities.ts), tomam o lugar das magias por level.
  */
 
 export const RUN = {
@@ -93,7 +103,9 @@ export const RUN = {
   healBelow: 0.5,
   healOtherBelow: 0.4,
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 6,
+  engine: 7,
+  /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
+  minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
   stallMs: 60_000,
 } as const;
@@ -308,6 +320,9 @@ export interface RunHero {
   supplies?: RunSupplies;
   /** Etapa O9: itens que o herói não pega (ficam no corpo). */
   lootSkip?: readonly string[];
+  /** 24/11/2026: os atributos (sem eles, todos em 1) e a árvore de habilidades. */
+  stats?: Stats;
+  tree?: Tree;
 }
 
 /** Beber poção abaixo de `below`% (0: nunca); `item` null: a que mais cura entre as que tem. */
@@ -333,8 +348,11 @@ export type RunOutcome = "vitoria" | "derrota" | "retirada";
 export const MONSTER_BASE = 100;
 
 export type RunEvent =
-  /** Golpe de arma: `bl` diz como foi segurado; "erro" é a flecha que não acertou. */
-  | { k: "golpe"; a: number; b: number; v: number; bl: BlockType | "erro" }
+  /**
+   * Golpe de arma: `bl` diz como foi segurado; "erro" é a flecha que não acertou ou o golpe
+   * que o herói esquivou; `c`, crítico.
+   */
+  | { k: "golpe"; a: number; b: number; v: number; bl: BlockType | "erro"; c?: true }
   /** Magia de herói (ataque ou cura) ou de monstro; `v` é o dano ou a cura que entrou. */
   | { k: "magia"; a: number; b: number; v: number; s: string; cura?: true }
   | { k: "abate"; b: number; exp: number }
@@ -419,15 +437,22 @@ interface HeroRt {
   armor: number;
   nextAttack: number;
   blood: BloodState;
-  heals: SpellDef[];
-  healOthers: SpellDef[];
-  attacks: SpellDef[];
+  /** As 4 habilidades com os adereços, por tipo. */
+  heals: AbilityNow[];
+  healOthers: AbilityNow[];
+  attacks: AbilityNow[];
+  areas: AbilityNow[];
+  supports: AbilityNow[];
   cooldown: Map<string, number>;
+  /** Os grupos de recarga [TFS spell:groupCooldown]: cura, suporte e ataque. */
   healGroup: number;
-  /** Etapa do desafio: o grupo de suporte [TFS spell:groupCooldown]. */
   supportGroup: number;
-  supports: SpellDef[];
   attackGroup: number;
+  /** O que os atributos dão (attributes.ts). */
+  d: Derived;
+  /** Até quando o desafio protege o cavaleiro, e quanto (adereço Muralha). */
+  guardUntil: number;
+  guardPct: number;
   /** A munição do último tiro (a reposição procura a mesma primeiro). */
   lastAmmo: string | null;
   /** Quando pode beber de novo (ms). */
@@ -555,9 +580,10 @@ export function simulateRun(input: RunInput): RunResult {
   const heroes: HeroRt[] = input.heroes.map((h, i) => {
     const voc = VOCATIONS[h.vocation];
     const inv = cloneInventory(h.inv);
-    // A vocação promovida tem id diferente da base (Campeão 8, base 4).
-    const known = spellsFor(voc.base, h.level, voc.id !== voc.base);
-    const byLevel = (a: SpellDef, b: SpellDef) => b.level - a.level;
+    // As 4 habilidades da classe (a promovida tem a mesma base), com os adereços.
+    const tree = h.tree ?? {};
+    const known = abilitiesOf(voc.base).map((a) => abilityNow(a, tree));
+    const of = (k: string) => known.filter((a) => a.def.kind === k);
     const rt: HeroRt = {
       i,
       h,
@@ -575,14 +601,18 @@ export function simulateRun(input: RunInput): RunResult {
       armor: 0,
       nextAttack: 0,
       blood: freshBlood(),
-      heals: known.filter((s) => s.kind === "cura").sort(byLevel),
-      healOthers: known.filter((s) => s.kind === "cura-outro").sort(byLevel),
-      attacks: known.filter((s) => s.kind === "ataque").sort(byLevel),
+      heals: of("cura"),
+      healOthers: of("cura-outro"),
+      attacks: of("ataque"),
+      areas: of("area"),
+      supports: of("desafio"),
       cooldown: new Map(),
       healGroup: 0,
       supportGroup: 0,
-      supports: known.filter((s) => s.kind === "desafio"),
       attackGroup: 0,
+      d: derive(h.stats ?? freshStats(), h.level),
+      guardUntil: 0,
+      guardPct: 0,
       lastAmmo: inv.equip.municao?.item ?? null,
       noAmmo: false,
       potionAt: 0,
@@ -677,6 +707,8 @@ export function simulateRun(input: RunInput): RunResult {
     });
     ev.push({ k: "sala", st });
     lastHitMs = tMs;
+    // O ataque que venceu na pausa entre as salas não acumula: sai um golpe ao entrar.
+    for (const h of heroes) h.nextAttack = Math.max(h.nextAttack, tMs);
   }
 
   /** Dano no monstro; mata e paga quando zera. */
@@ -858,6 +890,36 @@ export function simulateRun(input: RunInput): RunResult {
     return itemDef(id) ?? null;
   }
 
+  /** Uniforme em [0, 1] em milésimos, do mesmo gerador da corrida. */
+  function unitRoll(): number {
+    return uniformRandom(rng, 0, 1000) / 1000;
+  }
+
+  /**
+   * Crítico [RO battle.cpp is_attack_critical, pré-renovação]: chance da SOR (attributes.ts);
+   * o golpe sai no máximo e passa direto pela defesa e pela armadura.
+   */
+  function critical(h: HeroRt): boolean {
+    return uniformRandom(rng, 1, 1000) <= Math.round(h.d.crit * 10);
+  }
+
+  /**
+   * O dano cru de um golpe de arma [TFS weapons.cpp] com os atributos por cima: a DES sobe o
+   * mínimo do sorteio, o ataque base (FOR ou DES) multiplica, e o crítico sai no máximo.
+   */
+  function weaponRoll(
+    h: HeroRt,
+    max: number,
+    min: number,
+    ranged: boolean,
+    crit: boolean,
+  ): number {
+    const floor = Math.max(min, Math.floor(max * h.d.minRoll));
+    const raw = crit ? max : normalRandom(rng, Math.min(floor, max), max);
+    const pct = ranged ? h.d.rangedPct : h.d.meleePct;
+    return Math.floor(raw * (1 + pct / 100));
+  }
+
   function heroWeaponAttack(h: HeroRt, m: MonsterRt) {
     const w = h.weapon;
     const striker = {
@@ -869,9 +931,13 @@ export function simulateRun(input: RunInput): RunResult {
     };
     if (w?.kind === "varinha" && w.wand) {
       // Varinha [TFS weapons.cpp:948-954]: dano normal na faixa, elemental, sem bloqueio, sem skill.
+      // [nosso] A INT soma como numa magia (MATQ).
       if (h.mana < w.wand.mana) return;
       spendMana(h, w.wand.mana);
-      const raw = normalRandom(rng, w.wand.min, w.wand.max);
+      const pct = h.d.magicPct[0] + (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
+      const raw = Math.floor(
+        normalRandom(rng, w.wand.min, w.wand.max) * (1 + pct / 100),
+      );
       const r = monsterElement(m.def, w.wand.element, raw, "none");
       ev.push({
         k: "golpe",
@@ -908,65 +974,94 @@ export function simulateRun(input: RunInput): RunResult {
         }
       }
       if (!fists) {
-      striker.attack = (ammo?.attack ?? 0) + (w.attack ?? 0);
-      // Acerta pela chance da munição mais a do arco [TFS weapons.cpp:673-776]; passa só pela armadura.
-      const chance = ammoHitChance(
-        h.sk.distancia,
-        RUN.archerDistance,
-        ammo?.maxHitChance ?? w.maxHitChance ?? 75,
-        ammo ? (w.hitChance ?? 0) : 0,
-      );
-      if (!distanceHits(rng, chance)) {
+        striker.attack = (ammo?.attack ?? 0) + (w.attack ?? 0);
+        // Acerta pela chance da munição mais a do arco [TFS weapons.cpp:673-776], mais a
+        // pontaria da DES [nosso]; passa só pela armadura (o crítico passa direto).
+        const chance = Math.min(
+          100,
+          ammoHitChance(
+            h.sk.distancia,
+            RUN.archerDistance,
+            ammo?.maxHitChance ?? w.maxHitChance ?? 75,
+            ammo ? (w.hitChance ?? 0) : 0,
+          ) + h.d.hitBonus,
+        );
+        if (!distanceHits(rng, chance)) {
+          ev.push({
+            k: "golpe",
+            a: h.i,
+            b: MONSTER_BASE + m.i,
+            v: 0,
+            bl: "erro",
+          });
+          addTries(h, "distancia", distanceSkillPoint(h.blood));
+          return;
+        }
+        // [TFS weapons.cpp:827-836] mínimo `ceil(level × 0,2)` contra monstro.
+        const max = Math.trunc(
+          maxWeaponDamage(
+            striker.level,
+            striker.skill,
+            striker.attack,
+            ATTACK_FACTOR[striker.mode],
+          ) * h.voc.distDamage,
+        );
+        const crit = critical(h);
+        const raw = weaponRoll(h, max, Math.ceil(striker.level * 0.2), true, crit);
+        const b = crit
+          ? { damage: raw, type: "none" as BlockType, blocks: m.blocks }
+          : blockHit(rng, {
+              damage: raw,
+              defense: m.def.defense,
+              armor: m.def.armor,
+              checkDefense: false,
+              checkArmor: true,
+              blocks: m.blocks,
+            });
+        m.blocks = b.blocks;
+        const r = monsterElement(m.def, "fisico", b.damage, b.type);
+        h.blood = onTargetBlock(h.blood, r.type);
+        addTries(h, "distancia", distanceSkillPoint(h.blood));
         ev.push({
           k: "golpe",
           a: h.i,
           b: MONSTER_BASE + m.i,
-          v: 0,
-          bl: "erro",
+          v: r.damage,
+          bl: r.type,
+          ...(crit ? { c: true as const } : {}),
         });
-        addTries(h, "distancia", distanceSkillPoint(h.blood));
+        hurtMonster(h, m, r.damage);
         return;
-      }
-      const raw = distanceDamage(rng, striker);
-      const b = blockHit(rng, {
-        damage: raw,
-        defense: m.def.defense,
-        armor: m.def.armor,
-        checkDefense: false,
-        checkArmor: true,
-        blocks: m.blocks,
-      });
-      m.blocks = b.blocks;
-      const r = monsterElement(m.def, "fisico", b.damage, b.type);
-      h.blood = onTargetBlock(h.blood, r.type);
-      addTries(h, "distancia", distanceSkillPoint(h.blood));
-      ev.push({
-        k: "golpe",
-        a: h.i,
-        b: MONSTER_BASE + m.i,
-        v: r.damage,
-        bl: r.type,
-      });
-      hurtMonster(h, m, r.damage);
-      return;
       }
       striker.skill = h.sk.punhos;
       striker.attack = 7;
     }
-    // Corpo a corpo [TFS weapons.cpp:613-628, 568-574]: defesa e armadura do alvo.
+    // Corpo a corpo [TFS weapons.cpp:613-628, 568-574]: defesa e armadura do alvo (o crítico
+    // passa direto).
     const skill: SkillId =
       w && (w.kind === "espada" || w.kind === "machado" || w.kind === "maca")
         ? w.kind
         : "punhos";
-    const raw = meleeDamage(rng, striker);
-    const b = blockHit(rng, {
-      damage: raw,
-      defense: m.def.defense,
-      armor: m.def.armor,
-      checkDefense: true,
-      checkArmor: true,
-      blocks: m.blocks,
-    });
+    const max = Math.trunc(
+      maxWeaponDamage(
+        striker.level,
+        striker.skill,
+        striker.attack,
+        ATTACK_FACTOR[striker.mode],
+      ) * h.voc.meleeDamage,
+    );
+    const crit = critical(h);
+    const raw = weaponRoll(h, max, 0, false, crit);
+    const b = crit
+      ? { damage: raw, type: "none" as BlockType, blocks: m.blocks }
+      : blockHit(rng, {
+          damage: raw,
+          defense: m.def.defense,
+          armor: m.def.armor,
+          checkDefense: true,
+          checkArmor: true,
+          blocks: m.blocks,
+        });
     m.blocks = b.blocks;
     const r = monsterElement(m.def, "fisico", b.damage, b.type);
     h.blood = onTargetBlock(h.blood, r.type);
@@ -977,16 +1072,112 @@ export function simulateRun(input: RunInput): RunResult {
       b: MONSTER_BASE + m.i,
       v: r.damage,
       bl: r.type,
+      ...(crit ? { c: true as const } : {}),
     });
     hurtMonster(h, m, r.damage);
   }
 
-  function ready(h: HeroRt, s: SpellDef, tMs: number, reserve: number) {
-    return (h.cooldown.get(s.id) ?? 0) <= tMs && h.mana >= s.mana + reserve;
+  function ready(h: HeroRt, s: AbilityNow, tMs: number, reserve: number) {
+    return (h.cooldown.get(s.def.id) ?? 0) <= tMs && h.mana >= s.mana + reserve;
+  }
+
+  /** Recarga da habilidade, encurtada pela DES [nosso]. */
+  function cool(h: HeroRt, s: AbilityNow, tMs: number) {
+    h.cooldown.set(
+      s.def.id,
+      tMs + Math.max(MIN_COOLDOWN_MS, Math.round(s.cooldownMs * h.d.cooldown)),
+    );
+  }
+
+  type HeroNumbers = Parameters<typeof spellRange>[1];
+
+  /**
+   * O valor de uma habilidade: a faixa da magia do TFS [onGetFormulaValues] × a força dos
+   * adereços × os atributos (golpe de arma pela FOR, de distância pela DES, magia e cura pela
+   * INT, como no Ragnarok).
+   */
+  function abilityValue(h: HeroRt, s: AbilityNow, hero: HeroNumbers): number {
+    const raw = normalRandom(rng, ...spellRange(s, hero));
+    const f = s.formula.type;
+    const pct =
+      f === "arma"
+        ? h.d.meleePct
+        : f === "distancia"
+          ? h.d.rangedPct
+          : h.d.magicPct[0] + (h.d.magicPct[1] - h.d.magicPct[0]) * unitRoll();
+    return Math.max(0, Math.floor(raw * s.power * (1 + pct / 100)));
+  }
+
+  /** O monstro atordoado atrasa os próximos ataques [nosso, no papel do stun do Bash do Ragnarok]. */
+  function stun(m: MonsterRt, ms: number) {
+    for (let a = 0; a < m.next.length; a++) m.next[a]! += ms;
+  }
+
+  /** Uma habilidade de ataque acerta um monstro: armadura, elemento e os adereços de golpe. */
+  function strike(h: HeroRt, m: MonsterRt, s: AbilityNow, hero: HeroNumbers) {
+    if (!m.alive) return;
+    let damage = abilityValue(h, s, hero);
+    let type: BlockType = "none";
+    if (s.blockArmor) {
+      const b = blockHit(rng, {
+        damage,
+        defense: m.def.defense,
+        armor: m.def.armor,
+        checkDefense: false,
+        checkArmor: true,
+        blocks: m.blocks,
+      });
+      m.blocks = b.blocks;
+      damage = b.damage;
+      type = b.type;
+    }
+    const el = s.element === "cura" ? "fisico" : s.element;
+    const r = monsterElement(m.def, el, damage, type);
+    ev.push({
+      k: "magia",
+      a: h.i,
+      b: MONSTER_BASE + m.i,
+      v: r.damage,
+      s: s.def.id,
+    });
+    hurtMonster(h, m, r.damage);
+    if (r.damage <= 0) return;
+    if (s.leech > 0 && h.alive) {
+      const real = Math.min(h.h.healthMax - h.hp, Math.floor(r.damage * s.leech));
+      if (real > 0) {
+        h.hp += real;
+        h.res.healing += real;
+      }
+    }
+    if (s.stun && m.alive && s.stun.chance >= uniformRandom(rng, 1, 100))
+      stun(m, s.stun.ms);
+    if (s.echo > 0 && m.alive) {
+      const again = Math.floor(r.damage * s.echo);
+      ev.push({
+        k: "magia",
+        a: h.i,
+        b: MONSTER_BASE + m.i,
+        v: Math.min(m.hp, again),
+        s: s.def.id,
+      });
+      hurtMonster(h, m, again);
+    }
+  }
+
+  /** Quanto uma habilidade de ataque rende agora (para escolher qual lançar). */
+  function attackScore(
+    s: AbilityNow,
+    hero: HeroNumbers,
+    alive: number,
+  ): number {
+    const [a, b] = spellRange(s, hero);
+    const hits =
+      s.def.kind === "area" ? alive : 1 + Math.min(s.targets, alive - 1);
+    return ((a + b) / 2) * s.power * (1 + s.echo) * hits;
   }
 
   function heroSpells(h: HeroRt, m: MonsterRt | null, tMs: number) {
-    const hero = {
+    const hero: HeroNumbers = {
       level: h.h.level,
       magicLevel: h.h.magicLevel,
       weaponSkill: weaponSkill(h.weapon, h.sk),
@@ -994,13 +1185,14 @@ export function simulateRun(input: RunInput): RunResult {
       distance: h.sk.distancia,
     };
     if (tMs >= h.healGroup) {
-      // Cura num companheiro: o mais ferido abaixo de 40% [nosso].
+      // Cura num companheiro: o mais ferido abaixo do limite (40%, mais os adereços) [nosso].
       let healed = false;
       const other = h.healOthers.find((s) => ready(h, s, tMs, 0));
       if (other) {
+        const below = RUN.healOtherBelow + other.trigger / 100;
         let low: HeroRt | null = null;
         for (const x of living()) {
-          if (x.hp / x.h.healthMax >= RUN.healOtherBelow) continue;
+          if (x.hp / x.h.healthMax >= below) continue;
           if (!low || x.hp / x.h.healthMax < low.hp / low.h.healthMax) low = x;
         }
         if (low) {
@@ -1008,46 +1200,37 @@ export function simulateRun(input: RunInput): RunResult {
           healed = true;
         }
       }
-      if (!healed && h.hp < h.h.healthMax * RUN.healBelow) {
+      if (!healed) {
         const s = h.heals.find((x) => ready(h, x, tMs, 0));
-        if (s) castHeal(h, h, s, hero, tMs);
+        if (s && h.hp < h.h.healthMax * (RUN.healBelow + s.trigger / 100))
+          castHeal(h, h, s, hero, tMs);
       }
     }
     if (m && tMs >= h.supportGroup) challenge(h, tMs);
     if (m && tMs >= h.attackGroup) {
-      // Ataca guardando mana para a cura mais forte que ele tem [nosso].
+      // Ataca guardando mana para a cura dele [nosso]; entre as que estão prontas, a que mais
+      // rende agora (a de área com a sala cheia).
       const reserve = h.heals[0]?.mana ?? 0;
-      const s = h.attacks.find((x) => ready(h, x, tMs, reserve));
+      const alive = monsters.filter((x) => x.alive);
+      let s: AbilityNow | null = null;
+      let best = 0;
+      for (const x of [...h.attacks, ...h.areas]) {
+        if (!ready(h, x, tMs, reserve)) continue;
+        const score = attackScore(x, hero, alive.length);
+        if (score > best) {
+          best = score;
+          s = x;
+        }
+      }
       if (!s) return;
       spendMana(h, s.mana);
-      h.cooldown.set(s.id, tMs + s.cooldownMs);
+      cool(h, s, tMs);
       h.attackGroup = tMs + 2000;
-      const raw = normalRandom(rng, ...spellRange(s, hero));
-      let damage = raw;
-      let type: BlockType = "none";
-      if (s.blockArmor) {
-        const b = blockHit(rng, {
-          damage: raw,
-          defense: m.def.defense,
-          armor: m.def.armor,
-          checkDefense: false,
-          checkArmor: true,
-          blocks: m.blocks,
-        });
-        m.blocks = b.blocks;
-        damage = b.damage;
-        type = b.type;
+      if (s.def.kind === "area") for (const x of alive) strike(h, x, s, hero);
+      else {
+        const others = alive.filter((x) => x !== m).slice(0, s.targets);
+        for (const x of [m, ...others]) strike(h, x, s, hero);
       }
-      const el = s.element === "cura" ? "fisico" : s.element;
-      const r = monsterElement(m.def, el, damage, type);
-      ev.push({
-        k: "magia",
-        a: h.i,
-        b: MONSTER_BASE + m.i,
-        v: r.damage,
-        s: s.id,
-      });
-      hurtMonster(h, m, r.damage);
     }
   }
 
@@ -1055,7 +1238,7 @@ export function simulateRun(input: RunInput): RunResult {
    * O desafio do cavaleiro [TFS challenge.lua, monster.cpp challengeCreature]: quando algum
    * monstro bate em outra pessoa do grupo [nosso: a regra de quando usar], puxa todos os
    * monstros da sala [nosso: sem mapa, o cavaleiro vai até eles; no OT é a área 3×3 em
-   * volta] e os prende nele por 8 s, sem troca de alvo nesse tempo.
+   * volta] e os prende nele por 8 s (mais os adereços), sem troca de alvo nesse tempo.
    */
   function challenge(h: HeroRt, tMs: number) {
     const s = h.supports[0];
@@ -1068,16 +1251,22 @@ export function simulateRun(input: RunInput): RunResult {
     );
     if (!loose) return;
     spendMana(h, s.mana);
-    h.cooldown.set(s.id, tMs + s.cooldownMs);
+    cool(h, s, tMs);
     h.supportGroup = tMs + 2000;
     let n = 0;
     for (const m of monsters) {
       if (!m.alive) continue;
       m.target = h.i;
-      m.tCooldown = CHALLENGE_FOCUS_MS;
-      m.focus = CHALLENGE_FOCUS_MS;
+      m.tCooldown = s.focusMs;
+      m.focus = s.focusMs;
       m.tTicks = 0;
+      if (s.stun && s.stun.chance >= uniformRandom(rng, 1, 100))
+        stun(m, s.stun.ms);
       n++;
+    }
+    if (s.guard > 0) {
+      h.guardUntil = tMs + s.focusMs;
+      h.guardPct = Math.min(60, s.guard);
     }
     ev.push({ k: "desafio", a: h.i, n });
   }
@@ -1113,18 +1302,28 @@ export function simulateRun(input: RunInput): RunResult {
   function castHeal(
     h: HeroRt,
     target: HeroRt,
-    s: SpellDef,
-    hero: Parameters<typeof spellRange>[1],
+    s: AbilityNow,
+    hero: HeroNumbers,
     tMs: number,
   ) {
     spendMana(h, s.mana);
-    h.cooldown.set(s.id, tMs + s.cooldownMs);
+    cool(h, s, tMs);
     h.healGroup = tMs + 1000;
-    const v = normalRandom(rng, ...spellRange(s, hero));
+    const v = abilityValue(h, s, hero);
     const real = Math.min(target.h.healthMax - target.hp, v);
     target.hp += real;
     h.res.healing += real;
-    ev.push({ k: "magia", a: h.i, b: target.i, v: real, s: s.id, cura: true });
+    ev.push({ k: "magia", a: h.i, b: target.i, v: real, s: s.def.id, cura: true });
+    // Adereços de grupo (Abrigo, Cura em massa): o resto do grupo recebe uma parte.
+    if (s.group <= 0) return;
+    for (const x of living()) {
+      if (x === target) continue;
+      const part = Math.min(x.h.healthMax - x.hp, Math.floor(v * s.group));
+      if (part <= 0) continue;
+      x.hp += part;
+      h.res.healing += part;
+      ev.push({ k: "magia", a: h.i, b: x.i, v: part, s: s.def.id, cura: true });
+    }
   }
 
   function pickTarget(m: MonsterRt): HeroRt | null {
@@ -1163,9 +1362,26 @@ export function simulateRun(input: RunInput): RunResult {
   }
 
   function hurtHero(m: MonsterRt, h: HeroRt, at: MonsterAttack) {
-    const raw = normalRandom(rng, at.min, at.max);
     const melee = at.kind === "melee";
     const physical = at.element === "fisico";
+    // Esquiva [RO battle.cpp, pré-renovação]: o golpe normal do monstro pode errar, primeiro
+    // pela esquiva perfeita da SOR, depois pela FLEE contra o HIT dele (attributes.ts). As
+    // magias não se esquivam.
+    if (melee) {
+      const attackers = monsters.filter(
+        (x) => x.alive && x.target === h.i,
+      ).length;
+      const lucky = uniformRandom(rng, 1, 1000) <= Math.round(h.d.perfectDodge * 10);
+      const hits =
+        !lucky &&
+        uniformRandom(rng, 1, 100) <=
+          monsterHitChance(m.def.level, h.d.flee, attackers);
+      if (!hits) {
+        ev.push({ k: "golpe", a: MONSTER_BASE + m.i, b: h.i, v: 0, bl: "erro" });
+        return;
+      }
+    }
+    const raw = normalRandom(rng, at.min, at.max);
     const checkArmor = melee || physical;
     const hadBlock = (melee || checkArmor) && h.blocks > 0;
     const b = blockHit(rng, {
@@ -1183,10 +1399,22 @@ export function simulateRun(input: RunInput): RunResult {
       h.blood = o.state;
       addTries(h, "escudo", o.shieldTries);
     }
-    const dealt =
-      b.type === "none" && b.damage > 0
-        ? absorb(h, at.element, b.damage)
-        : b.damage;
+    // Depois da armadura, a defesa suave [RO]: a da VIT contra o físico, a da INT (e VIT/2)
+    // contra a magia; e a Muralha do desafio.
+    let type = b.type;
+    let dmg = b.damage;
+    if (dmg > 0) {
+      dmg -= physical
+        ? uniformRandom(rng, h.d.vitDef[0], h.d.vitDef[1])
+        : h.d.mdef;
+      if (h.guardUntil > nowMs && h.guardPct > 0)
+        dmg = Math.floor((dmg * (100 - h.guardPct)) / 100);
+      if (dmg <= 0) {
+        dmg = 0;
+        if (type === "none") type = "armor";
+      }
+    }
+    const dealt = type === "none" && dmg > 0 ? absorb(h, at.element, dmg) : dmg;
     const real = Math.min(h.hp, dealt);
     h.hp -= real;
     if (melee)
@@ -1195,7 +1423,7 @@ export function simulateRun(input: RunInput): RunResult {
         a: MONSTER_BASE + m.i,
         b: h.i,
         v: real,
-        bl: b.type,
+        bl: type,
       });
     else
       ev.push({
@@ -1279,10 +1507,11 @@ export function simulateRun(input: RunInput): RunResult {
       for (const m of monsters) m.blocks = Math.min(2, m.blocks + 1);
       for (const h of living()) {
         h.blocks = Math.min(2, h.blocks + 1);
+        // [RO] A VIT e a INT somam à regeneração (+VIT/5 de vida e +INT/6 de mana por tique).
         if (s % h.voc.hpTicks === 0)
-          h.hp = Math.min(h.h.healthMax, h.hp + h.voc.hpAmount);
+          h.hp = Math.min(h.h.healthMax, h.hp + h.voc.hpAmount + h.d.hpRegen);
         if (s % h.voc.manaTicks === 0)
-          h.mana = Math.min(h.h.manaMax, h.mana + h.voc.manaAmount);
+          h.mana = Math.min(h.h.manaMax, h.mana + h.voc.manaAmount + h.d.mpRegen);
         ringTick(h, s);
       }
     }
@@ -1297,11 +1526,20 @@ export function simulateRun(input: RunInput): RunResult {
         const m = focus();
         drink(h, tMs);
         heroSpells(h, m, tMs);
-        const target = focus();
-        if (target && tMs >= h.nextAttack) {
-          h.nextAttack = tMs + h.voc.attackSpeedMs;
+        // Velocidade de ataque com AGI e DES [RO status_base_amotion_pc]: com o intervalo
+        // abaixo de 1 s, mais de um golpe cabe no mesmo segundo.
+        const interval = Math.max(
+          RUN.minAttackMs,
+          Math.round(h.voc.attackSpeedMs * h.d.aspd),
+        );
+        const cap = Math.ceil(1000 / interval);
+        for (let n = 0; n < cap && h.alive && tMs >= h.nextAttack; n++) {
+          const target = focus();
+          if (!target) break;
           heroWeaponAttack(h, target);
+          h.nextAttack += interval;
         }
+        if (tMs >= h.nextAttack) h.nextAttack = tMs + 1;
       }
       for (const m of monsters) {
         if (!m.alive) continue;

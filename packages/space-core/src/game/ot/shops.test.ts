@@ -3,10 +3,8 @@ import test from "node:test";
 
 import { COINS, itemDef, ITEMS } from "./items.ts";
 import {
-  cannotPromote,
   MERCHANT_SELLS,
   merchantBuys,
-  PROMOTION,
   supplyPrice,
 } from "./shops.ts";
 
@@ -48,10 +46,3 @@ test("mercador: preços do TFS onde há; compra pelo valor; moedas não [TFS Tyo
   );
 });
 
-test("promoção: level 20 e 20.000 de ouro, uma vez [TFS promotion.lua]", () => {
-  assert.deepEqual(PROMOTION, { level: 20, cost: 20_000 });
-  assert.equal(cannotPromote(0, 30), "no_vocation");
-  assert.equal(cannotPromote(4, 19), "level");
-  assert.equal(cannotPromote(4, 20), null);
-  assert.equal(cannotPromote(8, 40), "promoted");
-});
