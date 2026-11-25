@@ -371,6 +371,8 @@ export interface FightOptions {
   random?: { next(): number };
   /** Estado de cada herói vindo da sala anterior (corrida de várias salas). */
   carry?: (HeroCarry | undefined)[];
+  /** Grava um quadro por segundo para a tela da corrida (custa um pouco; o simulador não liga). */
+  record?: boolean;
 }
 
 export interface FighterResult {
@@ -390,6 +392,48 @@ export interface FighterResult {
   threat: number[];
   /** Estado no fim, para a próxima sala. */
   carry: HeroCarry;
+}
+
+/** Atores nos eventos da tela: heróis pelo índice (0–3), inimigos por 100 + índice na luta. */
+export const FOE_BASE = 100;
+
+/** Mecânica de chefe anunciada na tela (§12.3). */
+export type MechanicEvent =
+  | "golpe-pesado"
+  | "pulso"
+  | "maldicao"
+  | "invocacao"
+  | "dreno"
+  | "investida"
+  | "fase";
+
+/**
+ * Um evento da luta para a tela da corrida (Fase 8). Dano e cura vêm somados por segundo, por autor,
+ * alvo e origem ("auto" = ataque básico; senão o id da skill ou da mecânica).
+ */
+export type FightEvent =
+  /** Ataque básico (herói ou monstro); `bl`: o herói esquivou ("erro") ou bloqueou. */
+  | { k: "golpe"; a: number; b: number; v: number; bl?: "erro" | "bloqueio" }
+  /** Skill de herói ou mecânica de monstro; `cura` quando curou. */
+  | { k: "magia"; a: number; b: number; v: number; s: string; cura?: true }
+  /** O herói soltou a skill (aparece mesmo quando ela não dá dano nem cura). */
+  | { k: "lanca"; a: number; s: string }
+  /** `xp`: o XP que cada herói levou deste abate (a corrida preenche; sem o bônus de fim). */
+  | { k: "abate"; b: number; xp?: number[] }
+  | { k: "queda"; b: number }
+  | { k: "pocao"; a: number; v: number; mana?: true }
+  | { k: "mecanica"; a: number; s: MechanicEvent; b?: number }
+  /** O Cataclismo como buff do chefe que cresce: `n` marcas (uma por pulso; D24). */
+  | { k: "cataclismo"; a: number; n: number };
+
+/** O estado no fim de um segundo da luta: vida e mana dos heróis, vida de cada inimigo. */
+export interface FightFrame {
+  /** O segundo da luta (1, 2, …). */
+  s: number;
+  h: number[];
+  m: number[];
+  x: number[];
+  e: FightEvent[];
 }
 
 /** Um inimigo abatido: quem estava de pé na hora divide o XP e o ouro (D4). */
@@ -419,5 +463,7 @@ export interface FightResult {
   enemiesLeft: number[];
   /** Os abates, na ordem em que aconteceram. */
   kills: KillEvent[];
+  /** Com `record`: um quadro por segundo. */
+  frames?: FightFrame[];
   heroes: FighterResult[];
 }

@@ -9,11 +9,15 @@ import type {
   EnemyInput,
   FighterInput,
   FightOptions,
+  FightEvent,
+  FightFrame,
   FightResult,
   KillEvent,
+  MechanicEvent,
   SkillDef,
   SkillHook,
 } from "./types.ts";
+import { FOE_BASE } from "./types.ts";
 
 /**
  * O motor de luta da engine nova (spec §5): tiques de 0,1 s, a ordem do golpe, os tipos de dano, a
@@ -236,6 +240,91 @@ export function fight(
   const roomEnemies = enemies.length;
   const kills: KillEvent[] = [];
   const recorded = new Set<number>();
+  // ------------------------------------------------------------ gravador da tela (Fase 8)
+  const rec = opts.record
+    ? {
+        frames: [] as FightFrame[],
+        events: [] as FightEvent[],
+        acc: new Map<
+          string,
+          {
+            a: number;
+            b: number;
+            s: string;
+            v: number;
+            cura: boolean;
+            blocked: boolean;
+          }
+        >(),
+        cataclysm: new Map<number, number>(),
+      }
+    : null;
+  /** De onde vem o dano ou a cura que está saindo agora ("auto" = ataque básico). */
+  let source = "auto";
+  let foeSource = "golpe";
+  const who = (h: Hero) => heroes.indexOf(h);
+  const emit = (ev: FightEvent) => {
+    if (rec) rec.events.push(ev);
+  };
+  const add = (
+    a: number,
+    b: number,
+    s: string,
+    v: number,
+    cura: boolean,
+    blocked = false,
+  ) => {
+    if (!rec || !(v > 0)) return;
+    const key = `${a}|${b}|${s}|${cura ? 1 : 0}`;
+    const x = rec.acc.get(key);
+    if (x) {
+      x.v += v;
+      x.blocked ||= blocked;
+    } else rec.acc.set(key, { a, b, s, v, cura, blocked });
+  };
+  const announce = (e: Enemy, s: MechanicEvent, b?: Hero) =>
+    emit({
+      k: "mecanica",
+      a: FOE_BASE + e.i,
+      s,
+      ...(b ? { b: who(b) } : {}),
+    });
+  const flushFrame = (second: number) => {
+    if (!rec) return;
+    const e: FightEvent[] = [];
+    for (const x of rec.acc.values()) {
+      const v = Math.round(x.v);
+      if (v <= 0) continue;
+      if (!x.cura && (x.s === "auto" || x.s === "golpe"))
+        e.push({
+          k: "golpe",
+          a: x.a,
+          b: x.b,
+          v,
+          ...(x.blocked ? { bl: "bloqueio" as const } : {}),
+        });
+      else
+        e.push({
+          k: "magia",
+          a: x.a,
+          b: x.b,
+          v,
+          s: x.s,
+          ...(x.cura ? { cura: true as const } : {}),
+        });
+    }
+    rec.acc.clear();
+    e.push(...rec.events);
+    rec.events = [];
+    rec.frames.push({
+      s: second,
+      h: heroes.map((h) => Math.max(0, Math.round(h.hp))),
+      m: heroes.map((h) => Math.max(0, Math.round(h.mp))),
+      x: enemies.map((x) => Math.max(0, Math.round(x.hp))),
+      e,
+    });
+  };
+
   const recordKills = () => {
     for (const e of enemies)
       if (!e.alive && !recorded.has(e.i)) {
@@ -248,6 +337,7 @@ export function fight(
           summoned: e.i >= roomEnemies,
           alive: heroes.map((h) => h.alive),
         });
+        emit({ k: "abate", b: FOE_BASE + e.i });
       }
   };
   const partyBuffs = new Map<string, Timed>();
@@ -301,6 +391,7 @@ export function fight(
     h.hp = 0;
     h.casting = null;
     deaths++;
+    emit({ k: "queda", b: who(h) });
     if (!firstDeath)
       firstDeath = {
         seconds: Math.round(t * 10) / 10,
@@ -385,6 +476,13 @@ export function fight(
     for (const b of active(partyBuffs, "dano")) mult *= 1 + b.value;
     for (const b of active(e.debuffs, "danoRecebido")) mult *= 1 + b.value;
     amount *= mult * (1 + B.levelDiffMod(h.ch.level - e.input.level));
+    add(
+      who(h),
+      FOE_BASE + e.i,
+      source,
+      Math.min(amount, Math.max(0, e.hp)),
+      false,
+    );
     e.hp -= amount;
     if (e.hp <= 0) e.alive = false;
     total += amount;
@@ -403,6 +501,8 @@ export function fight(
       sum(active(h.buffs, "curaRecebida"));
     const real = Math.min(amount, maxHp(h) - h.hp);
     h.hp += real;
+    if (source !== "pocao" && (src || source !== "auto"))
+      add(who(src ?? h), who(h), source, real, true);
     if (src) {
       src.healed += real;
       const share =
@@ -462,6 +562,7 @@ export function fight(
     const ch = h.ch;
     const m = e.input.level;
     const magic = o.magic ?? false;
+    let blockedNow = false;
     if (!o.certeiro && !magic) {
       const attackers = enemies.filter((x) => x.alive && x.target === h).length;
       const hitE =
@@ -501,7 +602,11 @@ export function fight(
           )
             h.cds.delete(s.id);
       }
-      if (!expected && dodged) return;
+      if (!expected && dodged) {
+        emit({ k: "golpe", a: FOE_BASE + e.i, b: who(h), v: 0, bl: "erro" });
+        return;
+      }
+      if (blocked) blockedNow = true;
     }
     const red = magic
       ? B.magicReduction(ch.mdef, m)
@@ -530,6 +635,7 @@ export function fight(
         if (h.shield <= 0) breakShield(h, e);
       }
     }
+    add(FOE_BASE + e.i, who(h), foeSource, Math.max(0, d), false, blockedNow);
     h.hp -= d;
     if (h.hp <= 0 && h.alive) {
       if (!h.cheatedDeath && tryCheatDeath(h)) return;
@@ -1232,6 +1338,16 @@ export function fight(
 
   /** Os efeitos da skill (no fim da conjuração, se tiver) e os ganchos que dependem do dano. */
   const resolve = (h: Hero, s: SkillDef, ally: Hero | undefined) => {
+    const prevSource = source;
+    source = s.id;
+    try {
+      resolveSkill(h, s, ally);
+    } finally {
+      source = prevSource;
+    }
+  };
+
+  const resolveSkill = (h: Hero, s: SkillDef, ally: Hero | undefined) => {
     const e = focus();
     const ctx: Ctx = { landed: true };
     for (const eff of s.effects) applyEffect(h, s, eff, e, ally, ctx);
@@ -1273,6 +1389,7 @@ export function fight(
     h.cds.set(s.id, t + cd);
     h.gcd = cfg.skills.gcdMs / 1000;
     h.casts[s.id] = (h.casts[s.id] ?? 0) + 1;
+    emit({ k: "lanca", a: who(h), s: s.id });
     if (s.castMs) h.casting = { skill: s, until: t + s.castMs / 1000, ally };
     else resolve(h, s, ally);
   };
@@ -1336,6 +1453,11 @@ export function fight(
       const c = e.input.cataclysm;
       if (!e.alive || !c || t < c.atSeconds) continue;
       if (Math.trunc(t / DT) % Math.trunc(c.everySeconds / DT) !== 0) continue;
+      if (rec) {
+        const n = (rec.cataclysm.get(e.i) ?? 0) + 1;
+        rec.cataclysm.set(e.i, n);
+        emit({ k: "cataclismo", a: FOE_BASE + e.i, n });
+      }
       for (const q of heroes) {
         if (!q.alive) continue;
         q.hp -= c.pct * maxHp(q);
@@ -1351,7 +1473,10 @@ export function fight(
       if (e.stunnedUntil > t) continue;
       // Fase 2 (desde o 150): mais dano e intervalos menores abaixo do limiar.
       const ph = e.input.phase;
-      if (ph && !e.inPhase && e.hp <= ph.at * e.input.hp) e.inPhase = true;
+      if (ph && !e.inPhase && e.hp <= ph.at * e.input.hp) {
+        e.inPhase = true;
+        announce(e, "fase");
+      }
       const dmg = e.inPhase && ph ? ph.damageMult : 1;
       const tick = e.inPhase && ph ? DT / ph.intervalMult : DT;
       const pace = tick * prod(active(e.debuffs, "velocidade"));
@@ -1365,18 +1490,25 @@ export function fight(
       if (e.input.buster) {
         e.busterTimer -= tick;
         if (e.busterTimer <= 0) {
-          if (e.target.alive)
+          if (e.target.alive) {
+            announce(e, "golpe-pesado", e.target);
+            foeSource = "golpe-pesado";
             hurt(e.target, e, e.input.autoRaw * e.input.buster.mult * dmg, {
               certeiro: true,
             });
+            foeSource = "golpe";
+          }
           e.busterTimer += e.input.buster.everySeconds;
         }
       }
       if (e.input.pulse) {
         e.pulseTimer -= tick;
         if (e.pulseTimer <= 0) {
+          announce(e, "pulso");
+          foeSource = "pulso";
           for (const q of heroes)
             if (q.alive) hurt(q, e, e.input.pulse.raw * dmg, { magic: true });
+          foeSource = "golpe";
           e.pulseTimer += e.input.pulse.everySeconds;
         }
       }
@@ -1392,6 +1524,7 @@ export function fight(
         e.curseTimer -= tick;
         if (e.curseTimer <= 0) {
           const q = pickNonTank();
+          if (q) announce(e, "maldicao", q);
           if (q)
             q.debuffs.set("maldicao", {
               kind: "maldicao",
@@ -1405,6 +1538,7 @@ export function fight(
       if (md) {
         e.drainTimer -= tick;
         if (e.drainTimer <= 0) {
+          announce(e, "dreno");
           for (const q of heroes)
             if (q.alive && CASTERS.has(q.input.cls))
               q.debuffs.set("drenar", {
@@ -1420,7 +1554,12 @@ export function fight(
         e.chargeTimer -= tick;
         if (e.chargeTimer <= 0) {
           const q = pickNonTank();
-          if (q) hurt(q, e, e.input.autoRaw * ca.mult * dmg);
+          if (q) {
+            announce(e, "investida", q);
+            foeSource = "investida";
+            hurt(q, e, e.input.autoRaw * ca.mult * dmg);
+            foeSource = "golpe";
+          }
           e.chargeTimer += ca.everySeconds;
         }
       }
@@ -1428,6 +1567,7 @@ export function fight(
       if (su) {
         e.summonTimer -= tick;
         if (e.summonTimer <= 0) {
+          announce(e, "invocacao");
           for (let k = 0; k < su.count; k++) {
             enemies.push(newEnemy(su.minion, enemies.length));
             for (const q of heroes) q.threat.push(0);
@@ -1488,7 +1628,9 @@ export function fight(
 
       h.hots = h.hots.filter((x) => {
         if (x.until > t) {
+          source = x.key.split(":")[0]!;
           heal(h, (x.perSec + x.pctMaxHpPerSec * maxHp(h)) * DT, x.src);
+          source = "auto";
           return true;
         }
         return false;
@@ -1498,13 +1640,24 @@ export function fight(
       if (h.potCd <= 0 && h.pots > 0) {
         const at = h.input.potionAt ?? { hp: 0.5, mp: 0.3 };
         if (ratio(h) < at.hp) {
+          const before = h.hp;
+          source = "pocao";
           heal(h, h.input.potions.hp, null);
+          source = "auto";
+          emit({ k: "pocao", a: who(h), v: Math.round(h.hp - before) });
           h.pots--;
           h.potionsUsed++;
           h.hpPotions++;
           h.potCd = cfg.potions.cooldownMs / 1000;
         } else if (h.mp / ch.mp < at.mp) {
+          const before = h.mp;
           h.mp = Math.min(ch.mp, h.mp + h.input.potions.mp);
+          emit({
+            k: "pocao",
+            a: who(h),
+            v: Math.round(h.mp - before),
+            mana: true,
+          });
           h.pots--;
           h.potionsUsed++;
           h.mpPotions++;
@@ -1540,6 +1693,7 @@ export function fight(
         if (x.until <= t) return false;
         const e = enemies[x.enemy];
         if (e && e.alive) {
+          source = x.key.split(":")[0]!;
           const dealt = deal(h, e, x.perSec * DT);
           if (x.threatMult)
             h.threat[e.i]! += dealt * h.ch.threat * (x.threatMult - 1);
@@ -1549,6 +1703,7 @@ export function fight(
             if (proc(h, `${x.key}:pulso`, x.tickStun.chance))
               stun(e, x.tickStun.durationMs);
           }
+          source = "auto";
         }
         return true;
       });
@@ -1570,7 +1725,15 @@ export function fight(
     }
 
     recordKills();
+    if (rec && Math.floor(t + DT + 1e-9) > Math.floor(t + 1e-9))
+      flushFrame(Math.floor(t + DT + 1e-9));
     t += DT;
+  }
+  if (rec) {
+    recordKills();
+    const last = rec.frames.at(-1)?.s ?? 0;
+    if (rec.events.length > 0 || rec.acc.size > 0 || last < Math.ceil(t - 1e-9))
+      flushFrame(Math.max(last + 1, Math.ceil(t - 1e-9)));
   }
 
   return {
@@ -1581,6 +1744,7 @@ export function fight(
     damage: total,
     enemiesLeft: enemies.map((e) => Math.max(0, e.hp) / e.input.hp),
     kills,
+    ...(rec ? { frames: rec.frames } : {}),
     heroes: heroes.map((h) => ({
       cls: h.input.cls,
       damage: h.damage,
