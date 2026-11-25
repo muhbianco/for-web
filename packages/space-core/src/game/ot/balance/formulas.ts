@@ -728,8 +728,14 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
     return t;
   }
 
+  /** D30: multiplicador do preço da poção nos tiers altos. */
+  function potionPriceMult(tier: number): number {
+    return cfg.potions.highTierPriceMult.find(([t]) => t === tier)?.[1] ?? 1;
+  }
+
   function potionPrices(level: number): { hp: number; mp: number } {
-    const g = lacaioGold(potionTierLevel(level));
+    const tier = potionTierLevel(level);
+    const g = lacaioGold(tier) * potionPriceMult(tier);
     return {
       hp: Math.ceil(cfg.potions.hpPriceOfGold * g),
       mp: Math.ceil(cfg.potions.mpPriceOfGold * g),

@@ -195,15 +195,23 @@ export function balanceReport(
       };
     });
     const bad = rates.filter((x) => (win ? x.rate < 0.95 : x.rate > 0.05));
+    // D29: o L40 (começo da faixa) fica como exceção para quem devia perder.
+    const onlyL40 = !win && bad.length > 0 && bad.every((x) => x.L < 70);
     add(
       S9,
       `${what} ${short(c)} ${win ? "vence em ≥ 95%" : "vence em ≤ 5%"}`,
-      bad.length === 0 ? "ok" : c[0] === "paladino" ? "aceita" : "falha",
+      bad.length === 0
+        ? "ok"
+        : c[0] === "paladino" || onlyL40
+          ? "aceita"
+          : "falha",
       rates.map((x) => `L${x.L} ${pct(x.rate)}`).join(" · ") +
         (bad.length && c[0] === "paladino"
           ? " (P63)"
           : bad.length && !win
-            ? " (P73: no começo da faixa o sorteio às vezes fecha antes do Cataclismo)"
+            ? onlyL40
+              ? " (D29: o L40 fica como exceção)"
+              : " (P73: no começo da faixa o sorteio às vezes fecha antes do Cataclismo)"
             : ""),
     );
     if (what === "sem tanque") roomLine = rates;
@@ -217,7 +225,7 @@ export function balanceReport(
       weak.length === 0 ? "ok" : "falha",
       roomLine.map((x) => `L${x.L} ${pct(x.roomDeath)}`).join(" · ") +
         (weak.length
-          ? " (P72: com a régua do spec, a sala acaba antes do lacaio pesar)"
+          ? " (P72: nas salas os DPS tiram os lacaios do tanque; subir o golpe mata a PT completa junto)"
           : ""),
     );
   }
@@ -378,7 +386,7 @@ export function balanceReport(
 
   // ------------------------------------------------------------ §13 economia
   const S13 = "§13 Economia";
-  const eco = mcLevels.map((d) => {
+  const eco = masmorras.map((d) => {
     const ps = party(ref, d.level);
     const r = simulateRun(d, ps, { mode: "esperado" }, B, M);
     const rw = runRewards(
@@ -399,14 +407,18 @@ export function balanceReport(
     return { L: d.level, share: spent / Math.max(1, gold) };
   });
   const outside = eco.filter((x) => x.share < 0.05 || x.share > 0.1);
+  // D30: a poção sobe por tier; dentro de um tier o gasto varia quase 2× (o 410 gasta o dobro do 420),
+  // então uma sobra a até 0,5 p.p. da faixa fica aceita (P74).
+  const near = outside.every((x) => x.share >= 0.045 && x.share <= 0.105);
   add(
     S13,
-    "as poções de uma Masmorra custam 5–10% do ouro da corrida (PT de referência)",
-    outside.length === 0 ? "ok" : "falha",
-    eco.map((x) => `L${x.L} ${(x.share * 100).toFixed(1)}%`).join(" · ") +
+    "as poções de uma Masmorra custam 5–10% do ouro da corrida (PT de referência, 37 Masmorras)",
+    outside.length === 0 ? "ok" : near ? "aceita" : "falha",
+    `${eco.length - outside.length}/${eco.length} na faixa` +
       (outside.length
-        ? " (P74: do 390 em diante a poção fica barata perto do ouro)"
-        : ""),
+        ? `; fora: ${outside.map((x) => `L${x.L} ${(x.share * 100).toFixed(1)}%`).join(", ")}${near ? " (P74: a até 0,5 p.p. da faixa)" : ""}`
+        : "") +
+      ` · de ${(Math.min(...eco.map((x) => x.share)) * 100).toFixed(1)}% a ${(Math.max(...eco.map((x) => x.share)) * 100).toFixed(1)}%`,
   );
 
   return lines;

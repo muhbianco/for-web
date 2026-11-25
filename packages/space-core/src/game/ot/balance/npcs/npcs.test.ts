@@ -49,6 +49,17 @@ test("Mercador: poção, munição e Comum pelo ouro do lacaio do tier", () => {
   assert.deepEqual(commonItemPrice(120), { ilvl: 100, gold: 20 * 163 });
 });
 
+test("Mercador: do tier 300 em diante a poção sobe pela tabela da D30", () => {
+  const at = (L: number, mult: number) => {
+    const g = B.lacaioGold(L) * mult;
+    return { hp: Math.ceil(0.25 * g), mp: Math.ceil(0.3 * g) };
+  };
+  assert.deepEqual(potionPrice(299), at(250, 1));
+  assert.deepEqual(potionPrice(300), at(300, 1.35));
+  assert.deepEqual(potionPrice(420), at(400, 2.6));
+  assert.deepEqual(potionPrice(500), at(500, 3.7));
+});
+
 test("Mercador: compra por 10% do preço base, que sobe com a raridade; +7 pede confirmação", () => {
   assert.equal(
     buyBackPrice(item({ rarity: "comum" })),

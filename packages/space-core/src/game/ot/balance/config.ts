@@ -147,6 +147,18 @@ export const BALANCE = {
     /** §10: preço = ⌈fração × ouroLacaio(tier)⌉. */
     hpPriceOfGold: 0.25,
     mpPriceOfGold: 0.3,
+    /**
+     * D30: nos tiers altos o preço da poção × isto, para as poções de uma Masmorra voltarem a custar 5–10%
+     * do ouro da corrida (sem isso: 3,9% no 340, 3,0% no 390, 1,9% no 420 e no 490). Medido nas 37
+     * Masmorras com a PT de referência (P74); a queda começa no tier 300, não no 350.
+     */
+    highTierPriceMult: [
+      [300, 1.35],
+      [350, 1.75],
+      [400, 2.6],
+      [450, 3.7],
+      [500, 3.7],
+    ] as [number, number][],
   },
 
   /** §7: habilidades. */
@@ -370,6 +382,12 @@ export const BALANCE = {
     eliteHpMult: 4,
     /** D17: na Caçada, o golpe de lacaio e elite × isto (solo / dupla); os lacaios batem igual para 1 ou 4. */
     huntHitMult: { solo: 0.5, duo: 0.75 },
+    /**
+     * Nas salas de Masmorra e Região, o golpe do lacaio e o da elite × isto (o da Invocação não muda).
+     * Fica no do spec (×1): subir o golpe não faz a sala sem tanque matar sem matar também a PT
+     * completa, porque nas salas os DPS tiram os lacaios do tanque (P72, medido em 25/11/2026).
+     */
+    groupHitMult: { lacaio: 1, elite: 1 },
     menorHpSeconds: 25,
     masmorraHpSeconds: 80,
     masmorraHpDivisor: 3.25,

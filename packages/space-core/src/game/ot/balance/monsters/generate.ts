@@ -99,38 +99,47 @@ export function createMonsters(
     ...(o.magic ? { magicAuto: true } : {}),
   });
 
-  /** Na Caçada (1–2 jogadores), o golpe de lacaio e elite cai (D17). */
-  const huntMult = (o: MonsterOptions): number =>
+  /**
+   * Golpe de lacaio e elite pelo conteúdo: na Caçada cai (D17); nas salas de Masmorra e Região sobe
+   * (D28, para a sala sem tanque cobrar). O lacaio da Invocação fica com o golpe do spec.
+   */
+  const roomHitMult = (
+    o: MonsterOptions,
+    summoned: boolean,
+    arch: "lacaio" | "elite" = "lacaio",
+  ): number =>
     o.type !== "cacada"
-      ? 1
+      ? summoned
+        ? 1
+        : mon.groupHitMult[arch]
       : o.partySize <= 1
         ? mon.huntHitMult.solo
         : mon.huntHitMult.duo;
 
   /**
-   * Lacaio: HP = 9 s × DPS_solo_ref × escala(n) (o spec dava 3 s; D18); golpe = 6% do HP do caçador ÷
+   * Lacaio: HP = 3 s × DPS_solo_ref × escala(n) (o spec; D22); golpe = 6% do HP do caçador ÷
    * (1 − redução dele), × o redutor da Caçada.
    */
-  function lacaio(m: number, o: MonsterOptions): EnemyInput {
+  function lacaio(m: number, o: MonsterOptions, summoned = false): EnemyInput {
     const r = row(m);
     return base(
       "lacaio",
       m,
       o,
       mon.lacaioHpSeconds * r.soloDps * B.partyScale(o.partySize, o.type),
-      r.lacaioHit * huntMult(o),
+      r.lacaioHit * roomHitMult(o, summoned),
     );
   }
 
-  /** Elite: 1,6× o HP (o spec dava 4×; D18) e 1,8× o golpe do lacaio. */
+  /** Elite: 4× o HP (o spec; D22) e 1,8× o golpe do lacaio. */
   function elite(m: number, o: MonsterOptions): EnemyInput {
-    const l = lacaio(m, o);
+    const l = lacaio(m, o, true);
     return base(
       "elite",
       m,
       o,
       mon.eliteHpMult * l.hp,
-      mon.eliteHitMult * l.autoRaw,
+      mon.eliteHitMult * row(m).lacaioHit * roomHitMult(o, false, "elite"),
     );
   }
 
@@ -160,7 +169,7 @@ export function createMonsters(
     if (m >= mech.summonFrom)
       out.summon = {
         ...mech.summon,
-        minion: lacaio(m, { ...o, magic: false }),
+        minion: lacaio(m, { ...o, magic: false }, true),
       };
     if (m >= mech.drainFrom) out.manaDrain = { ...mech.manaDrain };
     // Investida: o multiplicador do config vale sobre o golpe do chefe menor (D16); o motor multiplica o do chefe.
