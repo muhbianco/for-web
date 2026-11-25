@@ -557,11 +557,120 @@ export function fight(
   const fallen = (): Hero | null =>
     heroes.find((q) => !q.alive && !q.revived) ?? null;
 
+  /** HP que o HoT já posto no aliado ainda vai curar. */
+  const pendingHot = (q: Hero): number => {
+    let out = 0;
+    for (const x of q.hots)
+      if (x.until > t)
+        out += (x.perSec + x.pctMaxHpPerSec * maxHp(q)) * (x.until - t);
+    return out;
+  };
+
+  /** Quanto a skill cura neste aliado (direta + HoT inteiro), com os bônus de quem conjura e de quem recebe. */
+  const expectedHeal = (h: Hero, s: SkillDef, q: Hero): number => {
+    const hb = 1 + (h.input.healBonus ?? 0);
+    const power = 1 + buffOf(h, "poder");
+    const pm = pmOf(h);
+    const received =
+      1 +
+      sum(active(partyBuffs, "curaRecebida")) +
+      sum(active(q.buffs, "curaRecebida"));
+    let out = 0;
+    for (const eff of s.effects) {
+      if (eff.type === "cura" && eff.target !== "proprio") {
+        let amount =
+          (eff.coefMatk ?? 0) *
+            h.ch.matk *
+            power *
+            pm *
+            (eff.noBonus ? 1 : hb) +
+          (eff.pctMaxHp ?? 0) * maxHp(q);
+        amount *= 1 + skillBonus(h, s, null, q);
+        out += amount * received;
+      } else if (eff.type === "hot") {
+        const per =
+          (eff.coefMatkPerSec ?? 0) *
+            h.ch.matk *
+            power *
+            pm *
+            (hb + (h.input.hotBonus ?? 0)) +
+          (eff.pctMaxHpPerSec ?? 0) * maxHp(q);
+        out += per * (eff.durationMs / 1000) * received;
+      }
+    }
+    return out;
+  };
+
+  /**
+   * Cura inteligente (D25): sai quando a cura rende (pelo menos `healMinUseful` dela entra) e vai para
+   * quem aproveita mais; com tanque precisando, o tanque. Na de grupo, a conta é sobre o grupo inteiro.
+   */
+  const healPlan = (h: Hero, s: SkillDef): { ok: boolean; ally?: Hero } => {
+    const useful = cfg.skills.healMinUseful;
+    const need = (q: Hero) => Math.max(0, maxHp(q) - q.hp - pendingHot(q));
+    const group = s.effects.some(
+      (x) => (x.type === "cura" || x.type === "hot") && x.target === "grupo",
+    );
+    const alive = aliveHeroes();
+    if (group) {
+      let full = 0;
+      let lands = 0;
+      for (const q of alive) {
+        const amount = expectedHeal(h, s, q);
+        full += amount;
+        lands += Math.min(amount, need(q));
+      }
+      return { ok: full > 0 && lands >= useful * full };
+    }
+    const hot = s.effects.find(
+      (x) => x.type === "hot" && x.target === "aliado",
+    );
+    const key =
+      hot && hot.type === "hot"
+        ? `${s.id}:hot:${hot.coefMatkPerSec ?? 0}:${hot.pctMaxHpPerSec ?? 0}`
+        : null;
+    const cap = hot && hot.type === "hot" ? (hot.stacks ?? 1) : Infinity;
+    let best: { q: Hero; lands: number } | null = null;
+    let bestTank: { q: Hero; lands: number } | null = null;
+    let emergency: Hero | null = null;
+    const better = (
+      a: { q: Hero; lands: number } | null,
+      q: Hero,
+      lands: number,
+    ) => !a || lands > a.lands || (lands === a.lands && ratio(q) < ratio(a.q));
+    for (const q of alive) {
+      if (
+        key &&
+        q.hots.filter((x) => x.key === key && x.until > t).length >= cap
+      )
+        continue;
+      const amount = expectedHeal(h, s, q);
+      if (amount <= 0) continue;
+      const lands = Math.min(amount, need(q));
+      if (lands < useful * amount) continue;
+      if (better(best, q, lands)) best = { q, lands };
+      if (q.input.role === "tanque") {
+        if (better(bestTank, q, lands)) bestTank = { q, lands };
+      } else if (
+        ratio(q) < cfg.skills.healEmergencyBelow &&
+        (!emergency || ratio(q) < ratio(emergency))
+      )
+        emergency = q;
+    }
+    if (emergency && !(bestTank && ratio(bestTank.q) <= ratio(emergency)))
+      return { ok: true, ally: emergency };
+    const pick = (cfg.skills.healTankFirst ? bestTank : null) ?? best;
+    return pick ? { ok: true, ally: pick.q } : { ok: false };
+  };
+
   const conditionHolds = (
     h: Hero,
     c: Condition,
+    s: SkillDef,
   ): { ok: boolean; ally?: Hero } => {
     switch (c.kind) {
+      case "precisaCura":
+        return healPlan(h, s);
       case "sempre":
         return { ok: true };
       case "soEmChefe":
@@ -616,7 +725,7 @@ export function fight(
     let ok = false;
     let ally: Hero | undefined;
     for (const c of conditions(s)) {
-      const r = conditionHolds(h, c);
+      const r = conditionHolds(h, c, s);
       if (r.ok) {
         ok = true;
         if (r.ally && !ally) ally = r.ally;

@@ -134,11 +134,11 @@ test("slots: até 4, sem repetir, só skills aprendidas", () => {
   });
 });
 
-test("redistribuir: a 1ª é grátis, depois 100 × job; os slots ficam", () => {
+test("redistribuir: a 1ª é grátis, depois 5.000 fixos (D25); os slots ficam", () => {
   const hs = spendAll(freshHeroSkills("guerreiro"), 15);
-  const first = resetSkills(hs, 15);
+  const first = resetSkills(hs);
   assert.equal(first.cost, 0);
   assert.equal(skillPointsSpent(first.skills), 0);
   assert.deepEqual(first.skills.slots, hs.slots);
-  assert.equal(resetSkills(first.skills, 15).cost, 1500);
+  assert.equal(resetSkills(first.skills).cost, 5000);
 });

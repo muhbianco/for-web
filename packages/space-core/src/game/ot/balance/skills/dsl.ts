@@ -15,6 +15,7 @@ export const CHEFE_PREPARANDO: Condition = { kind: "chefePreparando" };
 export const PERDI_AGGRO: Condition = { kind: "perdiAggro" };
 export const ALIADO_CAIDO: Condition = { kind: "aliadoCaido" };
 export const ALIADO_AMALDICOADO: Condition = { kind: "aliadoAmaldicoado" };
+export const PRECISA_CURA: Condition = { kind: "precisaCura" };
 export const inimigos = (min: number): Condition => ({ kind: "inimigos", min });
 export const aliado = (pct: number): Condition => ({
   kind: "aliadoAbaixo",

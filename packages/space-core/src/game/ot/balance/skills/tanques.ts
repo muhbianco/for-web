@@ -1,10 +1,10 @@
 import {
   CHEFE_PREPARANDO,
+  PRECISA_CURA,
   PERDI_AGGRO,
   SEMPRE,
   SENDO_ALVO,
   SO_EM_CHEFE,
-  aliado,
   aliados,
   duracao,
   efeito,
@@ -469,7 +469,7 @@ export const PALADINO: SkillContent[] = [
     target: "aliado",
     cooldownMs: s(45),
     manaPct: 0.12,
-    ai: [aliado(0.4)],
+    ai: [PRECISA_CURA],
     effects: [{ type: "cura", target: "aliado", pctMaxHp: 0.3, noBonus: true }],
     mechanics: [
       mech(

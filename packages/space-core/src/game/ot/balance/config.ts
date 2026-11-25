@@ -164,13 +164,30 @@ export const BALANCE = {
     mechanicMax: 5,
     /** Rank de Potência esperado no perfil de teste: 1 + 0,6·(J−1)/4. */
     referencePotencyPerJob: 0.15,
+    /**
+     * Cura inteligente (decisão do dono de 25/11/2026, D25): a skill de cura sai quando pelo menos esta
+     * fração dela vai entrar (o resto seria cura desperdiçada no HP cheio). Na cura de grupo, a conta é
+     * sobre a soma do grupo. Medido (P62): 0,3–0,35 é o platô; 0,5 já deixa morrer o dobro, 0,7 perde o trio.
+     */
+    healMinUseful: 0.3,
+    /** A cura de alvo único vai no tanque primeiro quando ele precisa (D25). */
+    healTankFirst: true,
+    /**
+     * Exceção à prioridade do tanque: um aliado abaixo desta fração do HP vem antes (0 = sem exceção).
+     * Sem ela, na luta de chefe o tanque sempre precisa e a cura de alvo único nunca chega num DPS
+     * (medido, P62: 48 corridas com morte em 148, contra 9 com 0,6; platô de 0,6 a 0,7).
+     */
+    healEmergencyBelow: 0.6,
   },
 
   /** §6: marcos de tier. T2 no job 20; T3 no nível 40; T4 no nível 70. */
   tiers: { t2Job: 20, t3Level: 40, t4Level: 70 },
 
-  /** §7: redistribuir (a 1ª é grátis). */
-  respec: { skillsGoldPerJob: 100, attributesGoldPerLevel: 100 },
+  /**
+   * Redistribuir atributos ou skills no Mestre: a 1ª de cada é grátis e as próximas custam um valor fixo
+   * (decisão do dono de 25/11/2026, D25; o spec cobrava 100 × nível ou × job).
+   */
+  respec: { fixedGold: 5000 },
 
   /** §2 e §13: experiência. */
   xp: {
@@ -262,11 +279,11 @@ export const BALANCE = {
   /** §11.2: HP e golpes gerados dos perfis de referência. */
   monsters: {
     /**
-     * Calibragem da Fase 6 (decisão do dono de 25/11/2026, D18: salas de 25–40 s): o spec dava 3 s e 4×;
-     * com isso as salas acabavam em 4–24 s. Medido: 9 s e 1,6× põem as salas da PT de referência em ~25/38/39 s.
+     * Os números do spec (decisão do dono de 25/11/2026, D22): a D18 (9 s e 1,6×, para as salas durarem
+     * 25–40 s) saiu, porque o jogo não se balanceia por tempo (D21).
      */
-    lacaioHpSeconds: 9,
-    eliteHpMult: 1.6,
+    lacaioHpSeconds: 3,
+    eliteHpMult: 4,
     /** D17: na Caçada, o golpe de lacaio e elite × isto (solo / dupla); os lacaios batem igual para 1 ou 4. */
     huntHitMult: { solo: 0.5, duo: 0.75 },
     menorHpSeconds: 25,

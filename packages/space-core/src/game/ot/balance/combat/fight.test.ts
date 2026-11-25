@@ -288,3 +288,123 @@ test("Esquiva Sombria corta a ameaça; o veneno do assassino ganha +20%", () => 
   ).damage;
   assert.ok(poison > plain);
 });
+
+// ------------------------------------------------------------ cura inteligente (D25)
+
+/** A skill do conteúdo com a IA padrão dela (a cura inteligente). */
+const withAi = (cls: FighterInput["cls"], id: string): SkillDef =>
+  compileSkill(skillOf(cls, id)!, { potency: 1, efficiency: 0, mechanics: {} });
+
+/** Luta curta contra um chefe que não bate, com cada herói começando em `hpPct` do HP (sem poção). */
+const healFight = (heroes: FighterInput[], hpPct: number[], maxSeconds = 2) =>
+  fight(heroes, [hitter(0)], {
+    maxSeconds,
+    mode: "esperado",
+    carry: heroes.map((f, i) => ({
+      hp: f.stats.hp * hpPct[i]!,
+      mp: f.stats.mp,
+      alive: true,
+      pots: 0,
+      cooldowns: {},
+      revived: false,
+      cheatedDeath: false,
+    })),
+  });
+
+test("cura inteligente: o Curar sai quando rende, sem esperar o aliado cair a 80%", () => {
+  const party = (heal: boolean) => [
+    bare("guerreiro"),
+    withSkills("padre", heal ? [withAi("padre", "curar")] : []),
+  ];
+  const r = healFight(party(true), [0.88, 1]);
+  const base = healFight(party(false), [0.88, 1]);
+  assert.equal(r.heroes[1]!.casts["curar"], 1);
+  assert.equal(r.heroes[0]!.hpPct, 1, "o tanque não foi curado");
+  assert.ok(base.heroes[0]!.hpPct < 0.95);
+});
+
+test("cura inteligente: ninguém ferido, nenhuma cura (sem gastar mana à toa)", () => {
+  const r = healFight(
+    [
+      bare("guerreiro"),
+      bare("mago"),
+      withSkills("padre", [withAi("padre", "curar")]),
+    ],
+    [1, 1, 1],
+    5,
+  );
+  assert.equal(r.heroes[2]!.casts["curar"] ?? 0, 0);
+});
+
+test("cura inteligente: com o tanque precisando, ele vem primeiro", () => {
+  const party = (heal: boolean) => [
+    bare("guerreiro"),
+    bare("cacador"),
+    withSkills("padre", heal ? [withAi("padre", "curar")] : []),
+  ];
+  // Os dois aproveitam o Curar inteiro e o caçador está mais baixo (62%), mas o tanque tem a prioridade.
+  const r = healFight(party(true), [0.7, 0.62, 1]);
+  const base = healFight(party(false), [0.7, 0.62, 1]);
+  assert.ok(
+    r.heroes[0]!.hpPct > base.heroes[0]!.hpPct + 0.1,
+    "o tanque não foi curado",
+  );
+  assert.ok(
+    r.heroes[1]!.hpPct < base.heroes[1]!.hpPct + 0.01,
+    "a cura foi no caçador",
+  );
+});
+
+test("cura inteligente: aliado abaixo de 60% passa à frente do tanque", () => {
+  const party = (heal: boolean) => [
+    bare("guerreiro"),
+    bare("mago"),
+    withSkills("padre", heal ? [withAi("padre", "curar")] : []),
+  ];
+  const r = healFight(party(true), [0.7, 0.3, 1]);
+  const base = healFight(party(false), [0.7, 0.3, 1]);
+  assert.ok(
+    r.heroes[1]!.hpPct > base.heroes[1]!.hpPct + 0.3,
+    "o mago não foi curado",
+  );
+  assert.ok(
+    r.heroes[0]!.hpPct < base.heroes[0]!.hpPct + 0.01,
+    "a cura foi no tanque",
+  );
+});
+
+test("cura inteligente: sem tanque, vai em quem aproveita mais a cura", () => {
+  const party = (heal: boolean) => [
+    bare("mago"),
+    bare("cacador"),
+    withSkills("padre", heal ? [withAi("padre", "curar")] : []),
+  ];
+  // Os dois a 70%: o mago perdeu ~300 de HP e o caçador ~435; o Curar (~536) rende mais no caçador.
+  const r = healFight(party(true), [0.7, 0.7, 1]);
+  const base = healFight(party(false), [0.7, 0.7, 1]);
+  assert.ok(
+    r.heroes[1]!.hpPct > base.heroes[1]!.hpPct + 0.2,
+    "o caçador não foi curado",
+  );
+  assert.ok(
+    r.heroes[0]!.hpPct < base.heroes[0]!.hpPct + 0.01,
+    "a cura foi no mago",
+  );
+});
+
+test("cura inteligente: a de grupo só sai quando rende no grupo", () => {
+  const party = () => [
+    bare("guerreiro"),
+    bare("mago"),
+    bare("cacador"),
+    withSkills("druida", [withAi("druida", "florescer")]),
+  ];
+  const one = healFight(party(), [1, 0.5, 1, 1]);
+  assert.equal(
+    one.heroes[3]!.casts["florescer"] ?? 0,
+    0,
+    "saiu com um só ferido",
+  );
+  const all = healFight(party(), [0.5, 0.4, 0.4, 0.6]);
+  assert.equal(all.heroes[3]!.casts["florescer"], 1);
+});

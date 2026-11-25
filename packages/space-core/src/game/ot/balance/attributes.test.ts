@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   pointsFree,
+  resetAttributes,
   pointsSpent,
   raiseStats,
   resetAllocation,
@@ -81,4 +82,16 @@ test("a build de referência de toda classe é válida em todo nível", () => {
       assert.ok(validAllocation(L, a), `${cls} L${L}`);
       assert.ok(pointsFree(L, a) >= 0);
     }
+});
+
+test("redistribuir os atributos no Mestre: tudo volta ao 1; a 1ª é grátis, depois 5.000 (D25)", () => {
+  const hero = { attrs: { ...resetAllocation(), FOR: 40, VIT: 30 } };
+  const first = resetAttributes(hero);
+  assert.equal(first.cost, 0);
+  assert.deepEqual(first.hero.attrs, resetAllocation());
+  assert.equal(first.hero.attrResets, 1);
+  const second = resetAttributes(first.hero);
+  assert.equal(second.cost, 5000);
+  assert.equal(second.hero.attrResets, 2);
+  assert.equal(pointsFree(30, second.hero.attrs), B.attributePoints(30));
 });

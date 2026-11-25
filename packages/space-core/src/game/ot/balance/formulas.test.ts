@@ -219,9 +219,10 @@ test("§9 e §10: base de equipamento, requisito e preço de poção", () => {
   assert.ok(B.canEquip(95, 100));
   assert.ok(!B.canEquip(94, 100));
   assert.deepEqual(B.potionPrices(1), { hp: 1, mp: 2 });
-  assert.equal(B.respecCost("atributos", 80, 0), 0);
-  assert.equal(B.respecCost("atributos", 80, 1), 8000);
-  assert.equal(B.respecCost("skills", 40, 2), 4000);
+  // D25: a 1ª é grátis; as próximas, 5.000 fixos.
+  assert.equal(B.respecCost(0), 0);
+  assert.equal(B.respecCost(1), 5000);
+  assert.equal(B.respecCost(7), 5000);
 });
 
 test("createBalance com um config afinado não mexe no do jogo", () => {

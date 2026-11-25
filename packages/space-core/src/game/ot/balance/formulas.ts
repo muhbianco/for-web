@@ -736,16 +736,9 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
     };
   }
 
-  function respecCost(
-    kind: "atributos" | "skills",
-    levelOrJob: number,
-    previousResets: number,
-  ): number {
-    if (previousResets <= 0) return 0;
-    const r = cfg.respec;
-    return kind === "atributos"
-      ? r.attributesGoldPerLevel * levelOrJob
-      : r.skillsGoldPerJob * levelOrJob;
+  /** Custo da próxima redistribuição: a 1ª é grátis, as seguintes custam o valor fixo (D25). */
+  function respecCost(previousResets: number): number {
+    return previousResets <= 0 ? 0 : cfg.respec.fixedGold;
   }
 
   return {

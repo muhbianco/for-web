@@ -221,16 +221,15 @@ export function evolve(
   return { ok: true, skills: out };
 }
 
-/** Redistribuir as skills no Mestre (§7): a 1ª é grátis; depois 100 × job em ouro. Os slots ficam. */
+/** Redistribuir as skills no Mestre: a 1ª é grátis; depois 5.000 de ouro fixos (D25). Os slots ficam. */
 export function resetSkills(
   hs: HeroSkills,
-  job: number,
   B: Balance = gameBalance,
 ): { skills: HeroSkills; cost: number } {
   const builds: Record<string, SkillBuild> = {};
   for (const id of Object.keys(hs.builds)) builds[id] = freshBuild();
   return {
     skills: { ...hs, builds, resets: hs.resets + 1 },
-    cost: B.respecCost("skills", job, hs.resets),
+    cost: B.respecCost(hs.resets),
   };
 }

@@ -88,6 +88,8 @@ export interface BalanceHero {
   attrs: Stats;
   equipment: Equipment;
   ammo?: AmmoGrade;
+  /** Quantas vezes já redistribuiu os atributos no Mestre (a 1ª é grátis; D25). */
+  attrResets?: number;
 }
 
 /**

@@ -100,3 +100,20 @@ export function raiseStats(
     return { ok: false, error: "sem-pontos" };
   return { ok: true, stats: next, spent };
 }
+
+/**
+ * Redistribuir os atributos no Mestre da evolução (D25): todos voltam ao inicial e os pontos ficam
+ * livres; a 1ª é grátis e as próximas custam o valor fixo do config.
+ */
+export function resetAttributes<
+  H extends { attrs: Stats; attrResets?: number },
+>(
+  hero: H,
+  B: Balance = gameBalance,
+): { hero: H & { attrResets: number }; cost: number } {
+  const done = hero.attrResets ?? 0;
+  return {
+    hero: { ...hero, attrs: resetAllocation(B), attrResets: done + 1 },
+    cost: B.respecCost(done),
+  };
+}

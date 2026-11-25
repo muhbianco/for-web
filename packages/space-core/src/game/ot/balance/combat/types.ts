@@ -193,6 +193,11 @@ export type Condition =
   /** Pelo menos `min` aliados abaixo de `pct` (Intervenção Divina, Florescer). */
   | { kind: "aliadosAbaixo"; pct: number; min: number }
   | { kind: "aliadoComMpAbaixo"; pct: number }
+  /**
+   * Cura inteligente (D25): a cura desta skill rende em alguém. Compara a cura estimada com o HP que
+   * falta em cada aliado (descontado o HoT que já vai entrar); o tanque vem primeiro quando precisa.
+   */
+  | { kind: "precisaCura" }
   | { kind: "aliadoAmaldicoado" }
   | { kind: "aliadoCaido" }
   | { kind: "meuHpAbaixo"; pct: number }

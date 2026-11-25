@@ -2,11 +2,10 @@ import {
   ALIADO_AMALDICOADO,
   ALIADO_CAIDO,
   CHEFE_PREPARANDO,
+  PRECISA_CURA,
   SEMPRE,
   SO_EM_CHEFE,
-  aliado,
   aliadoMp,
-  aliados,
   duracao,
   efeito,
   fixo,
@@ -32,7 +31,7 @@ export const PADRE: SkillContent[] = [
     target: "aliado",
     cooldownMs: s(2.5),
     manaPct: 0.08,
-    ai: [aliado(0.8)],
+    ai: [PRECISA_CURA],
     effects: [{ type: "cura", target: "aliado", coefMatk: 0.3 }],
     mechanics: [
       mech(
@@ -207,7 +206,7 @@ export const PADRE: SkillContent[] = [
     target: "grupo",
     cooldownMs: s(30),
     manaPct: 0.15,
-    ai: [aliado(0.9), ALIADO_AMALDICOADO],
+    ai: [PRECISA_CURA, ALIADO_AMALDICOADO],
     effects: [
       { type: "hot", target: "grupo", coefMatkPerSec: 0.022, durationMs: s(8) },
       {
@@ -260,7 +259,7 @@ export const DRUIDA: SkillContent[] = [
     target: "aliado",
     cooldownMs: s(2.5),
     manaPct: 0.07,
-    ai: [aliado(0.95)],
+    ai: [PRECISA_CURA],
     effects: [
       {
         type: "hot",
@@ -492,7 +491,7 @@ export const DRUIDA: SkillContent[] = [
     target: "grupo",
     cooldownMs: s(60),
     manaPct: 0.2,
-    ai: [aliados(2, 0.6)],
+    ai: [PRECISA_CURA],
     effects: [{ type: "cura", target: "grupo", coefMatk: 0.45 }],
     mechanics: [
       mech(

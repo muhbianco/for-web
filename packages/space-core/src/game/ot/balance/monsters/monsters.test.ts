@@ -33,8 +33,8 @@ test("§11.2: lacaio, elite, chefe menor e chefe de masmorra pelas fórmulas", (
   const solo = { partySize: 1, type: "cacada" as const };
   const four = { partySize: 4, type: "masmorra" as const };
   const lac = M.lacaio(L, solo);
-  // D18: 9 s (o spec dava 3 s) e elite 1,6× (dava 4×); D17: golpe ×0,5 na Caçada solo, ×0,75 em dupla.
-  assert.equal(lac.hp, 9 * r.soloDps);
+  // D22: a régua do spec (3 s; elite 4×); D17: golpe ×0,5 na Caçada solo, ×0,75 em dupla.
+  assert.equal(lac.hp, 3 * r.soloDps);
   assert.equal(lac.autoRaw, r.lacaioHit * 0.5);
   assert.equal(
     M.lacaio(L, { partySize: 2, type: "cacada" }).autoRaw,
@@ -44,11 +44,11 @@ test("§11.2: lacaio, elite, chefe menor e chefe de masmorra pelas fórmulas", (
     M.lacaio(L, { partySize: 4, type: "masmorra" }).autoRaw,
     r.lacaioHit,
   );
-  assert.equal(M.elite(L, solo).hp, 1.6 * lac.hp);
+  assert.equal(M.elite(L, solo).hp, 4 * lac.hp);
   assert.equal(M.elite(L, solo).autoRaw, 1.8 * lac.autoRaw);
   assert.equal(
     M.lacaio(L, four).hp,
-    9 * r.soloDps * B.partyScale(4, "masmorra"),
+    3 * r.soloDps * B.partyScale(4, "masmorra"),
   );
   assert.equal(M.chefeMenor(L, solo).hp, 25 * r.soloDps);
   assert.ok(Math.abs(M.chefe(L, four).hp - 80 * r.partyDps) < 1e-6);
@@ -184,7 +184,8 @@ test("D16: a Investida vale 1,5× o golpe do chefe menor (não o do chefe, calib
   assert.ok(Math.abs(b.autoRaw * b.charge!.mult - 1.5 * r.menorHit) < 1e-6);
 });
 
-test("corrida: PT completa vence sem mortes, salas de 20–45 s, chefe de 75–110 s; sem DPS e sem tanque perdem", () => {
+// D21/D22: nada se balanceia por tempo; a duração das salas não é cobrada.
+test("corrida: PT completa vence sem mortes; sem DPS e sem tanque perdem", () => {
   for (const L of [40, 70, 110, 160, 310, 490]) {
     const d = DUNGEONS.find((x) => x.kind === "masmorra" && x.level === L)!;
     const run = (c: string[]) =>
@@ -198,16 +199,6 @@ test("corrida: PT completa vence sem mortes, salas de 20–45 s, chefe de 75–1
     assert.ok(
       ok.heroes.every((h) => h.alive),
       `L${L}: morte`,
-    );
-    for (const room of ok.rooms.slice(0, 3))
-      assert.ok(
-        room.seconds >= 20 && room.seconds <= 45,
-        `L${L} sala ${room.seconds} s`,
-      );
-    // Com as mecânicas da faixa (a Invocação soma os lacaios), a sala do chefe passa um pouco dos 100 s.
-    assert.ok(
-      ok.rooms[3]!.seconds >= 75 && ok.rooms[3]!.seconds <= 110,
-      `L${L} chefe ${ok.rooms[3]!.seconds} s`,
     );
     assert.notEqual(
       run(["guerreiro", "padre", "druida", "paladino"]).outcome,
