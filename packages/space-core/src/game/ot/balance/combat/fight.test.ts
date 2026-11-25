@@ -378,22 +378,43 @@ test("cura inteligente: aliado abaixo de 60% e sem poção passa à frente do ta
   );
 });
 
-test("cura inteligente: abaixo de 60% mas com poção, o tanque continua primeiro (D26)", () => {
+test("cura inteligente: abaixo de 60% com a poção pronta, o tanque continua primeiro (D26)", () => {
   const party = (heal: boolean) => [
     bare("guerreiro"),
-    bare("mago"),
+    bare("cacador"),
     withSkills("padre", heal ? [withAi("padre", "curar")] : []),
   ];
-  // O mago tem poção: ele bebe a dele, e o Curar vai no tanque.
-  const r = healFight(party(true), [0.7, 0.3, 1], 2, [0, 5, 0]);
-  const base = healFight(party(false), [0.7, 0.3, 1], 2, [0, 5, 0]);
+  // A 55% o caçador ainda não bebe (bebe abaixo de 50%): a poção dele está pronta, e o Curar vai no tanque.
+  const r = healFight(party(true), [0.7, 0.55, 1], 2, [0, 5, 0]);
+  const base = healFight(party(false), [0.7, 0.55, 1], 2, [0, 5, 0]);
+  assert.equal(r.heroes[1]!.potionsUsed, 0);
   assert.ok(
     r.heroes[0]!.hpPct > base.heroes[0]!.hpPct + 0.1,
     "o tanque não foi curado",
   );
   assert.ok(
     r.heroes[1]!.hpPct < base.heroes[1]!.hpPct + 0.01,
-    "a cura foi no mago",
+    "a cura foi no caçador",
+  );
+});
+
+test("cura inteligente: com a poção em recarga, conta como sem poção e passa à frente (D27)", () => {
+  const party = (heal: boolean) => [
+    bare("guerreiro"),
+    bare("mago"),
+    withSkills("padre", heal ? [withAi("padre", "curar")] : []),
+  ];
+  // A 30% o mago bebe uma poção no 1º tique; com ela em recarga, o Curar vai nele.
+  const r = healFight(party(true), [0.7, 0.3, 1], 0.5, [0, 5, 0]);
+  const base = healFight(party(false), [0.7, 0.3, 1], 0.5, [0, 5, 0]);
+  assert.equal(r.heroes[1]!.potionsUsed, 1);
+  assert.ok(
+    r.heroes[1]!.hpPct > base.heroes[1]!.hpPct + 0.3,
+    "o mago não foi curado",
+  );
+  assert.ok(
+    r.heroes[0]!.hpPct < base.heroes[0]!.hpPct + 0.01,
+    "a cura foi no tanque",
   );
 });
 

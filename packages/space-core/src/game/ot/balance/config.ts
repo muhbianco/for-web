@@ -132,6 +132,7 @@ export const BALANCE = {
 
   /** §5: poções. 1 por segundo, compartilhado entre vida e mana. */
   potions: {
+    /** Recarga global de 1 s, compartilhada entre vida e mana (o gabarito; mantida pelo dono em 25/11/2026, D27). */
     cooldownMs: 1000,
     /**
      * Níveis das faixas. O spec tinha 1, 20, 50, 100 e daí a cada 50; o 10, o 35 e o 75 entraram
@@ -179,12 +180,13 @@ export const BALANCE = {
      */
     healEmergencyBelow: 0.6,
     /**
-     * A exceção só vale para quem está sem poção (decisão do dono de 25/11/2026, D26): com poção, o tanque
-     * continua primeiro. Quem chega sem poção atrapalha a PT, e isso é de propósito.
-     * "estoque" = sem nenhuma na bolsa; "agora" = sem nenhuma ou com a poção em recarga; "nenhum" = vale
-     * para todos (a P62 antes da D26).
+     * A exceção só vale para quem está sem poção (decisões do dono de 25/11/2026, D26 e D27): sem nenhuma na
+     * bolsa ou com a poção em recarga (1 s, compartilhada entre vida e mana). Com uma poção pronta, o
+     * tanque continua primeiro. Quem chega sem poção atrapalha a PT, e isso é de propósito.
+     * "estoque" = só sem nenhuma na bolsa (a D26); "agora" = sem nenhuma ou em recarga (a D27);
+     * "nenhum" = vale para todos (a P62 antes da D26).
      */
-    healEmergencyPotionGate: "estoque" as "estoque" | "agora" | "nenhum",
+    healEmergencyPotionGate: "agora" as "estoque" | "agora" | "nenhum",
     /** Linha da exceção para quem ainda tem poção (0 = o tanque continua primeiro; D26). */
     healEmergencyWithPotionBelow: 0,
   },
