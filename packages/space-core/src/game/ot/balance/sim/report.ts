@@ -195,22 +195,23 @@ export function balanceReport(
       };
     });
     const bad = rates.filter((x) => (win ? x.rate < 0.95 : x.rate > 0.05));
-    // D29: o L40 (começo da faixa) fica como exceção para quem devia perder.
-    const onlyL40 = !win && bad.length > 0 && bad.every((x) => x.L < 70);
+    // D29 e D33: até o L90 (onde a Consagração do paladino entra, D32) quem devia perder pode
+    // vencer às vezes no aleatório; do 100 em diante, não.
+    const earlyBand = !win && bad.length > 0 && bad.every((x) => x.L < 100);
     add(
       S9,
       `${what} ${short(c)} ${win ? "vence em ≥ 95%" : "vence em ≤ 5%"}`,
       bad.length === 0
         ? "ok"
-        : c[0] === "paladino" || onlyL40
+        : c[0] === "paladino" || earlyBand
           ? "aceita"
           : "falha",
       rates.map((x) => `L${x.L} ${pct(x.rate)}`).join(" · ") +
         (bad.length && c[0] === "paladino"
           ? " (P63: sobra depois da D32)"
           : bad.length && !win
-            ? onlyL40
-              ? " (D29: o L40 fica como exceção)"
+            ? earlyBand
+              ? " (D29/D33: até o L90 fica como exceção)"
               : " (P73: no começo da faixa o sorteio às vezes fecha antes do Cataclismo)"
             : ""),
     );
