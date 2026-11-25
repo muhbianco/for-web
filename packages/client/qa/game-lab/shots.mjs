@@ -197,7 +197,8 @@ for (const [dev, opts] of Object.entries(DEVICES)) {
     if (ONLY && !shot.name.includes(ONLY)) continue;
     try {
       await page.goto(`${BASE}#s=${shot.s}`, { waitUntil: "load" });
-      await page.evaluate(() => localStorage.clear());
+      // Roda na página (Playwright); o eslint do CI lê este .mjs como Node, daí o globalThis.
+      await page.evaluate(() => globalThis.localStorage.clear());
       await page.reload({ waitUntil: "load" });
       await page.waitForSelector("[role=dialog], .chips", { timeout: 15000 });
       await page.waitForTimeout(900);
