@@ -155,7 +155,7 @@ test("Invocação traz lacaios; Drenar Mana seca o conjurador", () => {
   assert.ok(drained.heroes[0]!.carry.mp < 0.9 * hero("mago").stats.mp);
 });
 
-test("a corrida leva HP e recargas de uma sala para a outra e acaba em vitória, derrota ou tempo", () => {
+test("a corrida leva HP e recargas de uma sala para a outra e acaba em vitória ou derrota, sem teto de tempo", () => {
   const d = dungeonById("masmorra-70")!;
   const party = ["guerreiro", "padre", "mago", "cacador"].map((c) =>
     hero(c as FighterInput["cls"], 70),
@@ -174,10 +174,6 @@ test("a corrida leva HP e recargas de uma sala para a outra e acaba em vitória,
     },
   );
   assert.equal(lose.outcome, "derrota");
-  const slow = simulateRun({ ...d, maxSeconds: 20 }, party, {
-    mode: "esperado",
-  });
-  assert.equal(slow.outcome, "tempo");
 });
 
 // ------------------------------------------------------------ calibragem da Fase 6 (D16–D19)
@@ -246,9 +242,14 @@ test("Caçada solo: toda classe vence toda Caçada até o 440", () => {
     }
 });
 
-test.todo(
-  "P58 (dono): trios perdem masmorras do L160 em diante com todas as mecânicas (Fases + Maldição + Investida + Invocação)",
-);
-test.todo(
-  "P59 (dono): o druida sozinho leva ~8 min por Caçada e estoura o teto de 8 min no L451",
-);
+// D20: trios do L160 em diante ficam como estão (podem perder com todas as mecânicas).
+// D21: sem teto de tempo — a Caçada lenta do druida termina, só leva mais.
+test("Caçada solo sem teto de tempo: o druida termina a do 451", () => {
+  const d = DUNGEONS.find((x) => x.kind === "cacada" && x.level === 451)!;
+  const r = simulateRun(
+    d,
+    [E.fighter("druida", 451, { ...SPEC, solo: true })],
+    { mode: "esperado" },
+  );
+  assert.equal(r.outcome, "vitoria");
+});

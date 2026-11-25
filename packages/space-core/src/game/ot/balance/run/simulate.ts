@@ -12,10 +12,11 @@ import { type Monsters, createMonsters } from "../monsters/generate.ts";
 /**
  * A corrida inteira (spec §12.1): as 4 salas em sequência, com HP, mana, poções e recargas passando de
  * uma sala para a outra; entre as salas, uma pausa fora de combate (2%/s de HP e mana, P12). Acaba em
- * vitória, derrota (todos caídos) ou tempo (teto de 8 min na Caçada e 10 min na Masmorra).
+ * vitória (todos os monstros mortos) ou derrota (todos os heróis caídos). Sem teto de tempo (D21).
  */
 
-export type RunOutcome = "vitoria" | "derrota" | "tempo";
+/** "travada" só se a trava técnica do simulador disparar (defeito; não é regra de jogo). */
+export type RunOutcome = "vitoria" | "derrota" | "travada";
 
 export interface RunResult {
   outcome: RunOutcome;
@@ -56,17 +57,20 @@ export function simulateRun(
   });
 
   for (let i = 0; i < rooms.length; i++) {
-    const left = d.maxSeconds - elapsed;
-    if (left <= 0) return end("tempo");
-    const r = fight(party, rooms[i]!, { ...opts, maxSeconds: left, carry }, B);
+    const r = fight(
+      party,
+      rooms[i]!,
+      { ...opts, maxSeconds: cfg.runs.engineGuardSeconds, carry },
+      B,
+    );
     results.push(r);
     elapsed += r.seconds;
     carry = r.heroes.map((h) => h.carry);
     if (!r.win)
-      return end(r.heroes.every((h) => !h.alive) ? "derrota" : "tempo");
+      return end(r.heroes.every((h) => !h.alive) ? "derrota" : "travada");
     if (i === rooms.length - 1) break;
     // Pausa entre as salas: fora de combate, regenera e as recargas andam.
-    // Descansa até todos chegarem ao alvo de HP e mana (ou o teto), no mínimo a pausa.
+    // Descansa até todos chegarem ao alvo de HP e mana, no mínimo a pausa.
     const rate = cfg.regen.outOfCombatPctPerSecond;
     let need = 0;
     carry.forEach((c, j) => {
@@ -79,10 +83,7 @@ export function simulateRun(
       );
       need = Math.max(need, short / rate);
     });
-    const pause = Math.min(
-      cfg.runs.maxRestSeconds,
-      Math.max(cfg.runs.roomPauseSeconds, Math.ceil(need)),
-    );
+    const pause = Math.max(cfg.runs.roomPauseSeconds, Math.ceil(need));
     elapsed += pause;
     const regen = rate * pause;
     carry = carry.map((c, j) => {

@@ -136,7 +136,6 @@ export interface DungeonDef {
   /** Entrada a partir deste nível (R − 5). */
   minLevel: number;
   party: { min: number; max: number };
-  maxSeconds: number;
   /** Ids antigos que apontam para esta DG (corridas em andamento e a TV; P11). */
   aliases: string[];
 }
@@ -163,7 +162,6 @@ function dungeon(
 ): DungeonDef {
   const region =
     kind === "regional" ? REGIONS[level / 50 - 1]! : regionOf(level);
-  const maxMs = kind === "cacada" ? 8 * 60_000 : 10 * 60_000;
   return {
     id: kind === "regional" ? `regiao-${region.index}` : `${kind}-${level}`,
     name:
@@ -175,7 +173,6 @@ function dungeon(
     region,
     minLevel: Math.max(1, level - 5),
     party: kind === "cacada" ? { min: 1, max: 2 } : { min: 3, max: 4 },
-    maxSeconds: maxMs / 1000,
     aliases,
   };
 }

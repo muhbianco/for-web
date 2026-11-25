@@ -314,14 +314,19 @@ export const BALANCE = {
     regionalFinal: { at: 0.25, pct: 0.1, everySeconds: 5 },
   },
 
-  /** §12.1: duração máxima da corrida; pausa fora de combate entre as salas (P12). */
+  /**
+   * A corrida não tem teto de tempo (decisão do dono de 25/11/2026, D21): dura até todos os heróis
+   * caírem ou todos os monstros morrerem. Entre as salas o grupo descansa fora de combate até todos
+   * chegarem a 90% de HP e mana (P57), no mínimo 3 s.
+   */
   runs: {
-    cacadaMaxMs: 8 * 60_000,
-    masmorraMaxMs: 10 * 60_000,
-    /** Pausa mínima entre as salas e o descanso fora de combate até todos chegarem a 90% (máx. 30 s; P57). */
     roomPauseSeconds: 3,
     restUntilPct: 0.9,
-    maxRestSeconds: 30,
+    /**
+     * Trava técnica do simulador contra laço infinito (24 h de luta simulada). Não é regra de jogo:
+     * nenhuma luta real chega perto; se chegar, é defeito e a corrida volta como "travada".
+     */
+    engineGuardSeconds: 86_400,
   },
 
   /** §9: equipamento. */
