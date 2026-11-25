@@ -114,7 +114,6 @@ export const BALANCE = {
   regen: {
     mpPctPerSecond: 0.004,
     mpPerIntPerSecond: 0.05,
-    outOfCombatPctPerSecond: 0.02,
   },
 
   /** §5: ameaça. */
@@ -444,12 +443,10 @@ export const BALANCE = {
 
   /**
    * A corrida não tem teto de tempo (decisão do dono de 25/11/2026, D21): dura até todos os heróis
-   * caírem ou todos os monstros morrerem. Entre as salas o grupo descansa fora de combate até todos
-   * chegarem a 90% de HP e mana (P57), no mínimo 3 s.
+   * caírem ou todos os monstros morrerem. Sem descanso entre as salas (D40, 25/11/2026, no lugar da
+   * pausa até 90% da P57): a próxima sala começa na hora, com o que sobrou de vida e mana.
    */
   runs: {
-    roomPauseSeconds: 3,
-    restUntilPct: 0.9,
     /**
      * Trava técnica do simulador contra laço infinito (24 h de luta simulada). Não é regra de jogo:
      * nenhuma luta real chega perto; se chegar, é defeito e a corrida volta como "travada".

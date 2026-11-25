@@ -84,16 +84,27 @@ export function balanceReport(
     for (const s of SUPPORTS)
       for (const p of PAIRS) {
         const c = [t, s, ...p];
-        const bad = masmorras
-          .filter((d) => !clean(run(d, c)))
-          .map((d) => d.level);
+        const runs = masmorras.map((d) => ({ L: d.level, r: run(d, c) }));
+        const bad = runs.filter((x) => !clean(x.r)).map((x) => x.L);
+        // D40: sem descanso entre as salas, vencer perdendo 1 herói fica aceito; derrota não.
+        const d40 = runs
+          .filter((x) => !clean(x.r))
+          .every(
+            (x) =>
+              x.r.outcome === "vitoria" &&
+              x.r.heroes.filter((h) => !h.alive).length <= 1,
+          );
         add(
           S1,
           `T/H/D/D ${short(c)} vence sem mortes`,
-          bad.length === 0 ? "ok" : t === "paladino" ? "aceita" : "falha",
+          bad.length === 0
+            ? "ok"
+            : t === "paladino" || d40
+              ? "aceita"
+              : "falha",
           bad.length === 0
             ? "37/37"
-            : `${37 - bad.length}/37; com morte ou derrota: ${bad.join(", ")}${t === "paladino" ? " (P63: sobra depois da D32)" : ""}`,
+            : `${37 - bad.length}/37; com morte ou derrota: ${bad.join(", ")}${t === "paladino" ? " (P63: sobra depois da D32)" : d40 ? " (D40: vence com 1 morte, sem descanso)" : ""}`,
         );
       }
   for (const t of TANKS)
@@ -326,14 +337,24 @@ export function balanceReport(
   const S7 = "§14.7 Ritmo";
   const cacadas = DUNGEONS.filter((d) => d.kind === "cacada");
   const ratioAt = new Map<number, { ratio: number; seconds: number }>();
+  // D40: sem descanso entre as salas o mago solo perde algumas Caçadas do próprio nível. A curva mede
+  // o XP de uma Caçada vencida, então nessas faixas entra a vitória do caçador (a derrota do mago já
+  // aparece na §14.4/testes).
+  const magoLost: number[] = [];
   for (const d of cacadas) {
-    const r = simulateRun(
-      d,
-      [E.fighter("mago", d.level, { ...SPEC, solo: true })],
-      { mode: "esperado" },
-      B,
-      M,
-    );
+    const solo = (cls: ClassId) =>
+      simulateRun(
+        d,
+        [E.fighter(cls, d.level, { ...SPEC, solo: true })],
+        { mode: "esperado" },
+        B,
+        M,
+      );
+    let r = solo("mago");
+    if (r.outcome !== "vitoria") {
+      magoLost.push(d.level);
+      r = solo("cacador");
+    }
     const xp = runRewards(d, [d.level], r, B).heroes[0]!.xp;
     ratioAt.set(d.level, {
       ratio: xp / (B.xpToNext(d.level) / B.runsPerLevel(d.level)),
@@ -366,7 +387,10 @@ export function balanceReport(
       .map(
         (x) => `L${x.L} ${x.dev >= 0 ? "+" : ""}${(x.dev * 100).toFixed(1)}%`,
       )
-      .join(" · "),
+      .join(" · ") +
+      (magoLost.length
+        ? ` (D40: o mago perde a do ${magoLost.join(", ")}; ali conta a vitória do caçador)`
+        : ""),
   );
   let job20 = 1;
   while (B.jobForLevel(job20) < 20) job20++;
@@ -412,13 +436,16 @@ export function balanceReport(
   // D30: a poção sobe por tier; dentro de um tier o gasto varia quase 2× (o 410 gasta o dobro do 420),
   // então uma sobra a até 0,5 p.p. da faixa fica aceita (P74).
   const near = outside.every((x) => x.share >= 0.045 && x.share <= 0.105);
+  // D40: sem descanso entre as salas a PT bebe mais (medido em 25/11/2026: até 21%). Aceito até 25%;
+  // o piso de 5% continua valendo.
+  const d40 = outside.every((x) => x.share >= 0.045 && x.share <= 0.25);
   add(
     S13,
     "as poções de uma Masmorra custam 5–10% do ouro da corrida (PT de referência, 37 Masmorras)",
-    outside.length === 0 ? "ok" : near ? "aceita" : "falha",
+    outside.length === 0 ? "ok" : near || d40 ? "aceita" : "falha",
     `${eco.length - outside.length}/${eco.length} na faixa` +
       (outside.length
-        ? `; fora: ${outside.map((x) => `L${x.L} ${(x.share * 100).toFixed(1)}%`).join(", ")}${near ? " (P74: a até 0,5 p.p. da faixa)" : ""}`
+        ? `; fora: ${outside.map((x) => `L${x.L} ${(x.share * 100).toFixed(1)}%`).join(", ")}${near ? " (P74: a até 0,5 p.p. da faixa)" : d40 ? " (D40: sem descanso, aceito até 25%)" : ""}`
         : "") +
       ` · de ${(Math.min(...eco.map((x) => x.share)) * 100).toFixed(1)}% a ${(Math.max(...eco.map((x) => x.share)) * 100).toFixed(1)}%`,
   );

@@ -266,6 +266,11 @@ function gameRoomPlan(room: CompiledRoom): { item: string; at: [number, number][
   ];
 }
 
+/** Marca em `furnished`: o quadro de avisos já foi para o hall deste servidor (ou ele já tinha um). */
+export const NOTICE_BOARD_MARK = "hall:notice-board";
+/** Onde o tema põe o quadro na parede de cima do hall (o mesmo x do `hallSpecs`). */
+const NOTICE_BOARD_X = 9;
+
 export interface ThemeOptions {
   serverName?: string;
   catalog?: Catalog;
@@ -325,6 +330,14 @@ export function furnish(ix: MapIndex, state: DecorState, opts: ThemeOptions = {}
     else place(key, roomSpecs(r, hash(r.roomId)));
     ensureTv(key, r);
   }
+  // O quadro de avisos entrou no tema do hall em 25/11/2026, quando os servidores já tinham o hall
+  // mobiliado: ele vai uma vez para a parede de cima do hall, no primeiro trecho livre a partir do
+  // lugar do tema. A marca em `furnished` impede que volte se alguém tirar; parede cheia tenta de
+  // novo na próxima carga.
+  if (furnished.has("hall") && !furnished.has(NOTICE_BOARD_MARK) && ensureNoticeBoard()) {
+    furnished.add(NOTICE_BOARD_MARK);
+    next = { ...next, furnished: [...furnished] };
+  }
   return next;
 
   /** A sala do jogo: cada objeto na primeira posição livre da lista dele (gameRoomPlan). */
@@ -350,6 +363,23 @@ export function furnish(ix: MapIndex, state: DecorState, opts: ThemeOptions = {}
     });
     furnished.add(key);
     next = { ...next, furnished: [...furnished] };
+  }
+
+  /** O quadro na parede de cima do hall; já ter um em qualquer lugar do servidor também conta. */
+  function ensureNoticeBoard(): boolean {
+    if (items.some((i) => i.item === "notice-board")) return true;
+    const hall = zones.byKey.get("hall");
+    if (!hall) return false;
+    const w = hall.rect.x1 - hall.rect.x0 + 1;
+    const xs = [NOTICE_BOARD_X, ...Array.from({ length: w }, (_, x) => x)];
+    for (const x of xs) {
+      const inst: DecorInstance = { id: `t-${hash("hall").toString(36)}-news`, item: "notice-board", zone: "hall", x, y: -1, rot: 0 };
+      if (validatePlacement(ctx(), inst) !== null) continue;
+      items.push(inst);
+      next = { ...next, items: [...items] };
+      return true;
+    }
+    return false;
   }
 
   /**

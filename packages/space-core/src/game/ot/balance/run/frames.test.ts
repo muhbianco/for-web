@@ -37,13 +37,13 @@ test("gravar os quadros não muda a corrida", () => {
   }
 });
 
-test("um quadro por segundo, sala anunciada, descanso sem monstros e XP em cada abate", () => {
+test("um quadro por segundo, sala anunciada, sem descanso entre as salas e XP em cada abate", () => {
   const d = dungeonById("masmorra-70")!;
   const r = simulateRun(d, party(REF, 70), { mode: "esperado", record: true });
   const f = r.frames!;
   assert.equal(r.outcome, "vitoria");
   f.forEach((x, i) => assert.equal(x.s, i + 1, `quadro ${i}`));
-  // A corrida inteira cabe nos quadros (salas e descansos, segundos inteiros).
+  // A corrida inteira cabe nos quadros (só as salas, em segundos inteiros).
   assert.ok(
     f.length >= Math.floor(r.seconds) && f.length <= Math.ceil(r.seconds) + 4,
   );
@@ -52,9 +52,11 @@ test("um quadro por segundo, sala anunciada, descanso sem monstros e XP em cada 
     rooms.map((e) => (e.k === "sala" ? e.st : -1)),
     [0, 1, 2, 3],
   );
-  const rests = f.filter((x) => x.e.some((e) => e.k === "descanso"));
-  assert.equal(rests.length, 3);
-  assert.ok(f.filter((x) => x.x.length === 0).length >= 9);
+  // D40: a próxima sala começa no segundo seguinte ao fim da anterior, sem pausa.
+  assert.equal(f.filter((x) => x.e.some((e) => e.k === "descanso")).length, 0);
+  // O tempo da corrida é só o das lutas: nenhum segundo entre uma sala e a outra.
+  const fought = r.rooms.reduce((a, room) => a + room.seconds, 0);
+  assert.ok(Math.abs(r.seconds - fought) < 0.11, `${r.seconds} × ${fought}`);
   const kills = r.rooms.flatMap((room) => room.kills);
   const abates = f.flatMap((x) => x.e).filter((e) => e.k === "abate");
   assert.equal(abates.length, kills.length);

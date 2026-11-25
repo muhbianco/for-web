@@ -184,8 +184,15 @@ test("D16: a Investida vale 1,5× o golpe do chefe menor (não o do chefe, calib
   assert.ok(Math.abs(b.autoRaw * b.charge!.mult - 1.5 * r.menorHit) < 1e-6);
 });
 
+// D40 (25/11/2026): sem descanso entre as salas, o grupo entra na sala seguinte com o que sobrou.
+// O dono aceitou o jogo mais difícil: a PT completa continua vencendo todas as Masmorras, mas pode
+// perder um herói no caminho (medido: gue+pad+mag+cac no 490, pal+pad+ass+mag no 230 e no 330).
+// O mago solo perde a Caçada do próprio nível nestas faixas (as outras classes vencem todas).
+const D40_MAGO_SOLO = new Set([30, 70, 120, 130, 140, 190]);
+const D40_MAX_DEATHS = 1;
+
 // D21/D22: nada se balanceia por tempo; a duração das salas não é cobrada.
-test("corrida: PT completa vence sem mortes; sem DPS e sem tanque perdem", () => {
+test("corrida: PT completa vence (D40: até 1 morte); sem DPS e sem tanque perdem", () => {
   for (const L of [40, 70, 110, 160, 310, 490]) {
     const d = DUNGEONS.find((x) => x.kind === "masmorra" && x.level === L)!;
     const run = (c: string[]) =>
@@ -197,8 +204,8 @@ test("corrida: PT completa vence sem mortes; sem DPS e sem tanque perdem", () =>
     const ok = run(["guerreiro", "padre", "mago", "cacador"]);
     assert.equal(ok.outcome, "vitoria", `L${L}`);
     assert.ok(
-      ok.heroes.every((h) => h.alive),
-      `L${L}: morte`,
+      ok.heroes.filter((h) => !h.alive).length <= D40_MAX_DEATHS,
+      `L${L}: mortes`,
     );
     assert.notEqual(
       run(["guerreiro", "padre", "druida", "paladino"]).outcome,
@@ -216,7 +223,7 @@ test("corrida: PT completa vence sem mortes; sem DPS e sem tanque perdem", () =>
 // P63: com paladino de tanque, a Invocação (desde o 70) jogava os lacaios no suporte e no mago
 // (16 de 148 corridas com morte). Do T4 em diante o paladino leva a Consagração, que o cura por
 // inimigo consagrado; sem suporte ele continua perdendo.
-test("P63: as 4 PTs completas vencem as 37 Masmorras sem mortes; sem suporte o paladino perde", () => {
+test("P63: as 4 PTs completas vencem as 37 Masmorras (D40: até 1 morte); sem suporte o paladino perde", () => {
   const FULL = [
     ["guerreiro", "padre", "mago", "cacador"],
     ["paladino", "druida", "assassino", "cacador"],
@@ -233,7 +240,8 @@ test("P63: as 4 PTs completas vencem as 37 Masmorras sem mortes; sem suporte o p
     for (const c of FULL) {
       const r = run(c);
       assert.ok(
-        r.outcome === "vitoria" && r.heroes.every((h) => h.alive),
+        r.outcome === "vitoria" &&
+          r.heroes.filter((h) => !h.alive).length <= D40_MAX_DEATHS,
         `${c.join("+")} L${d.level}: ${r.outcome}`,
       );
     }
@@ -245,7 +253,7 @@ test("P63: as 4 PTs completas vencem as 37 Masmorras sem mortes; sem suporte o p
   }
 });
 
-test("Caçada solo: toda classe vence toda Caçada até o 440", () => {
+test("Caçada solo: toda classe vence toda Caçada até o 440 (D40: menos o mago em 6 faixas)", () => {
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada" && x.level <= 440))
     for (const c of [
       "guerreiro",
@@ -261,6 +269,7 @@ test("Caçada solo: toda classe vence toda Caçada até o 440", () => {
         [E.fighter(c, d.level, { ...SPEC, solo: true })],
         { mode: "esperado" },
       );
+      if (c === "mago" && D40_MAGO_SOLO.has(d.level)) continue;
       assert.equal(r.outcome, "vitoria", `${c} ${d.id}`);
     }
 });

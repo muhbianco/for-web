@@ -19,7 +19,7 @@ import { rewardsFor } from "./rewards.ts";
 
 /**
  * A corrida inteira (spec §12.1): as 4 salas em sequência, com HP, mana, poções e recargas passando de
- * uma sala para a outra; entre as salas, uma pausa fora de combate (2%/s de HP e mana, P12). Acaba em
+ * uma sala para a outra, sem descanso entre elas (D40: a próxima sala começa na hora). Acaba em
  * vitória (todos os monstros mortos) ou derrota (todos os heróis caídos). Sem teto de tempo (D21).
  */
 
@@ -27,12 +27,15 @@ import { rewardsFor } from "./rewards.ts";
  * Versão das regras da corrida: a corrida gravada só tem os quadros refeitos pela semente se esta for a
  * mesma do início. Subir quando mudar fórmula, config ou motor (a v4 do jogo era a 15).
  */
-export const ENGINE_VERSION = 16;
+export const ENGINE_VERSION = 17;
 
 /** "travada" só se a trava técnica do simulador disparar (defeito; não é regra de jogo). */
 export type RunOutcome = "vitoria" | "derrota" | "travada";
 
-/** Evento da corrida: os da luta, mais a entrada numa sala e o descanso entre as salas. */
+/**
+ * Evento da corrida: os da luta, mais a entrada numa sala. O "descanso" só vem de corrida gravada
+ * antes da v17 (D40 tirou a pausa entre as salas); o app ainda sabe mostrá-lo.
+ */
 export type RunEvent =
   | FightEvent
   | { k: "sala"; st: number }
@@ -121,67 +124,8 @@ export function simulateRun(
     }
     if (!r.win)
       return end(r.heroes.every((h) => !h.alive) ? "derrota" : "travada");
-    if (i === rooms.length - 1) break;
-    // Pausa entre as salas: fora de combate, regenera e as recargas andam.
-    // Descansa até todos chegarem ao alvo de HP e mana, no mínimo a pausa.
-    const rate = cfg.regen.outOfCombatPctPerSecond;
-    let need = 0;
-    carry.forEach((c, j) => {
-      if (!c || !c.alive) return;
-      const st = party[j]!.stats;
-      const short = Math.max(
-        cfg.runs.restUntilPct - c.hp / st.hp,
-        cfg.runs.restUntilPct - c.mp / st.mp,
-        0,
-      );
-      need = Math.max(need, short / rate);
-    });
-    const pause = Math.max(cfg.runs.roomPauseSeconds, Math.ceil(need));
-    elapsed += pause;
-    const regen = rate * pause;
-    if (opts.record) {
-      for (let p = 1; p <= pause; p++)
-        frames.push({
-          s: clock + p,
-          st: i,
-          h: carry.map((c, j) =>
-            !c || !c.alive
-              ? 0
-              : Math.round(
-                  Math.min(
-                    party[j]!.stats.hp,
-                    c.hp + rate * p * party[j]!.stats.hp,
-                  ),
-                ),
-          ),
-          m: carry.map((c, j) =>
-            !c || !c.alive
-              ? 0
-              : Math.round(
-                  Math.min(
-                    party[j]!.stats.mp,
-                    c.mp + rate * p * party[j]!.stats.mp,
-                  ),
-                ),
-          ),
-          x: [],
-          e: p === 1 ? [{ k: "descanso", s: pause }] : [],
-        });
-      clock += pause;
-    }
-    carry = carry.map((c, j) => {
-      if (!c || !c.alive) return c;
-      const st = party[j]!.stats;
-      const cooldowns: Record<string, number> = {};
-      for (const [id, s] of Object.entries(c.cooldowns))
-        if (s - pause > 0) cooldowns[id] = s - pause;
-      return {
-        ...c,
-        hp: Math.min(st.hp, c.hp + regen * st.hp),
-        mp: Math.min(st.mp, c.mp + regen * st.mp),
-        cooldowns,
-      };
-    });
+    // Sem descanso entre as salas (D40, 25/11/2026): a próxima começa na hora, com a vida, a mana,
+    // as poções e as recargas como ficaram no fim desta.
   }
   return end("vitoria");
 }

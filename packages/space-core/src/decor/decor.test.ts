@@ -16,7 +16,7 @@ import {
   validateConfig,
   validatePlacement,
 } from "./placement.ts";
-import { defaultDecor, furnish } from "./theme.ts";
+import { defaultDecor, furnish, NOTICE_BOARD_MARK } from "./theme.ts";
 import { type DecorInstance, emptyDecor } from "./types.ts";
 import { roomZoneKey, wingZoneKey, zonesOf } from "./zones.ts";
 
@@ -294,4 +294,40 @@ test("quadro de avisos: item de parede 2×1, só aceita título e entra no hall 
   assert.equal(placed.length, 1);
   assert.equal(placed[0]!.zone, "hall");
   assert.equal(placed[0]!.y, -1);
+});
+
+test("quadro de avisos nos servidores que já existiam: entra uma vez no hall e não volta se tirarem", () => {
+  const { ix, ctx } = fixture();
+  // Um servidor de antes do quadro: hall mobiliado, sem quadro e sem a marca.
+  const fresh = defaultDecor(ix, { serverName: "Antigo" });
+  assert.ok(fresh.furnished.includes(NOTICE_BOARD_MARK), "servidor novo já sai marcado");
+  const old = {
+    ...fresh,
+    items: fresh.items.filter((i) => i.item !== "notice-board"),
+    furnished: fresh.furnished.filter((k) => k !== NOTICE_BOARD_MARK),
+  };
+  const migrated = furnish(ix, old);
+  const boards = migrated.items.filter((i) => i.item === "notice-board");
+  assert.equal(boards.length, 1);
+  assert.equal(boards[0]!.zone, "hall");
+  assert.equal(boards[0]!.y, -1);
+  assert.equal(migrated.items.length, old.items.length + 1);
+  assert.ok(migrated.furnished.includes(NOTICE_BOARD_MARK));
+  // Vale contra o resto do hall.
+  const others = { ...migrated, items: migrated.items.filter((i) => i.id !== boards[0]!.id) };
+  assert.equal(validatePlacement(ctx(others), boards[0]!), null);
+  // De novo não põe outro; tirado depois da marca, não volta.
+  assert.equal(furnish(ix, migrated).items.length, migrated.items.length);
+  const removed = { ...migrated, items: migrated.items.filter((i) => i.item !== "notice-board") };
+  assert.equal(furnish(ix, removed).items.filter((i) => i.item === "notice-board").length, 0);
+  // O lugar do tema ocupado: vai para o primeiro trecho livre da parede de cima.
+  const blocked = { ...old, items: [...old.items, inst({ id: "x-1", item: "poster", zone: "hall", x: 9, y: -1 })] };
+  if (validatePlacement(ctx(old), blocked.items.at(-1)!) === null) {
+    const moved = furnish(ix, blocked).items.filter((i) => i.item === "notice-board");
+    assert.equal(moved.length, 1);
+    assert.notEqual(moved[0]!.x, 9);
+  }
+  // Quem já tinha posto um quadro em outro lugar não ganha outro.
+  const own = { ...old, items: [...old.items, inst({ id: "x-2", item: "notice-board", zone: "spine", x: 0, y: -1 })] };
+  assert.equal(furnish(ix, own).items.filter((i) => i.item === "notice-board").length, 1);
 });
