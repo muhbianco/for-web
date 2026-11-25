@@ -2,8 +2,7 @@
 // com o Monte Carlo do §14.9, o ritmo do §14.7 e a meta de economia do §13.
 //   node scripts/balance-report.ts            imprime o relatório (200 corridas por cenário no Monte Carlo)
 //   node scripts/balance-report.ts --mc 50    menos corridas, para rodar rápido
-//   node scripts/balance-report.ts --check    sai com erro se alguma linha falhar (o CI passa a usar depois
-//                                             da revisão da Fase 7; por ora ele só imprime)
+//   node scripts/balance-report.ts --check    sai com erro se alguma linha falhar (é o que o CI roda)
 import {
   balanceReport,
   formatReport,

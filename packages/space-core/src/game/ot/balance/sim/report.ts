@@ -222,10 +222,11 @@ export function balanceReport(
     add(
       S10,
       "sem tanque, um herói de pano morre nas salas 1–3 em ≥ 50%",
-      weak.length === 0 ? "ok" : "falha",
+      // D31: aceito pelo dono; na sala de lacaios o tanque não faz falta, só o chefe cobra o tanque.
+      weak.length === 0 ? "ok" : "aceita",
       roomLine.map((x) => `L${x.L} ${pct(x.roomDeath)}`).join(" · ") +
         (weak.length
-          ? " (P72: nas salas os DPS tiram os lacaios do tanque; subir o golpe mata a PT completa junto)"
+          ? " (D31: aceito; nas salas os DPS tiram os lacaios do tanque, e subir o golpe mataria a PT completa junto)"
           : ""),
     );
   }

@@ -66,9 +66,9 @@ steps:
       - corepack enable
       - pnpm --filter @muchat/space-core test
       - pnpm --filter @muchat/space-core typecheck
-      # Relatório da §14 do Idle Hunt (engine nova): por ora só imprime; com --check ele barra o
-      # pipeline quando uma invariante falha (liga depois da revisão do dono da Fase 7: P72–P74).
-      - pnpm --filter @muchat/space-core exec node scripts/balance-report.ts
+      # Relatório da §14 do Idle Hunt (engine nova, ~35 s): barra o pipeline quando uma invariante
+      # falha. As linhas "aceitas" (decisões do dono e achados abertos) não barram.
+      - pnpm --filter @muchat/space-core exec node scripts/balance-report.ts --check
       - pnpm --filter @muchat/space-server test
       - pnpm --filter @muchat/space-server typecheck
       - pnpm --filter @muchat/space-client test
