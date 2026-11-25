@@ -7,6 +7,13 @@ import {
   CLASSES,
 } from "./content.ts";
 import {
+  type Affix,
+  type BalanceHero,
+  type Equipment,
+  type ItemInstance,
+  heroDerived,
+} from "./equipment.ts";
+import {
   type Balance,
   type HeroStats,
   type Tier,
@@ -55,24 +62,77 @@ export function createReference(B: Balance = gameBalance) {
     return [order[0]![0], (order[1] ?? order[0]!)[0]];
   }
 
-  function referenceAttrs(
+  /**
+   * O equipamento do perfil: arma e mão secundária da classe, as 4 peças do peso da classe, colar e
+   * anel, todos com a mesma raridade, refino e iL. Os afixos de atributo (5 no principal e 3 no
+   * secundário, no valor nominal) vão um por item, em ordem; só a soma importa para os derivados.
+   */
+  function referenceEquipment(
     cls: ClassId,
     level: number,
     opts: ReferenceOptions = {},
-  ): Stats {
+  ): Equipment {
+    const c = CLASSES[cls];
     const ilvl = opts.ilvl ?? level;
-    const base = opts.attrs
+    const rarity = (opts.rarity ?? cfg.reference.rarity) as RarityId;
+    const refine = opts.refine ?? cfg.reference.refine;
+    const common = { ilvl, rarity, refine };
+    const items: ItemInstance[] = [
+      { ...common, slot: "arma", family: c.referenceWeapon, affixes: [] },
+    ];
+    if (c.referenceOffhand)
+      items.push({
+        ...common,
+        slot: "secundaria",
+        offhand: c.referenceOffhand,
+        affixes: [],
+      });
+    for (const slot of ARMOR_SLOTS)
+      items.push({ ...common, slot, weight: c.armor, affixes: [] });
+    items.push({ ...common, slot: "colar", affixes: [] });
+    items.push({ ...common, slot: "anel", affixes: [] });
+
+    if (opts.gearAttrs !== false) {
+      const [main, second] = affixTargets(cls);
+      const v = B.attributeAffix(ilvl);
+      const affixes: Affix[] = [
+        ...Array.from({ length: cfg.reference.mainAttrAffixes }, () => ({
+          id: main,
+          value: v,
+        })),
+        ...Array.from({ length: cfg.reference.secondaryAttrAffixes }, () => ({
+          id: second,
+          value: v,
+        })),
+      ];
+      affixes.forEach((a, i) => items[i % items.length]!.affixes.push(a));
+    }
+
+    const eq: Equipment = {};
+    for (const it of items) (eq as Record<string, ItemInstance>)[it.slot] = it;
+    return eq;
+  }
+
+  /** O herói de referência como a engine nova o guarda. */
+  function referenceBalanceHero(
+    cls: ClassId,
+    level: number,
+    opts: ReferenceOptions = {},
+  ): BalanceHero {
+    const attrs: Stats = opts.attrs
       ? { ...opts.attrs }
       : B.allocateByWeights(
           B.attributePoints(level),
           CLASSES[cls].referenceBuild,
         );
-    if (opts.gearAttrs === false) return base;
-    const [main, second] = affixTargets(cls);
-    const v = B.attributeAffix(ilvl);
-    base[main] += cfg.reference.mainAttrAffixes * v;
-    base[second] += cfg.reference.secondaryAttrAffixes * v;
-    return base;
+    return {
+      cls,
+      level,
+      job: B.jobForLevel(level),
+      proficiency: opts.proficiency ?? B.recommendedProficiency(level),
+      attrs,
+      equipment: referenceEquipment(cls, level, opts),
+    };
   }
 
   function referenceHero(
@@ -80,33 +140,9 @@ export function createReference(B: Balance = gameBalance) {
     level: number,
     opts: ReferenceOptions = {},
   ): ReferenceHero {
-    const c = CLASSES[cls];
-    const ilvl = opts.ilvl ?? level;
-    const rarity = (opts.rarity ?? cfg.reference.rarity) as RarityId;
-    const refine = opts.refine ?? cfg.reference.refine;
-    const rm = B.rarityMult(rarity);
-    const armorRm = rm * B.refineMult(refine, false);
-    let armorDef = 0;
-    let armorMdef = 0;
-    for (const slot of ARMOR_SLOTS) {
-      armorDef += B.armorDefPiece(ilvl, slot, c.armor);
-      armorMdef += B.armorMdefPiece(ilvl, slot, c.armor);
-    }
-    const stats = B.heroStats({
-      cls: c,
-      level,
-      attrs: referenceAttrs(cls, level, opts),
-      proficiency: opts.proficiency ?? B.recommendedProficiency(level),
-      family: c.referenceWeapon,
-      weaponBase: B.weaponBaseValue(ilvl) * rm * B.refineMult(refine, true),
-      offhand: c.referenceOffhand,
-      shieldDef:
-        c.referenceOffhand === "escudo" ? B.shieldDefValue(ilvl) * armorRm : 0,
-      armorDef: armorDef * armorRm,
-      armorMdef: armorMdef * armorRm,
-    });
-    const job = B.jobForLevel(level);
-    return { ...stats, cls, job, tier: B.tierFor(level, job) };
+    const hero = referenceBalanceHero(cls, level, opts);
+    const stats = heroDerived(hero, B);
+    return { ...stats, cls, job: hero.job, tier: B.tierFor(level, hero.job) };
   }
 
   /** Reduções, crítico e evasão contra o chefe e erro contra o lacaio, todos no nível do herói. */
@@ -184,7 +220,8 @@ export function createReference(B: Balance = gameBalance) {
 
   return {
     affixTargets,
-    referenceAttrs,
+    referenceEquipment,
+    referenceBalanceHero,
     referenceHero,
     versus,
     tankReference,

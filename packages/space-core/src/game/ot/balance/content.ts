@@ -541,3 +541,158 @@ export const RARITIES: Record<RarityId, RarityDef> = {
 /** §9.2: munição; o bônus soma ao ATQ à distância. */
 export const AMMO_GRADES = { comum: 0, afiada: 0.05, runica: 0.1 } as const;
 export type AmmoGrade = keyof typeof AMMO_GRADES;
+
+/** §9.1: os slots que entram nos derivados (mochila e munição ficam como hoje, fora daqui). */
+export const GEAR_SLOTS = [
+  "arma",
+  "secundaria",
+  "elmo",
+  "armadura",
+  "calcas",
+  "botas",
+  "colar",
+  "anel",
+] as const;
+export type GearSlot = (typeof GEAR_SLOTS)[number];
+
+/** §9.3: colar e anel não têm status base e vêm com +1 afixo além da raridade. */
+export const JEWEL_EXTRA_AFFIXES = 1;
+
+export const AFFIX_IDS = [
+  ...STATS,
+  "hpPct",
+  "mpPct",
+  "atkPct",
+  "matkPct",
+  "healPct",
+  "defPct",
+  "mdefPct",
+  "hit",
+  "flee",
+  "critRating",
+  "critMultPct",
+  "hastePct",
+  "cooldownPct",
+  "effectResPct",
+] as const;
+export type AffixId = (typeof AFFIX_IDS)[number];
+
+const ARMOR_PIECES: GearSlot[] = ["elmo", "armadura", "calcas", "botas"];
+
+export const AffixSchema = z.object({
+  id: z.enum(AFFIX_IDS),
+  /**
+   * Como o valor escala: `atributo` = 1 + iL/40; `rating` = 2 × (1 + iL/40) (planos, crescem com o
+   * item); `pct` = fração fixa entre min e max (vale igual do nível 1 ao 500). Rolagem de ±20%.
+   */
+  scale: z.enum(["atributo", "rating", "pct"]),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  slots: z.array(z.enum(GEAR_SLOTS)).min(1),
+});
+export type AffixDef = z.infer<typeof AffixSchema>;
+
+/**
+ * §9.5. O afixo "+oz de capacidade" da mochila saiu pela decisão do dono de 25/11/2026 (capacidade só
+ * pelos pontos). Onde o spec diz "escudo", vale a mão secundária só quando for escudo (a engine confere).
+ */
+export const AFFIXES: Record<AffixId, AffixDef> = {
+  FOR: { id: "FOR", scale: "atributo", slots: [...GEAR_SLOTS] },
+  AGI: { id: "AGI", scale: "atributo", slots: [...GEAR_SLOTS] },
+  VIT: { id: "VIT", scale: "atributo", slots: [...GEAR_SLOTS] },
+  INT: { id: "INT", scale: "atributo", slots: [...GEAR_SLOTS] },
+  DES: { id: "DES", scale: "atributo", slots: [...GEAR_SLOTS] },
+  SOR: { id: "SOR", scale: "atributo", slots: [...GEAR_SLOTS] },
+  hpPct: {
+    id: "hpPct",
+    scale: "pct",
+    min: 0.02,
+    max: 0.04,
+    slots: [...ARMOR_PIECES, "colar", "anel"],
+  },
+  mpPct: {
+    id: "mpPct",
+    scale: "pct",
+    min: 0.02,
+    max: 0.04,
+    slots: [...ARMOR_PIECES, "colar", "anel"],
+  },
+  atkPct: {
+    id: "atkPct",
+    scale: "pct",
+    min: 0.02,
+    max: 0.04,
+    slots: ["arma", "anel", "colar"],
+  },
+  matkPct: {
+    id: "matkPct",
+    scale: "pct",
+    min: 0.02,
+    max: 0.04,
+    slots: ["arma", "anel", "colar"],
+  },
+  healPct: {
+    id: "healPct",
+    scale: "pct",
+    min: 0.02,
+    max: 0.05,
+    slots: ["arma", "colar"],
+  },
+  defPct: {
+    id: "defPct",
+    scale: "pct",
+    min: 0.03,
+    max: 0.06,
+    slots: [...ARMOR_PIECES, "secundaria"],
+  },
+  mdefPct: {
+    id: "mdefPct",
+    scale: "pct",
+    min: 0.03,
+    max: 0.06,
+    slots: [...ARMOR_PIECES, "secundaria"],
+  },
+  hit: {
+    id: "hit",
+    scale: "rating",
+    slots: ["arma", "anel", "botas", "elmo"],
+  },
+  flee: {
+    id: "flee",
+    scale: "rating",
+    slots: ["arma", "anel", "botas", "elmo"],
+  },
+  critRating: {
+    id: "critRating",
+    scale: "rating",
+    slots: ["arma", "anel", "botas", "elmo"],
+  },
+  critMultPct: {
+    id: "critMultPct",
+    scale: "pct",
+    min: 0.03,
+    max: 0.06,
+    slots: ["arma", "anel"],
+  },
+  hastePct: {
+    id: "hastePct",
+    scale: "pct",
+    min: 0.02,
+    max: 0.05,
+    slots: ["arma", "anel", "botas"],
+  },
+  cooldownPct: {
+    id: "cooldownPct",
+    scale: "pct",
+    min: 0.01,
+    max: 0.03,
+    slots: ["elmo", "colar"],
+  },
+  effectResPct: {
+    id: "effectResPct",
+    scale: "pct",
+    min: 0.05,
+    max: 0.1,
+    slots: ["colar", "anel"],
+  },
+};

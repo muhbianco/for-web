@@ -58,6 +58,9 @@ export interface GearBonus {
   critMultPct?: number;
   hastePct?: number;
   cooldownPct?: number;
+  /** Usados pelo combate (Fase 3), não pelos derivados: cura causada e resistência a efeitos. */
+  healPct?: number;
+  effectResPct?: number;
 }
 
 /** O que o herói carrega para os derivados. A arma e as peças já vêm com raridade e refino. */
