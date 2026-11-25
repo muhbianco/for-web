@@ -42,6 +42,7 @@ if (
     "@keyframes gamePop{0%{transform:scale(.7);opacity:0}40%{transform:scale(1.15);opacity:1}100%{transform:scale(1)}}",
     "@keyframes gameShake{0%,100%{transform:none}25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}",
     "@keyframes gameFloat{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-22px);opacity:0}}",
+    "@keyframes gameTipIn{from{opacity:0}to{opacity:1}}",
     "@keyframes gamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,120,90,.0)}50%{box-shadow:0 0 0 4px rgba(255,120,90,.45)}}",
   ].join("");
   document.head.append(s);

@@ -7448,6 +7448,10 @@ msgstr ""
 msgid "O Mercado Pago pede e-mail no apoio mensal."
 msgstr ""
 
+#: components/space/game/ItemCard.tsx
+msgid "O Mercador paga"
+msgstr ""
+
 #: components/space/game/MerchantPanel.tsx
 msgid "O Mercador paga 10% do preço base; o refino não entra no preço."
 msgstr ""
@@ -10402,6 +10406,10 @@ msgstr "Vurgulu Tonlar"
 
 #: components/space/game/ClassPicker.tsx
 msgid "Toque de novo: a classe não muda depois"
+msgstr ""
+
+#: components/space/game/ItemCard.tsx
+msgid "Toque e segure um item para ver os detalhes."
 msgstr ""
 
 #: components/space/game/ClassPicker.tsx

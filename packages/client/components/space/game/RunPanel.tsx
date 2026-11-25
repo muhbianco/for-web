@@ -9,15 +9,23 @@ import {
   type RpgRunMemberEnd,
   CLASSES,
   FOE_BASE,
+  buyBackPrice,
   dungeonById,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
+import { ItemTip } from "./ItemTip";
 import { CLASS_ICON, RunHud } from "./RunHud";
 import { RunScene } from "./RunScene";
-import { kindName, mechanicHint, mechanicName } from "./gameText";
+import {
+  kindName,
+  mechanicHint,
+  mechanicName,
+  rarityName,
+  slotName,
+} from "./gameText";
 import { type GameLink, Gold, Grip, ItemIcon, useCommands } from "./gameUi";
 import { BOSS_ARCHETYPES, bagMarks, gold, num } from "./heroModel";
 import { dungeonName, loopStopText, outcomeText } from "./partyUi";
@@ -518,6 +526,10 @@ export default function RunPanel(props: {
   );
 }
 
+/** O item em texto, para quem ouve a tela (o ícone sozinho é só desenho). */
+const itemLabel = (it: OwnedItem) =>
+  `${rarityName(it.rarity)} ${slotName(it.slot as never)} +${it.refine}`;
+
 /** O fim por cima da cena: o resultado, o que cada um levou e o grupo (jogar de novo, repetir). */
 function EndCard(props: {
   outcome: string;
@@ -602,16 +614,29 @@ function EndCard(props: {
                     <Show when={r().items.length > 0}>
                       <Items>
                         <For each={r().items}>
-                          {(it: OwnedItem) => (
-                            <ItemIcon
-                              item={it}
-                              mark={
-                                m.user_id === props.myId
-                                  ? marks()[it.uid]?.mark
-                                  : undefined
-                              }
-                            />
-                          )}
+                          {(it: OwnedItem) => {
+                            const mine = m.user_id === props.myId;
+                            return (
+                              <ItemTip
+                                item={it}
+                                hero={mine ? (props.hero?.hero ?? null) : null}
+                                price={mine ? buyBackPrice(it) : undefined}
+                              >
+                                {(bind) => (
+                                  <ItemIcon
+                                    {...bind}
+                                    tabIndex={0}
+                                    role="img"
+                                    aria-label={itemLabel(it)}
+                                    item={it}
+                                    mark={
+                                      mine ? marks()[it.uid]?.mark : undefined
+                                    }
+                                  />
+                                )}
+                              </ItemTip>
+                            );
+                          }}
                         </For>
                       </Items>
                     </Show>

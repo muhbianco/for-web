@@ -71,6 +71,36 @@ const drag = (dx, dy) => async (p) => {
   await p.mouse.up();
 };
 
+/**
+ * Abre o detalhe do item (ItemTip): no desktop, o mouse parado em cima; no celular, o toque longo
+ * (o dedo fica no item: o detalhe só fecha no próximo toque).
+ */
+const tipOn =
+  (sel, n = 0) =>
+  async (p) => {
+    const el = p.locator(sel).nth(n);
+    await el.scrollIntoViewIfNeeded();
+    if ((p.viewportSize()?.width ?? 1280) > 600) {
+      await el.hover();
+    } else {
+      await el.evaluate((node) => {
+        const b = node.getBoundingClientRect();
+        node.dispatchEvent(
+          new globalThis.PointerEvent("pointerdown", {
+            bubbles: true,
+            cancelable: true,
+            pointerType: "touch",
+            pointerId: 1,
+            isPrimary: true,
+            clientX: b.left + b.width / 2,
+            clientY: b.top + b.height / 2,
+          }),
+        );
+      });
+    }
+    await p.waitForTimeout(800);
+  };
+
 const SHOTS = [
   { name: "01-novo-aviso", s: "novo" },
   {
@@ -177,6 +207,50 @@ const SHOTS = [
   },
   { name: "33-janela-avisos", s: "avisos" },
   { name: "34-janela-avisos-arrastada", s: "avisos", act: drag(300, 200) },
+  // O detalhe do item ao parar em cima (25/11/2026): cada tela que mostra item.
+  {
+    name: "35-tip-cofre",
+    s: "banqueiro",
+    act: seq(tab("cofre"), tipOn("[role=dialog] [role=option]", 0)),
+  },
+  {
+    name: "36-tip-cofre-mochila",
+    s: "banqueiro",
+    act: seq(tab("cofre"), tipOn("[role=dialog] [role=option]", 12)),
+  },
+  {
+    name: "37-tip-transferir",
+    s: "banqueiro",
+    act: seq(tab("transferir"), tipOn("[role=dialog] [role=option]", 3)),
+  },
+  {
+    name: "38-tip-ficha-mochila",
+    s: "ficha",
+    act: seq(tab("equip"), tipOn("[role=dialog] [role=listitem]", 4)),
+  },
+  {
+    name: "39-tip-ficha-vestido",
+    s: "ficha",
+    act: seq(
+      tab("equip"),
+      tipOn("[role=dialog] [aria-pressed][aria-label^='Arma']"),
+    ),
+  },
+  {
+    name: "40-tip-mercador-vender",
+    s: "mercador",
+    act: seq(tab("vender"), tipOn("[role=dialog] [role=option]", 6)),
+  },
+  {
+    name: "41-tip-ferreiro",
+    s: "ferreiro",
+    act: tipOn("[role=dialog] [role=option]", 2),
+  },
+  {
+    name: "42-tip-corrida-fim",
+    s: "corrida-fim&speed=0",
+    act: tipOn("[data-covers-map] [role=img][tabindex='0']", 0),
+  },
 ];
 
 mkdirSync(OUT, { recursive: true });

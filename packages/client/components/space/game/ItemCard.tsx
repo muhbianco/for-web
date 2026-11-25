@@ -11,7 +11,7 @@ import { styled } from "styled-system/jsx";
 
 import { derivedName, errorText, rarityName, slotName } from "./gameText";
 import { RARITY } from "./gameTheme";
-import { Btn, Delta, ItemIcon, Muted } from "./gameUi";
+import { Btn, Delta, Gold, ItemIcon, Muted } from "./gameUi";
 import {
   type DerivedKey,
   DERIVED_ALL,
@@ -23,24 +23,35 @@ import {
   derivedText,
   equipPreview,
   equippedIn,
+  gold,
 } from "./heroModel";
+import { ItemTip } from "./ItemTip";
 
 /**
  * O detalhe de um item (spec §9.7): nome na cor da raridade e o nome da raridade escrito, iL e
  * requisito, a linha base, refino, afixos e o efeito lendário; e a comparação antes/depois com o
  * que está vestido no mesmo lugar: cada número com ▲/▼, e "se vestir", os derivados do herói pela
  * mesma conta do combate. `actions` vai embaixo (equipar, vender, refinar...).
+ *
+ * `compact` é o mesmo detalhe no tooltip do item (ItemTip): sem ações e sem o "ver todos os
+ * números". Sem herói (`hero` null: o item que caiu para outra pessoa), não compara nem diz se
+ * dá para vestir. `price`: quanto o Mercador paga, onde vender faz sentido.
  */
 export function ItemCard(props: {
-  hero: HeroV5;
+  hero: HeroV5 | null;
   item: ItemInstance & { uid?: string };
   /** Compara com o vestido (padrão: sim, se não for o próprio). */
   compare?: boolean;
   actions?: JSX.Element;
+  compact?: boolean;
+  price?: number;
 }) {
   const { t } = useLingui();
   const [all, setAll] = createSignal(false);
-  const worn = () => equippedIn(props.hero, props.item.slot as GearSlot);
+  const worn = () =>
+    props.hero
+      ? equippedIn(props.hero, props.item.slot as GearSlot)
+      : undefined;
   const isWorn = () => !!props.item.uid && worn()?.uid === props.item.uid;
   const comparing = () => (props.compare ?? true) && !isWorn() && !!worn();
   const tip = createMemo(() =>
@@ -48,31 +59,34 @@ export function ItemCard(props: {
   );
   const theirs = createMemo(() => (comparing() ? itemTooltip(worn()!) : null));
   const r = () => RARITY[props.item.rarity];
-  const below = () => props.hero.level < tip().requiredLevel;
-  const blocked = () => (isWorn() ? null : cannotWear(props.hero, props.item));
+  const below = () => !!props.hero && props.hero.level < tip().requiredLevel;
+  const blocked = () =>
+    !props.hero || isWorn() ? null : cannotWear(props.hero, props.item);
 
   // "Se vestir": o herói com este item no lugar (só itens da mochila; a prévia do núcleo).
   const preview = createMemo(() => {
+    const h = props.hero;
     const uid = props.item.uid;
-    if (!uid || isWorn() || blocked()) return null;
-    if (!props.hero.bag.some((x) => x.uid === uid)) return null;
-    const p = equipPreview(props.hero, uid);
+    if (!h || !uid || isWorn() || blocked()) return null;
+    if (!h.bag.some((x) => x.uid === uid)) return null;
+    const p = equipPreview(h, uid);
     if (!p.ok) return null;
-    const keys: DerivedKey[] = all()
-      ? DERIVED_ALL
-      : DERIVED_MAIN[props.hero.cls];
-    const rows = derivedDiff(derivedOf(props.hero), derivedOf(p.after), keys);
+    const keys: DerivedKey[] = all() ? DERIVED_ALL : DERIVED_MAIN[h.cls];
+    const rows = derivedDiff(derivedOf(h), derivedOf(p.after), keys);
     const mark = bagMarks({
-      ...props.hero,
-      bag: [props.hero.bag.find((x) => x.uid === uid)!],
+      ...h,
+      bag: [h.bag.find((x) => x.uid === uid)!],
     })[uid];
     return { rows, score: mark?.score ?? 1 };
   });
 
   return (
-    <Card style={{ "--rc": r().color }}>
+    <Card
+      style={{ "--rc": r().color }}
+      data-compact={props.compact ? "" : undefined}
+    >
       <Top>
-        <ItemIcon item={props.item} size={64} />
+        <ItemIcon item={props.item} size={props.compact ? 48 : 64} />
         <div>
           <Name>{tip().name}</Name>
           <Meta>
@@ -157,6 +171,13 @@ export function ItemCard(props: {
 
       <Show when={tip().legendary}>{(l) => <Legend>★ {l()}</Legend>}</Show>
 
+      <Show when={props.price !== undefined}>
+        <Line data-price="">
+          <span>{t`O Mercador paga`}</span>
+          <Gold n={gold(props.price ?? 0)} />
+        </Line>
+      </Show>
+
       <Show when={preview()}>
         {(p) => (
           <Compare aria-label={t`Se vestir`}>
@@ -188,14 +209,16 @@ export function ItemCard(props: {
                 </Line>
               )}
             </For>
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              onClick={() => setAll(!all())}
-            >
-              {all() ? t`Mostrar só o principal` : t`Ver todos os números`}
-            </Btn>
+            <Show when={!props.compact}>
+              <Btn
+                type="button"
+                data-size="sm"
+                data-tone="quiet"
+                onClick={() => setAll(!all())}
+              >
+                {all() ? t`Mostrar só o principal` : t`Ver todos os números`}
+              </Btn>
+            </Show>
           </Compare>
         )}
       </Show>
@@ -210,6 +233,8 @@ export function ItemCard(props: {
 /**
  * Uma grade de itens para escolher (vender, refinar, guardar): um toque seleciona; com `multi`,
  * marca vários. `mark` põe ▲/▼ (a comparação com o vestido); `note` escreve algo embaixo (preço).
+ * `hero`: o detalhe de cada item ao parar o mouse em cima (ou no foco, ou no toque longo), com
+ * `price` (o que o Mercador paga). `hint`: a dica do toque longo no celular (uma por tela).
  */
 export function ItemGrid(props: {
   label: string;
@@ -219,28 +244,60 @@ export function ItemGrid(props: {
   mark?: (uid: string) => "up" | "down" | "same" | "blocked" | undefined;
   note?: (it: ItemInstance & { uid: string }) => string | undefined;
   empty?: JSX.Element;
+  hero?: HeroV5 | null;
+  price?: (it: ItemInstance & { uid: string }) => number | undefined;
+  hint?: boolean;
 }) {
   return (
     <Show when={props.items.length > 0} fallback={props.empty}>
       <Grid role="listbox" aria-label={props.label} aria-multiselectable="true">
         <For each={props.items}>
           {(it) => (
-            <GridCell
-              type="button"
-              role="option"
-              aria-selected={props.selected.includes(it.uid)}
-              aria-label={`${rarityName(it.rarity)} ${slotName(it.slot as GearSlot)} +${it.refine}${props.note?.(it) ? ` · ${props.note(it)}` : ""}`}
-              onClick={() => props.onToggle(it.uid)}
+            <ItemTip
+              item={it}
+              hero={props.hero ?? null}
+              price={props.price?.(it)}
             >
-              <ItemIcon item={it} mark={props.mark?.(it.uid)} />
-              <Show when={props.note?.(it)}>{(n) => <small>{n()}</small>}</Show>
-            </GridCell>
+              {(bind) => (
+                <GridCell
+                  {...(props.hero !== undefined ? bind : {})}
+                  type="button"
+                  role="option"
+                  aria-selected={props.selected.includes(it.uid)}
+                  aria-label={`${rarityName(it.rarity)} ${slotName(it.slot as GearSlot)} +${it.refine}${props.note?.(it) ? ` · ${props.note(it)}` : ""}`}
+                  onClick={() => props.onToggle(it.uid)}
+                >
+                  <ItemIcon item={it} mark={props.mark?.(it.uid)} />
+                  <Show when={props.note?.(it)}>
+                    {(n) => <small>{n()}</small>}
+                  </Show>
+                </GridCell>
+              )}
+            </ItemTip>
           )}
         </For>
       </Grid>
+      <Show when={props.hint && props.hero !== undefined}>
+        <TouchHint />
+      </Show>
     </Show>
   );
 }
+
+/** No celular (sem mouse): como ver o detalhe. Some onde há mouse. */
+export function TouchHint() {
+  const { t } = useLingui();
+  return <Hint>{t`Toque e segure um item para ver os detalhes.`}</Hint>;
+}
+
+const Hint = styled("small", {
+  base: {
+    display: "none",
+    fontSize: "0.78rem",
+    color: "var(--md-sys-color-on-surface-variant)",
+    "@media (hover: none)": { display: "block" },
+  },
+});
 
 const Grid = styled("div", {
   base: {
@@ -282,6 +339,8 @@ const Card = styled("div", {
     background: "var(--md-sys-color-surface-container)",
     border: "1px solid var(--md-sys-color-outline-variant)",
     borderTop: "3px solid var(--rc)",
+    // No tooltip: mais apertado, para caber ao lado do item sem cobrir a tela.
+    "&[data-compact]": { gap: "7px", padding: "10px" },
   },
 });
 const Top = styled("div", {
@@ -345,6 +404,11 @@ const Line = styled("div", {
     "&[data-lost] > span:first-child": {
       color: "var(--md-sys-color-on-surface-variant)",
       textDecoration: "line-through",
+    },
+    "&[data-price]": {
+      paddingTop: "6px",
+      borderTop: "1px solid var(--md-sys-color-outline-variant)",
+      color: "var(--md-sys-color-on-surface-variant)",
     },
   },
 });

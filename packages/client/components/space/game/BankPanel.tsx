@@ -4,6 +4,7 @@ import { useLingui } from "@lingui/solid/macro";
 import {
   type RpgHeroState,
   BAG_SLOTS,
+  buyBackPrice,
   planTransfer,
   vaultExpansionCost,
   vaultSlots,
@@ -189,6 +190,9 @@ function VaultBox(props: { state: RpgHeroState; busy: boolean; run: RunFn }) {
           selected={sel() ? [sel()!] : []}
           onToggle={(u) => setSel(sel() === u ? null : u)}
           empty={<Muted>{t`O cofre está vazio.`}</Muted>}
+          hero={h()}
+          price={buyBackPrice}
+          hint
         />
       </Section>
       <Section aria-label={t`Mochila`}>
@@ -201,6 +205,9 @@ function VaultBox(props: { state: RpgHeroState; busy: boolean; run: RunFn }) {
           selected={sel() ? [sel()!] : []}
           onToggle={(u) => setSel(sel() === u ? null : u)}
           empty={<Muted>{t`A mochila está vazia.`}</Muted>}
+          hero={h()}
+          price={buyBackPrice}
+          hint={h().vault.items.length === 0}
         />
       </Section>
       <Row>
@@ -326,6 +333,9 @@ function TransferBox(props: {
               )
             }
             empty={<Muted>{t`A mochila está vazia.`}</Muted>}
+            hero={h()}
+            price={buyBackPrice}
+            hint
           />
           <Show
             when={plan().ok ? plan() : null}

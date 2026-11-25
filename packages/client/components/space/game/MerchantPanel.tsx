@@ -400,6 +400,9 @@ function Sell(props: {
         mark={(uid) => marks()[uid]?.mark}
         note={(it) => gold(buyBackPrice(it))}
         empty={<Muted>{t`A mochila está vazia.`}</Muted>}
+        hero={h()}
+        price={buyBackPrice}
+        hint
       />
       <Row>
         <Btn

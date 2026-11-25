@@ -7,6 +7,7 @@ import {
   type OwnedItem,
   type RpgHeroState,
   balance as B,
+  buyBackPrice,
   dismantle,
   itemTooltip,
   refinable,
@@ -136,6 +137,7 @@ export function SmithPanel(props: {
           onToggle={pick}
           note={(it) => `+${it.refine}`}
           empty={<Muted>{t`Nada vestido serve aqui.`}</Muted>}
+          hero={h()}
         />
       </Show>
       <ItemGrid
@@ -145,6 +147,9 @@ export function SmithPanel(props: {
         onToggle={pick}
         note={(it) => `+${it.refine}`}
         empty={<Muted>{t`Nada na mochila serve aqui.`}</Muted>}
+        hero={h()}
+        price={buyBackPrice}
+        hint
       />
       <Show when={tab() === "refinar"}>
         <Muted>{t`Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam.`}</Muted>

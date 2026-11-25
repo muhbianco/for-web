@@ -3,15 +3,19 @@ import { For, Show, createMemo, createSignal } from "solid-js";
 import { useLingui } from "@lingui/solid/macro";
 import {
   type GearSlot,
+  type HeroV5,
+  type OwnedItem,
   type PotionSize,
   type RpgHeroState,
   BAG_SLOTS,
   FAMILIES,
   MATERIALS,
+  buyBackPrice,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
-import { ItemCard } from "./ItemCard";
+import { ItemCard, TouchHint } from "./ItemCard";
+import { ItemTip } from "./ItemTip";
 import { rarityName, sizeName, slotName } from "./gameText";
 import { RARITY } from "./gameTheme";
 import {
@@ -35,6 +39,24 @@ import {
   findItem,
   num,
 } from "./heroModel";
+
+/** Um item da prévia do "escolher o melhor": o detalhe ao parar em cima ou no foco (Tab). */
+function SwapIcon(props: { item: OwnedItem; hero: HeroV5; mark?: BagMark }) {
+  return (
+    <ItemTip item={props.item} hero={props.hero}>
+      {(bind) => (
+        <ItemIcon
+          {...bind}
+          tabIndex={0}
+          role="img"
+          aria-label={`${rarityName(props.item.rarity)} ${slotName(props.item.slot as GearSlot)} +${props.item.refine}`}
+          item={props.item}
+          mark={props.mark}
+        />
+      )}
+    </ItemTip>
+  );
+}
 
 /** O corpo: colar, elmo e anel; arma, armadura e mão secundária; calças; botas. */
 const DOLL: (GearSlot | null)[] = [
@@ -127,24 +149,29 @@ export function GearPanel(props: {
                     {(s) => {
                       const it = () => equippedIn(h(), s());
                       return (
-                        <SlotBtn
-                          type="button"
-                          aria-pressed={!!it() && sel() === it()!.uid}
-                          aria-label={
-                            it()
-                              ? t`${slotName(s())}: ${rarityName(it()!.rarity)}, +${it()!.refine}`
-                              : t`${slotName(s())}: vazio`
-                          }
-                          onClick={() => it() && setSel(it()!.uid)}
-                          data-empty={it() ? undefined : ""}
-                        >
-                          <Show
-                            when={it()}
-                            fallback={<Empty>{slotName(s())}</Empty>}
-                          >
-                            {(x) => <ItemIcon item={x()} />}
-                          </Show>
-                        </SlotBtn>
+                        <ItemTip item={it()} hero={h()}>
+                          {(bind) => (
+                            <SlotBtn
+                              {...bind}
+                              type="button"
+                              aria-pressed={!!it() && sel() === it()!.uid}
+                              aria-label={
+                                it()
+                                  ? t`${slotName(s())}: ${rarityName(it()!.rarity)}, +${it()!.refine}`
+                                  : t`${slotName(s())}: vazio`
+                              }
+                              onClick={() => it() && setSel(it()!.uid)}
+                              data-empty={it() ? undefined : ""}
+                            >
+                              <Show
+                                when={it()}
+                                fallback={<Empty>{slotName(s())}</Empty>}
+                              >
+                                {(x) => <ItemIcon item={x()} />}
+                              </Show>
+                            </SlotBtn>
+                          )}
+                        </ItemTip>
                       );
                     }}
                   </Show>
@@ -193,24 +220,29 @@ export function GearPanel(props: {
             <Grid role="list">
               <For each={bag()}>
                 {(it) => (
-                  <Cell
-                    type="button"
-                    role="listitem"
-                    aria-pressed={sel() === it.uid}
-                    aria-label={`${rarityName(it.rarity)} ${slotName(it.slot as GearSlot)} +${it.refine}${
-                      marks()[it.uid]?.mark === "up"
-                        ? ` — ${t`melhor que o vestido`}`
-                        : marks()[it.uid]?.mark === "blocked"
-                          ? ` — ${t`não dá para vestir`}`
-                          : ""
-                    }`}
-                    data-blocked={
-                      marks()[it.uid]?.mark === "blocked" ? "" : undefined
-                    }
-                    onClick={() => setSel(it.uid)}
-                  >
-                    <ItemIcon item={it} mark={marks()[it.uid]?.mark} />
-                  </Cell>
+                  <ItemTip item={it} hero={h()} price={buyBackPrice(it)}>
+                    {(bind) => (
+                      <Cell
+                        {...bind}
+                        type="button"
+                        role="listitem"
+                        aria-pressed={sel() === it.uid}
+                        aria-label={`${rarityName(it.rarity)} ${slotName(it.slot as GearSlot)} +${it.refine}${
+                          marks()[it.uid]?.mark === "up"
+                            ? ` — ${t`melhor que o vestido`}`
+                            : marks()[it.uid]?.mark === "blocked"
+                              ? ` — ${t`não dá para vestir`}`
+                              : ""
+                        }`}
+                        data-blocked={
+                          marks()[it.uid]?.mark === "blocked" ? "" : undefined
+                        }
+                        onClick={() => setSel(it.uid)}
+                      >
+                        <ItemIcon item={it} mark={marks()[it.uid]?.mark} />
+                      </Cell>
+                    )}
+                  </ItemTip>
                 )}
               </For>
               <For
@@ -234,6 +266,7 @@ export function GearPanel(props: {
                 {RARITY.lendario.pips} {t`raridade`}
               </span>
             </Legend>
+            <TouchHint />
           </Section>
 
           <Slot style={{ order: 3 }}>
@@ -355,10 +388,10 @@ export function GearPanel(props: {
                             when={c.from}
                             fallback={<Muted>{t`vazio`}</Muted>}
                           >
-                            {(f) => <ItemIcon item={f()} />}
+                            {(f) => <SwapIcon item={f()} hero={h()} />}
                           </Show>
                           <span aria-hidden="true">→</span>
-                          <ItemIcon item={c.to} mark="up" />
+                          <SwapIcon item={c.to} hero={h()} mark="up" />
                         </Swap>
                       )}
                     </For>
@@ -388,9 +421,9 @@ export function GearPanel(props: {
                             {slotName(c.slot)}{" "}
                             <strong>+{c.current.refine}</strong>
                           </span>
-                          <ItemIcon item={c.current} />
+                          <SwapIcon item={c.current} hero={h()} />
                           <span aria-hidden="true">→</span>
-                          <ItemIcon item={c.candidate} mark="up" />
+                          <SwapIcon item={c.candidate} hero={h()} mark="up" />
                           <Confirm
                             size="sm"
                             disabled={props.locked || cmd.busy()}
