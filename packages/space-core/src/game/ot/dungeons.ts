@@ -194,7 +194,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "forja-rachada",
     name: "Forja Rachada",
     minLevel: 20,
-    comfort: { group: 20, solo: { 1: 28, 2: 20, 3: 20, 4: 26 } },
+    comfort: { group: 20, solo: { 1: 28, 2: 24, 3: 22, 4: 26 } },
     blurb:
       "Uma forja antiga acordada. Fogo, ferro e um guardião que não cai fácil.",
     stages: [
@@ -229,7 +229,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "mina-assombrada",
     name: "Mina Assombrada",
     minLevel: 27,
-    comfort: { group: 27, solo: { 1: 43, 2: 37, 3: 37, 4: 49 } },
+    comfort: { group: 27, solo: { 1: 43, 2: 37, 3: 40, 4: 49 } },
     blurb:
       "Mineiros que não foram embora. Golpe físico entra menos; luz sagrada entra mais.",
     stages: [
@@ -264,7 +264,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "bosque-petrificado",
     name: "Bosque Petrificado",
     minLevel: 35,
-    comfort: { group: 35, solo: { 1: 47, 2: 38, 3: 38, 4: 50 } },
+    comfort: { group: 35, solo: { 1: 47, 2: 38, 3: 41, 4: 50 } },
     blurb: "Um bosque virado pedra. Basiliscos, ents e a Medusa no centro.",
     stages: [
       {
@@ -298,7 +298,7 @@ const BASE_DUNGEONS: readonly Dungeon[] = [
     id: "cidadela-de-cinzas",
     name: "Cidadela de Cinzas",
     minLevel: 45,
-    comfort: { group: 45, solo: { 1: null, 2: 78, 3: 78, 4: null } },
+    comfort: { group: 45, solo: { 1: 81, 2: 78, 3: 72, 4: null } },
     blurb:
       "Uma fortaleza que queima há séculos. Gelo e luz sagrada ferem os demônios.",
     stages: [

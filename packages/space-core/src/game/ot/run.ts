@@ -120,13 +120,19 @@ export const RUN = {
   /** A parte do corte de intervalo dos atributos (AGI, DES) que o arco aproveita [nosso]. */
   bowAspd: 0.5,
   /**
+   * O mesmo para a varinha [nosso] (24/11/2026): com o corte todo, a AGI era o melhor atributo
+   * de dano do mago (o feiticeiro de AGI fazia 4579 de dano por segundo no level 500, o de INT
+   * 3674, scripts/hit-lab.ts), e o mago vive das magias, que crescem com a INT.
+   */
+  wandAspd: 0.5,
+  /**
    * A Proteção do cavaleiro [nosso, no molde da Devoção do Ragnarok]: com ele vivo e de
    * escudo, esta fração do dano que um aliado levaria vai para ele. Cresce com a skill de
    * escudo (a base dele, do dummy de vocação): nada até `from`, o máximo em `from + span`.
    */
   protect: { from: 40, span: 80, max: 0.5 },
   /** Muda quando as regras da simulação mudam: corrida gravada com outra versão não é refeita. */
-  engine: 14,
+  engine: 15,
   /** [nosso] Intervalo mínimo entre ataques (o Ragnarok para em ASPD 190: 200 ms). */
   minAttackMs: 500,
   /** [nosso] Sem ferir nenhum monstro por este tempo, o grupo se retira (impasse). */
@@ -1962,10 +1968,13 @@ export function simulateRun(input: RunInput): RunResult {
         // [nosso, no molde da velocidade por arma do Ragnarok] o arco leva só RUN.bowAspd do corte
         // dos atributos (24/11/2026): com ele todo, o arqueiro de AGI e DES atirava 1,7 vez mais
         // rápido que o mago no level 500 e se afastava dos magos a cada level.
+        // A varinha também (RUN.wandAspd): o mago vive das magias.
         const aspd =
           h.weapon?.kind === "distancia"
             ? 1 - (1 - h.d.aspd) * RUN.bowAspd
-            : h.d.aspd;
+            : h.weapon?.kind === "varinha"
+              ? 1 - (1 - h.d.aspd) * RUN.wandAspd
+              : h.d.aspd;
         const interval = Math.max(
           RUN.minAttackMs,
           Math.round(

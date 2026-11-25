@@ -44,7 +44,7 @@ export type SpellFormula =
  * dano total dos magos (o do level 27 no grupo completo igual ao de antes; era [8,5; 10] com as
  * magias fracas) e as recargas, a parte das magias (~55% no 27, mais no fim do jogo).
  */
-export const WAND_ML: [number, number] = [3.9, 4.6];
+export const WAND_ML: [number, number] = [4.85, 5.75];
 
 /** A faixa do tiro da varinha [nosso, ver WAND_ML]. */
 export function wandRange(
