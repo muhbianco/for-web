@@ -4,10 +4,19 @@ import {
   type RpgLobbyMember,
   type RpgLobbyView,
   type RpgLoopStop,
-  type RunOutcome,
-  dungeonOf,
-  LOBBY,
-} from "@muchat/space-core/game/ot";
+  type RpgRunEnd,
+  dungeonById,
+} from "@muchat/space-core/game/ot/balance";
+
+/** Prazos do grupo (os de antes; o tamanho agora vem da DG: Caçada 1–2, Masmorra e Região 3–4). */
+export const LOBBY = {
+  /** A sala de preparação some sozinha se ninguém começar. */
+  ttlMs: 5 * 60 * 1000,
+  /** O grupo que já correu fica montado; desfaz sozinho depois disto sem corrida nenhuma. */
+  idleMs: 30 * 60 * 1000,
+  /** O loop: a próxima corrida começa sozinha depois disto (o tempo de ver o resultado). */
+  loopDelayMs: 12 * 1000,
+} as const;
 
 /**
  * Os grupos nas TVs de um servidor (docs/espaco/jogo/ot, etapa O4). Um por TV, em memória:
@@ -37,7 +46,7 @@ export interface Lobby {
   runs: number;
   loop: boolean;
   nextAt: number | null;
-  last: RunOutcome | null;
+  last: RpgRunEnd | null;
   stopped: RpgLoopStop | null;
   stoppedDetail: string | null;
 }
@@ -50,6 +59,11 @@ export type LobbyEnd = {
   lobby: Lobby;
   ended: "started" | "cancelled" | "expired";
 };
+
+/** Quantos cabem no grupo desta DG (o catálogo; 4 se a DG sumiu). */
+function maxOf(dungeon: string): number {
+  return dungeonById(dungeon)?.party.max ?? 4;
+}
 
 /** Durante a corrida o grupo não expira (o fim da corrida dá o prazo de novo). */
 const NEVER = Number.MAX_SAFE_INTEGER;
@@ -95,7 +109,7 @@ export class LobbyHub {
     now: number,
     id: string = randomUUID(),
   ): LobbyResult {
-    const d = dungeonOf(dungeon);
+    const d = dungeonById(dungeon);
     if (!d) return { ok: false, reason: "unknown_dungeon" };
     if (leader.level < d.minLevel) return { ok: false, reason: "level" };
     if (this.memberOf.has(leader.user_id))
@@ -124,22 +138,26 @@ export class LobbyHub {
   }
 
   /** Entra no grupo `id` (sem id: no primeiro da TV com vaga, fora de corrida). */
-  join(tv: string, id: string | undefined, member: RpgLobbyMember): LobbyResult {
+  join(
+    tv: string,
+    id: string | undefined,
+    member: RpgLobbyMember,
+  ): LobbyResult {
     // Sem id, quem já está num grupo desta TV fica nele (entrar de novo não troca de grupo).
     const mine = this.of(member.user_id);
     if (!id && mine?.tv === tv) return { ok: true, lobby: mine };
     const lobby = id
       ? this.byId.get(id)
       : this.atTv(tv).find(
-          (l) => l.state !== "running" && l.members.length < LOBBY.maxMembers,
+          (l) => l.state !== "running" && l.members.length < maxOf(l.dungeon),
         );
     if (!lobby || lobby.tv !== tv) return { ok: false, reason: "no_lobby" };
     const current = this.memberOf.get(member.user_id);
     if (current === lobby.id) return { ok: true, lobby };
     if (current) return { ok: false, reason: "in_lobby" };
-    if (lobby.members.length >= LOBBY.maxMembers)
+    if (lobby.members.length >= maxOf(lobby.dungeon))
       return { ok: false, reason: "full" };
-    const d = dungeonOf(lobby.dungeon);
+    const d = dungeonById(lobby.dungeon);
     if (d && member.level < d.minLevel) return { ok: false, reason: "level" };
     lobby.members.push(member);
     this.memberOf.set(member.user_id, lobby.id);
@@ -218,7 +236,7 @@ export class LobbyHub {
    * fica marcada para daqui a pouco; derrota ou retirada desligam o loop (o grupo ajusta antes
    * de tentar de novo, em vez de perder as poções em sequência).
    */
-  runEnded(runId: string, outcome: RunOutcome, now: number): Lobby | null {
+  runEnded(runId: string, outcome: RpgRunEnd, now: number): Lobby | null {
     const lobby = this.all().find((l) => l.runId === runId);
     if (!lobby) return null;
     lobby.state = "ready";
@@ -228,7 +246,7 @@ export class LobbyHub {
     lobby.expiresAt = now + LOBBY.idleMs;
     if (lobby.loop) {
       if (outcome === "vitoria") lobby.nextAt = now + LOBBY.loopDelayMs;
-      else this.stopLoop(lobby, outcome);
+      else this.stopLoop(lobby, outcome === "retirada" ? "retreat" : "derrota");
     }
     return lobby;
   }
@@ -239,10 +257,12 @@ export class LobbyHub {
     if (!lobby) return { ok: false, reason: "no_lobby" };
     if (lobby.leader !== userId) return { ok: false, reason: "not_leader" };
     if (lobby.state === "running") return { ok: false, reason: "in_run" };
-    const d = dungeonOf(dungeon);
+    const d = dungeonById(dungeon);
     if (!d) return { ok: false, reason: "unknown_dungeon" };
     if (lobby.members.some((m) => m.level < d.minLevel))
       return { ok: false, reason: "level" };
+    if (lobby.members.length > d.party.max)
+      return { ok: false, reason: "party_size" };
     lobby.dungeon = d.id;
     return { ok: true, lobby };
   }
@@ -274,7 +294,8 @@ export class LobbyHub {
   /** Grupos cuja próxima corrida do loop venceu (o runtime manda começar, pelo líder). */
   due(now: number): Lobby[] {
     return this.all().filter(
-      (l) => l.state === "ready" && l.loop && l.nextAt !== null && now >= l.nextAt,
+      (l) =>
+        l.state === "ready" && l.loop && l.nextAt !== null && now >= l.nextAt,
     );
   }
 
@@ -321,7 +342,7 @@ export function lobbyView(l: Lobby): RpgLobbyView {
     dungeon: l.dungeon,
     leader: l.leader,
     members: l.members.map((m) => ({ ...m })),
-    max: LOBBY.maxMembers,
+    max: maxOf(l.dungeon),
     expires_at: l.expiresAt,
     state: l.state,
     run_id: l.runId,

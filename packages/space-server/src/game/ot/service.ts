@@ -1,31 +1,62 @@
 import { randomInt, randomUUID } from "node:crypto";
 
 import {
-  type Rates,
+  type FighterInput,
+  type HeroResult,
+  type HeroV5,
+  type OwnedItem,
+  type RandomSource,
+  type RpgBoardEvent,
+  type RpgBoardRun,
   type RpgCommand,
   type RpgLobbyMember,
+  type RpgRunEnd,
   type RpgRunEndView,
   type RpgRunEvent,
   type RpgRunFeedItem,
+  type RpgRunMemberEnd,
   type RpgRunTickEvent,
-  type RpgBoardEvent,
-  type RpgBoardRun,
   type RpgRunView,
   type RpgStateEvent,
+  type RunFrame,
   type RunResult,
-  DEFAULT_RATES,
-  DEFAULT_SUPPLIES,
-  dungeonOf,
-  RUN,
-  runReward,
-  runStaminaCost,
+  type RunSpoils,
+  ENGINE_VERSION,
+  FAMILIES,
+  Rng,
+  autoEquipBag,
+  bankGold,
+  buyAmmo,
+  buyCommonItem,
+  buyPotions,
+  discardItem,
+  dismantleItem,
+  dungeonById,
+  equipItem,
+  evolveTier,
+  heroRunFighter,
+  planTransfer,
+  raiseAttributes,
+  randomSource,
+  refineItem,
+  reforgeItem,
+  respecAttributes,
+  respecSkills,
+  runLoot,
+  runRewards,
+  sellItem,
+  setBelt,
+  setSkillAi,
+  setSkillSlots,
   simulateRun,
-  abilityBar,
-  expAt,
-  potionsAt,
-  runExpRate,
-} from "@muchat/space-core/game/ot";
-import type { RpgLoopStop, RunOutcome } from "@muchat/space-core/game/ot";
+  spendSkillPoint,
+  unequipItem,
+  vaultExpand,
+  vaultPut,
+  vaultTake,
+  balance as gameBalance,
+} from "@muchat/space-core/game/ot/balance";
+import { runStaminaCost } from "@muchat/space-core/game/ot";
 
 import type { AvatarGear, NpcKind } from "@muchat/space-core";
 
@@ -36,79 +67,65 @@ import {
   type RpgHeroDoc,
   type RpgOutcome,
   type RpgTransfer,
-  applyVocation,
-  bankDeposit,
-  bankWithdraw,
-  buyFromMerchant,
-  changeHeroCoins,
-  discardHeroItem,
-  equipHero,
+  RPG_DOC_MAX_BYTES,
+  checkHeroDoc,
+  closeDojo,
   heroLook,
-  heroRunSnapshot,
   inRun,
   markRun,
   newRpgHero,
-  normalizeHero,
-  promoteHero,
-  allocateStats,
-  creditTraining,
-  learnNode,
-  rebirthTree,
-  refineWeapon,
-  resetHero,
-  sellToMerchant,
-  setLootSkip,
-  setSupplies,
-  settleRun,
-  RPG_DOC_MAX_BYTES,
+  openDojo,
   rpgDocBytes,
-  rpgHeroView,
-  setAutoEquip,
-  startTraining,
-  stopTraining,
-  trainingExpired,
+  rpgHeroState,
+  settleRunHero,
+  staminaXpMult,
   transferIn,
   transferOut,
   transferSettled,
-  unequipHero,
 } from "./hero.ts";
 import { type Lobby, type LobbyResult, lobbyView } from "./lobby.ts";
 import {
   type RpgRunDoc,
+  type RpgRunMember,
   type RunStore,
   MemoryRunStore,
   RUNS_RESUME_LIMIT,
 } from "./runs.ts";
 import type { RpgStore } from "./store.ts";
 
+/** Taxas do operador (engine nova): só a de XP (`SPACE_GAME_RATES="exp=2"`). */
+export interface RpgRates {
+  exp: number;
+}
+export const DEFAULT_RPG_RATES: Readonly<RpgRates> = { exp: 1 };
+
 /** O que o jogo idle precisa do Espaço em que a pessoa está; o SpaceRuntime implementa. */
 export interface RpgHost {
   readonly serverId: string;
   gameAccess(viewer: Viewer): "ok" | "disabled" | "not_allowed";
-  /** O dummy `instanceId` existe, é de treino, a pessoa pode usá-lo e está ao lado dele. */
+  /** O boneco `instanceId` existe, é de treino, a pessoa pode usá-lo e está ao lado dele. */
   trainSpot(
     viewer: Viewer,
     instanceId: string,
   ): { ok: true; zone: string } | { ok: false; code: string; reason?: string };
-  /** O NPC `instanceId` existe, é do tipo `kind`, a pessoa pode usá-lo e está ao lado (etapa O8). */
+  /** O NPC `instanceId` existe, é do tipo `kind`, a pessoa pode usá-lo e está ao lado. */
   npcSpot(
     viewer: Viewer,
     instanceId: string,
     kind: NpcKind,
   ): { ok: true } | { ok: false; code: string; reason?: string };
-  /** O runtime ainda vê a pessoa treinando neste dummy. */
   isTrainingAt(userId: string, instanceId: string): boolean;
-  /** O dummy em que o runtime vê a pessoa treinando (null: nenhum). */
   trainingOf(userId: string): string | null;
+  /** Quantos outros treinam na mesma sala (o bônus social do Dojô, §2). */
+  trainingPeers(userId: string): number;
   setTraining(userId: string, instanceId: string | null): void;
-  /** The hero under the person's name on the map and what they wear (null: no hero). */
+  /** O herói sob o nome no mapa e o que ele veste (null: sem herói). */
   setHero(
     userId: string,
     look: { level: number; vocation: number; gear: AvatarGear } | null,
   ): void;
   sessionOf(userId: string): SessionPort | null;
   displayName(userId: string): string;
-  /** A TV numa sala, ao lado da pessoa, dentro da sala (etapa O4). */
   tvSpot(
     viewer: Viewer,
     tv: string,
@@ -119,12 +136,13 @@ export interface RpgHost {
     dungeon: string,
     member: RpgLobbyMember,
   ): LobbyResult;
-  /** No grupo `id` da TV (sem id: o primeiro da TV com vaga). */
-  lobbyJoin(tv: string, id: string | undefined, member: RpgLobbyMember): LobbyResult;
+  lobbyJoin(
+    tv: string,
+    id: string | undefined,
+    member: RpgLobbyMember,
+  ): LobbyResult;
   lobbyLeave(userId: string): void;
-  /** O líder começa; `auto`: pelo loop (a sala não recebe o aviso de novo a cada corrida). */
   lobbyStart(userId: string, auto?: boolean): LobbyResult;
-  /** O grupo fica montado entre as corridas (24/11/2026): o líder desfaz, troca, liga o loop. */
   lobbyDisband(userId: string): LobbyResult;
   lobbyDungeon(userId: string, dungeon: string): LobbyResult;
   lobbyLoop(userId: string, on: boolean): LobbyResult;
@@ -132,63 +150,102 @@ export interface RpgHost {
   lobbyAbort(id: string): void;
   lobbyRunEnded(
     runId: string,
-    outcome: RunOutcome,
+    outcome: RpgRunEnd,
     levels: Record<string, number>,
   ): void;
-  lobbyLoopFailed(id: string, why: RpgLoopStop, detail?: string): void;
-  /** No mapa agora ou dentro do tempo de reconexão. */
+  lobbyLoopFailed(
+    id: string,
+    why: import("@muchat/space-core/game/ot/balance").RpgLoopStop,
+    detail?: string,
+  ): void;
   isPresent(userId: string): boolean;
-  /** O grupo em que a pessoa está, sem mexer nele (para validar antes de começar). */
   lobbyOf(userId: string): Lobby | undefined;
-  /** Todos os grupos se formando nas TVs deste Espaço (o quadro do menu). */
   allLobbies(): Lobby[];
-  /** Para todos na sala do mapa e para estas pessoas onde estiverem (uma vez cada). */
-  sendRun(room: string, userIds: readonly string[], ev: Record<string, unknown>): void;
+  sendRun(
+    room: string,
+    userIds: readonly string[],
+    ev: Record<string, unknown>,
+  ): void;
 }
 
 /** O registro que vai para quem chega no meio da corrida. */
 const FEED_MAX = 40;
-/** Uma corrida que não conseguiu fechar tenta de novo depois disto. */
+/** Fechamento que falhou (banco) tenta de novo depois disto. */
 const SETTLE_RETRY_MS = 30_000;
-
-/** Quantos itens o quadro mostra, e quantas pessoas podem assistir uma partida de longe. */
 const BOARD_MAX = 30;
 const WATCHERS_MAX = 64;
 
 interface ActiveRun {
   doc: RpgRunDoc;
-  /** Quem assiste de outra sala (recebe os quadros como quem corre). */
-  watchers: Set<string>;
-  /** Os quadros, refeitos da semente; null se as regras mudaram desde o início. */
-  result: RunResult | null;
-  /** O último segundo já enviado. */
+  /** Os quadros (null: a corrida veio de outra versão das regras; a tela fica sem a luta). */
+  frames: RunFrame[] | null;
   sent: number;
   settling: boolean;
   nextTry: number;
-  /** Quem saiu antes do fim (24/11/2026): já está livre e não leva a recompensa. */
+  watchers: Set<string>;
+  /** Quem saiu antes do fim (já fechou a parte dele). */
   left: Set<string>;
+  /** O fechamento de quem saiu, para o resumo do fim. */
+  leftEnds: Map<string, RpgRunMemberEnd>;
 }
 
-/** Comandos por pessoa (além do balde de 20/s da conexão), como no Refúgio. */
+/** Comandos por pessoa: 4/s, rajada de 8. */
 export const RPG_RATE = { rate: 4, burst: 8 };
 const DEDUPE_IDS = 32;
 
-/**
- * O jogo idle no servidor (docs/espaco/jogo/ot, etapa O2). Um herói por conta, comandos de
- * uma pessoa em fila (duas abas não agem em dobro), o servidor como autoridade e nenhum
- * timer: o tempo treinado é calculado quando o treino fecha.
- */
+/** Sorteios tirados antes da gravação: a tentativa repetida (conflito de CAS) dá o mesmo resultado. */
+function drawn(n = 64): () => RandomSource {
+  const xs = Array.from({ length: n }, () => randomInt(0, 2 ** 32) / 2 ** 32);
+  return () => {
+    let i = 0;
+    return { next: () => xs[i++ % xs.length]! };
+  };
+}
+
+/** A ação do herói do núcleo aplicada no documento (o herói novo no lugar). */
+function apply<E extends string>(d: RpgHeroDoc, r: HeroResult<E>): RpgOutcome {
+  if (!r.ok) return { ok: false, reason: r.error };
+  d.hero = r.hero;
+  return { ok: true };
+}
+
+/** Poções e munição que o herói gastou até o segundo `sec` (para quem sai no meio). */
+/** O herói usa arma de distância (gasta munição a cada ataque básico). */
+function ranged(h: HeroV5): boolean {
+  return (
+    !!h.equipment.arma && FAMILIES[h.equipment.arma.family].kind === "ranged"
+  );
+}
+
+function spentUntil(
+  frames: RunFrame[] | null,
+  member: number,
+  sec: number,
+  hero: HeroV5,
+): { potionsUsed: { hp: number; mp: number }; ammoUsed: number } {
+  let hp = 0;
+  let mp = 0;
+  let autos = 0;
+  for (const f of frames ?? []) {
+    if (f.s > sec) break;
+    for (const e of f.e) {
+      if (e.k === "pocao" && e.a === member) e.mana ? mp++ : hp++;
+      if (e.k === "golpe" && e.a === member) autos++;
+    }
+  }
+  return { potionsUsed: { hp, mp }, ammoUsed: ranged(hero) ? autos : 0 };
+}
+
 export class RpgService {
   private readonly store: RpgStore;
   private readonly log: Log;
   private readonly now: () => number;
-  private readonly rates: Rates;
+  private readonly rates: RpgRates;
   private readonly cacheMax: number;
   private readonly cache = new Map<string, RpgHeroDoc>();
   private readonly queues = new Map<string, Promise<void>>();
   private readonly buckets = new Map<string, TokenBucket>();
   private readonly recent = new Map<string, string[]>();
-  /** Transferências sendo entregues agora (etapa O8): a mesma não sai duas vezes ao mesmo tempo. */
   private readonly delivering = new Set<string>();
   private readonly runStore: RunStore;
   private readonly autoTick: boolean;
@@ -200,7 +257,7 @@ export class RpgService {
     store: RpgStore;
     log: Log;
     now?: () => number;
-    rates?: Rates;
+    rates?: RpgRates;
     cacheMax?: number;
     runStore?: RunStore;
     /** false nos testes: o teste chama `tickRuns()`. */
@@ -209,13 +266,12 @@ export class RpgService {
     this.store = deps.store;
     this.log = deps.log;
     this.now = deps.now ?? Date.now;
-    this.rates = deps.rates ?? DEFAULT_RATES;
+    this.rates = deps.rates ?? DEFAULT_RPG_RATES;
     this.cacheMax = deps.cacheMax ?? 500;
     this.runStore = deps.runStore ?? new MemoryRunStore();
     this.autoTick = deps.autoTick ?? true;
   }
 
-  /** Como achar o Espaço de um servidor (o registry; só os que estão no ar). */
   setHosts(hostOf: (serverId: string) => RpgHost | null): void {
     this.hostOf = hostOf;
   }
@@ -230,30 +286,26 @@ export class RpgService {
     }
   }
 
-  /** Corridas em andamento no banco (reinício, redeploy): voltam e fecham na hora. */
+  /** Corridas em andamento no banco (reinício, redeploy): voltam e fecham na hora certa. */
   async resumeRuns(): Promise<number> {
     const docs = await this.runStore.running(RUNS_RESUME_LIMIT);
     let n = 0;
     for (const doc of docs) {
       if (this.active.has(doc._id)) continue;
-      const result = this.replay(doc);
+      const frames = this.replay(doc);
       const sec = Math.floor((this.now() - doc.started_at) / 1000);
-      this.activate(doc, result, Math.max(-1, Math.min(sec, doc.seconds - 1)));
+      this.activate(doc, frames, Math.max(0, Math.min(sec, doc.seconds)));
       n++;
     }
     return n;
   }
 
-  /** Para o relógio das corridas (desligamento; o banco guarda o que falta). */
   stopRuns(): void {
     if (this.ticker) clearInterval(this.ticker);
     this.ticker = null;
   }
 
-  /**
-   * Um segundo das corridas: manda os quadros que chegaram e fecha a que acabou. Chamado pelo
-   * relógio de 1 s, que só existe enquanto há corrida. A promessa é a dos fechamentos.
-   */
+  /** Um segundo das corridas: manda os quadros que chegaram e fecha a que acabou. */
   tickRuns(): Promise<void> {
     const now = this.now();
     const settling: Promise<void>[] = [];
@@ -263,13 +315,13 @@ export class RpgService {
           settling.push(this.settleRunDoc(run));
         continue;
       }
-      if (!run.result) continue;
+      if (!run.frames) continue;
       const sec = Math.min(
         Math.floor((now - run.doc.started_at) / 1000),
-        run.result.frames.length - 1,
+        run.frames.length,
       );
       if (sec <= run.sent) continue;
-      const frames = run.result.frames.slice(run.sent + 1, sec + 1);
+      const frames = run.frames.slice(run.sent, sec);
       run.sent = sec;
       const ev: RpgRunTickEvent = {
         v: 1,
@@ -278,7 +330,7 @@ export class RpgService {
       };
       this.hostOf(run.doc.server)?.sendRun(
         run.doc.room,
-        [...run.doc.heroes.map((h) => h.userId), ...run.watchers],
+        [...run.doc.members.map((h) => h.userId), ...run.watchers],
         ev as unknown as Record<string, unknown>,
       );
     }
@@ -286,7 +338,6 @@ export class RpgService {
     return Promise.all(settling).then(() => undefined);
   }
 
-  /** Corridas em andamento (testes e diagnóstico). */
   activeRuns(): RpgRunDoc[] {
     return [...this.active.values()].map((r) => r.doc);
   }
@@ -313,40 +364,36 @@ export class RpgService {
     );
   }
 
-  /**
-   * O runtime avisa que a pessoa saiu de perto do dummy (andou, trocou de sala, foi tirada
-   * do Espaço, o dummy sumiu): o treino fecha agora e quem estiver conectado recebe o estado.
-   */
+  /** O runtime avisa que a pessoa saiu de perto do boneco: o treino fecha agora (credita). */
   trainingLeft(host: RpgHost, userId: string): void {
     this.enqueue(
       userId,
       async () => {
-        const doc = await this.mutate(userId, false, (d) =>
-          stopTraining(d, this.now(), this.rates)
+        const peers = host.trainingPeers(userId);
+        const out = await this.mutate(userId, null, (d) =>
+          closeDojo(d, this.now(), peers)
             ? { ok: true }
             : { ok: false, reason: "no_training" },
         );
-        if (doc && "doc" in doc)
-          this.push(host.sessionOf(userId), doc.doc, undefined, host);
+        if (out && "doc" in out)
+          this.push(host.sessionOf(userId), out.doc, undefined, host);
       },
       () => undefined,
     );
   }
 
-  /**
-   * Alguém entrou no mapa onde o jogo está ligado: o level do herói (se houver) aparece sob
-   * o nome. Uma leitura por entrada, servida pelo cache depois.
-   */
+  /** Alguém entrou no mapa: o nível do herói aparece sob o nome. */
   avatarJoined(host: RpgHost, userId: string): void {
     this.enqueue(
       userId,
       async () => {
         const doc = await this.load(userId);
-        // Voltou treinando depois de um reinício (o runtime leu o lugar dele): só vale se o herói
-        // ainda tem aquele treino aberto neste servidor; senão o boneco não mostra treino.
         const at = host.trainingOf(userId);
-        const t = doc?.training;
-        if (at !== null && (!t || t.server !== host.serverId || t.instance !== at || trainingExpired(doc!, this.now())))
+        const t = doc?.dojo;
+        if (
+          at !== null &&
+          (!t || t.server !== host.serverId || t.instance !== at)
+        )
           host.setTraining(userId, null);
         host.setHero(userId, doc ? heroLook(doc) : null);
       },
@@ -354,9 +401,13 @@ export class RpgService {
     );
   }
 
-  /** Espera a fila de uma pessoa esvaziar (testes). */
   async idle(userId: string): Promise<void> {
     await this.queues.get(userId);
+  }
+
+  /** Esquece o herói do cache (o próximo comando lê do banco): testes e suporte que editaram o banco. */
+  forget(userId: string): void {
+    this.cache.delete(userId);
   }
 
   private enqueue(
@@ -391,50 +442,79 @@ export class RpgService {
         re: cmd.id,
         d: { code, ...(reason ? { reason } : {}) },
       });
+    /** Uma ação do herói fora da corrida, gravada e respondida com o estado. */
+    const act = async (fn: (d: RpgHeroDoc) => RpgOutcome, log?: string) => {
+      const out = await this.mutate(userId, null, (d) =>
+        inRun(d, this.now()) ? { ok: false, reason: "in_run" } : fn(d),
+      );
+      if (!out) return fail("rpg_invalid", "no_hero");
+      if ("reason" in out) return fail("rpg_invalid", out.reason);
+      this.remember(userId, cmd.id);
+      if (log)
+        this.log.info(log, { server: host.serverId, user: userId, cmd: cmd.t });
+      return this.push(session, out.doc, cmd.id, host);
+    };
+    const near = (instance: string, kind: NpcKind) => {
+      const spot = host.npcSpot(session.viewer, instance, kind);
+      if (!spot.ok) {
+        fail(spot.code, spot.reason);
+        return false;
+      }
+      return true;
+    };
 
     // Reenvio de um comando já aplicado (reconexão): devolve o estado, não age de novo.
     if (
       cmd.t !== "rpg.open" &&
       !cmd.t.startsWith("rpg.lobby.") &&
       this.recent.get(userId)?.includes(cmd.id)
-    ) {
+    )
       return this.push(session, await this.load(userId), cmd.id, host);
-    }
 
     switch (cmd.t) {
       case "rpg.open": {
         const cur = await this.load(userId);
-        // Um treino que o runtime não vê mais (reconexão, reinício, outro servidor) ou que
-        // esgotou o orçamento fecha agora, como o treino offline do OT ao voltar.
+        // Treino no Dojô que o runtime não vê mais (reconexão, reinício, outro servidor): fecha agora.
         const stale =
-          cur?.training &&
-          (cur.training.server !== host.serverId ||
-            !host.isTrainingAt(userId, cur.training.instance) ||
-            trainingExpired(cur, now));
+          cur?.dojo &&
+          (cur.dojo.server !== host.serverId ||
+            !host.isTrainingAt(userId, cur.dojo.instance));
         if (!cur || !stale) {
           this.push(session, cur, cmd.id, host);
           return this.sendOwnRun(session, cur);
         }
-        const out = await this.mutate(userId, false, (d) =>
-          stopTraining(d, now, this.rates)
+        const out = await this.mutate(userId, null, (d) =>
+          closeDojo(d, now, 0)
             ? { ok: true }
             : { ok: false, reason: "no_training" },
         );
-        if (cur.training) host.setTraining(userId, null);
-        if (out && "doc" in out)
-          return this.push(session, out.doc, cmd.id, host);
-        return this.push(session, await this.load(userId), cmd.id, host);
+        host.setTraining(userId, null);
+        return this.push(
+          session,
+          out && "doc" in out ? out.doc : await this.load(userId),
+          cmd.id,
+          host,
+        );
       }
-      case "rpg.vocation": {
-        const out = await this.mutate(userId, true, (d) =>
-          applyVocation(d, cmd.d.vocation),
+      case "rpg.class": {
+        // Jogador novo (D34): escolhe a classe uma vez; quem já tem herói não troca por aqui.
+        if (await this.load(userId)) return fail("rpg_invalid", "has_hero");
+        const out = await this.mutate(
+          userId,
+          (t) => newRpgHero(userId, cmd.d.cls, t, randomUUID),
+          () => ({ ok: true }),
         );
         if (!out) return fail("conflict");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
         this.remember(userId, cmd.id);
+        this.log.info("rpg hero created", {
+          server: host.serverId,
+          user: userId,
+          cls: cmd.d.cls,
+        });
         return this.push(session, out.doc, cmd.id, host);
       }
-      case "rpg.train.start": {
+      case "rpg.dojo.start": {
         const spot = host.trainSpot(session.viewer, cmd.d.instance);
         if (!spot.ok) return fail(spot.code, spot.reason);
         const where = {
@@ -442,42 +522,187 @@ export class RpgService {
           server: host.serverId,
           zone: spot.zone,
         };
-        const out = await this.mutate(userId, true, (d) =>
-          startTraining(d, where, cmd.d.skill, now, this.rates),
+        const out = await this.mutate(userId, null, (d) =>
+          openDojo(d, where, now),
         );
-        if (!out) return fail("conflict");
+        if (!out) return fail("rpg_invalid", "no_hero");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
         host.setTraining(userId, cmd.d.instance);
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
       }
-      case "rpg.train.stop": {
-        const out = await this.mutate(userId, false, (d) =>
-          stopTraining(d, now, this.rates)
+      case "rpg.dojo.stop": {
+        const peers = host.trainingPeers(userId);
+        const out = await this.mutate(userId, null, (d) =>
+          closeDojo(d, now, peers)
             ? { ok: true }
             : { ok: false, reason: "no_training" },
         );
         host.setTraining(userId, null);
-        if (!out)
-          return this.push(session, await this.load(userId), cmd.id, host);
-        if ("reason" in out)
+        if (!out || "reason" in out)
           return this.push(session, await this.load(userId), cmd.id, host);
         this.remember(userId, cmd.id);
         return this.push(session, out.doc, cmd.id, host);
+      }
+      case "rpg.attrs":
+        return act((d) => apply(d, raiseAttributes(d.hero, cmd.d.add)));
+      case "rpg.skill.spend":
+        return act((d) =>
+          apply(d, spendSkillPoint(d.hero, cmd.d.skill, cmd.d.target)),
+        );
+      case "rpg.skill.slots":
+        return act((d) => apply(d, setSkillSlots(d.hero, cmd.d.slots)));
+      case "rpg.skill.ai":
+        return act((d) =>
+          apply(d, setSkillAi(d.hero, cmd.d.skill, cmd.d.conditions)),
+        );
+      case "rpg.master": {
+        if (!near(cmd.d.npc, "mestre")) return;
+        return act(
+          (d) =>
+            apply(
+              d,
+              cmd.d.action === "evoluir"
+                ? evolveTier(d.hero)
+                : cmd.d.action === "redistribuir-atributos"
+                  ? respecAttributes(d.hero)
+                  : respecSkills(d.hero),
+            ),
+          "rpg master",
+        );
+      }
+      case "rpg.equip":
+        return act((d) => apply(d, equipItem(d.hero, cmd.d.uid)));
+      case "rpg.unequip":
+        return act((d) => apply(d, unequipItem(d.hero, cmd.d.slot)));
+      case "rpg.autoequip":
+        return act((d) => {
+          if (cmd.d.on !== undefined)
+            d.hero = { ...d.hero, autoEquip: cmd.d.on };
+          return cmd.d.apply ? apply(d, autoEquipBag(d.hero)) : { ok: true };
+        });
+      case "rpg.discard":
+        return act((d) => apply(d, discardItem(d.hero, cmd.d.uid)));
+      case "rpg.supplies":
+        return act((d) => {
+          d.hero = { ...d.hero, supplies: { hp: cmd.d.hp, mp: cmd.d.mp } };
+          return { ok: true };
+        });
+      case "rpg.belt":
+        return act((d) => apply(d, setBelt(d.hero, cmd.d.kind, cmd.d.size)));
+      case "rpg.shop.buy": {
+        if (!near(cmd.d.npc, "mercador")) return;
+        const b = cmd.d.buy;
+        const roll = drawn();
+        return act((d) =>
+          apply(
+            d,
+            b.kind === "pocao"
+              ? buyPotions(d.hero, b.type, b.size, b.count)
+              : b.kind === "municao"
+                ? buyAmmo(d.hero, b.grade, b.packs)
+                : buyCommonItem(d.hero, b.base, randomUUID, roll()),
+          ),
+        );
+      }
+      case "rpg.shop.sell": {
+        if (!near(cmd.d.npc, "mercador")) return;
+        return act((d) =>
+          apply(d, sellItem(d.hero, cmd.d.uid, cmd.d.confirm ?? false)),
+        );
+      }
+      case "rpg.smith": {
+        if (!near(cmd.d.npc, "ferreiro")) return;
+        const roll = drawn();
+        return act(
+          (d) =>
+            apply(
+              d,
+              cmd.d.action === "refinar"
+                ? refineItem(d.hero, cmd.d.uid, roll(), cmd.d.protect ?? false)
+                : cmd.d.action === "reforjar"
+                  ? reforgeItem(d.hero, cmd.d.uid, roll())
+                  : dismantleItem(d.hero, cmd.d.uid),
+            ),
+          "rpg smith",
+        );
+      }
+      case "rpg.bank": {
+        if (!near(cmd.d.npc, "banqueiro")) return;
+        return act((d) => apply(d, bankGold(d.hero, cmd.d.gold)));
+      }
+      case "rpg.vault": {
+        if (!near(cmd.d.npc, "banqueiro")) return;
+        return act((d) =>
+          apply(
+            d,
+            cmd.d.action === "guardar"
+              ? vaultPut(d.hero, cmd.d.uid)
+              : vaultTake(d.hero, cmd.d.uid),
+          ),
+        );
+      }
+      case "rpg.vault.expand": {
+        if (!near(cmd.d.npc, "banqueiro")) return;
+        return act((d) => apply(d, vaultExpand(d.hero)));
+      }
+      case "rpg.bank.transfer": {
+        if (!near(cmd.d.npc, "banqueiro")) return;
+        // Para quem está neste Espaço agora e já tem herói.
+        if (!host.sessionOf(cmd.d.to)) return fail("rpg_invalid", "not_here");
+        const target = await this.load(cmd.d.to);
+        if (!target) return fail("rpg_invalid", "no_hero");
+        const me = await this.load(userId);
+        if (!me) return fail("rpg_invalid", "no_hero");
+        const items = cmd.d.uids
+          .map((u) => me.hero.bag.find((x) => x.uid === u))
+          .filter((x): x is OwnedItem => !!x);
+        if (items.length !== cmd.d.uids.length)
+          return fail("rpg_invalid", "item-nao-encontrado");
+        const plan = planTransfer({
+          from: userId,
+          to: cmd.d.to,
+          gold: cmd.d.gold,
+          items,
+          balance: me.hero.gold,
+          confirmations: cmd.d.confirmations,
+        });
+        if (!plan.ok) return fail("rpg_invalid", plan.error);
+        const t: RpgTransfer = {
+          id: randomUUID(),
+          to: cmd.d.to,
+          gold: cmd.d.gold,
+          items,
+          at: now,
+        };
+        const out = await this.mutate(userId, null, (d) =>
+          transferOut(d, t, now),
+        );
+        if (!out) return fail("rpg_invalid", "no_hero");
+        if ("reason" in out) return fail("rpg_invalid", out.reason);
+        this.remember(userId, cmd.id);
+        this.push(session, out.doc, cmd.id, host);
+        this.log.info("rpg transfer out", {
+          id: t.id,
+          gold: t.gold,
+          items: t.items.length,
+          fee: plan.plan.fee,
+        });
+        this.deliver(out.doc, host);
+        return;
       }
       case "rpg.lobby.create":
       case "rpg.lobby.join": {
         const spot = host.tvSpot(session.viewer, cmd.d.tv);
         if (!spot.ok) return fail(spot.code, spot.reason);
-        const hero = await this.load(userId);
-        if (!hero || hero.vocation === 0)
-          return fail("rpg_invalid", "no_vocation");
-        if (inRun(hero, now)) return fail("rpg_invalid", "in_run");
+        const doc = await this.load(userId);
+        if (!doc) return fail("rpg_invalid", "no_hero");
+        if (inRun(doc, now)) return fail("rpg_invalid", "in_run");
         const member: RpgLobbyMember = {
           user_id: userId,
           name: host.displayName(userId),
-          vocation: hero.vocation,
-          level: hero.level,
+          cls: doc.hero.cls,
+          level: doc.hero.level,
         };
         const res =
           cmd.t === "rpg.lobby.create"
@@ -488,64 +713,29 @@ export class RpgService {
           v: 1,
           t: "rpg.lobby",
           re: cmd.id,
-          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
+          d: {
+            tv: res.lobby.tv,
+            id: res.lobby.id,
+            lobby: lobbyView(res.lobby),
+          },
         });
       }
-      case "rpg.run.leave": {
-        // Sair da corrida (24/11/2026): o herói fecha a parte dele agora, sem a recompensa e
-        // com a mochila do começo; paga a stamina do tempo que ficou. Os outros seguem.
-        const hero = await this.load(userId);
-        const runId = hero?.run?.id;
-        const run = runId ? this.active.get(runId) : undefined;
-        if (!hero || !runId || !run || run.settling || !inRun(hero, now))
-          return fail("rpg_invalid", "no_run");
-        const elapsed = Math.max(0, (now - run.doc.started_at) / 1000);
-        const out = await this.mutate(userId, false, (d) => {
-          const r = settleRun(d, runId, null, runStaminaCost(elapsed), now, null);
-          return r.ok ? { ok: true } : r;
-        });
-        if (!out) return fail("rpg_invalid", "no_run");
-        if ("reason" in out) return fail("rpg_invalid", out.reason);
-        run.left.add(userId);
-        this.remember(userId, cmd.id);
-        this.push(session, out.doc, cmd.id, host);
-        this.log.info("rpg run left", {
-          server: host.serverId,
-          run: runId,
-          seconds: Math.round(elapsed),
-        });
-        // O loop do grupo para: a próxima traria de volta quem acabou de sair.
-        const lobby = host.lobbyOf(userId);
-        if (lobby && lobby.runId === runId && lobby.loop)
-          host.lobbyLoopFailed(lobby.id, "retreat");
-        // Todos saíram: a corrida acaba agora (fora desta fila: o fechamento usa as filas).
-        if (run.doc.heroes.every((h) => run.left.has(h.userId)))
-          void this.settleRunDoc(run);
-        return;
-      }
-      case "rpg.lobby.dungeon": {
-        const res = host.lobbyDungeon(userId, cmd.d.dungeon);
-        if (!res.ok) return fail("rpg_invalid", res.reason);
-        return session.send({
-          v: 1,
-          t: "rpg.lobby",
-          re: cmd.id,
-          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
-        });
-      }
+      case "rpg.lobby.dungeon":
       case "rpg.lobby.loop": {
-        const res = host.lobbyLoop(userId, cmd.d.on);
+        const res =
+          cmd.t === "rpg.lobby.dungeon"
+            ? host.lobbyDungeon(userId, cmd.d.dungeon)
+            : host.lobbyLoop(userId, cmd.d.on);
         if (!res.ok) return fail("rpg_invalid", res.reason);
-        this.log.info("rpg lobby loop", {
-          server: host.serverId,
-          tv: res.lobby.tv,
-          on: cmd.d.on,
-        });
         return session.send({
           v: 1,
           t: "rpg.lobby",
           re: cmd.id,
-          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
+          d: {
+            tv: res.lobby.tv,
+            id: res.lobby.id,
+            lobby: lobbyView(res.lobby),
+          },
         });
       }
       case "rpg.lobby.leave": {
@@ -560,148 +750,40 @@ export class RpgService {
           d: { tv: "", lobby: null },
         });
       }
-      case "rpg.equip":
-      case "rpg.unequip":
-      case "rpg.auto":
-      case "rpg.coins":
-      case "rpg.discard": {
-        // Inventário (etapa O7): fora da dungeon; a pilha tem de ser a que o app viu.
-        const out = await this.mutate(userId, false, (d) => {
-          switch (cmd.t) {
-            case "rpg.equip":
-              return equipHero(d, cmd.d.index, cmd.d.item, now);
-            case "rpg.unequip":
-              return unequipHero(d, cmd.d.slot, now);
-            case "rpg.auto":
-              return setAutoEquip(d, cmd.d.on, now);
-            case "rpg.coins":
-              return changeHeroCoins(d, cmd.d.index, cmd.d.item, now);
-            case "rpg.discard":
-              return discardHeroItem(d, cmd.d.index, cmd.d.item, now);
-          }
+      case "rpg.lobby.start": {
+        const started = await this.startRun(host, userId);
+        if (!started.ok) return fail(started.code, started.reason);
+        const res = started.res;
+        return session.send({
+          v: 1,
+          t: "rpg.lobby",
+          re: cmd.id,
+          d: {
+            tv: res.lobby.tv,
+            id: res.lobby.id,
+            lobby: lobbyView(res.lobby),
+            ended: "started",
+            started: { dungeon: res.lobby.dungeon, members: res.lobby.members },
+          },
         });
-        if (!out) return fail("rpg_invalid", "no_vocation");
-        if ("reason" in out) return fail("rpg_invalid", out.reason);
-        this.remember(userId, cmd.id);
-        return this.push(session, out.doc, cmd.id, host);
       }
-      case "rpg.stats":
-      case "rpg.learn": {
-        // Atributos e árvore (24/11/2026): em qualquer lugar, fora da dungeon. Quem aprende
-        // ao lado do dummy de habilidade já conta os pontos do treino aberto até agora.
-        const out = await this.mutate(userId, false, (d) => {
-          if (cmd.t === "rpg.stats") return allocateStats(d, cmd.d.add, now);
-          creditTraining(d, now, this.rates);
-          return learnNode(d, cmd.d.node, now);
+      case "rpg.run.leave":
+        return this.leaveRun(session, host, cmd.id);
+      case "rpg.run.watch": {
+        const run = this.active.get(cmd.d.id);
+        if (!run || run.doc.server !== host.serverId || run.settling)
+          return fail("rpg_invalid", "no_run");
+        if (run.watchers.size < WATCHERS_MAX) run.watchers.add(userId);
+        return session.send({
+          ...(this.runSnapshot(run) as unknown as Record<string, unknown>),
+          re: cmd.id,
         });
-        if (!out) return fail("rpg_invalid", "no_vocation");
-        if ("reason" in out) return fail("rpg_invalid", out.reason);
-        this.remember(userId, cmd.id);
-        return this.push(session, out.doc, cmd.id, host);
-      }
-      case "rpg.shop.buy":
-      case "rpg.shop.sell":
-      case "rpg.bank.deposit":
-      case "rpg.bank.withdraw":
-      case "rpg.promote":
-      case "rpg.reset":
-      case "rpg.rebirth":
-      case "rpg.refine": {
-        // NPCs (etapa O8): o certo para o comando, ao lado do herói.
-        const kind: NpcKind = cmd.t.startsWith("rpg.shop.")
-          ? "mercador"
-          : cmd.t === "rpg.refine"
-            ? "ferreiro"
-            : cmd.t === "rpg.promote" ||
-                cmd.t === "rpg.reset" ||
-                cmd.t === "rpg.rebirth"
-              ? "mestre"
-              : "banqueiro";
-        const spot = host.npcSpot(session.viewer, cmd.d.npc, kind);
-        if (!spot.ok) return fail(spot.code, spot.reason);
-        const before = await this.load(userId);
-        // O sorteio do refino é do servidor, antes (a mesma tentativa, se a gravação repetir).
-        const roll = randomInt(0, 100);
-        const out = await this.mutate(userId, false, (d) => {
-          switch (cmd.t) {
-            case "rpg.refine":
-              return refineWeapon(d, roll, now);
-            case "rpg.rebirth":
-              // O treino aberto no dummy de habilidade conta antes (os pontos que sobram ficam).
-              creditTraining(d, now, this.rates);
-              return rebirthTree(d, cmd.d.node, now);
-            case "rpg.shop.buy":
-              return buyFromMerchant(d, cmd.d.item, cmd.d.count, now);
-            case "rpg.shop.sell":
-              return sellToMerchant(
-                d,
-                cmd.d.index,
-                cmd.d.item,
-                cmd.d.count,
-                now,
-              );
-            case "rpg.bank.deposit":
-              return bankDeposit(d, cmd.d.amount, now);
-            case "rpg.bank.withdraw":
-              return bankWithdraw(d, cmd.d.amount, now);
-            case "rpg.promote":
-              return promoteHero(d, now);
-            case "rpg.reset":
-              return resetHero(d, cmd.d.what, now);
-          }
-        });
-        if (!out) return fail("rpg_invalid", "no_vocation");
-        if ("reason" in out) return fail("rpg_invalid", out.reason);
-        this.remember(userId, cmd.id);
-        if (cmd.t === "rpg.promote")
-          this.log.info("rpg promoted", {
-            server: host.serverId,
-            user: userId,
-            from: before?.vocation,
-            to: out.doc.vocation,
-            third: out.doc.third,
-          });
-        if (cmd.t === "rpg.refine")
-          this.log.info("rpg refine", {
-            server: host.serverId,
-            user: userId,
-            item: out.doc.inv.equip.arma?.item,
-            from: before?.inv.equip.arma?.refine ?? 0,
-            to: out.doc.inv.equip.arma?.refine ?? 0,
-          });
-        if (cmd.t === "rpg.rebirth")
-          this.log.info("rpg rebirth", {
-            server: host.serverId,
-            user: userId,
-            node: cmd.d.node,
-            rebirths: out.doc.rebirths,
-          });
-        if (cmd.t === "rpg.reset")
-          this.log.info("rpg reset", {
-            server: host.serverId,
-            user: userId,
-            what: cmd.d.what,
-            count: out.doc.resets[cmd.d.what],
-          });
-        return this.push(session, out.doc, cmd.id, host);
-      }
-      case "rpg.supplies":
-      case "rpg.lootskip": {
-        // Escolhas (etapa O9): valem para a próxima corrida; a que está correndo não muda.
-        const out = await this.mutate(userId, false, (d) =>
-          cmd.t === "rpg.supplies"
-            ? setSupplies(d, cmd.d)
-            : setLootSkip(d, cmd.d.item, cmd.d.skip),
-        );
-        if (!out) return fail("rpg_invalid", "no_vocation");
-        if ("reason" in out) return fail("rpg_invalid", out.reason);
-        this.remember(userId, cmd.id);
-        return this.push(session, out.doc, cmd.id, host);
       }
       case "rpg.board": {
         const runs: RpgBoardRun[] = [];
         for (const r of this.active.values()) {
-          if (r.doc.server !== host.serverId || runs.length >= BOARD_MAX) continue;
+          if (r.doc.server !== host.serverId || runs.length >= BOARD_MAX)
+            continue;
           runs.push({
             id: r.doc._id,
             dungeon: r.doc.dungeon,
@@ -709,15 +791,14 @@ export class RpgService {
             tv: r.doc.tv,
             started_at: r.doc.started_at,
             ends_at: r.doc.ends_at,
-            members: r.doc.heroes.map((h) => ({
-              user_id: h.userId,
-              name: h.name,
-              vocation: h.vocation,
-              level: h.level,
+            members: r.doc.members.map((m) => ({
+              user_id: m.userId,
+              name: m.name,
+              cls: m.hero.cls,
+              level: m.hero.level,
             })),
           });
         }
-        // O grupo em corrida aparece na partida (24/11/2026: ele fica montado entre as corridas).
         const lobbies = host
           .allLobbies()
           .filter((l) => l.state !== "running")
@@ -731,78 +812,24 @@ export class RpgService {
         };
         return session.send(ev as unknown as Record<string, unknown>);
       }
-      case "rpg.run.watch": {
-        const run = this.active.get(cmd.d.id);
-        if (!run || run.doc.server !== host.serverId || run.settling)
-          return fail("rpg_invalid", "no_run");
-        if (run.watchers.size < WATCHERS_MAX) run.watchers.add(userId);
-        return session.send({
-          ...(this.runSnapshot(run) as unknown as Record<string, unknown>),
-          re: cmd.id,
-        });
-      }
-      case "rpg.bank.transfer": {
-        const spot = host.npcSpot(session.viewer, cmd.d.npc, "banqueiro");
-        if (!spot.ok) return fail(spot.code, spot.reason);
-        if (cmd.d.to === userId) return fail("rpg_invalid", "self");
-        // [nosso] Para quem está neste Espaço agora (o OT manda pelo nome, a qualquer um).
-        if (!host.sessionOf(cmd.d.to)) return fail("rpg_invalid", "not_here");
-        // [TFS bank.lua] Não vai para quem ainda não tem vocação.
-        const target = await this.load(cmd.d.to);
-        if (!target || target.vocation === 0)
-          return fail("rpg_invalid", "no_hero");
-        const t: RpgTransfer = {
-          id: randomUUID(),
-          to: cmd.d.to,
-          amount: cmd.d.amount,
-          at: now,
-        };
-        const out = await this.mutate(userId, false, (d) =>
-          transferOut(d, t, now),
-        );
-        if (!out) return fail("rpg_invalid", "no_vocation");
-        if ("reason" in out) return fail("rpg_invalid", out.reason);
-        this.remember(userId, cmd.id);
-        this.push(session, out.doc, cmd.id, host);
-        this.deliver(out.doc, host);
-        return;
-      }
-      case "rpg.lobby.start": {
-        const started = await this.startRun(host, userId);
-        if (!started.ok) return fail(started.code, started.reason);
-        const res = started.res;
-        return session.send({
-          v: 1,
-          t: "rpg.lobby",
-          re: cmd.id,
-          d: {
-            tv: res.lobby.tv,
-            id: res.lobby.id,
-            // O grupo fica montado (24/11/2026), agora correndo.
-            lobby: lobbyView(res.lobby),
-            ended: "started",
-            started: { dungeon: res.lobby.dungeon, members: res.lobby.members },
-          },
-        });
-      }
     }
   }
 
   /**
-   * Lê, aplica e grava com CAS (uma nova tentativa se outro processo gravou antes).
-   * `create`: sem herói, nasce um no primeiro uso. Devolve o documento gravado, o motivo
-   * da recusa, ou null se não há herói (e `create` é falso) ou o conflito persistiu.
+   * Lê, aplica e grava com CAS (uma nova tentativa se outro processo gravou antes). `create`: sem
+   * herói, nasce um (só o `rpg.class`). Devolve o documento gravado, o motivo da recusa, ou null se
+   * não há herói (e não cria) ou o conflito persistiu.
    */
   private async mutate(
     userId: string,
-    create: boolean,
+    create: ((now: number) => RpgHeroDoc) | null,
     fn: (d: RpgHeroDoc) => RpgOutcome,
   ): Promise<{ doc: RpgHeroDoc } | { reason: string } | null> {
     for (let attempt = 0; attempt < 2; attempt++) {
       const cur = await this.load(userId, attempt > 0);
       const now = this.now();
       if (!cur && !create) return null;
-      const next = cur ? structuredClone(cur) : newRpgHero(userId, now);
+      const next = cur ? structuredClone(cur) : create!(now);
       const out = fn(next);
       if (!out.ok) return { reason: out.reason };
       next.updated_at = now;
@@ -827,16 +854,7 @@ export class RpgService {
     return null;
   }
 
-  /**
-   * O líder começa (etapa O5). Lê e valida todos, calcula a corrida inteira, fecha o grupo
-   * (só se ele não mudou enquanto os heróis eram lidos), grava a corrida e marca cada herói.
-   * Quem não pôde ser marcado (corrida que começou em outro lugar no meio) corre sem levar.
-   */
-  /**
-   * O loop de um grupo venceu (24/11/2026): na fila do líder, como se ele apertasse "Começar".
-   * Ninguém do grupo no mapa (nem reconectando): o loop para, em vez de correr sozinho para
-   * sempre. Não conseguiu começar (level, alguém em outra corrida): para, com o motivo.
-   */
+  /** O loop de um grupo venceu: na fila do líder, como se ele apertasse "Começar". */
   loopDue(host: RpgHost, leader: string, lobbyId: string): void {
     this.enqueue(
       leader,
@@ -849,7 +867,11 @@ export class RpgService {
         }
         const started = await this.startRun(host, leader, true);
         if (!started.ok) {
-          host.lobbyLoopFailed(lobbyId, "start_failed", started.reason ?? started.code);
+          host.lobbyLoopFailed(
+            lobbyId,
+            "start_failed",
+            started.reason ?? started.code,
+          );
           this.log.info("rpg lobby loop stopped", {
             server: host.serverId,
             tv: lobby.tv,
@@ -861,6 +883,12 @@ export class RpgService {
     );
   }
 
+  /**
+   * O líder começa. Lê e valida todos, simula a corrida inteira com a semente do servidor (os quadros
+   * da tela e o que cada um leva: XP com stamina e taxa, ouro, itens já com id, minério, pedras,
+   * poções e munição), fecha o grupo (só se ele não mudou enquanto os heróis eram lidos), grava a
+   * corrida e marca cada herói.
+   */
   private async startRun(
     host: RpgHost,
     userId: string,
@@ -873,27 +901,43 @@ export class RpgService {
     if (!peek) return { ok: false, code: "rpg_invalid", reason: "no_lobby" };
     if (peek.leader !== userId)
       return { ok: false, code: "rpg_invalid", reason: "not_leader" };
-    const dungeon = dungeonOf(peek.dungeon);
+    const dungeon = dungeonById(peek.dungeon);
     if (!dungeon)
       return { ok: false, code: "rpg_invalid", reason: "unknown_dungeon" };
     const members = peek.members.map((m) => ({ ...m }));
-    const docs = await Promise.all(members.map((m) => this.load(m.user_id, true)));
+    if (
+      members.length < dungeon.party.min ||
+      members.length > dungeon.party.max
+    )
+      return { ok: false, code: "rpg_invalid", reason: "party_size" };
+    const docs = await Promise.all(
+      members.map((m) => this.load(m.user_id, true)),
+    );
     const now = this.now();
     for (const d of docs) {
-      if (!d || d.vocation === 0)
-        return { ok: false, code: "rpg_invalid", reason: "no_vocation" };
-      if (d.level < dungeon.minLevel)
+      if (!d) return { ok: false, code: "rpg_invalid", reason: "no_hero" };
+      if (d.hero.level < dungeon.minLevel)
         return { ok: false, code: "rpg_invalid", reason: "level" };
-      if (inRun(d, now)) return { ok: false, code: "rpg_invalid", reason: "in_run" };
+      if (inRun(d, now))
+        return { ok: false, code: "rpg_invalid", reason: "in_run" };
     }
-    const heroes = docs.map((d, i) => heroRunSnapshot(d!, members[i]!.name, now));
+    const heroes = docs.map((d) => d!.hero);
+    const fighters = heroes.map((h) => heroRunFighter(h));
     const seed = randomInt(0, 0xffff_ffff);
-    const result = simulateRun({
-      seed,
-      dungeon: dungeon.id,
-      heroes,
-      rateLoot: this.rates.loot,
+    const result = simulateRun(dungeon, fighters, {
+      mode: "aleatorio",
+      random: randomSource(new Rng(seed)),
+      record: true,
     });
+    const frames = result.frames ?? [];
+    const spoils = this.spoilsOf(
+      dungeon,
+      heroes,
+      docs.map((d) => staminaXpMult(d!, now) * this.rates.exp),
+      fighters,
+      result,
+      seed,
+    );
     // Sem espera entre conferir e fechar: o grupo é o mesmo que foi lido.
     const again = host.lobbyOf(userId);
     const ids = (l: { members: { user_id: string }[] }) =>
@@ -904,23 +948,26 @@ export class RpgService {
     if (!res.ok) return { ok: false, code: "rpg_invalid", reason: res.reason };
     const doc: RpgRunDoc = {
       _id: randomUUID(),
-      v: 1,
-      engine: RUN.engine,
+      v: 2,
+      engine: ENGINE_VERSION,
       server: host.serverId,
       room: res.lobby.room,
       tv: res.lobby.tv,
       dungeon: dungeon.id,
       seed,
-      rate_loot: this.rates.loot,
       started_at: now,
-      ends_at: now + result.seconds * 1000,
-      heroes,
-      outcome: result.outcome,
-      seconds: result.seconds,
-      results: result.members,
-      rewards: heroes.map((h, i) =>
-        runReward(h, result.members[i]!, result.outcome, this.rates),
+      ends_at: now + frames.length * 1000,
+      members: members.map(
+        (m, i): RpgRunMember => ({
+          userId: m.user_id,
+          name: m.name,
+          hero: heroes[i]!,
+          dead: !result.heroes[i]!.alive,
+          spoils: spoils[i]!,
+        }),
       ),
+      outcome: result.outcome,
+      seconds: frames.length,
       status: "running",
       settled_at: null,
       ...(auto ? { auto: true } : {}),
@@ -937,24 +984,24 @@ export class RpgService {
     await Promise.all(
       members.map(async (m) => {
         const job = async () => {
-          const out = await this.mutate(m.user_id, false, (d) =>
-            markRun(d, mark, this.now(), this.rates),
+          const out = await this.mutate(m.user_id, null, (d) =>
+            markRun(d, mark, this.now()),
           );
-          if (out && "doc" in out)
+          if (out && "doc" in out) {
+            host.setTraining(m.user_id, null);
             this.push(host.sessionOf(m.user_id), out.doc, undefined, host);
-          else
+          } else
             this.log.warn("rpg run member not marked", {
               run: doc._id,
               user: m.user_id,
               reason: out && "reason" in out ? out.reason : "conflict",
             });
         };
-        // A fila do líder é esta; a dos outros espera a vez deles.
         if (m.user_id === userId) await job();
         else await this.inQueue(m.user_id, job);
       }),
     );
-    const run = this.activate(doc, result, 0);
+    const run = this.activate(doc, frames, 0);
     host.sendRun(
       doc.room,
       members.map((m) => m.user_id),
@@ -964,22 +1011,62 @@ export class RpgService {
       server: doc.server,
       run: doc._id,
       dungeon: doc.dungeon,
-      members: heroes.length,
+      members: members.length,
       outcome: doc.outcome,
       seconds: doc.seconds,
     });
     return { ok: true, res };
   }
 
-  private activate(doc: RpgRunDoc, result: RunResult | null, sent: number) {
+  /** O que cada herói leva (o sorteio do loot sai de outra semente, derivada da da corrida). */
+  private spoilsOf(
+    dungeon: NonNullable<ReturnType<typeof dungeonById>>,
+    heroes: HeroV5[],
+    xpMult: number[],
+    fighters: FighterInput[],
+    result: RunResult,
+    seed: number,
+  ): RunSpoils[] {
+    const levels = heroes.map((h) => h.level);
+    const rewards = runRewards(dungeon, levels, result);
+    const loot = runLoot(
+      dungeon.level,
+      heroes.map((h) => h.cls),
+      result,
+      randomSource(new Rng((seed ^ 0x9e37_79b9) >>> 0)),
+    );
+    return heroes.map((_, i) => {
+      const xp = Math.floor(rewards.heroes[i]!.xp * xpMult[i]!);
+      return {
+        xp,
+        jobXp: Math.floor(xp * gameBalance.cfg.xp.jobShare),
+        gold: rewards.heroes[i]!.gold,
+        items: loot.items
+          .filter((x) => x.hero === i)
+          .map((x) => ({ ...x.item, uid: randomUUID() })),
+        ores: loot.ores[i] ?? {},
+        stones: loot.protectionStones[i] ?? 0,
+        potionsUsed: {
+          hp: result.rooms.reduce((a, r) => a + r.heroes[i]!.hpPotions, 0),
+          mp: result.rooms.reduce((a, r) => a + r.heroes[i]!.mpPotions, 0),
+        },
+        ammoUsed: ranged(heroes[i]!)
+          ? result.rooms.reduce((a, r) => a + r.heroes[i]!.autos, 0)
+          : 0,
+      };
+    });
+  }
+
+  private activate(doc: RpgRunDoc, frames: RunFrame[] | null, sent: number) {
     const run: ActiveRun = {
       doc,
-      result,
+      frames,
       sent,
       settling: false,
       nextTry: 0,
       watchers: new Set(),
       left: new Set(),
+      leftEnds: new Map(),
     };
     this.active.set(doc._id, run);
     if (!this.ticker && this.autoTick) {
@@ -990,22 +1077,28 @@ export class RpgService {
   }
 
   /** Refaz os quadros da semente; só serve se as regras e o resultado batem com o gravado. */
-  private replay(doc: RpgRunDoc): RunResult | null {
-    if (doc.engine !== RUN.engine) return null;
+  private replay(doc: RpgRunDoc): RunFrame[] | null {
+    if (doc.engine !== ENGINE_VERSION) return null;
+    const dungeon = dungeonById(doc.dungeon);
+    if (!dungeon) return null;
     try {
-      const r = simulateRun({
-        seed: doc.seed,
-        dungeon: doc.dungeon,
-        heroes: doc.heroes,
-        rateLoot: doc.rate_loot,
-      });
+      const r = simulateRun(
+        dungeon,
+        doc.members.map((m) => heroRunFighter(m.hero)),
+        {
+          mode: "aleatorio",
+          random: randomSource(new Rng(doc.seed)),
+          record: true,
+        },
+      );
       const same =
-        r.outcome === doc.outcome &&
-        r.seconds === doc.seconds &&
-        r.members.every((m, i) => m.exp === doc.results[i]?.exp);
-      return same ? r : null;
+        r.outcome === doc.outcome && (r.frames?.length ?? -1) === doc.seconds;
+      return same ? r.frames! : null;
     } catch (err) {
-      this.log.warn("rpg run replay failed", { run: doc._id, err: String(err) });
+      this.log.warn("rpg run replay failed", {
+        run: doc._id,
+        err: String(err),
+      });
       return null;
     }
   }
@@ -1018,33 +1111,44 @@ export class RpgService {
       dungeon: doc.dungeon,
       started_at: doc.started_at,
       ends_at: doc.ends_at,
-      ...(doc.auto ? { auto: true } : {}),
-      members: doc.heroes.map((h) => ({
-        user_id: h.userId,
-        name: h.name,
-        vocation: h.vocation,
-        level: h.level,
-        health_max: h.healthMax,
-        mana_max: h.manaMax,
-        gear: h.gear,
-        skills: abilityBar(h),
-        supplies: h.supplies ?? DEFAULT_SUPPLIES,
-        exp_rate: runExpRate(h, this.rates),
-      })),
+      auto: doc.auto ?? false,
+      members: doc.members.map((m) => {
+        const f = heroRunFighter(m.hero);
+        return {
+          user_id: m.userId,
+          name: m.name,
+          cls: m.hero.cls,
+          level: m.hero.level,
+          hp_max: Math.round(f.stats.hp),
+          mp_max: Math.round(f.stats.mp),
+          equipment: m.hero.equipment,
+          skills: f.skills.map((s) => ({
+            id: s.id,
+            mana: Math.round(s.manaPct * f.stats.manaBase),
+            cd_ms: s.cooldownMs,
+          })),
+          supplies: m.hero.supplies,
+          belt: m.hero.belt,
+          potions: {
+            hp: m.hero.potions.hp[m.hero.belt.hp],
+            mp: m.hero.potions.mp[m.hero.belt.mp],
+          },
+        };
+      }),
     };
   }
 
   /** A corrida até o segundo de agora: o último quadro e o registro recente. */
   private runSnapshot(run: ActiveRun, end?: RpgRunEndView): RpgRunEvent {
-    const frames = run.result?.frames ?? [];
+    const frames = run.frames ?? [];
     const sec = end
-      ? frames.length - 1
+      ? frames.length
       : Math.min(
           Math.floor((this.now() - run.doc.started_at) / 1000),
-          frames.length - 1,
+          frames.length,
         );
     const feed: RpgRunFeedItem[] = [];
-    for (let i = sec; i >= 0 && feed.length < FEED_MAX; i--) {
+    for (let i = sec - 1; i >= 0 && feed.length < FEED_MAX; i--) {
       const f = frames[i]!;
       for (let k = f.e.length - 1; k >= 0 && feed.length < FEED_MAX; k--)
         feed.push({ ...f.e[k]!, at: f.s, st: f.st });
@@ -1055,23 +1159,13 @@ export class RpgService {
       t: "rpg.run",
       d: {
         run: this.runView(run.doc),
-        frame: sec >= 0 ? (frames[sec] ?? null) : null,
+        frame: sec > 0 ? (frames[sec - 1] ?? null) : null,
         feed,
-        // Sem quadros (a corrida veio de outra versão das regras) não há o que contar.
-        ...(frames.length > 0
-          ? {
-              potions: potionsAt(run.doc.heroes, frames, sec),
-              exp: expAt(run.doc.heroes.length, frames, sec),
-            }
-          : end
-            ? {}
-            : { blind: true }),
         ...(end ? { end } : {}),
       },
     };
   }
 
-  /** O membro que abre o app no meio da corrida vê a corrida dele. */
   private sendOwnRun(session: SessionPort, doc: RpgHeroDoc | null) {
     const id = doc?.run?.id;
     const run = id ? this.active.get(id) : undefined;
@@ -1079,9 +1173,71 @@ export class RpgService {
       session.send(this.runSnapshot(run) as unknown as Record<string, unknown>);
   }
 
+  /** Sair da corrida: fecha a parte dele agora, sem a recompensa (o gasto até ali fica). */
+  private async leaveRun(session: SessionPort, host: RpgHost, re: string) {
+    const userId = session.viewer.user._id;
+    const now = this.now();
+    const fail = (reason: string) =>
+      session.send({
+        v: 1,
+        t: "error",
+        re,
+        d: { code: "rpg_invalid", reason },
+      });
+    const hero = await this.load(userId);
+    const runId = hero?.run?.id;
+    const run = runId ? this.active.get(runId) : undefined;
+    if (!hero || !runId || !run || run.settling || !inRun(hero, now))
+      return fail("no_run");
+    const i = run.doc.members.findIndex((m) => m.userId === userId);
+    if (i < 0) return fail("no_run");
+    const elapsed = Math.max(0, Math.floor((now - run.doc.started_at) / 1000));
+    const spent = spentUntil(run.frames, i, elapsed, run.doc.members[i]!.hero);
+    let end: RpgRunMemberEnd | null = null;
+    const out = await this.mutate(userId, null, (d) => {
+      const r = settleRunHero(
+        d,
+        runId,
+        null,
+        spent,
+        runStaminaCost(elapsed),
+        now,
+      );
+      if (!r.ok) return r;
+      end = {
+        user_id: userId,
+        dead: false,
+        retreated: true,
+        reward: null,
+        left: [],
+        potions_used: spent.potionsUsed,
+        ammo_used: spent.ammoUsed,
+        levels_gained: 0,
+        jobs_gained: 0,
+      };
+      return { ok: true };
+    });
+    if (!out) return fail("no_run");
+    if ("reason" in out) return fail(out.reason);
+    run.left.add(userId);
+    if (end) run.leftEnds.set(userId, end);
+    this.remember(userId, re);
+    this.push(session, out.doc, re, host);
+    this.log.info("rpg run left", {
+      server: host.serverId,
+      run: runId,
+      seconds: elapsed,
+    });
+    const lobby = host.lobbyOf(userId);
+    if (lobby && lobby.runId === runId && lobby.loop)
+      host.lobbyLoopFailed(lobby.id, "retreat");
+    if (run.doc.members.every((m) => run.left.has(m.userId)))
+      void this.settleRunDoc(run);
+  }
+
   /**
-   * Fecha a corrida: cada herói na fila dele (a marca garante uma vez só), depois a corrida no
-   * banco, depois o resumo para a sala. Erro de banco: tenta de novo em 30 s.
+   * Fecha a corrida: cada herói na fila dele (a marca garante uma vez só), depois a corrida no banco,
+   * depois o resumo para a sala. Erro de banco: tenta de novo em 30 s.
    */
   private async settleRunDoc(run: ActiveRun): Promise<void> {
     run.settling = true;
@@ -1090,93 +1246,88 @@ export class RpgService {
     const host = this.hostOf(doc.server);
     try {
       const cost = runStaminaCost(doc.seconds);
-      // Todos saíram antes do fim: para o grupo, foi uma retirada.
-      const abandoned = doc.heroes.every((h) => run.left.has(h.userId));
-      // Os levels depois da corrida (o grupo que fica montado mostra e confere com eles).
+      const abandoned = doc.members.every((m) => run.left.has(m.userId));
       const levels: Record<string, number> = {};
-      for (let i = 0; i < doc.heroes.length; i++) {
-        const userId = doc.heroes[i]!.userId;
-        await this.inQueue(userId, async () => {
-          // Corrida da etapa O7: o inventário do fim vem do resultado; da O5, não há.
-          const res = doc.results[i];
-          const start = doc.heroes[i]?.inv;
-          const after =
-            start && res?.inv && res.invBare
-              ? { start, alive: res.inv, bare: res.invBare }
-              : null;
-          let mismatch = false;
-          const out = await this.mutate(userId, false, (d) => {
-            const r = settleRun(
-              d,
-              doc._id,
-              doc.rewards[i] ?? null,
-              cost,
-              now,
-              after,
-            );
-            if (r.ok) mismatch = r.settled.invMismatch;
-            return r.ok ? { ok: true } : r;
+      const ends: RpgRunMemberEnd[] = [];
+      for (const m of doc.members) {
+        if (run.left.has(m.userId)) {
+          ends.push(run.leftEnds.get(m.userId)!);
+          continue;
+        }
+        let end: RpgRunMemberEnd = {
+          user_id: m.userId,
+          dead: m.dead,
+          retreated: false,
+          reward: null,
+          left: [],
+          potions_used: m.spoils.potionsUsed,
+          ammo_used: m.spoils.ammoUsed,
+          levels_gained: 0,
+          jobs_gained: 0,
+        };
+        await this.inQueue(m.userId, async () => {
+          const out = await this.mutate(m.userId, null, (d) => {
+            const r = settleRunHero(d, doc._id, m.spoils, m.spoils, cost, now);
+            if (!r.ok) return r;
+            end = {
+              ...end,
+              reward: {
+                xp: m.spoils.xp,
+                job_xp: m.spoils.jobXp,
+                gold: m.spoils.gold,
+                items: m.spoils.items,
+                ores: m.spoils.ores,
+                stones: m.spoils.stones,
+              },
+              left: r.settled.left,
+              levels_gained: r.settled.levelsGained,
+              jobs_gained: r.settled.jobsGained,
+            };
+            return { ok: true };
           });
-          if (mismatch)
-            this.log.warn("rpg run inventory changed during run", {
-              run: doc._id,
-              user: userId,
-            });
           if (out && "doc" in out) {
-            levels[userId] = out.doc.level;
-            this.push(host?.sessionOf(userId) ?? null, out.doc, undefined, host);
+            levels[m.userId] = out.doc.hero.level;
+            this.push(
+              host?.sessionOf(m.userId) ?? null,
+              out.doc,
+              undefined,
+              host,
+            );
           }
         });
+        ends.push(end);
       }
       await this.runStore.settle(doc._id, now);
       this.active.delete(doc._id);
-      // O grupo fica pronto para a próxima (e o loop marca a próxima, se ligado).
-      host?.lobbyRunEnded(doc._id, abandoned ? "retirada" : doc.outcome, levels);
-      const end: RpgRunEndView = {
-        outcome: abandoned ? "retirada" : doc.outcome,
-        members: doc.heroes.map((h, i) => {
-          const gone = run.left.has(h.userId);
-          const r = gone ? null : doc.rewards[i];
-          return {
-            user_id: h.userId,
-            dead: doc.results[i]?.dead ?? false,
-            ...(gone ? { retreated: true } : {}),
-            spent: doc.results[i]?.spent ?? [],
-            left: doc.results[i]?.left ?? [],
-            reward: r
-              ? {
-                  exp: r.exp,
-                  gold: r.gold,
-                  loot: r.loot,
-                  tries: r.tries,
-                  mana_spent: r.manaSpent,
-                }
-              : null,
-          };
-        }),
-      };
+      const outcome: RpgRunEnd = abandoned ? "retirada" : doc.outcome;
+      host?.lobbyRunEnded(doc._id, outcome, levels);
       host?.sendRun(
         doc.room,
-        [...doc.heroes.map((h) => h.userId), ...run.watchers],
-        this.runSnapshot(run, end) as unknown as Record<string, unknown>,
+        [...doc.members.map((m) => m.userId), ...run.watchers],
+        this.runSnapshot(run, { outcome, members: ends }) as unknown as Record<
+          string,
+          unknown
+        >,
       );
       this.log.info("rpg run settled", {
         server: doc.server,
         run: doc._id,
-        outcome: doc.outcome,
+        outcome,
       });
     } catch (err) {
       run.settling = false;
       run.nextTry = this.now() + SETTLE_RETRY_MS;
-      this.log.error("rpg run settle failed", { run: doc._id, err: String(err) });
+      this.log.error("rpg run settle failed", {
+        run: doc._id,
+        err: String(err),
+      });
     }
   }
 
   /**
-   * Entrega as transferências da fila de saída de `sender` (etapa O8). O crédito roda na fila
-   * de quem recebe e a baixa na de quem enviou, cada um sem esperar o outro (duas transferências
-   * cruzadas não travam). O crédito é por `id` (uma vez só); se o processo cair no meio, a
-   * próxima leitura de quem enviou entrega de novo. Destino sem herói: o dinheiro volta.
+   * Entrega as transferências da fila de saída de `sender`. O crédito roda na fila de quem recebe e
+   * a baixa na de quem enviou, cada um sem esperar o outro. O crédito é por `id` (uma vez só); se o
+   * processo cair no meio, a próxima leitura de quem enviou entrega de novo. Destino sem herói: volta.
    */
   private deliver(sender: RpgHeroDoc, host: RpgHost | null = null): void {
     for (const t of sender.outbox) {
@@ -1186,19 +1337,20 @@ export class RpgService {
       this.enqueue(
         t.to,
         async () => {
-          const got = await this.mutate(t.to, false, (d) => transferIn(d, t));
+          const got = await this.mutate(t.to, null, (d) => transferIn(d, t));
           if (got === null && (await this.load(t.to, true))) {
-            // Conflito de gravação que não passou: fica na fila para a próxima leitura.
             done();
             return;
           }
-          if (got && "reason" in got) throw new Error(`transfer in: ${got.reason}`);
+          if (got && "reason" in got)
+            throw new Error(`transfer in: ${got.reason}`);
           const refund = got === null;
-          if (got && host) this.push(host.sessionOf(t.to), got.doc, undefined, host);
+          if (got && host)
+            this.push(host.sessionOf(t.to), got.doc, undefined, host);
           this.enqueue(
             sender._id,
             async () => {
-              const out = await this.mutate(sender._id, false, (d) =>
+              const out = await this.mutate(sender._id, null, (d) =>
                 transferSettled(d, t.id, refund),
               );
               done();
@@ -1206,7 +1358,8 @@ export class RpgService {
                 this.push(host.sessionOf(sender._id), out.doc, undefined, host);
               this.log.info("rpg transfer", {
                 id: t.id,
-                amount: t.amount,
+                gold: t.gold,
+                items: t.items.length,
                 refund,
               });
             },
@@ -1218,7 +1371,6 @@ export class RpgService {
     }
   }
 
-  /** Roda `fn` na fila de outra pessoa e devolve o resultado (erros sobem para quem chamou). */
   private inQueue<T>(userId: string, fn: () => Promise<T>): Promise<T> {
     return new Promise<T>((resolve, reject) => {
       this.enqueue(
@@ -1241,12 +1393,9 @@ export class RpgService {
     re: string | undefined,
     host: RpgHost | null,
   ) {
-    // O level sob o nome acompanha o herói (quem tem herói aparece com ele).
     if (doc) host?.setHero(doc._id, heroLook(doc));
-    // O mapa segue o banco: sem treino no herói, sem "treinando" no avatar. Começar a dungeon
-    // (markRun) e outros caminhos fecham o treino no herói sem passar pelo runtime; sem isto o
-    // avatar seguia com ⚔, o equipamento e o tiro no dummy, sem treinar (23/11/2026, Acais).
-    if (doc && !doc.training) host?.setTraining(doc._id, null);
+    // O mapa segue o banco: sem treino no herói, sem "treinando" no avatar.
+    if (doc && !doc.dojo) host?.setTraining(doc._id, null);
     if (!session) return;
     const ev: RpgStateEvent = {
       v: 1,
@@ -1255,12 +1404,16 @@ export class RpgService {
       d: {
         server_now: this.now(),
         rev: doc?.rev ?? 0,
-        hero: doc ? rpgHeroView(doc, this.rates, this.now()) : null,
+        hero: doc ? rpgHeroState(doc, this.rates, this.now()) : null,
       },
     };
     session.send(ev as unknown as Record<string, unknown>);
   }
 
+  /**
+   * Lê o herói (cache LRU). O documento torto não é consertado: o motivo vai para o log e o comando
+   * falha (o dado fica como está no banco para o suporte olhar).
+   */
   private async load(
     userId: string,
     fresh = false,
@@ -1274,12 +1427,22 @@ export class RpgService {
       }
     }
     const raw = await this.store.get(userId);
-    const doc = raw ? normalizeHero(raw) : null;
-    if (doc) this.keep(doc);
-    // Transferência que ficou a caminho (o processo caiu): entrega agora, sem esperar.
-    if (doc && doc.outbox.length > 0) this.deliver(doc);
-    else this.cache.delete(userId);
-    return doc ? structuredClone(doc) : null;
+    if (!raw) {
+      this.cache.delete(userId);
+      return null;
+    }
+    const checked = checkHeroDoc(raw);
+    if (!checked.ok) {
+      this.log.error("rpg hero invalid", {
+        user: userId,
+        reason: checked.reason,
+      });
+      throw new Error(`rpg hero ${userId} invalid: ${checked.reason}`);
+    }
+    const doc = checked.doc;
+    this.keep(doc);
+    if (doc.outbox.length > 0) this.deliver(doc);
+    return structuredClone(doc);
   }
 
   private keep(doc: RpgHeroDoc) {
@@ -1304,7 +1467,6 @@ export class RpgService {
     if (!b) {
       b = new TokenBucket(RPG_RATE.rate, RPG_RATE.burst, 10_000, this.now());
       this.buckets.set(userId, b);
-      // Sem herói em cache o balde não sai pela LRU: limite próprio.
       if (this.buckets.size > this.cacheMax * 2)
         this.buckets.delete(this.buckets.keys().next().value as string);
     }
@@ -1313,19 +1475,17 @@ export class RpgService {
 }
 
 /**
- * Taxas do operador: `SPACE_GAME_RATES="exp=5,skill=2,magic=2,loot=2"`. Lidas direto do
- * ambiente (o `env()` do main.ts derruba o processo quando a variável falta, e com ele a voz
- * das salas). Chave ausente ou inválida fica no padrão.
+ * Taxa do operador: `SPACE_GAME_RATES="exp=2"` (as chaves antigas de skill, magia e loot são
+ * ignoradas na engine nova). Chave ausente ou inválida fica no padrão.
  */
-export function ratesFromEnv(raw: string | undefined): Rates {
-  const out: Rates = { ...DEFAULT_RATES };
+export function ratesFromEnv(raw: string | undefined): RpgRates {
+  const out: RpgRates = { ...DEFAULT_RPG_RATES };
   if (!raw) return out;
   for (const part of raw.split(",")) {
     const [k, v] = part.split("=").map((x) => x.trim());
     const n = Number(v);
     if (!k || !Number.isFinite(n) || n <= 0 || n > 1_000) continue;
-    if (k === "exp" || k === "skill" || k === "magic" || k === "loot")
-      out[k] = n;
+    if (k === "exp") out.exp = n;
   }
   return out;
 }

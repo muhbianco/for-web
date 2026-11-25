@@ -485,8 +485,8 @@ const lobbyEvents = (s: FakeSession) =>
 const lobbyMember = (id: string, name: string) => ({
   user_id: id,
   name,
-  vocation: 4 as const,
-  level: 5,
+  cls: "guerreiro" as const,
+  level: 40,
 });
 
 test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo segue quem anda e quem cai até o fim da reconexão", async () => {
@@ -519,7 +519,7 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   // Bia já está na sala quando Ana cria: recebe; Cai (fora) não.
   placeAt(rt, "01JB1A00000000000000000000", tv.beside, PUB);
   assert.equal(
-    rt.lobbyCreate(tv.id, PUB, "cripta-do-musgo", lobbyMember(ANA, "Ana")).ok,
+    rt.lobbyCreate(tv.id, PUB, "masmorra-40", lobbyMember(ANA, "Ana")).ok,
     true,
   );
   assert.equal(lobbyEvents(bia).at(-1)?.lobby?.members.length, 1);
@@ -573,7 +573,7 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
     rt.lobbyCreate(
       tv.id,
       PUB,
-      "cripta-do-musgo",
+      "masmorra-40",
       lobbyMember("01JCA100000000000000000000", "Cai"),
     ).ok,
     true,

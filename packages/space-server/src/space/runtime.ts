@@ -56,7 +56,8 @@ import {
   type ZoneIndex,
   zonesOf,
 } from "@muchat/space-core";
-import { type RpgLobbyMember, type RpgLoopStop, type RunOutcome, TRAIN_REACH_TILES as REACH } from "@muchat/space-core/game/ot";
+import { TRAIN_REACH_TILES as REACH } from "@muchat/space-core/game/ot";
+import type { RpgLobbyMember, RpgLoopStop, RpgRunEnd } from "@muchat/space-core/game/ot/balance";
 
 import { type Lobby, type LobbyResult, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
 import type { Log } from "../log.ts";
@@ -585,7 +586,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
   }
 
   /** A group's run closed: ready for the next (levels refreshed; the loop schedules it). */
-  lobbyRunEnded(runId: string, outcome: RunOutcome, levels: Record<string, number>): void {
+  lobbyRunEnded(runId: string, outcome: RpgRunEnd, levels: Record<string, number>): void {
     const lobby = this.lobbies.runEnded(runId, outcome, this.now());
     if (!lobby) return;
     for (const m of lobby.members) if (levels[m.user_id] !== undefined) m.level = levels[m.user_id]!;
@@ -732,6 +733,17 @@ export class SpaceRuntime implements MediaHost, TvHost {
 
   isTrainingAt(userId: string, instanceId: string): boolean {
     return this.trainingAt.get(userId) === instanceId;
+  }
+
+  /** How many others train at a dummy in the same zone as this person (the Dojô social bonus). */
+  trainingPeers(userId: string): number {
+    const mine = this.trainingAt.get(userId);
+    if (mine === undefined) return 0;
+    const zoneOf = (id: string) => this.decor.items.find((i) => i.id === id)?.zone;
+    const zone = zoneOf(mine);
+    let n = 0;
+    for (const [u, inst] of this.trainingAt) if (u !== userId && zoneOf(inst) === zone) n++;
+    return n;
   }
 
   /** The dummy the runtime sees the person training at (null: none). */

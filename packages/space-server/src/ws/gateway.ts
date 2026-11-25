@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import http from "node:http";
 
 import { Close, defaultPalette, MAX_FRAME_BYTES, parseCommand, ProfilePatch, TICK_HZ } from "@muchat/space-core";
-import { parseRpgCommand } from "@muchat/space-core/game/ot";
+import { parseRpgCommand } from "@muchat/space-core/game/ot/balance";
 import { type WebSocket, WebSocketServer } from "ws";
 
 import type { RpgService } from "../game/ot/service.ts";

@@ -1,5 +1,6 @@
 // Rebalanceamento do Idle Hunt (spec de 25/11/2026): a engine nova, construída ao lado da antiga e
 // ligada ao servidor e às telas só na virada (Fase 8). Mapa e decisões: muchat docs/espaco/jogo/ot/balance.
+export { Rng } from "../../rng.ts";
 export * from "./attributes.ts";
 export * from "./combat/fight.ts";
 export * from "./combat/types.ts";

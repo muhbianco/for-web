@@ -1,41 +1,47 @@
 import type {
-  RunHero,
-  RunMemberResult,
+  HeroV5,
   RunOutcome,
-  RunReward,
-} from "@muchat/space-core/game/ot";
+  RunSpoils,
+} from "@muchat/space-core/game/ot/balance";
 import type { MongoClient } from "mongodb";
 
 /**
- * Uma corrida de dungeon gravada (etapa O5). Tudo o que decide o resultado é calculado no
- * início e fica aqui: a semente, a cópia dos heróis, o resultado e a recompensa de cada um.
- * Se o processo cair, a corrida volta do banco e fecha na hora certa; se as regras mudaram
- * no meio (outra `engine`), a recompensa gravada vale e só o replay ao vivo some.
+ * Uma corrida gravada (engine nova, Fase 8). Tudo o que decide o resultado é calculado no início e fica
+ * aqui: a semente, a cópia dos heróis, o resultado e o que cada um leva (os itens já com id). Se o
+ * processo cair, a corrida volta do banco e fecha na hora certa; os quadros da tela saem de novo da
+ * semente (se a `engine` mudou no meio, a recompensa gravada vale e só a tela ao vivo some).
  */
+export interface RpgRunMember {
+  userId: string;
+  name: string;
+  /** O herói como entrou (o replay dos quadros sai dele e da semente). */
+  hero: HeroV5;
+  dead: boolean;
+  /** O que leva no fim (XP já com stamina e taxa; poções e munição gastas). */
+  spoils: RunSpoils;
+}
+
 export interface RpgRunDoc {
   _id: string;
-  v: 1;
+  v: 2;
   engine: number;
   server: string;
   room: string;
   tv: string;
   dungeon: string;
   seed: number;
-  /** A taxa de loot do início (o replay precisa da mesma). */
-  rate_loot: number;
   started_at: number;
   ends_at: number;
-  heroes: RunHero[];
+  members: RpgRunMember[];
   outcome: RunOutcome;
+  /** Segundos de tela (os quadros): salas e descansos. */
   seconds: number;
-  /** O resultado de cada um (sem os quadros) e o que ele leva (null: caiu). */
-  results: RunMemberResult[];
-  rewards: (RunReward | null)[];
   status: "running" | "settled";
   settled_at: number | null;
-  /** Começou pelo loop do grupo (24/11/2026). */
   auto?: boolean;
 }
+
+export const RUNS_COLLECTION = "rpg_runs5";
 
 /** Quantas corridas em andamento voltam do banco ao subir (teto da consulta). */
 export const RUNS_RESUME_LIMIT = 500;
@@ -77,12 +83,12 @@ export class MemoryRunStore implements RunStore {
 type RunMongo = RpgRunDoc & { expire_at: Date | null };
 const OP = { maxTimeMS: 2_000 } as const;
 
-/** Mongo `muchat_space.rpg_runs`. */
+/** Mongo `muchat_space.rpg_runs5` (a `rpg_runs` do v4 fica como estava). */
 export class MongoRunStore implements RunStore {
   private readonly col;
 
   constructor(client: Pick<MongoClient, "db">, db = "muchat_space") {
-    this.col = client.db(db).collection<RunMongo>("rpg_runs");
+    this.col = client.db(db).collection<RunMongo>(RUNS_COLLECTION);
   }
 
   /** Índices: as em andamento pelo fim; as fechadas somem pelo TTL. Falha aqui não derruba nada. */
@@ -106,7 +112,7 @@ export class MongoRunStore implements RunStore {
       .find({ status: "running" }, { ...OP, limit, sort: { ends_at: 1 } })
       .toArray();
     return rows
-      .filter((r) => r.v === 1)
+      .filter((r) => r.v === 2)
       .map(({ expire_at: _e, ...doc }) => doc as RpgRunDoc);
   }
 
