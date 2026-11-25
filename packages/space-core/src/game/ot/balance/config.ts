@@ -246,6 +246,68 @@ export const BALANCE = {
     goldPartyScale: true,
   },
 
+  /** §13: drops. Chance de item por criatura e a raridade que sai (as chances somam 1). */
+  loot: {
+    sources: {
+      lacaio: {
+        chance: 0.06,
+        perPlayer: false,
+        rarity: { comum: 0.7, incomum: 0.25, raro: 0.05 },
+      },
+      elite: {
+        chance: 0.3,
+        perPlayer: false,
+        rarity: { comum: 0.4, incomum: 0.4, raro: 0.18, epico: 0.02 },
+      },
+      chefeMenor: {
+        chance: 1,
+        perPlayer: false,
+        rarity: { incomum: 0.5, raro: 0.42, epico: 0.08 },
+      },
+      chefe: {
+        chance: 1,
+        perPlayer: true,
+        rarity: { raro: 0.7, epico: 0.27, lendario: 0.03 },
+      },
+      regional: {
+        chance: 1,
+        perPlayer: true,
+        rarity: { epico: 0.85, lendario: 0.15 },
+      },
+    },
+    /** Minério da região por sala vencida, para cada herói vivo no fim da sala (P69: o spec não dá a quantidade). */
+    oresPerRoom: 1,
+    /** A Pedra de Proteção cai do chefe de masmorra: 5% para cada herói vivo no abate. */
+    protectionStoneChance: 0.05,
+  },
+
+  /** §10: Mercador. */
+  merchant: {
+    /** Equipamento Comum do tier: 20 × ouroLacaio(iL). */
+    commonItemOfGold: 20,
+    /** Compra itens por 10% do preço base; o preço base sobe com a raridade como o desmontar (P53). */
+    buyBackPct: 0.1,
+    rarityPrice: { comum: 1, incomum: 2, raro: 4, epico: 8, lendario: 16 },
+    /** Munição em pacotes de 100: a comum custa ⌈0,5 × ouroLacaio(tier)⌉ o pacote; afiada ×2, rúnica ×4 (P15). */
+    ammoPack: 100,
+    ammoPackOfGold: 0.5,
+    ammoGradeMult: { comum: 1, afiada: 2, runica: 4 },
+  },
+
+  /** §10: Banqueiro. */
+  bank: {
+    vaultSlots: 60,
+    expansionSlots: 20,
+    /** +20 espaços custam 200 × ouroLacaio(L). */
+    expansionOfGold: 200,
+    /** Transferência: 2% no ouro (mínimo 1); por item, 5 × ouroLacaio(iL). */
+    goldFeePct: 0.02,
+    goldFeeMin: 1,
+    itemFeeOfGold: 5,
+    /** Item com refino a partir deste pede confirmação dupla. */
+    confirmRefineFrom: 7,
+  },
+
   /** §11.2: escala(n) = 1 + 0,75·(n−1); a Masmorra usa n mínimo de 3. */
   partyScale: { perExtra: 0.75, masmorraMin: 3, maxParty: 4 },
 
