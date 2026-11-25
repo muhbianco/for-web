@@ -235,6 +235,17 @@ export const BALANCE = {
   /** §13: ouroLacaio(m) = 3 + 0,8·m^1,15. */
   gold: { base: 3, coef: 0.8, exp: 1.15 },
 
+  /** Recompensas da corrida (§13, Fase 7). */
+  rewards: {
+    /** PT com mais que isto de diferença de nível: cada um pelo próprio Δ; senão, todos pela média (P66). */
+    sharedDeltaSpread: 20,
+    /**
+     * O ouro de cada criatura leva a escala(n) do grupo, como o HP dela (P67). O spec só fala em
+     * "arquétipo e tipo"; sem a escala, cada um de uma PT de 4 levaria 1/4 do ouro de quem caça sozinho.
+     */
+    goldPartyScale: true,
+  },
+
   /** §11.2: escala(n) = 1 + 0,75·(n−1); a Masmorra usa n mínimo de 3. */
   partyScale: { perExtra: 0.75, masmorraMin: 3, maxParty: 4 },
 

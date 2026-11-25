@@ -10,6 +10,7 @@ import type {
   FighterInput,
   FightOptions,
   FightResult,
+  KillEvent,
   SkillDef,
   SkillHook,
 } from "./types.ts";
@@ -227,6 +228,24 @@ export function fight(
     debuffs: new Map(),
   });
   const enemies: Enemy[] = enemyInputs.map(newEnemy);
+  /** Os da sala; daqui para a frente, só invocados. */
+  const roomEnemies = enemies.length;
+  const kills: KillEvent[] = [];
+  const recorded = new Set<number>();
+  const recordKills = () => {
+    for (const e of enemies)
+      if (!e.alive && !recorded.has(e.i)) {
+        recorded.add(e.i);
+        kills.push({
+          enemy: e.i,
+          archetype: e.input.archetype,
+          level: e.input.level,
+          seconds: Math.round(t * 10) / 10,
+          summoned: e.i >= roomEnemies,
+          alive: heroes.map((h) => h.alive),
+        });
+      }
+  };
   const partyBuffs = new Map<string, Timed>();
   const partyPurges: {
     count: number;
@@ -1539,6 +1558,7 @@ export function fight(
       }
     }
 
+    recordKills();
     t += DT;
   }
 
@@ -1549,6 +1569,7 @@ export function fight(
     firstDeath,
     damage: total,
     enemiesLeft: enemies.map((e) => Math.max(0, e.hp) / e.input.hp),
+    kills,
     heroes: heroes.map((h) => ({
       cls: h.input.cls,
       damage: h.damage,

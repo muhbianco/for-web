@@ -90,6 +90,9 @@ export interface BalanceHero {
   ammo?: AmmoGrade;
   /** Quantas vezes já redistribuiu os atributos no Mestre (a 1ª é grátis; D25). */
   attrResets?: number;
+  /** XP de nível e de job acumulados desde o 1 (progress.ts). */
+  xp?: number;
+  jobXp?: number;
 }
 
 /**

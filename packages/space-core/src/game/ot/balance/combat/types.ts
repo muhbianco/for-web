@@ -385,6 +385,19 @@ export interface FighterResult {
   carry: HeroCarry;
 }
 
+/** Um inimigo abatido: quem estava de pé na hora divide o XP e o ouro (D4). */
+export interface KillEvent {
+  /** Índice do inimigo na luta (os invocados vêm depois dos da sala). */
+  enemy: number;
+  archetype: ArchetypeKey;
+  level: number;
+  seconds: number;
+  /** Veio da Invocação do chefe: não dá XP, ouro nem loot (P65). */
+  summoned: boolean;
+  /** Quem estava vivo no abate, na ordem dos heróis. */
+  alive: boolean[];
+}
+
 export interface FightResult {
   win: boolean;
   seconds: number;
@@ -397,5 +410,7 @@ export interface FightResult {
   damage: number;
   /** Fração de HP que sobrou em cada inimigo. */
   enemiesLeft: number[];
+  /** Os abates, na ordem em que aconteceram. */
+  kills: KillEvent[];
   heroes: FighterResult[];
 }
