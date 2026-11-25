@@ -296,7 +296,12 @@ const withAi = (cls: FighterInput["cls"], id: string): SkillDef =>
   compileSkill(skillOf(cls, id)!, { potency: 1, efficiency: 0, mechanics: {} });
 
 /** Luta curta contra um chefe que não bate, com cada herói começando em `hpPct` do HP (sem poção). */
-const healFight = (heroes: FighterInput[], hpPct: number[], maxSeconds = 2) =>
+const healFight = (
+  heroes: FighterInput[],
+  hpPct: number[],
+  maxSeconds = 2,
+  pots: number[] = [],
+) =>
   fight(heroes, [hitter(0)], {
     maxSeconds,
     mode: "esperado",
@@ -304,7 +309,7 @@ const healFight = (heroes: FighterInput[], hpPct: number[], maxSeconds = 2) =>
       hp: f.stats.hp * hpPct[i]!,
       mp: f.stats.mp,
       alive: true,
-      pots: 0,
+      pots: pots[i] ?? 0,
       cooldowns: {},
       revived: false,
       cheatedDeath: false,
@@ -355,7 +360,7 @@ test("cura inteligente: com o tanque precisando, ele vem primeiro", () => {
   );
 });
 
-test("cura inteligente: aliado abaixo de 60% passa à frente do tanque", () => {
+test("cura inteligente: aliado abaixo de 60% e sem poção passa à frente do tanque", () => {
   const party = (heal: boolean) => [
     bare("guerreiro"),
     bare("mago"),
@@ -370,6 +375,25 @@ test("cura inteligente: aliado abaixo de 60% passa à frente do tanque", () => {
   assert.ok(
     r.heroes[0]!.hpPct < base.heroes[0]!.hpPct + 0.01,
     "a cura foi no tanque",
+  );
+});
+
+test("cura inteligente: abaixo de 60% mas com poção, o tanque continua primeiro (D26)", () => {
+  const party = (heal: boolean) => [
+    bare("guerreiro"),
+    bare("mago"),
+    withSkills("padre", heal ? [withAi("padre", "curar")] : []),
+  ];
+  // O mago tem poção: ele bebe a dele, e o Curar vai no tanque.
+  const r = healFight(party(true), [0.7, 0.3, 1], 2, [0, 5, 0]);
+  const base = healFight(party(false), [0.7, 0.3, 1], 2, [0, 5, 0]);
+  assert.ok(
+    r.heroes[0]!.hpPct > base.heroes[0]!.hpPct + 0.1,
+    "o tanque não foi curado",
+  );
+  assert.ok(
+    r.heroes[1]!.hpPct < base.heroes[1]!.hpPct + 0.01,
+    "a cura foi no mago",
   );
 });
 

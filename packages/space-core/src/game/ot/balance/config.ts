@@ -178,6 +178,15 @@ export const BALANCE = {
      * (medido, P62: 48 corridas com morte em 148, contra 9 com 0,6; platô de 0,6 a 0,7).
      */
     healEmergencyBelow: 0.6,
+    /**
+     * A exceção só vale para quem está sem poção (decisão do dono de 25/11/2026, D26): com poção, o tanque
+     * continua primeiro. Quem chega sem poção atrapalha a PT, e isso é de propósito.
+     * "estoque" = sem nenhuma na bolsa; "agora" = sem nenhuma ou com a poção em recarga; "nenhum" = vale
+     * para todos (a P62 antes da D26).
+     */
+    healEmergencyPotionGate: "estoque" as "estoque" | "agora" | "nenhum",
+    /** Linha da exceção para quem ainda tem poção (0 = o tanque continua primeiro; D26). */
+    healEmergencyWithPotionBelow: 0,
   },
 
   /** §6: marcos de tier. T2 no job 20; T3 no nível 40; T4 no nível 70. */

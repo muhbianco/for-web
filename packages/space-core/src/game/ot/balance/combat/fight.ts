@@ -605,6 +605,19 @@ export function fight(
    * Cura inteligente (D25): sai quando a cura rende (pelo menos `healMinUseful` dela entra) e vai para
    * quem aproveita mais; com tanque precisando, o tanque. Na de grupo, a conta é sobre o grupo inteiro.
    */
+  /**
+   * Abaixo de que fração do HP o aliado passa à frente do tanque (D26): sem poção, a linha cheia; com
+   * poção, a linha de quem tem poção (0 = nunca, o tanque continua primeiro).
+   */
+  const emergencyLine = (q: Hero): number => {
+    const gate = cfg.skills.healEmergencyPotionGate;
+    const noPotion =
+      gate === "nenhum" || q.pots <= 0 || (gate === "agora" && q.potCd > 0);
+    return noPotion
+      ? cfg.skills.healEmergencyBelow
+      : cfg.skills.healEmergencyWithPotionBelow;
+  };
+
   const healPlan = (h: Hero, s: SkillDef): { ok: boolean; ally?: Hero } => {
     const useful = cfg.skills.healMinUseful;
     const need = (q: Hero) => Math.max(0, maxHp(q) - q.hp - pendingHot(q));
@@ -652,7 +665,7 @@ export function fight(
       if (q.input.role === "tanque") {
         if (better(bestTank, q, lands)) bestTank = { q, lands };
       } else if (
-        ratio(q) < cfg.skills.healEmergencyBelow &&
+        ratio(q) < emergencyLine(q) &&
         (!emergency || ratio(q) < ratio(emergency))
       )
         emergency = q;
