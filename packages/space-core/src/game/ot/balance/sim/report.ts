@@ -93,7 +93,7 @@ export function balanceReport(
           bad.length === 0 ? "ok" : t === "paladino" ? "aceita" : "falha",
           bad.length === 0
             ? "37/37"
-            : `${37 - bad.length}/37; com morte ou derrota: ${bad.join(", ")}${t === "paladino" ? " (P63, aberto)" : ""}`,
+            : `${37 - bad.length}/37; com morte ou derrota: ${bad.join(", ")}${t === "paladino" ? " (P63: sobra depois da D32)" : ""}`,
         );
       }
   for (const t of TANKS)
@@ -107,7 +107,7 @@ export function balanceReport(
         early.length === 0
           ? " (D20: do 160 em diante pode perder)"
           : t === "paladino"
-            ? " (P63, aberto)"
+            ? " (P63: sobra depois da D32)"
             : "";
       add(
         S1,
@@ -207,7 +207,7 @@ export function balanceReport(
           : "falha",
       rates.map((x) => `L${x.L} ${pct(x.rate)}`).join(" · ") +
         (bad.length && c[0] === "paladino"
-          ? " (P63)"
+          ? " (P63: sobra depois da D32)"
           : bad.length && !win
             ? onlyL40
               ? " (D29: o L40 fica como exceção)"
