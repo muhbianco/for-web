@@ -56,6 +56,19 @@ export const REFERENCE_KITS: Record<ClassId, string[]> = {
   ],
 };
 
+/**
+ * Do T4 em diante (L70, quando começa a Invocação do §12.3), o kit de chefe muda onde a classe precisa
+ * responder aos lacaios: o paladino troca a Égide pela Consagração (P63). O guerreiro já tem o Grito.
+ */
+export const REFERENCE_KITS_T4: Partial<Record<ClassId, string[]>> = {
+  paladino: [
+    "golpe-sagrado",
+    "consagracao",
+    "escudo-da-fe",
+    "imposicao-de-maos",
+  ],
+};
+
 /** Kits solo (§8): tanques trocam uma defensiva por área; padre com Luz Sagrada; druida com Raízes. */
 export const REFERENCE_SOLO_KITS: Record<ClassId, string[]> = {
   ...REFERENCE_KITS,

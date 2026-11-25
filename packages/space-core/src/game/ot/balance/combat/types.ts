@@ -116,6 +116,11 @@ export type Effect =
       stacks?: number;
       /** A cada pulso (1 s), chance de atordoar lacaio/elite (Congelar). */
       tickStun?: { chance: number; durationMs: number };
+      /**
+       * Enquanto o DoT queima, cada inimigo atingido cura quem conjurou em x do HP máximo por segundo
+       * (Consagração, P63).
+       */
+      selfHealPctMaxHpPerSec?: number;
     }
   | {
       type: "cura";

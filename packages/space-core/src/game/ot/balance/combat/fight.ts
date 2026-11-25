@@ -49,6 +49,8 @@ interface Dot {
   enemy: number;
   nextPulse: number;
   tickStun?: { chance: number; durationMs: number };
+  /** Cura de quem conjurou, em fração do HP máximo por segundo, enquanto o inimigo queima. */
+  selfHeal?: number;
 }
 
 interface Hero {
@@ -997,6 +999,9 @@ export function fight(
             ...(eff.tickStun && eff.tickStun.chance > 0
               ? { tickStun: eff.tickStun }
               : {}),
+            ...(eff.selfHealPctMaxHpPerSec
+              ? { selfHeal: eff.selfHealPctMaxHpPerSec }
+              : {}),
           });
         }
         return;
@@ -1514,6 +1519,7 @@ export function fight(
         const e = enemies[x.enemy];
         if (e && e.alive) {
           deal(h, e, x.perSec * DT);
+          if (x.selfHeal) heal(h, x.selfHeal * maxHp(h) * DT, null);
           if (x.tickStun && t >= x.nextPulse) {
             x.nextPulse += 1;
             if (proc(h, `${x.key}:pulso`, x.tickStun.chance))

@@ -362,7 +362,8 @@ export const PALADINO: SkillContent[] = [
     manaPct: 0.08,
     threatMult: 2,
     ai: [inimigos(3)],
-    // 200% ATQ sagrado em todos, distribuído ao longo de 6 s.
+    // 200% ATQ sagrado em todos, distribuído ao longo de 6 s. Cada inimigo consagrado cura o paladino
+    // em 2% do HP máx. por segundo enquanto queima (P63: a resposta do paladino à Invocação).
     effects: [
       {
         type: "dot",
@@ -370,6 +371,7 @@ export const PALADINO: SkillContent[] = [
         coefPerSec: 2 / 6,
         durationMs: s(6),
         targets: "area",
+        selfHealPctMaxHpPerSec: 0.02,
       },
     ],
     mechanics: [

@@ -270,6 +270,33 @@ test("Reflexo Sagrado: o escudo que quebra causa dano sagrado", () => {
   assert.ok(dmg({ "reflexo-sagrado": 5 }) > dmg({}));
 });
 
+test("Consagração: cada inimigo consagrado cura o paladino em 2% do HP máx. por segundo (P63)", () => {
+  const gain = (n: number) => {
+    const pal = withSkills("paladino", [skill("paladino", "consagracao")]);
+    const start = 0.6; // acima da linha da poção, que fica sem estoque
+    const r = fight([pal], pack(n), {
+      maxSeconds: 3,
+      mode: "esperado",
+      carry: [
+        {
+          hp: start * pal.stats.hp,
+          mp: pal.stats.mp,
+          alive: true,
+          pots: 0,
+          cooldowns: {},
+          revived: false,
+          cheatedDeath: false,
+        },
+      ],
+    });
+    return r.heroes[0]!.hpPct - start;
+  };
+  const one = gain(1);
+  // Os pulsos começam no tique seguinte à conjuração: 2,9 s de cura em 3 s de luta.
+  assert.ok(Math.abs(one - 0.02 * 2.9) < 0.002, `1 inimigo: ${one}`);
+  assert.ok(Math.abs(gain(3) - 3 * one) < 1e-9, "não cresceu com os inimigos");
+});
+
 test("Esquiva Sombria corta a ameaça; o veneno do assassino ganha +20%", () => {
   const plain = run(
     [withSkills("assassino", [skill("assassino", "lamina-envenenada")])],
