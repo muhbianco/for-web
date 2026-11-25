@@ -1,42 +1,45 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { newRpgHero, normalizeHero, RPG_VERSION, type RpgHeroDoc } from "./hero.ts";
-import { knownVersion, MongoRpgStore } from "./store.ts";
+import { newRpgHero, RPG_VERSION } from "./hero.ts";
+import { HEROES_COLLECTION, knownVersion, MongoRpgStore } from "./store.ts";
 
-/** Um Mongo de mentira com um documento só. */
+/** Um Mongo de mentira com um documento só; guarda o nome da coleção pedida. */
 function fakeMongo(doc: Record<string, unknown> | null) {
+  const asked: string[] = [];
   const col = { findOne: async () => doc };
-  return { db: () => ({ collection: () => col }) } as never;
+  return {
+    asked,
+    client: {
+      db: () => ({
+        collection: (name: string) => {
+          asked.push(name);
+          return col;
+        },
+      }),
+    } as never,
+  };
 }
 
-test("store: herói de versão antiga volta para a conversão; versão mais nova (rollback) é recusada", async () => {
-  assert.equal(knownVersion(1), true);
+test("store v5: coleção nova (a do v4 fica intacta); só lê a v5; versão desconhecida é recusada", async () => {
+  assert.equal(HEROES_COLLECTION, "rpg_heroes5");
   assert.equal(knownVersion(RPG_VERSION), true);
-  assert.equal(knownVersion(RPG_VERSION + 1), false);
-  assert.equal(knownVersion("2"), false);
-  assert.equal(knownVersion(undefined), false);
-  // O herói da etapa O5 como estava em produção: v 1, moedas soltas e a lista de itens.
-  const old = newRpgHero("U1", 0) as unknown as Record<string, unknown>;
-  delete old.inv;
-  delete old.auto_equip;
-  Object.assign(old, {
-    v: 1,
-    vocation: 3,
-    level: 6,
-    gold: 40,
-    bag: [{ item: "elmo-de-ferro", count: 2 }],
+  assert.equal(knownVersion(4), false);
+  assert.equal(knownVersion(6), false);
+  assert.equal(knownVersion("5"), false);
+  let n = 0;
+  const doc = {
+    ...newRpgHero("U1", "mago", 1, () => `i${++n}`),
     mtime: new Date(),
-  });
-  const got = await new MongoRpgStore(fakeMongo(old)).get("U1");
+  } as unknown as Record<string, unknown>;
+  const m = fakeMongo(doc);
+  const got = await new MongoRpgStore(m.client).get("U1");
+  assert.deepEqual(m.asked, ["rpg_heroes5"]);
   assert.ok(got);
   assert.equal("mtime" in got, false);
-  const d = normalizeHero(got as RpgHeroDoc);
-  assert.equal(d.v, RPG_VERSION);
-  assert.equal(d.inv.equip.mochila?.item, "mochila");
-  assert.ok(d.inv.pack.some((x) => x.item === "elmo-de-ferro"));
+  assert.equal(got.hero.cls, "mago");
   await assert.rejects(
-    new MongoRpgStore(fakeMongo({ ...old, v: RPG_VERSION + 1 })).get("U1"),
+    new MongoRpgStore(fakeMongo({ ...doc, v: 4 }).client).get("U1"),
     /unknown version/,
   );
 });

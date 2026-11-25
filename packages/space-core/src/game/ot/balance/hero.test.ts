@@ -56,7 +56,7 @@ const own = (
   uid: id(),
 });
 
-test("jogador novo de cada classe: nível 1, kit Comum que ele veste, poções e flechas no caçador", () => {
+test("jogador novo de cada classe: nível 1, kit de referência (Raro +4) que ele veste, 100 poções de vida e de mana, flechas no caçador (D37)", () => {
   for (const cls of CLASS_IDS) {
     const h = createHero(cls, id);
     assert.equal(h.level, 1);
@@ -66,14 +66,21 @@ test("jogador novo de cada classe: nível 1, kit Comum que ele veste, poções e
     assert.ok(worn.length >= 5, cls);
     for (const it of worn)
       assert.equal(cannotEquip(balanceHero(h), it!, B), null, cls);
-    assert.equal(h.potions.hp.pequena, 10);
+    assert.equal(h.potions.hp.pequena, 100);
+    assert.equal(h.potions.mp.pequena, 100);
+    assert.ok(
+      Object.values(h.equipment).every(
+        (x) => x!.rarity === "raro" && x!.refine === 4,
+      ),
+      cls,
+    );
     assert.deepEqual(h.belt, { hp: "pequena", mp: "pequena" });
     assert.equal((h.ammo.comum ?? 0) > 0, cls === "cacador");
     assert.equal(new Set(worn.map((x) => x!.uid)).size, worn.length);
     // Já luta: o lutador sai do herói salvo.
     const f = heroRunFighter(h);
     assert.equal(f.cls, cls);
-    assert.equal(f.potions.hpStock, 10);
+    assert.equal(f.potions.hpStock, 100);
     assert.equal(CLASSES[cls].role, f.role);
   }
 });
@@ -131,9 +138,9 @@ test("equipar troca com a mochila; a mochila tem teto; a arma de 2 mãos devolve
   });
 });
 
-test("auto-equipar veste o Raro melhor e devolve o Comum para a mochila", () => {
-  const h = createHero("cacador", id);
-  const bow = own({ slot: "arma", family: "arco" }, 1, "raro");
+test("auto-equipar veste a arma melhor e devolve a do kit para a mochila", () => {
+  const h: HeroV5 = { ...createHero("cacador", id), level: 10 };
+  const bow = own({ slot: "arma", family: "arco" }, 10, "raro");
   const r = ok(autoEquipBag({ ...h, bag: [bow] }));
   assert.equal(r.hero.equipment.arma?.uid, bow.uid);
   assert.ok(r.hero.bag.some((x) => x.uid === h.equipment.arma!.uid));
@@ -143,7 +150,7 @@ test("auto-equipar veste o Raro melhor e devolve o Comum para a mochila", () => 
 test("Mercador: poções, munição e Comum pelo preço do tier; venda a 10%", () => {
   let h: HeroV5 = { ...createHero("cacador", id), level: 100, gold: 100_000 };
   const p = ok(buyPotions(h, "hp", "pequena", 10));
-  assert.equal(p.hero.potions.hp.pequena, 20);
+  assert.equal(p.hero.potions.hp.pequena, 110);
   assert.equal(p.cost, 10 * Math.ceil(0.25 * B.lacaioGold(100)));
   // D35: a grande custa e cura 3×, com recarga de 3 s.
   const g = ok(buyPotions(p.hero, "hp", "grande", 2));

@@ -150,8 +150,10 @@ function bestAmmo(h: HeroV5): AmmoGrade | null {
 // ------------------------------------------------------------ criação
 
 /**
- * Jogador novo (P80): nível 1, atributos em 1, as skills do T1, a arma e a armadura Comuns do iL 1 da
- * classe (a mão secundária de referência, se houver), 10 poções de vida e, no caçador, 100 flechas.
+ * Jogador novo (D37): nível 1, atributos em 1, as skills do T1 e o equipamento do perfil de referência do
+ * L1 (Raro +4 com os afixos do perfil, na família e no peso da classe; o conteúdo é calibrado nele),
+ * 100 poções pequenas de vida e 100 de mana e, no caçador, 100 flechas comuns. Com o kit Comum e 10
+ * poções nenhuma classe vencia a primeira Caçada (medido em 25/11/2026).
  */
 export function createHero(
   cls: ClassId,
@@ -159,27 +161,15 @@ export function createHero(
   B: Balance = gameBalance,
 ): HeroV5 {
   const c = CLASSES[cls];
-  const zero: RandomSource = { next: () => 0.5 };
-  const own = (base: ItemBase): OwnedItem => ({
-    ...generateItem(base, 1, "comum", zero, B),
-    uid: newId(),
-  });
-  const equipment: OwnedEquipment = {
-    arma: own({
-      slot: "arma",
-      family: c.referenceWeapon,
-    }) as OwnedEquipment["arma"],
-  };
-  if (c.referenceOffhand)
-    equipment.secundaria = own({
-      slot: "secundaria",
-      offhand: c.referenceOffhand,
-    }) as OwnedEquipment["secundaria"];
-  for (const slot of ARMOR_SLOTS)
-    (equipment as Record<string, OwnedItem>)[slot] = own({
-      slot,
-      weight: c.armor,
-    });
+  const ref = createReference(B).referenceBalanceHero(cls, 1).equipment;
+  const equipment: Record<string, OwnedItem> = {};
+  for (const [slot, it] of Object.entries(ref))
+    if (it)
+      equipment[slot] = {
+        ...(it as ItemInstance),
+        affixes: (it as ItemInstance).affixes.map((a) => ({ ...a })),
+        uid: newId(),
+      };
   const ranged = FAMILIES[c.referenceWeapon].kind === "ranged";
   return {
     v: HERO_VERSION,
@@ -193,10 +183,13 @@ export function createHero(
     attrs: { FOR: 1, AGI: 1, VIT: 1, INT: 1, DES: 1, SOR: 1 },
     attrResets: 0,
     skills: freshHeroSkills(cls),
-    equipment,
+    equipment: equipment as OwnedEquipment,
     bag: [],
     gold: 0,
-    potions: { hp: { ...noPotions(), pequena: 10 }, mp: noPotions() },
+    potions: {
+      hp: { ...noPotions(), pequena: 100 },
+      mp: { ...noPotions(), pequena: 100 },
+    },
     belt: { hp: "pequena", mp: "pequena" },
     ammo: ranged ? { comum: 100 } : {},
     ores: {},

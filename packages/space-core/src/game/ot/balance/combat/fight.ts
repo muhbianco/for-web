@@ -117,6 +117,7 @@ interface Hero {
   autoDamage: number;
   healed: number;
   potionsUsed: number;
+  autos: number;
   hpPotions: number;
   mpPotions: number;
   casts: Record<string, number>;
@@ -215,6 +216,7 @@ export function fight(
     autoDamage: 0,
     healed: 0,
     potionsUsed: 0,
+    autos: 0,
     hpPotions: 0,
     mpPotions: 0,
     casts: {},
@@ -1694,6 +1696,7 @@ export function fight(
                     critFlat: buffOf(h, "critico"),
                     critMult: buffOf(h, "multCritico") + ch.critMultBonus,
                   });
+            h.autos++;
             h.autoDamage += deal(h, e, r.value);
           }
           h.auto += 1 / ch.attacksPerSecond;
@@ -1763,6 +1766,7 @@ export function fight(
       healed: h.healed,
       hpPct: h.hp / h.ch.hp,
       potionsUsed: h.potionsUsed,
+      autos: h.autos,
       hpPotions: h.hpPotions,
       mpPotions: h.mpPotions,
       alive: h.alive,

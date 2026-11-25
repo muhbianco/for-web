@@ -3,9 +3,11 @@ import type { MongoClient } from "mongodb";
 import { type RpgHeroDoc, RPG_VERSION } from "./hero.ts";
 
 /**
- * Onde mora o herói do jogo idle (docs/espaco/jogo/ot). Mesmo desenho do store do Refúgio
- * (ADR 0009, decisão 6): compare-and-set em `rev`, a fila por pessoa do serviço serializa
- * um processo e o CAS cobre dois (redeploy sobreposto).
+ * Onde mora o herói do jogo idle. Compare-and-set em `rev`: a fila por pessoa do serviço serializa um
+ * processo e o CAS cobre dois (redeploy sobreposto).
+ *
+ * Engine nova (Fase 8, D34): coleção nova, `rpg_heroes5`. A `rpg_heroes` do v4 fica intacta — ela é o
+ * snapshot da virada e o rollback é voltar a imagem anterior, que segue lendo a de sempre.
  */
 export interface RpgStore {
   get(userId: string): Promise<RpgHeroDoc | null>;
@@ -14,6 +16,8 @@ export interface RpgStore {
   /** Substitui se o `rev` guardado ainda é `expectRev`; false se alguém gravou antes. */
   save(doc: RpgHeroDoc, expectRev: number): Promise<boolean>;
 }
+
+export const HEROES_COLLECTION = "rpg_heroes5";
 
 export class MemoryRpgStore implements RpgStore {
   readonly docs = new Map<string, RpgHeroDoc>();
@@ -42,22 +46,17 @@ export class MemoryRpgStore implements RpgStore {
 
 type RpgMongo = RpgHeroDoc & { mtime: Date };
 
-/** As versões que este código sabe ler (a 1 é da etapa O5; a conversão mora em hero.ts). */
+/** A versão que este código lê; outra (um rollback de código mais novo) = recusa, nunca sobrescreve. */
 export function knownVersion(v: unknown): boolean {
-  return typeof v === "number" && Number.isInteger(v) && v >= 1 && v <= RPG_VERSION;
+  return v === RPG_VERSION;
 }
 const OP = { maxTimeMS: 2_000 } as const;
 
-/**
- * Mongo `muchat_space.rpg_heroes`. Versão de antes (1 até a atual) volta como está e o serviço
- * converte (normalizeHero); versão mais nova que este código (um rollback) = recusa, nunca
- * sobrescreve.
- */
 export class MongoRpgStore implements RpgStore {
   private readonly col;
 
   constructor(client: Pick<MongoClient, "db">, db = "muchat_space") {
-    this.col = client.db(db).collection<RpgMongo>("rpg_heroes");
+    this.col = client.db(db).collection<RpgMongo>(HEROES_COLLECTION);
   }
 
   async get(userId: string): Promise<RpgHeroDoc | null> {

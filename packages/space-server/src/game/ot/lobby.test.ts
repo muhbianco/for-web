@@ -1,26 +1,26 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { type RpgLobbyMember, LOBBY } from "@muchat/space-core/game/ot";
+import type { RpgLobbyMember } from "@muchat/space-core/game/ot/balance";
 
-import { LobbyHub } from "./lobby.ts";
+import { LOBBY, LobbyHub } from "./lobby.ts";
 
 const m = (
   id: string,
-  level = 10,
-  vocation: RpgLobbyMember["vocation"] = 4,
+  level = 40,
+  cls: RpgLobbyMember["cls"] = "guerreiro",
 ): RpgLobbyMember => ({
   user_id: id,
   name: id,
-  vocation,
+  cls,
   level,
 });
 
 test("grupo na TV: cria, entra até 4, vários grupos por TV e um por pessoa", () => {
   const hub = new LobbyHub();
-  assert.equal(hub.create("tv1", "R1", "cripta-do-musgo", m("A"), 0).ok, true);
+  assert.equal(hub.create("tv1", "R1", "masmorra-40", m("A"), 0).ok, true);
   // 24/11/2026: a TV aceita outro grupo (o que fica montado não a prende mais).
-  const other = hub.create("tv1", "R1", "cripta-do-musgo", m("Z"), 0);
+  const other = hub.create("tv1", "R1", "masmorra-40", m("Z"), 0);
   assert.equal(other.ok, true);
   assert.equal(hub.atTv("tv1").length, 2);
   // Entrar pelo id escolhe o grupo; sair do segundo o fecha.
@@ -29,7 +29,7 @@ test("grupo na TV: cria, entra até 4, vários grupos por TV e um por pessoa", (
   hub.leave("Y");
   hub.leave("Z");
   assert.equal(hub.atTv("tv1").length, 1);
-  assert.deepEqual(hub.create("tv2", "R1", "cripta-do-musgo", m("A"), 0), {
+  assert.deepEqual(hub.create("tv2", "R1", "masmorra-40", m("A"), 0), {
     ok: false,
     reason: "in_lobby",
   });
@@ -38,7 +38,7 @@ test("grupo na TV: cria, entra até 4, vários grupos por TV e um por pessoa", (
   assert.deepEqual(hub.join("tv1", hub.of("A")!.id, m("E")), { ok: false, reason: "full" });
   // Sem id, a TV não tem grupo com vaga.
   assert.deepEqual(hub.join("tv1", undefined, m("E")), { ok: false, reason: "no_lobby" });
-  assert.equal(hub.atTv("tv1")[0]!.members.length, LOBBY.maxMembers);
+  assert.equal(hub.atTv("tv1")[0]!.members.length, 4);
   // Entrar de novo na mesma sala não duplica.
   assert.equal(hub.join("tv1", undefined, m("B")).ok, true);
   assert.equal(hub.atTv("tv1")[0]!.members.length, 4);
@@ -53,12 +53,12 @@ test("grupo na TV: cria, entra até 4, vários grupos por TV e um por pessoa", (
 
 test("level mínimo da dungeon vale para criar e para entrar", () => {
   const hub = new LobbyHub();
-  assert.deepEqual(hub.create("tv1", "R1", "galerias-afogadas", m("A", 5), 0), {
+  assert.deepEqual(hub.create("tv1", "R1", "masmorra-70", m("A", 5), 0), {
     ok: false,
     reason: "level",
   });
   assert.equal(
-    hub.create("tv1", "R1", "galerias-afogadas", m("A", 8), 0).ok,
+    hub.create("tv1", "R1", "masmorra-70", m("A", 66), 0).ok,
     true,
   );
   assert.deepEqual(hub.join("tv1", undefined, m("B", 7)), { ok: false, reason: "level" });
@@ -66,7 +66,7 @@ test("level mínimo da dungeon vale para criar e para entrar", () => {
 
 test("sair: membro sai e o grupo segue; o líder saindo passa a liderança; o último fecha; desfazer solta todos", () => {
   const hub = new LobbyHub();
-  hub.create("tv1", "R1", "cripta-do-musgo", m("A"), 0);
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
   hub.join("tv1", undefined, m("B"));
   hub.join("tv1", undefined, m("C"));
   const left = hub.leave("B")!;
@@ -85,7 +85,7 @@ test("sair: membro sai e o grupo segue; o líder saindo passa a liderança; o ú
   assert.equal(hub.atTv("tv1")[0], undefined);
   assert.equal(hub.leave("Z"), null);
   // Desfazer (só o líder) solta todos.
-  hub.create("tv1", "R1", "cripta-do-musgo", m("C"), 0);
+  hub.create("tv1", "R1", "masmorra-40", m("C"), 0);
   hub.join("tv1", undefined, m("D"));
   assert.deepEqual(hub.disband("D"), { ok: false, reason: "not_leader" });
   assert.equal(hub.disband("C").ok, true);
@@ -95,7 +95,7 @@ test("sair: membro sai e o grupo segue; o líder saindo passa a liderança; o ú
 
 test("começar: só o líder; o grupo fica montado, corre e volta pronto para a próxima", () => {
   const hub = new LobbyHub();
-  hub.create("tv1", "R1", "cripta-do-musgo", m("A"), 0);
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
   hub.join("tv1", undefined, m("B"));
   assert.deepEqual(hub.start("B", 1000), { ok: false, reason: "not_leader" });
   assert.deepEqual(hub.start("Z", 1000), { ok: false, reason: "no_lobby" });
@@ -122,7 +122,7 @@ test("começar: só o líder; o grupo fica montado, corre e volta pronto para a 
 
 test("loop: depois de cada vitória a próxima fica marcada; derrota, retirada e falha param com o motivo", () => {
   const hub = new LobbyHub();
-  hub.create("tv1", "R1", "cripta-do-musgo", m("A"), 0);
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
   hub.join("tv1", undefined, m("B"));
   assert.deepEqual(hub.setLoop("B", true, 0), { ok: false, reason: "not_leader" });
   assert.equal(hub.setLoop("A", true, 0).ok, true);
@@ -159,21 +159,21 @@ test("loop: depois de cada vitória a próxima fica marcada; derrota, retirada e
 
 test("trocar a dungeon: só o líder, fora da corrida, e todos com o level dela", () => {
   const hub = new LobbyHub();
-  hub.create("tv1", "R1", "cripta-do-musgo", m("A", 30), 0);
-  hub.join("tv1", undefined, m("B", 10));
-  assert.deepEqual(hub.setDungeon("B", "toca-dos-javalis"), { ok: false, reason: "not_leader" });
+  hub.create("tv1", "R1", "masmorra-40", m("A", 70), 0);
+  hub.join("tv1", undefined, m("B", 66));
+  assert.deepEqual(hub.setDungeon("B", "masmorra-40"), { ok: false, reason: "not_leader" });
   assert.deepEqual(hub.setDungeon("A", "nada"), { ok: false, reason: "unknown_dungeon" });
-  assert.deepEqual(hub.setDungeon("A", "mina-assombrada"), { ok: false, reason: "level" });
-  assert.equal(hub.setDungeon("A", "galerias-afogadas").ok, true);
-  assert.equal(hub.atTv("tv1")[0]!.dungeon, "galerias-afogadas");
+  assert.deepEqual(hub.setDungeon("A", "masmorra-110"), { ok: false, reason: "level" });
+  assert.equal(hub.setDungeon("A", "masmorra-70").ok, true);
+  assert.equal(hub.atTv("tv1")[0]!.dungeon, "masmorra-70");
   hub.start("A", 1);
-  assert.deepEqual(hub.setDungeon("A", "cripta-do-musgo"), { ok: false, reason: "in_run" });
+  assert.deepEqual(hub.setDungeon("A", "masmorra-40"), { ok: false, reason: "in_run" });
 });
 
 test("prazo: a sala some sozinha depois de 5 min; a TV removida acaba com a sala", () => {
   const hub = new LobbyHub();
-  hub.create("tv1", "R1", "cripta-do-musgo", m("A"), 0);
-  hub.create("tv2", "R1", "cripta-do-musgo", m("B"), 60_000);
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
+  hub.create("tv2", "R1", "masmorra-40", m("B"), 60_000);
   assert.deepEqual(hub.expire(LOBBY.ttlMs - 1), []);
   assert.deepEqual(
     hub.expire(LOBBY.ttlMs).map((l) => l.tv),

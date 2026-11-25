@@ -398,6 +398,8 @@ export interface FighterResult {
   healed: number;
   hpPct: number;
   potionsUsed: number;
+  /** Ataques básicos (o caçador gasta 1 munição por ataque). */
+  autos: number;
   /** Poções bebidas de cada tipo (o total é `potionsUsed`). */
   hpPotions: number;
   mpPotions: number;

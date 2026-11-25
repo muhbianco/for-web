@@ -368,6 +368,9 @@ export interface RpgLobbyMember {
   level: number;
 }
 
+/** Como a corrida acabou para o grupo: o resultado da luta, ou "retirada" (todos saíram antes). */
+export type RpgRunEnd = RunOutcome | "retirada";
+
 export type RpgLoopStop =
   | "derrota"
   | "start_failed"
@@ -392,7 +395,7 @@ export interface RpgLobbyView {
   runs: number;
   loop: boolean;
   next_at: number | null;
-  last: RunOutcome | null;
+  last: RpgRunEnd | null;
   stopped: RpgLoopStop | null;
   stopped_detail: string | null;
 }
@@ -465,7 +468,7 @@ export interface RpgRunMemberEnd {
 }
 
 export interface RpgRunEndView {
-  outcome: RunOutcome;
+  outcome: RpgRunEnd;
   members: RpgRunMemberEnd[];
 }
 
