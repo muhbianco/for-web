@@ -229,5 +229,5 @@ test("skills do spec — §14.4: solo em todo nível do 20 ao 500", () => {
 });
 
 test.todo(
-  "P41 (Fase 6): T1/T2 com as skills do spec — sem DPS vence do L20 ao L38, padre a 70–80% do mago, trio guerreiro+padre+caçador perde no L20/L24, PT completa perde no L24, mago perde o solo no L19; no aleatório, sem DPS vence 38% no L40",
+  "P41 (resto): no T1/T2 o padre bate como DPS (70–80% do mago) — as Masmorras antes do L40 saíram (D19); falta o dono dizer se o §14.3 vale antes do T3",
 );

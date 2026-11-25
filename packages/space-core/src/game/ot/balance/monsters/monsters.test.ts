@@ -33,13 +33,22 @@ test("§11.2: lacaio, elite, chefe menor e chefe de masmorra pelas fórmulas", (
   const solo = { partySize: 1, type: "cacada" as const };
   const four = { partySize: 4, type: "masmorra" as const };
   const lac = M.lacaio(L, solo);
-  assert.equal(lac.hp, 3 * r.soloDps);
-  assert.equal(lac.autoRaw, r.lacaioHit);
-  assert.equal(M.elite(L, solo).hp, 4 * lac.hp);
+  // D18: 9 s (o spec dava 3 s) e elite 1,6× (dava 4×); D17: golpe ×0,5 na Caçada solo, ×0,75 em dupla.
+  assert.equal(lac.hp, 9 * r.soloDps);
+  assert.equal(lac.autoRaw, r.lacaioHit * 0.5);
+  assert.equal(
+    M.lacaio(L, { partySize: 2, type: "cacada" }).autoRaw,
+    r.lacaioHit * 0.75,
+  );
+  assert.equal(
+    M.lacaio(L, { partySize: 4, type: "masmorra" }).autoRaw,
+    r.lacaioHit,
+  );
+  assert.equal(M.elite(L, solo).hp, 1.6 * lac.hp);
   assert.equal(M.elite(L, solo).autoRaw, 1.8 * lac.autoRaw);
   assert.equal(
     M.lacaio(L, four).hp,
-    3 * r.soloDps * B.partyScale(4, "masmorra"),
+    9 * r.soloDps * B.partyScale(4, "masmorra"),
   );
   assert.equal(M.chefeMenor(L, solo).hp, 25 * r.soloDps);
   assert.ok(Math.abs(M.chefe(L, four).hp - 80 * r.partyDps) < 1e-6);
@@ -63,14 +72,14 @@ test("§12.3: mecânicas do chefe entram por faixa", () => {
   assert.ok(reg.phase && reg.finalPhase);
 });
 
-test("§12.2: catálogo com 50 Caçadas, 39 Masmorras e 10 Chefes de Região", () => {
+test("§12.2 e D19: catálogo com 50 Caçadas, 37 Masmorras (só do 40) e 10 Chefes de Região", () => {
   const count = (k: string) => DUNGEONS.filter((d) => d.kind === k).length;
   assert.equal(count("cacada"), 50);
-  assert.equal(count("masmorra"), 39);
+  assert.equal(count("masmorra"), 37);
   assert.equal(count("regional"), 10);
   assert.equal(new Set(DUNGEONS.map((d) => d.id)).size, DUNGEONS.length);
   assert.equal(dungeonById("toca")?.id, "cacada-1");
-  assert.ok(!DUNGEONS.some((d) => d.kind === "masmorra" && d.level < 20));
+  assert.ok(!DUNGEONS.some((d) => d.kind === "masmorra" && d.level < 40));
   const m = dungeonById("masmorra-130")!;
   assert.equal(m.minLevel, 125);
   assert.deepEqual(m.party, { min: 3, max: 4 });
@@ -170,3 +179,76 @@ test("a corrida leva HP e recargas de uma sala para a outra e acaba em vitória,
   });
   assert.equal(slow.outcome, "tempo");
 });
+
+// ------------------------------------------------------------ calibragem da Fase 6 (D16–D19)
+
+test("D16: a Investida vale 1,5× o golpe do chefe menor (não o do chefe, calibrado no tanque)", () => {
+  const b = M.chefe(200, { partySize: 4, type: "masmorra" });
+  const r = M.row(200);
+  assert.ok(Math.abs(b.autoRaw * b.charge!.mult - 1.5 * r.menorHit) < 1e-6);
+});
+
+test("corrida: PT completa vence sem mortes, salas de 20–45 s, chefe de 75–110 s; sem DPS e sem tanque perdem", () => {
+  for (const L of [40, 70, 110, 160, 310, 490]) {
+    const d = DUNGEONS.find((x) => x.kind === "masmorra" && x.level === L)!;
+    const run = (c: string[]) =>
+      simulateRun(
+        d,
+        c.map((x) => hero(x as FighterInput["cls"], L)),
+        { mode: "esperado" },
+      );
+    const ok = run(["guerreiro", "padre", "mago", "cacador"]);
+    assert.equal(ok.outcome, "vitoria", `L${L}`);
+    assert.ok(
+      ok.heroes.every((h) => h.alive),
+      `L${L}: morte`,
+    );
+    for (const room of ok.rooms.slice(0, 3))
+      assert.ok(
+        room.seconds >= 20 && room.seconds <= 45,
+        `L${L} sala ${room.seconds} s`,
+      );
+    // Com as mecânicas da faixa (a Invocação soma os lacaios), a sala do chefe passa um pouco dos 100 s.
+    assert.ok(
+      ok.rooms[3]!.seconds >= 75 && ok.rooms[3]!.seconds <= 110,
+      `L${L} chefe ${ok.rooms[3]!.seconds} s`,
+    );
+    assert.notEqual(
+      run(["guerreiro", "padre", "druida", "paladino"]).outcome,
+      "vitoria",
+      `L${L} sem DPS`,
+    );
+    assert.notEqual(
+      run(["padre", "mago", "cacador", "assassino"]).outcome,
+      "vitoria",
+      `L${L} sem tanque`,
+    );
+  }
+});
+
+test("Caçada solo: toda classe vence toda Caçada até o 440", () => {
+  for (const d of DUNGEONS.filter((x) => x.kind === "cacada" && x.level <= 440))
+    for (const c of [
+      "guerreiro",
+      "paladino",
+      "padre",
+      "druida",
+      "mago",
+      "cacador",
+      "assassino",
+    ] as const) {
+      const r = simulateRun(
+        d,
+        [E.fighter(c, d.level, { ...SPEC, solo: true })],
+        { mode: "esperado" },
+      );
+      assert.equal(r.outcome, "vitoria", `${c} ${d.id}`);
+    }
+});
+
+test.todo(
+  "P58 (dono): trios perdem masmorras do L160 em diante com todas as mecânicas (Fases + Maldição + Investida + Invocação)",
+);
+test.todo(
+  "P59 (dono): o druida sozinho leva ~8 min por Caçada e estoura o teto de 8 min no L451",
+);

@@ -66,9 +66,25 @@ export function simulateRun(
       return end(r.heroes.every((h) => !h.alive) ? "derrota" : "tempo");
     if (i === rooms.length - 1) break;
     // Pausa entre as salas: fora de combate, regenera e as recargas andam.
-    const pause = cfg.runs.roomPauseSeconds;
+    // Descansa até todos chegarem ao alvo de HP e mana (ou o teto), no mínimo a pausa.
+    const rate = cfg.regen.outOfCombatPctPerSecond;
+    let need = 0;
+    carry.forEach((c, j) => {
+      if (!c || !c.alive) return;
+      const st = party[j]!.stats;
+      const short = Math.max(
+        cfg.runs.restUntilPct - c.hp / st.hp,
+        cfg.runs.restUntilPct - c.mp / st.mp,
+        0,
+      );
+      need = Math.max(need, short / rate);
+    });
+    const pause = Math.min(
+      cfg.runs.maxRestSeconds,
+      Math.max(cfg.runs.roomPauseSeconds, Math.ceil(need)),
+    );
     elapsed += pause;
-    const regen = cfg.regen.outOfCombatPctPerSecond * pause;
+    const regen = rate * pause;
     carry = carry.map((c, j) => {
       if (!c || !c.alive) return c;
       const st = party[j]!.stats;

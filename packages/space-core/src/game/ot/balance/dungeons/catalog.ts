@@ -190,7 +190,8 @@ export const DUNGEONS: DungeonDef[] = (() => {
         dungeon("cacada", X + off, X === 0 && off === 1 ? ["toca"] : []),
       );
     for (const off of [10, 20, 30, 40])
-      if (X + off >= 20) out.push(dungeon("masmorra", X + off));
+      // D19: Masmorras só a partir do 40 (antes, o T1/T2 não sustenta a regra de composição).
+      if (X + off >= 40) out.push(dungeon("masmorra", X + off));
     out.push(dungeon("regional", X + 50));
   }
   return out.sort((a, b) => a.level - b.level || a.kind.localeCompare(b.kind));

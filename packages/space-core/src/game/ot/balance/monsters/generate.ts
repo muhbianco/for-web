@@ -99,7 +99,18 @@ export function createMonsters(
     ...(o.magic ? { magicAuto: true } : {}),
   });
 
-  /** Lacaio: HP = 3 s × DPS_solo_ref × escala(n); golpe = 6% do HP do caçador ÷ (1 − redução dele). */
+  /** Na Caçada (1–2 jogadores), o golpe de lacaio e elite cai (D17). */
+  const huntMult = (o: MonsterOptions): number =>
+    o.type !== "cacada"
+      ? 1
+      : o.partySize <= 1
+        ? mon.huntHitMult.solo
+        : mon.huntHitMult.duo;
+
+  /**
+   * Lacaio: HP = 9 s × DPS_solo_ref × escala(n) (o spec dava 3 s; D18); golpe = 6% do HP do caçador ÷
+   * (1 − redução dele), × o redutor da Caçada.
+   */
   function lacaio(m: number, o: MonsterOptions): EnemyInput {
     const r = row(m);
     return base(
@@ -107,11 +118,11 @@ export function createMonsters(
       m,
       o,
       mon.lacaioHpSeconds * r.soloDps * B.partyScale(o.partySize, o.type),
-      r.lacaioHit,
+      r.lacaioHit * huntMult(o),
     );
   }
 
-  /** Elite: 4× o HP e 1,8× o golpe do lacaio. */
+  /** Elite: 1,6× o HP (o spec dava 4×; D18) e 1,8× o golpe do lacaio. */
   function elite(m: number, o: MonsterOptions): EnemyInput {
     const l = lacaio(m, o);
     return base(
@@ -152,7 +163,14 @@ export function createMonsters(
         minion: lacaio(m, { ...o, magic: false }),
       };
     if (m >= mech.drainFrom) out.manaDrain = { ...mech.manaDrain };
-    if (m >= mech.chargeFrom) out.charge = { ...mech.charge };
+    // Investida: o multiplicador do config vale sobre o golpe do chefe menor (D16); o motor multiplica o do chefe.
+    if (m >= mech.chargeFrom) {
+      const r = row(m);
+      out.charge = {
+        everySeconds: mech.charge.everySeconds,
+        mult: (mech.charge.mult * r.menorHit) / r.bossHit,
+      };
+    }
     if (m >= mech.phaseFrom) out.phase = { ...mech.phase };
     return out;
   }

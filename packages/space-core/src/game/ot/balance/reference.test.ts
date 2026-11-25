@@ -152,7 +152,8 @@ test("§17: HP de lacaio, elite, chefe menor e chefe de masmorra pelo DPS de ref
     const [L, , , , , , , , , hpLacaio, , hpMenor, , hpBoss] = row as number[];
     const at = `L${L}`;
     const solo = E.referenceSoloDps(L!);
-    within(mon.lacaioHpSeconds * solo, hpLacaio!, `${at} HP lacaio`);
+    // A tabela do spec usa 3 s; o jogo usa 9 s desde a calibragem da Fase 6 (D18).
+    within(3 * solo, hpLacaio!, `${at} HP lacaio`);
     within(mon.menorHpSeconds * solo, hpMenor!, `${at} HP chefe menor`);
     within(E.dungeonBoss(L!, 4).hp, hpBoss!, `${at} HP chefe de masmorra (4)`);
   }

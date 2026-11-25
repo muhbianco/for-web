@@ -261,8 +261,14 @@ export const BALANCE = {
 
   /** §11.2: HP e golpes gerados dos perfis de referência. */
   monsters: {
-    lacaioHpSeconds: 3,
-    eliteHpMult: 4,
+    /**
+     * Calibragem da Fase 6 (decisão do dono de 25/11/2026, D18: salas de 25–40 s): o spec dava 3 s e 4×;
+     * com isso as salas acabavam em 4–24 s. Medido: 9 s e 1,6× põem as salas da PT de referência em ~25/38/39 s.
+     */
+    lacaioHpSeconds: 9,
+    eliteHpMult: 1.6,
+    /** D17: na Caçada, o golpe de lacaio e elite × isto (solo / dupla); os lacaios batem igual para 1 ou 4. */
+    huntHitMult: { solo: 0.5, duo: 0.75 },
     menorHpSeconds: 25,
     masmorraHpSeconds: 80,
     masmorraHpDivisor: 3.25,
@@ -299,6 +305,7 @@ export const BALANCE = {
     manaDrain: { everySeconds: 25, pctPerSecond: 0.03, durationSeconds: 6 },
     /** Investida: a cada 20 s, 1,5× o golpe num não tanque sorteado. */
     chargeFrom: 100,
+    /** D16: 1,5× o golpe do CHEFE MENOR (calibrado no caçador); o do chefe, calibrado no tanque, matava num golpe. */
     charge: { everySeconds: 20, mult: 1.5 },
     /** Fases: a 50%, +20% de dano e intervalos −15%. */
     phaseFrom: 150,
@@ -311,7 +318,10 @@ export const BALANCE = {
   runs: {
     cacadaMaxMs: 8 * 60_000,
     masmorraMaxMs: 10 * 60_000,
+    /** Pausa mínima entre as salas e o descanso fora de combate até todos chegarem a 90% (máx. 30 s; P57). */
     roomPauseSeconds: 3,
+    restUntilPct: 0.9,
+    maxRestSeconds: 30,
   },
 
   /** §9: equipamento. */
