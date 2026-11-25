@@ -11,3 +11,6 @@ export * from "./panel.ts";
 export * from "./reference.ts";
 export * from "./sim/encounters.ts";
 export * from "./sim/kits.ts";
+export * from "./skills/compile.ts";
+export * from "./skills/index.ts";
+export * from "./skills/tree.ts";

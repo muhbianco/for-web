@@ -153,3 +153,81 @@ test("modo aleatório: mesma semente dá a mesma luta, e a amostra segue os inva
   assert.ok(wins / N >= 0.95, `vitórias da PT completa: ${wins}/${N}`);
   assert.ok(lostWins / N <= 0.05, `vitórias sem tanque: ${lostWins}/${N}`);
 });
+
+// ------------------------------------------------------------ com as 42 skills de verdade (Fase 4)
+
+/**
+ * As skills do spec compiladas (texto do §8, regras de tier, traços do §6 inteiros), com a Potência
+ * esperada e a IA do gabarito no perfil (dano "Sempre"; cura e defesa com a IA do spec). Valem do T3
+ * (L40) em diante; o T1/T2 tem as lacunas registradas abaixo (P41) e é calibrado na Fase 6.
+ */
+const SPEC = { source: "spec", referenceAi: "gabarito" } as const;
+const SPEC_LEVELS = [40, 70, 100, 150, 200, 300, 400, 500];
+
+test("skills do spec — §14.1: T/H/D/D vence em 75–100 s sem mortes; trios vencem sem mortes", () => {
+  for (const L of SPEC_LEVELS) {
+    for (const comp of FULL) {
+      const r = E.dungeonFight(comp, L, SPEC);
+      assert.ok(r.win && r.deaths === 0, `${name(comp)} L${L}`);
+      assert.ok(
+        r.seconds >= 75 && r.seconds <= 100,
+        `${name(comp)} L${L}: ${r.seconds} s`,
+      );
+    }
+    for (const comp of TRIOS) {
+      const r = E.dungeonFight(comp, L, SPEC);
+      assert.ok(
+        r.win && r.deaths === 0 && r.seconds <= 120,
+        `${name(comp)} L${L}: ${r.seconds} s`,
+      );
+    }
+  }
+});
+
+test("skills do spec — §14.1: sem tanque, sem suporte, sem DPS e só DPS perdem", () => {
+  for (const L of SPEC_LEVELS)
+    for (const [label, comp] of MUST_LOSE)
+      assert.ok(!E.dungeonFight(comp, L, SPEC).win, `${label} L${L}`);
+});
+
+test("skills do spec — §14.2 e §14.8", () => {
+  const comp: ClassId[] = ["guerreiro", "mago", "cacador", "assassino"];
+  const at = (m: number, x: number) =>
+    E.dungeonFight(comp, m, SPEC, [m + x, m + x, m + x, m + x]).win;
+  assert.ok(!at(40, 0) && at(40, 10) && !at(100, 0) && at(100, 10));
+  assert.ok(!at(300, 0) && !at(300, 10) && at(300, 20));
+  for (const L of [40, 70, 100])
+    assert.ok(
+      E.dungeonFight(["guerreiro", "padre", "mago", "cacador"], L, {
+        ...SPEC,
+        proficiency: () => 1,
+      }).win,
+    );
+});
+
+test("skills do spec — §14.3: DPS a ±20%, tanques 20–45% e suportes 15–40% do mago", () => {
+  for (const L of [40, 100, 300, 500]) {
+    const v = Object.fromEntries(
+      CLASS_IDS.map((c) => [c, E.soloDps(c, L, 90, SPEC)]),
+    ) as Record<ClassId, number>;
+    const dps = [v.mago, v.cacador, v.assassino];
+    assert.ok(Math.max(...dps) / Math.min(...dps) <= 1.25, `L${L}`);
+    for (const c of ["guerreiro", "paladino"] as const)
+      assert.ok(v[c] / v.mago >= 0.2 && v[c] / v.mago <= 0.45, `L${L} ${c}`);
+    for (const c of ["padre", "druida"] as const)
+      assert.ok(v[c] / v.mago >= 0.15 && v[c] / v.mago <= 0.4, `L${L} ${c}`);
+  }
+});
+
+test("skills do spec — §14.4: solo em todo nível do 20 ao 500", () => {
+  const solo = { ...SPEC, solo: true };
+  for (let L = 20; L <= 500; L++)
+    for (const cls of CLASS_IDS) {
+      const r = E.huntFight(cls, L, solo);
+      assert.ok(r.win && r.seconds <= 120, `${cls} L${L}`);
+    }
+});
+
+test.todo(
+  "P41 (Fase 6): T1/T2 com as skills do spec — sem DPS vence do L20 ao L38, padre a 70–80% do mago, trio guerreiro+padre+caçador perde no L20/L24, PT completa perde no L24, mago perde o solo no L19; no aleatório, sem DPS vence 38% no L40",
+);

@@ -113,7 +113,14 @@ const espinhos = s("espinhos", "Espinhos", 8000, 0.05, always, [
     group: "bossweak",
   },
   { type: "dano", parts: [magic(1)] },
-  { type: "dot", element: "magico", coefPerSec: 0.25, durationMs: 8000 },
+  // O gabarito empilha DoTs sem limite (recarga menor que a duração soma os dois).
+  {
+    type: "dot",
+    element: "magico",
+    coefPerSec: 0.25,
+    durationMs: 8000,
+    stacks: 99,
+  },
 ]);
 const rejuvenescer = (below: number) =>
   s("rejuvenescer", "Rejuvenescer", 2500, 0.07, ally(below), [
@@ -267,7 +274,13 @@ export const GABARITO_KITS: Record<ClassId, SkillDef[]> = {
     ]),
     s("lamina-envenenada", "Lâmina Envenenada", 6000, 0.04, always, [
       { type: "dano", parts: [phys(1.4)] },
-      { type: "dot", element: "fisico", coefPerSec: 0.3, durationMs: 6000 },
+      {
+        type: "dot",
+        element: "fisico",
+        coefPerSec: 0.3,
+        durationMs: 6000,
+        stacks: 99,
+      },
     ]),
   ],
 };

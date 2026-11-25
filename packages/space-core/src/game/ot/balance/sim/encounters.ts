@@ -7,8 +7,19 @@ import type {
   SkillDef,
 } from "../combat/types.ts";
 import { type ClassId, CLASSES, FAMILIES } from "../content.ts";
-import { type Balance, balance as gameBalance } from "../formulas.ts";
+import {
+  type Balance,
+  type Tier,
+  balance as gameBalance,
+} from "../formulas.ts";
 import { type Reference, createReference } from "../reference.ts";
+import { compileLoadout } from "../skills/compile.ts";
+import {
+  REFERENCE_KITS,
+  REFERENCE_SOLO_KITS,
+  SKILLS_BY_CLASS,
+} from "../skills/index.ts";
+import { type HeroSkills, learnableSkills, MAX_SLOTS } from "../skills/tree.ts";
 import { GABARITO_KITS } from "./kits.ts";
 
 /**
@@ -18,7 +29,14 @@ import { GABARITO_KITS } from "./kits.ts";
  */
 
 export interface SimOptions {
-  /** Kit por classe (padrão: os de referência do gabarito). */
+  /**
+   * De onde vêm as skills: "gabarito" (os kits do gabarito, para a paridade) ou "spec" (as 42 skills
+   * compiladas, com as regras de tier e os traços do §6 inteiros). Padrão: "gabarito".
+   */
+  source?: "gabarito" | "spec";
+  /** Com `source: "spec"`, usa os kits solo do §8. */
+  solo?: boolean;
+  /** Kit por classe (só com `source: "gabarito"`; padrão: os de referência do gabarito). */
   kits?: Record<ClassId, SkillDef[]>;
   /** Cura das poções no lugar da do jogo (o gabarito usa poção fracionária). */
   potions?: (level: number) => { hp: number; mp: number };
@@ -26,15 +44,58 @@ export interface SimOptions {
   random?: FightOptions["random"];
   /** Proficiência dos heróis (padrão: 10 × nível). O chefe continua calibrado na referência. */
   proficiency?: (level: number) => number;
+  /**
+   * IA do perfil de referência com `source: "spec"`: "spec" usa a IA padrão de cada skill; "gabarito"
+   * põe "Sempre" nas skills de dano (como o gabarito rodou) e deixa a do spec nas de cura e defesa.
+   */
+  referenceAi?: "spec" | "gabarito";
 }
 
 /** O que calibra o chefe: só o kit e as poções; a proficiência e o modo são dos heróis da luta. */
 function calibration(o: SimOptions): SimOptions {
   return {
+    ...(o.source ? { source: o.source } : {}),
     ...(o.kits ? { kits: o.kits } : {}),
     ...(o.potions ? { potions: o.potions } : {}),
+    ...(o.referenceAi ? { referenceAi: o.referenceAi } : {}),
     mode: "esperado",
   };
+}
+
+/** Skill de dano: tem dano direto ou DoT. */
+function dealsDamage(id: string, cls: ClassId): boolean {
+  const s = SKILLS_BY_CLASS[cls].find((x) => x.id === id);
+  return !!s && s.effects.some((e) => e.type === "dano" || e.type === "dot");
+}
+
+/**
+ * As skills do perfil de referência com as regras do spec: o kit de referência filtrado pelo tier
+ * (no T1 só existem as 2 skills do T1), completado com as outras aprendidas na ordem do spec, e a
+ * Potência esperada em todas (§8, "rank de Potência esperado no perfil de teste").
+ */
+export function referenceSkills(
+  cls: ClassId,
+  tier: Tier,
+  job: number,
+  solo: boolean,
+  B: Balance = gameBalance,
+  ai: "spec" | "gabarito" = "spec",
+): HeroSkills {
+  const rank = B.referencePotencyRank(tier, job);
+  const learned = learnableSkills(cls, tier).map((s) => s.id);
+  const kit = (solo ? REFERENCE_SOLO_KITS : REFERENCE_KITS)[cls].filter((id) =>
+    learned.includes(id),
+  );
+  for (const id of learned)
+    if (kit.length < MAX_SLOTS && !kit.includes(id)) kit.push(id);
+  const builds: HeroSkills["builds"] = {};
+  for (const id of learned)
+    builds[id] = { potency: rank, efficiency: 0, mechanics: {} };
+  const overrides: HeroSkills["ai"] = {};
+  if (ai === "gabarito")
+    for (const id of kit)
+      if (dealsDamage(id, cls)) overrides[id] = [{ kind: "sempre" }];
+  return { tier, builds, slots: kit, ai: overrides, resets: 0 };
 }
 
 export function createEncounters(B: Balance = gameBalance) {
@@ -59,18 +120,39 @@ export function createEncounters(B: Balance = gameBalance) {
       hp: R.potionHp(level),
       mp: R.potionMp(level),
     };
-    return {
+    const common = {
       cls,
-      stats: h,
       role: c.role,
-      skills: (o.kits ?? GABARITO_KITS)[cls],
-      potencyRank: B.referencePotencyRank(h.tier, h.job),
       lifesteal: c.trait.lifesteal ?? 0,
       blockBonus: c.trait.blockBonus ?? 0,
       healBonus: (c.trait.healBonus ?? 0) + (fam.healBonus ?? 0),
       hotBonus: c.trait.hotBonus ?? 0,
       magicAutoAttack: fam.magicAutoAttack ?? c.trait.magicAutoAttack ?? 0.6,
       potions: { ...pot, stock: 100 },
+    };
+    if (o.source === "spec") {
+      // Os traços que o gabarito não tinha: Olho de Águia (+10% de Precisão) e o +20% de veneno.
+      const hs = referenceSkills(
+        cls,
+        h.tier,
+        h.job,
+        o.solo ?? false,
+        B,
+        o.referenceAi,
+      );
+      return {
+        ...common,
+        stats: { ...h, hit: h.hit * (1 + (c.trait.hitBonusPct ?? 0)) },
+        skills: compileLoadout(cls, hs, B),
+        potencyRank: 1,
+        poisonBonus: c.trait.poisonBonus ?? 0,
+      };
+    }
+    return {
+      ...common,
+      stats: h,
+      skills: (o.kits ?? GABARITO_KITS)[cls],
+      potencyRank: B.referencePotencyRank(h.tier, h.job),
     };
   }
 
@@ -108,7 +190,7 @@ export function createEncounters(B: Balance = gameBalance) {
 
   /** DPS_grupo_ref(m): guerreiro + padre + mago + caçador contra o boneco, 80 s. */
   function referencePartyDps(m: number, o: SimOptions = {}): number {
-    const key = `${m}:${o.kits ? "k" : ""}:${o.potions ? "p" : ""}`;
+    const key = `${m}:${o.source ?? "gabarito"}:${o.referenceAi ?? ""}:${o.solo ? "solo" : ""}:${o.kits ? "k" : ""}:${o.potions ? "p" : ""}`;
     let v = partyDpsCache.get(key);
     if (v === undefined) {
       const secs = cfg.monsters.masmorraHpSeconds;
@@ -126,7 +208,7 @@ export function createEncounters(B: Balance = gameBalance) {
 
   /** DPS_solo_ref(m): média do DPS em alvo único de mago, caçador e assassino, 60 s. */
   function referenceSoloDps(m: number, o: SimOptions = {}): number {
-    const key = `${m}:${o.kits ? "k" : ""}:${o.potions ? "p" : ""}`;
+    const key = `${m}:${o.source ?? "gabarito"}:${o.referenceAi ?? ""}:${o.solo ? "solo" : ""}:${o.kits ? "k" : ""}:${o.potions ? "p" : ""}`;
     let v = soloDpsCache.get(key);
     if (v === undefined) {
       let sum = 0;
