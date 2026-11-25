@@ -286,8 +286,33 @@ export const BALANCE = {
     cataclysmEverySeconds: 2,
   },
 
-  /** §12.1: duração máxima da corrida. */
-  runs: { cacadaMaxMs: 8 * 60_000, masmorraMaxMs: 10 * 60_000 },
+  /** §12.3: mecânicas de chefe por faixa de nível (entram junto com as respostas dos tiers). */
+  bossMechanics: {
+    /** Maldição: a cada 20 s, um não tanque perde 3% do HP máx./s até ser purificado (máx. 15 s). */
+    curseFrom: 40,
+    curse: { everySeconds: 20, pctPerSecond: 0.03, maxSeconds: 15 },
+    /** Invocação: a cada 30 s, 2 lacaios do nível do chefe. */
+    summonFrom: 70,
+    summon: { everySeconds: 30, count: 2 },
+    /** Drenar Mana: a cada 25 s, conjuradores perdem 3% da MP máx./s por 6 s. */
+    drainFrom: 100,
+    manaDrain: { everySeconds: 25, pctPerSecond: 0.03, durationSeconds: 6 },
+    /** Investida: a cada 20 s, 1,5× o golpe num não tanque sorteado. */
+    chargeFrom: 100,
+    charge: { everySeconds: 20, mult: 1.5 },
+    /** Fases: a 50%, +20% de dano e intervalos −15%. */
+    phaseFrom: 150,
+    phase: { at: 0.5, damageMult: 1.2, intervalMult: 0.85 },
+    /** Chefe de Região, fase 3 a 25%: 10% do HP máx. a cada 5 s até o fim. */
+    regionalFinal: { at: 0.25, pct: 0.1, everySeconds: 5 },
+  },
+
+  /** §12.1: duração máxima da corrida; pausa fora de combate entre as salas (P12). */
+  runs: {
+    cacadaMaxMs: 8 * 60_000,
+    masmorraMaxMs: 10 * 60_000,
+    roomPauseSeconds: 3,
+  },
 
   /** §9: equipamento. */
   items: {

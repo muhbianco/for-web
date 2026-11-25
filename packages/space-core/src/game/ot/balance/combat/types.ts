@@ -322,6 +322,34 @@ export interface EnemyInput {
   pulse?: { everySeconds: number; raw: number };
   /** Cataclismo: fração do HP máximo de cada herói, dano verdadeiro. */
   cataclysm?: { atSeconds: number; pct: number; everySeconds: number };
+  /** Maldição (§12.3, desde o 40): um não tanque perde x do HP máx./s até ser purificado (no máx. N s). */
+  curse?: { everySeconds: number; pctPerSecond: number; maxSeconds: number };
+  /** Invocação (desde o 70): `count` lacaios do nível do chefe a cada N s. */
+  summon?: { everySeconds: number; count: number; minion: EnemyInput };
+  /** Drenar Mana (desde o 100): conjuradores perdem x da MP máx./s por N s. */
+  manaDrain?: {
+    everySeconds: number;
+    pctPerSecond: number;
+    durationSeconds: number;
+  };
+  /** Investida (desde o 100): golpe × mult num não tanque sorteado, não provocável. */
+  charge?: { everySeconds: number; mult: number };
+  /** Fases (desde o 150): abaixo de `at` do HP, dano × damageMult e intervalos × intervalMult. */
+  phase?: { at: number; damageMult: number; intervalMult: number };
+  /** Fase final do Chefe de Região: abaixo de `at`, x do HP máx. de cada herói a cada N s (verdadeiro). */
+  finalPhase?: { at: number; pct: number; everySeconds: number };
+}
+
+/** O que passa de uma sala para a outra (HP, mana, poções, recargas que faltam). */
+export interface HeroCarry {
+  hp: number;
+  mp: number;
+  alive: boolean;
+  pots: number;
+  /** Segundos que faltam de cada recarga. */
+  cooldowns: Record<string, number>;
+  revived: boolean;
+  cheatedDeath: boolean;
 }
 
 export interface FightOptions {
@@ -331,6 +359,8 @@ export interface FightOptions {
   mode: "esperado" | "aleatorio";
   /** Fonte de números em [0, 1) para o modo aleatório. */
   random?: { next(): number };
+  /** Estado de cada herói vindo da sala anterior (corrida de várias salas). */
+  carry?: (HeroCarry | undefined)[];
 }
 
 export interface FighterResult {
@@ -346,6 +376,8 @@ export interface FighterResult {
   alive: boolean;
   /** Quantas vezes cada skill saiu. */
   casts: Record<string, number>;
+  /** Estado no fim, para a próxima sala. */
+  carry: HeroCarry;
 }
 
 export interface FightResult {
@@ -355,7 +387,7 @@ export interface FightResult {
   firstDeath: {
     seconds: number;
     cls: ClassId;
-    cause: "golpe" | "cataclismo";
+    cause: "golpe" | "cataclismo" | "mecanica";
   } | null;
   damage: number;
   /** Fração de HP que sobrou em cada inimigo. */

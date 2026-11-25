@@ -83,8 +83,8 @@ interface Hero {
     refund: number;
   } | null;
   buffs: Map<string, Timed>;
-  /** Efeitos negativos no herói (Maldição e afins, Fase 6), removíveis por purificação. */
-  debuffs: Map<string, { kind: string; until: number }>;
+  /** Efeitos negativos no herói (Maldição, Drenar Mana), removíveis por purificação. */
+  debuffs: Map<string, { kind: string; until: number; value: number }>;
   hots: {
     key: string;
     perSec: number;
@@ -122,10 +122,22 @@ interface Enemy {
   autoTimer: number;
   busterTimer: number;
   pulseTimer: number;
+  curseTimer: number;
+  summonTimer: number;
+  drainTimer: number;
+  chargeTimer: number;
+  finalTimer: number;
+  /** Já passou do limiar da fase 2. */
+  inPhase: boolean;
+  /** Rodízio de quem a mecânica escolhe no modo esperado. */
+  pick: number;
   debuffs: Map<string, Timed>;
 }
 
 const BOSSES = new Set(["chefe", "chefeMenor", "regional"]);
+
+/** Quem o Drenar Mana pega: as classes que vivem de magia. */
+const CASTERS = new Set(["padre", "druida", "mago"]);
 
 /** O multiplicador total de dano de uma skill (soma das partes × golpes): ≥ 300% obedece "Segurar explosão". */
 export function skillTotalMultiplier(s: SkillDef): number {
@@ -162,17 +174,17 @@ export function fight(
     i,
     input,
     ch: input.stats,
-    hp: input.stats.hp,
-    mp: input.stats.mp,
-    alive: true,
-    revived: false,
-    cheatedDeath: false,
+    hp: opts.carry?.[i]?.hp ?? input.stats.hp,
+    mp: opts.carry?.[i]?.mp ?? input.stats.mp,
+    alive: opts.carry?.[i]?.alive ?? true,
+    revived: opts.carry?.[i]?.revived ?? false,
+    cheatedDeath: opts.carry?.[i]?.cheatedDeath ?? false,
     threat: enemyInputs.map(() => 0),
-    cds: new Map(),
+    cds: new Map(Object.entries(opts.carry?.[i]?.cooldowns ?? {})),
     gcd: 0,
     auto: 0,
     potCd: 0,
-    pots: input.potions.stock,
+    pots: opts.carry?.[i]?.pots ?? input.potions.stock,
     shield: 0,
     shieldUntil: 0,
     shieldBreak: null,
@@ -193,7 +205,7 @@ export function fight(
     mpPotions: 0,
     casts: {},
   }));
-  const enemies: Enemy[] = enemyInputs.map((input, i) => ({
+  const newEnemy = (input: EnemyInput, i: number): Enemy => ({
     i,
     input,
     hp: input.hp,
@@ -205,8 +217,16 @@ export function fight(
     autoTimer: 0,
     busterTimer: input.buster?.everySeconds ?? Infinity,
     pulseTimer: input.pulse?.everySeconds ?? Infinity,
+    curseTimer: input.curse?.everySeconds ?? Infinity,
+    summonTimer: input.summon?.everySeconds ?? Infinity,
+    drainTimer: input.manaDrain?.everySeconds ?? Infinity,
+    chargeTimer: input.charge?.everySeconds ?? Infinity,
+    finalTimer: 0,
+    inPhase: false,
+    pick: 0,
     debuffs: new Map(),
-  }));
+  });
+  const enemies: Enemy[] = enemyInputs.map(newEnemy);
   const partyBuffs = new Map<string, Timed>();
   const partyPurges: {
     count: number;
@@ -253,7 +273,7 @@ export function fight(
     return false;
   };
 
-  const die = (h: Hero, cause: "golpe" | "cataclismo") => {
+  const die = (h: Hero, cause: "golpe" | "cataclismo" | "mecanica") => {
     h.alive = false;
     h.hp = 0;
     h.casting = null;
@@ -1177,36 +1197,109 @@ export function fight(
     if (wiped) break;
 
     // Ações dos inimigos (atordoado não age; lentidão atrasa os relógios).
-    for (const e of enemies) {
+    for (const e of [...enemies]) {
       if (!e.alive || !e.target) continue;
       if (e.stunnedUntil > t) continue;
-      const pace = DT * prod(active(e.debuffs, "velocidade"));
+      // Fase 2 (desde o 150): mais dano e intervalos menores abaixo do limiar.
+      const ph = e.input.phase;
+      if (ph && !e.inPhase && e.hp <= ph.at * e.input.hp) e.inPhase = true;
+      const dmg = e.inPhase && ph ? ph.damageMult : 1;
+      const tick = e.inPhase && ph ? DT / ph.intervalMult : DT;
+      const pace = tick * prod(active(e.debuffs, "velocidade"));
       e.autoTimer -= pace;
       if (e.autoTimer <= 0) {
-        hurt(e.target, e, e.input.autoRaw, {
+        hurt(e.target, e, e.input.autoRaw * dmg, {
           magic: e.input.magicAuto ?? false,
         });
         e.autoTimer += 1 / e.input.attacksPerSecond;
       }
       if (e.input.buster) {
-        e.busterTimer -= DT;
+        e.busterTimer -= tick;
         if (e.busterTimer <= 0) {
           if (e.target.alive)
-            hurt(e.target, e, e.input.autoRaw * e.input.buster.mult, {
+            hurt(e.target, e, e.input.autoRaw * e.input.buster.mult * dmg, {
               certeiro: true,
             });
           e.busterTimer += e.input.buster.everySeconds;
         }
       }
       if (e.input.pulse) {
-        e.pulseTimer -= DT;
+        e.pulseTimer -= tick;
         if (e.pulseTimer <= 0) {
           for (const q of heroes)
-            if (q.alive) hurt(q, e, e.input.pulse.raw, { magic: true });
+            if (q.alive) hurt(q, e, e.input.pulse.raw * dmg, { magic: true });
           e.pulseTimer += e.input.pulse.everySeconds;
         }
       }
+      const pickNonTank = (): Hero | null => {
+        const pool = heroes.filter((q) => q.alive && q.input.role !== "tanque");
+        if (pool.length === 0) return null;
+        return expected
+          ? pool[e.pick++ % pool.length]!
+          : pool[Math.floor(rnd() * pool.length)]!;
+      };
+      const cu = e.input.curse;
+      if (cu) {
+        e.curseTimer -= tick;
+        if (e.curseTimer <= 0) {
+          const q = pickNonTank();
+          if (q)
+            q.debuffs.set("maldicao", {
+              kind: "maldicao",
+              until: t + cu.maxSeconds,
+              value: cu.pctPerSecond,
+            });
+          e.curseTimer += cu.everySeconds;
+        }
+      }
+      const md = e.input.manaDrain;
+      if (md) {
+        e.drainTimer -= tick;
+        if (e.drainTimer <= 0) {
+          for (const q of heroes)
+            if (q.alive && CASTERS.has(q.input.cls))
+              q.debuffs.set("drenar", {
+                kind: "drenar",
+                until: t + md.durationSeconds,
+                value: md.pctPerSecond,
+              });
+          e.drainTimer += md.everySeconds;
+        }
+      }
+      const ca = e.input.charge;
+      if (ca) {
+        e.chargeTimer -= tick;
+        if (e.chargeTimer <= 0) {
+          const q = pickNonTank();
+          if (q) hurt(q, e, e.input.autoRaw * ca.mult * dmg);
+          e.chargeTimer += ca.everySeconds;
+        }
+      }
+      const su = e.input.summon;
+      if (su) {
+        e.summonTimer -= tick;
+        if (e.summonTimer <= 0) {
+          for (let k = 0; k < su.count; k++) {
+            enemies.push(newEnemy(su.minion, enemies.length));
+            for (const q of heroes) q.threat.push(0);
+          }
+          e.summonTimer += su.everySeconds;
+        }
+      }
+      const fp = e.input.finalPhase;
+      if (fp && e.hp <= fp.at * e.input.hp) {
+        e.finalTimer -= tick;
+        if (e.finalTimer <= 0) {
+          for (const q of heroes) {
+            if (!q.alive) continue;
+            q.hp -= fp.pct * maxHp(q);
+            if (q.hp <= 0) die(q, "mecanica");
+          }
+          e.finalTimer += fp.everySeconds;
+        }
+      }
     }
+    if (!heroes.some((q) => q.alive)) break;
 
     // Purificações periódicas do grupo (Santuário).
     for (const p of partyPurges)
@@ -1220,6 +1313,17 @@ export function fight(
       if (!h.alive) continue;
       const ch = h.ch;
       if (h.hp > maxHp(h)) h.hp = maxHp(h);
+      // Maldição e Drenar Mana: por segundo, até acabar ou ser purificado.
+      for (const d of h.debuffs.values()) {
+        if (d.until <= t) continue;
+        if (d.kind === "maldicao") h.hp -= d.value * maxHp(h) * DT;
+        else if (d.kind === "drenar")
+          h.mp = Math.max(0, h.mp - d.value * ch.mp * DT);
+      }
+      if (h.hp <= 0) {
+        die(h, "mecanica");
+        continue;
+      }
       const regen =
         ch.mp * cfg.regen.mpPctPerSecond +
         cfg.regen.mpPerIntPerSecond * ch.attrs.INT +
@@ -1334,6 +1438,19 @@ export function fight(
       mpPotions: h.mpPotions,
       alive: h.alive,
       casts: h.casts,
+      carry: {
+        hp: Math.max(0, h.hp),
+        mp: h.mp,
+        alive: h.alive,
+        pots: h.pots,
+        cooldowns: Object.fromEntries(
+          [...h.cds]
+            .map(([id, until]) => [id, Math.max(0, until - t)] as const)
+            .filter(([, left]) => left > 0),
+        ),
+        revived: h.revived,
+        cheatedDeath: h.cheatedDeath,
+      },
     })),
   };
 }
