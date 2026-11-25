@@ -41,6 +41,10 @@ steps:
   # + :latest, como o web. Só sobe quando o overlay já tem o serviço ligado (COMPOSE_PROFILES
   # com `space` no .env de /usr/src/stoat); antes disso a imagem fica pronta e nada muda.
   # Rollback: `docker tag muchat-space:<sha anterior> muchat-space:latest` e o mesmo up.
+  # Armadilha do filtro de path: ele olha só os arquivos do push, não o que está no ar. Se o
+  # pipeline de um push que mexeu no space falhar antes do deploy, o push seguinte que só mexe
+  # no web sobe só o web, e o space fica para trás (25/11/2026: #59 falhou no lint, #60 pulou o
+  # space). Nesse caso, mandar a correção junto com uma mudança neste arquivo ou num pacote do space.
   space-build:
     image: muhrilobianco/ci-deployer:1
     volumes:
