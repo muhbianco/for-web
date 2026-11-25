@@ -386,6 +386,8 @@ export interface FighterResult {
   alive: boolean;
   /** Quantas vezes cada skill saiu. */
   casts: Record<string, number>;
+  /** Ameaça no fim, em cada inimigo (na ordem de `enemiesLeft`, invocados no fim). */
+  threat: number[];
   /** Estado no fim, para a próxima sala. */
   carry: HeroCarry;
 }

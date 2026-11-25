@@ -51,6 +51,8 @@ interface Dot {
   tickStun?: { chance: number; durationMs: number };
   /** Cura de quem conjurou, em fração do HP máximo por segundo, enquanto o inimigo queima. */
   selfHeal?: number;
+  /** Multiplicador de ameaça da skill que pôs o DoT (Consagração ×2), como no dano direto. */
+  threatMult?: number;
 }
 
 interface Hero {
@@ -1002,6 +1004,7 @@ export function fight(
             ...(eff.selfHealPctMaxHpPerSec
               ? { selfHeal: eff.selfHealPctMaxHpPerSec }
               : {}),
+            ...(s.threatMult ? { threatMult: s.threatMult } : {}),
           });
         }
         return;
@@ -1518,7 +1521,9 @@ export function fight(
         if (x.until <= t) return false;
         const e = enemies[x.enemy];
         if (e && e.alive) {
-          deal(h, e, x.perSec * DT);
+          const dealt = deal(h, e, x.perSec * DT);
+          if (x.threatMult)
+            h.threat[e.i]! += dealt * h.ch.threat * (x.threatMult - 1);
           if (x.selfHeal) heal(h, x.selfHeal * maxHp(h) * DT, null);
           if (x.tickStun && t >= x.nextPulse) {
             x.nextPulse += 1;
@@ -1566,6 +1571,7 @@ export function fight(
       mpPotions: h.mpPotions,
       alive: h.alive,
       casts: h.casts,
+      threat: [...h.threat],
       carry: {
         hp: Math.max(0, h.hp),
         mp: h.mp,

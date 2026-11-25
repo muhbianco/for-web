@@ -297,6 +297,18 @@ test("Consagração: cada inimigo consagrado cura o paladino em 2% do HP máx. p
   assert.ok(Math.abs(gain(3) - 3 * one) < 1e-9, "não cresceu com os inimigos");
 });
 
+test("Consagração: o DoT dá ameaça ×2, como o spec manda (auto-ataque fica em ×1)", () => {
+  const pal = withSkills("paladino", [skill("paladino", "consagracao")]);
+  const r = run([pal], [hitter(0)], 5).heroes[0]!;
+  const dot = r.damage - r.autoDamage;
+  assert.ok(dot > 0, "a Consagração não queimou");
+  const expected = pal.stats.threat * (r.autoDamage + 2 * dot);
+  assert.ok(
+    Math.abs(r.threat[0]! / expected - 1) < 1e-9,
+    `ameaça ${r.threat[0]} × esperada ${expected}`,
+  );
+});
+
 test("Esquiva Sombria corta a ameaça; o veneno do assassino ganha +20%", () => {
   const plain = run(
     [withSkills("assassino", [skill("assassino", "lamina-envenenada")])],
