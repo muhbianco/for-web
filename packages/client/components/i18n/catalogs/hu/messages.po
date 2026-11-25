@@ -1884,6 +1884,10 @@ msgstr ""
 #~ msgid "Arquimago"
 #~ msgstr ""
 
+#: components/space/game/gameUi.tsx
+msgid "Arraste para mover · duplo clique na barra volta ao lugar"
+msgstr ""
+
 #: components/space/game/StatsPanel.tsx
 #~ msgid "As habilidades voltam DES/300 mais depressa no começo, cada vez menos; no máximo pela metade."
 #~ msgstr ""
@@ -6719,6 +6723,10 @@ msgstr "Tagok áttétele hangcsatornák között"
 #: components/space/game/GamePanel.tsx
 #~ msgid "Mover"
 #~ msgstr ""
+
+#: components/space/game/gameUi.tsx
+msgid "Mover a janela (setas do teclado; Home volta ao lugar)"
+msgstr ""
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Muchat for Desktop"

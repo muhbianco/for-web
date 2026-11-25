@@ -8,10 +8,20 @@
 import "material-symbols";
 import "../../src/index.css";
 
-import { For, Match, Show, Switch, createSignal, onCleanup } from "solid-js";
+import {
+  For,
+  Match,
+  Show,
+  Suspense,
+  Switch,
+  createSignal,
+  lazy,
+  onCleanup,
+} from "solid-js";
 import { render } from "solid-js/web";
 
-import type { NpcKind } from "@muchat/space-core";
+import type { SpaceView } from "@muchat/space-client";
+import type { NewsWire, NpcKind } from "@muchat/space-core";
 import { createHero } from "@muchat/space-core/game/ot/balance";
 
 import { I18nProvider } from "../../components/i18n";
@@ -36,7 +46,46 @@ import {
   stateOf,
 } from "./scenarios";
 
-type Screen = "hero" | "npc" | "dojo" | "tv" | "run" | "map";
+// Preguiçoso como no app. O markdown do app tem um ciclo de import que só fecha entrando pelo
+// editor (prosemirror); importado direto pelo painel, cai em "unifiedPipeline before initialization".
+const NewsPanel = lazy(() =>
+  import("../../components/markdown/prosemirror/from-model").then(
+    () => import("../../components/space/NewsPanel"),
+  ),
+);
+
+type Screen = "hero" | "npc" | "dojo" | "tv" | "run" | "map" | "news";
+
+/** O quadro de avisos sem o space-server: só o que o painel lê da vista. */
+const NEWS: NewsWire = {
+  url: "https://outline.example/novidades",
+  items: [
+    {
+      id: "n3",
+      title: "Janelas do jogo arrastáveis",
+      publishedAt: "2026-11-25T15:00:00Z",
+      markdown:
+        "Agora dá para **arrastar** a ficha, a corrida e os NPCs pela barra do título.\n\n- Duplo clique na barra volta ao lugar.\n- No celular a janela continua de tela cheia.",
+    },
+    {
+      id: "n2",
+      title: "Tela da corrida nova",
+      publishedAt: "2026-11-24T18:00:00Z",
+      markdown:
+        "Vida e mana nos globos, cinto de poções e as habilidades com recarga.",
+    },
+    {
+      id: "n1",
+      title: "Idle Hunt: recomeço",
+      publishedAt: "2026-11-20T12:00:00Z",
+      markdown: "O jogo recomeçou com a engine nova.",
+    },
+  ],
+};
+const newsView = {
+  news: async () => NEWS,
+  setNewsUnread: () => {},
+} as unknown as SpaceView;
 
 interface Scenario {
   id: string;
@@ -205,6 +254,12 @@ const SCENARIOS: Scenario[] = [
     run: { dungeon: "masmorra-40", seek: "fim" },
   },
   {
+    id: "avisos",
+    label: "Quadro de avisos",
+    screen: "news",
+    build: () => world(stateOf(mage45())),
+  },
+  {
     id: "mapa",
     label: "Faixas no mapa",
     screen: "map",
@@ -356,6 +411,15 @@ function Lab() {
                 myId={server.me}
                 onClose={() => setOpen(false)}
               />
+            </Match>
+            <Match when={screen() === "news"}>
+              <Suspense>
+                <NewsPanel
+                  view={newsView}
+                  title="Quadro de avisos"
+                  onClose={() => setOpen(false)}
+                />
+              </Suspense>
             </Match>
             <Match when={screen() === "run" && run()}>
               <RunPanel

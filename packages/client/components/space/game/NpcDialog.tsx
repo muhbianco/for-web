@@ -38,7 +38,7 @@ export default function NpcDialog(props: {
   };
   return (
     <GameDialog
-      id="rpg-npc"
+      id={`rpg-npc-${props.request.npc}`}
       title={props.request.title || role()}
       subtitle={props.request.title ? role() : undefined}
       onClose={props.onClose}

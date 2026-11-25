@@ -13,11 +13,14 @@ import type { ItemInstance } from "@muchat/space-core/game/ot/balance";
 import { itemVisual } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
+import { Symbol } from "@revolt/ui/components/utils/Symbol";
+
 import { errorText } from "./gameText";
 import { BAR, RARITY, gameFrame } from "./gameTheme";
 import type { BagMark } from "./heroModel";
 import { useModalKeys } from "./modalKeys";
 import { ICON, iconPixels } from "./pixelArt";
+import { useWide, useWindowDrag } from "./windowDrag";
 
 /**
  * As peças comuns das telas do Idle Hunt v5: o diálogo (folha de baixo no celular), botões com alvo
@@ -137,6 +140,7 @@ export function GameDialog(props: {
   footer?: JSX.Element;
 }) {
   const { t } = useLingui();
+  let backdrop: HTMLDivElement | undefined;
   let card: HTMLDivElement | undefined;
   let title: HTMLHeadingElement | undefined;
   useModalKeys(
@@ -144,8 +148,17 @@ export function GameDialog(props: {
     () => title,
     () => props.onClose(),
   );
+  // Arrastável pela barra do título (pedido do dono, 25/11/2026); no celular a janela é folha.
+  const wide = useWide(() => backdrop, 600);
+  const drag = useWindowDrag({
+    id: props.id,
+    win: () => card,
+    bounds: () => backdrop,
+    enabled: wide,
+  });
   return (
     <Backdrop
+      ref={backdrop}
       onKeyDown={(e) => {
         e.stopPropagation();
         if (e.key === "Escape") props.onClose();
@@ -153,14 +166,18 @@ export function GameDialog(props: {
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
       <Card
-        style={gameFrame}
+        style={{ ...gameFrame, ...drag.style() }}
         ref={card}
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${props.id}-title`}
         data-wide={props.wide ? "" : undefined}
+        data-dragging={drag.dragging() ? "" : undefined}
       >
-        <Head>
+        <Head {...drag.handle} data-draggable={wide() ? "" : undefined}>
+          <Show when={wide()}>
+            <Grip onKey={drag.onGripKey} />
+          </Show>
           <div>
             <h2 id={`${props.id}-title`} tabIndex={-1} ref={title}>
               {props.title}
@@ -181,6 +198,47 @@ export function GameDialog(props: {
     </Backdrop>
   );
 }
+
+/**
+ * A alça visível de uma janela arrastável: o ícone de arrastar na barra do título. Com o teclado,
+ * as setas movem (Shift: passo maior) e Home devolve ao lugar.
+ */
+export function Grip(props: { onKey: (e: KeyboardEvent) => void }) {
+  const { t } = useLingui();
+  return (
+    <GripBtn
+      type="button"
+      data-grip=""
+      aria-label={t`Mover a janela (setas do teclado; Home volta ao lugar)`}
+      title={t`Arraste para mover · duplo clique na barra volta ao lugar`}
+      onKeyDown={props.onKey}
+    >
+      <Symbol size={20}>drag_indicator</Symbol>
+    </GripBtn>
+  );
+}
+
+export const GripBtn = styled("button", {
+  base: {
+    width: "32px",
+    height: "44px",
+    marginLeft: "-10px",
+    display: "grid",
+    placeItems: "center",
+    border: "none",
+    borderRadius: "8px",
+    background: "transparent",
+    color: "var(--md-sys-color-on-surface-variant)",
+    cursor: "grab",
+    touchAction: "none",
+    "&:hover": {
+      color: "var(--md-sys-color-primary)",
+      background: "rgba(255,255,255,0.05)",
+    },
+    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+    "[data-dragging] &": { cursor: "grabbing" },
+  },
+});
 
 const Backdrop = styled("div", {
   base: {
@@ -224,6 +282,13 @@ const Card = styled("div", {
 
 const Head = styled("div", {
   base: {
+    "&[data-draggable]": {
+      gridTemplateColumns: "auto 1fr auto",
+      cursor: "grab",
+      userSelect: "none",
+      touchAction: "none",
+    },
+    "[data-dragging] > &": { cursor: "grabbing" },
     display: "grid",
     gridTemplateColumns: "1fr auto",
     alignItems: "start",

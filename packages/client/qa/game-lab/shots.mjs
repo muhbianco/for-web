@@ -52,6 +52,25 @@ const scrollTo = (sel) => async (p) => {
     .evaluate((el) => el.scrollIntoView({ block: "start" }));
 };
 
+/**
+ * Arrasta a janela pela alça (a barra do título) com o mouse. No celular a janela não tem alça
+ * (é folha de baixo): não faz nada, e a captura mostra que ficou no lugar.
+ */
+const drag = (dx, dy) => async (p) => {
+  const bar = p.locator("[data-draggable]").first();
+  if ((await bar.count()) === 0) return;
+  const box = await bar.boundingBox();
+  if (!box) return;
+  // Um ponto da barra fora de botões: o meio do título.
+  const x = box.x + box.width / 2;
+  const y = box.y + Math.min(box.height / 2, 20);
+  await p.mouse.move(x, y);
+  await p.mouse.down();
+  await p.mouse.move(x + dx / 2, y + dy / 2, { steps: 4 });
+  await p.mouse.move(x + dx, y + dy, { steps: 4 });
+  await p.mouse.up();
+};
+
 const SHOTS = [
   { name: "01-novo-aviso", s: "novo" },
   {
@@ -148,6 +167,16 @@ const SHOTS = [
   { name: "27-corrida-chefe-cataclismo", s: "corrida-chefe&speed=0" },
   { name: "28-corrida-fim", s: "corrida-fim&speed=0" },
   { name: "29-mapa-faixas", s: "mapa", act: (p) => p.keyboard.press("Escape") },
+  // Janelas arrastáveis (25/11/2026): a alça na barra, a janela solta no canto (presa à área).
+  { name: "30-janela-mestre-arrastada", s: "mestre", act: drag(-400, 300) },
+  { name: "31-janela-ficha-arrastada", s: "ficha", act: drag(500, -200) },
+  {
+    name: "32-janela-corrida-arrastada",
+    s: "corrida&speed=0",
+    act: drag(-200, -300),
+  },
+  { name: "33-janela-avisos", s: "avisos" },
+  { name: "34-janela-avisos-arrastada", s: "avisos", act: drag(300, 200) },
 ];
 
 mkdirSync(OUT, { recursive: true });
@@ -168,6 +197,7 @@ for (const [dev, opts] of Object.entries(DEVICES)) {
     if (ONLY && !shot.name.includes(ONLY)) continue;
     try {
       await page.goto(`${BASE}#s=${shot.s}`, { waitUntil: "load" });
+      await page.evaluate(() => localStorage.clear());
       await page.reload({ waitUntil: "load" });
       await page.waitForSelector("[role=dialog], .chips", { timeout: 15000 });
       await page.waitForTimeout(900);

@@ -1884,6 +1884,10 @@ msgstr "Armas"
 #~ msgid "Arquimago"
 #~ msgstr "Arquimago"
 
+#: components/space/game/gameUi.tsx
+msgid "Arraste para mover · duplo clique na barra volta ao lugar"
+msgstr "Arraste para mover · duplo clique na barra volta ao lugar"
+
 #: components/space/game/StatsPanel.tsx
 #~ msgid "As habilidades voltam DES/300 mais depressa no começo, cada vez menos; no máximo pela metade."
 #~ msgstr "As habilidades voltam DES/300 mais depressa no começo, cada vez menos; no máximo pela metade."
@@ -6719,6 +6723,10 @@ msgstr "Move members between voice channels"
 #: components/space/game/GamePanel.tsx
 #~ msgid "Mover"
 #~ msgstr "Mover"
+
+#: components/space/game/gameUi.tsx
+msgid "Mover a janela (setas do teclado; Home volta ao lugar)"
+msgstr "Mover a janela (setas do teclado; Home volta ao lugar)"
 
 #: components/app/interface/settings/user/Native.tsx
 msgid "Muchat for Desktop"

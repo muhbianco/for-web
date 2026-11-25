@@ -18,10 +18,11 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 import { CLASS_ICON, RunHud } from "./RunHud";
 import { RunScene } from "./RunScene";
 import { kindName, mechanicHint, mechanicName } from "./gameText";
-import { type GameLink, Gold, ItemIcon, useCommands } from "./gameUi";
+import { type GameLink, Gold, Grip, ItemIcon, useCommands } from "./gameUi";
 import { BOSS_ARCHETYPES, bagMarks, gold, num } from "./heroModel";
 import { dungeonName, loopStopText, outcomeText } from "./partyUi";
 import { feedLine, runCast } from "./runUi";
+import { useWide, useWindowDrag } from "./windowDrag";
 
 /** Quanto um aviso do meio (sala nova, mecânica) fica à vista, em segundos da corrida. */
 const TOAST_S = 2;
@@ -50,6 +51,16 @@ export default function RunPanel(props: {
   const [sceneFailed, setSceneFailed] = createSignal(false);
   const [confirmLeave, setConfirmLeave] = createSignal(false);
   let stayBtn: HTMLButtonElement | undefined;
+  // Arrastável (pedido do dono, 25/11/2026): pelo título ou pela alça; presa à área do mapa.
+  // No celular o painel ocupa a largura toda e não arrasta.
+  let panel: HTMLDivElement | undefined;
+  const wide = useWide(() => panel?.parentElement ?? undefined, 600);
+  const drag = useWindowDrag({
+    id: "rpg-run",
+    win: () => panel,
+    bounds: () => panel?.parentElement,
+    enabled: wide,
+  });
 
   const st = () => props.state;
   const run = () => st().run;
@@ -187,6 +198,9 @@ export default function RunPanel(props: {
 
   return (
     <Panel
+      ref={panel}
+      style={drag.style()}
+      data-dragging={drag.dragging() ? "" : undefined}
       data-covers-map=""
       role="region"
       aria-label={t`Dungeon em andamento: ${dungeonName(run().dungeon)}`}
@@ -236,7 +250,11 @@ export default function RunPanel(props: {
             <Mates data-where="top">{mates()}</Mates>
           </Frames>
 
-          <Title data-title="">
+          <Title
+            data-title=""
+            {...drag.handle}
+            data-draggable={wide() ? "" : undefined}
+          >
             <strong>{dungeonName(run().dungeon)}</strong>
             <Pips
               aria-label={
@@ -312,6 +330,10 @@ export default function RunPanel(props: {
           </Title>
 
           <Corner>
+            {/* Na confirmação de sair a alça sai da frente (o canto já fica cheio). */}
+            <Show when={wide() && !confirmLeave()}>
+              <Grip onKey={drag.onGripKey} />
+            </Show>
             <Show when={isMember() && !end()}>
               <Show
                 when={confirmLeave()}
@@ -932,6 +954,12 @@ const Title = styled("div", {
     textAlign: "center",
     textShadow: "0 1px 3px rgba(0, 0, 0, 0.9)",
     pointerEvents: "auto",
+    "&[data-draggable]": {
+      cursor: "grab",
+      userSelect: "none",
+      touchAction: "none",
+    },
+    "[data-dragging] &": { cursor: "grabbing" },
     "& > strong": { fontSize: "0.95rem", letterSpacing: "0.02em" },
     "& > small": { fontSize: "0.72rem", opacity: 0.85 },
   },
@@ -1010,6 +1038,16 @@ const Corner = styled("div", {
     flexWrap: "wrap",
     gap: "6px",
     "& > *": { pointerEvents: "auto" },
+    // A alça no escuro da cena: um botão redondo como os outros do canto.
+    "& > [data-grip]": {
+      width: "34px",
+      height: "34px",
+      marginLeft: 0,
+      borderRadius: "999px",
+      background: "rgba(14, 12, 10, 0.82)",
+      boxShadow: "0 0 0 1px rgba(255, 255, 255, 0.14)",
+      color: "#e9d7ad",
+    },
   },
 });
 

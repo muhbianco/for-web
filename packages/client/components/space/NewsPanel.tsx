@@ -18,7 +18,9 @@ import { renderChangelogMarkdown } from "@revolt/markdown";
 import { Button } from "@revolt/ui";
 
 import { gameFrame } from "./game/gameTheme";
+import { Grip } from "./game/gameUi";
 import { useModalKeys } from "./game/modalKeys";
+import { useWide, useWindowDrag } from "./game/windowDrag";
 import { markNewsSeen, newsLastSeen } from "./newsSeen";
 
 /**
@@ -33,6 +35,7 @@ export default function NewsPanel(props: {
   onClose: () => void;
 }) {
   const { t } = useLingui();
+  let backdrop: HTMLDivElement | undefined;
   let card: HTMLDivElement | undefined;
   let title: HTMLHeadingElement | undefined;
   useModalKeys(
@@ -40,6 +43,14 @@ export default function NewsPanel(props: {
     () => title,
     () => props.onClose(),
   );
+  // Arrastável pelo cabeçalho, como as janelas do jogo (25/11/2026); no celular, não.
+  const wide = useWide(() => backdrop, 600);
+  const drag = useWindowDrag({
+    id: "space-news",
+    win: () => card,
+    bounds: () => backdrop,
+    enabled: wide,
+  });
 
   // O que já estava lido ao abrir: as notas acima dela ganham a etiqueta "nova".
   const seenAtOpen = newsLastSeen();
@@ -93,6 +104,7 @@ export default function NewsPanel(props: {
 
   return (
     <Backdrop
+      ref={backdrop}
       onKeyDown={(e) => {
         e.stopPropagation();
         if (e.key === "Escape") props.onClose();
@@ -100,13 +112,17 @@ export default function NewsPanel(props: {
       onClick={(e) => e.target === e.currentTarget && props.onClose()}
     >
       <Card
-        style={gameFrame}
+        style={{ ...gameFrame, ...drag.style() }}
+        data-dragging={drag.dragging() ? "" : undefined}
         ref={card}
         role="dialog"
         aria-modal="true"
         aria-labelledby="space-news-title"
       >
-        <Head>
+        <Head {...drag.handle} data-draggable={wide() ? "" : undefined}>
+          <Show when={wide()}>
+            <Grip onKey={drag.onGripKey} />
+          </Show>
           <div>
             <h2 id="space-news-title" tabIndex={-1} ref={title}>
               {props.title}
@@ -207,6 +223,13 @@ const Card = styled("div", {
 
 const Head = styled("div", {
   base: {
+    "&[data-draggable]": {
+      gridTemplateColumns: "auto 1fr auto",
+      cursor: "grab",
+      userSelect: "none",
+      touchAction: "none",
+    },
+    "[data-dragging] > &": { cursor: "grabbing" },
     display: "grid",
     gridTemplateColumns: "1fr auto",
     alignItems: "start",
