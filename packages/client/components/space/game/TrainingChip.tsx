@@ -1,66 +1,55 @@
 import { Show, createSignal, onCleanup, onMount } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
-import type { SpaceView } from "@muchat/space-client";
-import type { RpgHeroView } from "@muchat/space-core/game/ot";
+import type { RpgHeroState } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
 import { gameChip } from "./gameTheme";
-
-import {
-  duration,
-  percent,
-  projectTraining,
-  rpgLabels,
-  serverNow,
-} from "./rpgUi";
-
-/** Quantas vezes por minuto a faixa recalcula o progresso (texto, nada de canvas). */
-const REFRESH_MS = 5_000;
+import type { GameLink } from "./gameUi";
+import { dojoNow, num, serverClock } from "./heroModel";
 
 /**
- * A faixa "treinando" no topo do Espaço (docs/espaco/jogo/ot): a skill subindo ao vivo,
- * projetada pelas regras puras com o relógio do servidor, e o botão de parar.
+ * A faixa "treinando" no topo do Espaço: a Proficiência subindo ao vivo (projetada pelo relógio do
+ * servidor), uma barra fina até a próxima e o botão de parar. Sem relógio (D21).
  */
 export default function TrainingChip(props: {
-  view: SpaceView;
-  rpg: { hero: RpgHeroView | null; serverNow: number; at: number };
+  link: GameLink;
+  rpg: { hero: RpgHeroState | null; serverNow: number; at: number };
 }) {
   const { t } = useLingui();
-  const L = rpgLabels();
   const [tick, setTick] = createSignal(0);
   onMount(() => {
-    const id = setInterval(() => setTick((n) => n + 1), REFRESH_MS);
+    const id = setInterval(() => setTick((n) => n + 1), 2_000);
     onCleanup(() => clearInterval(id));
   });
-  const view = () => {
+  const d = () => {
     tick();
-    const hero = props.rpg.hero;
-    if (!hero?.training) return null;
-    const p = projectTraining(
-      hero,
-      serverNow(props.rpg.serverNow, props.rpg.at),
-    );
-    const elapsed = Math.max(
-      0,
-      serverNow(props.rpg.serverNow, props.rpg.at) - hero.training.started_at,
-    );
-    return p ? { hero, p, elapsed } : null;
+    const s = props.rpg.hero;
+    return s?.dojo
+      ? dojoNow({ hero: s.hero, dojo: s.dojo }, serverClock(props.rpg))
+      : null;
   };
-
-  const mainText = (v: NonNullable<ReturnType<typeof view>>) =>
-    t`${L.skill[v.hero.training!.skill]} ${v.p.skill?.level ?? 0} · ${percent(v.p.skill?.tries ?? 0, v.p.skill?.next ?? 0)}%`;
-
   return (
-    <Show when={view()}>
+    <Show when={d()}>
       {(v) => (
         <Chip style={gameChip} role="status">
           <span aria-hidden="true">⚔</span>
-          <span>{mainText(v())}</span>
-          <Muted>{t`há ${duration(v().elapsed)}`}</Muted>
+          <span>
+            {t`Proficiência ${num(v().stored)}`}
+            <Show when={v().gained > 0}>
+              <Up> +{v().gained}</Up>
+            </Show>
+          </span>
+          <Track aria-hidden="true">
+            <i
+              style={{
+                width: `${Math.min(100, (v().into / v().need) * 100)}%`,
+              }}
+            />
+          </Track>
           <Stop
             type="button"
-            onClick={() => props.view.gameSend("rpg.train.stop", {})}
+            onClick={() => props.link.gameSend("rpg.dojo.stop", {})}
           >
             {t`Parar`}
           </Stop>
@@ -81,14 +70,22 @@ const Chip = styled("div", {
     color: "var(--md-sys-color-on-secondary-container)",
     fontSize: "0.85em",
     whiteSpace: "nowrap",
+    fontVariantNumeric: "tabular-nums",
   },
 });
-
-const Muted = styled("span", { base: { opacity: 0.8 } });
-
+const Up = styled("span", { base: { color: "#7ee08a", fontWeight: 700 } });
+const Track = styled("span", {
+  base: {
+    width: "48px",
+    height: "5px",
+    borderRadius: "999px",
+    background: "rgba(255,255,255,0.12)",
+    overflow: "hidden",
+    "& > i": { display: "block", height: "100%", background: "#5fbf8f" },
+  },
+});
 const Stop = styled("button", {
   base: {
-    // A finger needs room (the chips sit in the dock at the bottom on phones).
     "@media (pointer: coarse)": { minHeight: "40px", paddingInline: "12px" },
     padding: "2px 10px",
     borderRadius: "999px",

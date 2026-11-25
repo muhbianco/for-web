@@ -23,11 +23,7 @@ import {
   type SpaceView,
   wingHeading,
 } from "@muchat/space-client";
-import {
-  type ProfileView,
-  ONBOARDING_VERSION,
-  defaultPalette,
-} from "@muchat/space-core";
+import { type ProfileView, ONBOARDING_VERSION } from "@muchat/space-core";
 import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
@@ -54,7 +50,6 @@ import {
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
 import { SmartTv } from "./SmartTv";
-
 
 /**
  * Jogo idle (docs/espaco/jogo/ot): o diálogo do dummy e a faixa "treinando", num chunk que
@@ -182,7 +177,8 @@ function ServerSpace(props: { serverId: string }) {
     for (const w of ui()?.list ?? [])
       for (const r of w.rooms)
         for (const p of r.people)
-          if (p.userId !== me && !seen.has(p.userId)) seen.set(p.userId, p.name);
+          if (p.userId !== me && !seen.has(p.userId))
+            seen.set(p.userId, p.name);
     return [...seen].map(([id, name]) => ({ id, name }));
   });
 
@@ -208,8 +204,9 @@ function ServerSpace(props: { serverId: string }) {
           host?.focus();
         }
         const names = started.members.map((m) => m.name).join(", ");
-        void import("@muchat/space-core/game/ot").then((m) => {
-          const dungeon = m.dungeonOf(started.dungeon)?.name ?? started.dungeon;
+        void import("@muchat/space-core/game/ot/balance").then((m) => {
+          const dungeon =
+            m.dungeonById(started.dungeon)?.name ?? started.dungeon;
           setNotice(t`O grupo de ${names} entrou na dungeon ${dungeon}.`);
         });
       },
@@ -595,14 +592,9 @@ function ServerSpace(props: { serverId: string }) {
 
   /** Width of the side column (wide screens); 0 with no panel open. */
   const sideWidth = () =>
-    panel() === "rooms"
-      ? 280
-      : panel() === "decor"
-        ? 340
-        : 0;
+    panel() === "rooms" ? 280 : panel() === "decor" ? 340 : 0;
   /** Share of the page height the panel row takes (narrow screens), in %. */
-  const panelRowPct = () =>
-    !panel() ? 0 : panel() === "decor" ? 55 : 40;
+  const panelRowPct = () => (!panel() ? 0 : panel() === "decor" ? 55 : 40);
 
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
   const gridStyle = () => {
@@ -763,104 +755,102 @@ function ServerSpace(props: { serverId: string }) {
    */
   const actionChips = () => (
     <>
-          {/*
+      {/*
             A tab from before a deploy can't load the dialogs it hasn't opened yet (the
             files changed on the server): offer the reload here, where the taps fail.
           */}
-          <Show when={staleBuild()}>
-            <PromptChip type="button" onClick={reloadForUpdate}>
-              <Symbol size={16}>refresh</Symbol>
-              {t`Versão nova do Muchat · Recarregar`}
-            </PromptChip>
-          </Show>
-          <Show when={view() && (ui()?.rpg?.hero?.vocation ?? 0) !== 0}>
-            <PromptChip
-              type="button"
-              data-quiet=""
-              aria-pressed={heroOpen()}
-              onClick={() => setHeroOpen(!heroOpen())}
-            >
-              <Symbol size={16}>shield_person</Symbol>
-              {t`Herói`}
-            </PromptChip>
-          </Show>
-          <Show when={view() && ui()?.rpg?.hero?.training ? ui()!.rpg : null}>
-            {(rpg) => (
-              <Suspense>
-                <TrainingChip view={view()!} rpg={rpg()} />
-              </Suspense>
-            )}
-          </Show>
-          <Show
-            when={
-              view() && Object.keys(ui()?.lobbies ?? {}).length > 0
-                ? ui()!.lobbies
-                : null
-            }
+      <Show when={staleBuild()}>
+        <PromptChip type="button" onClick={reloadForUpdate}>
+          <Symbol size={16}>refresh</Symbol>
+          {t`Versão nova do Muchat · Recarregar`}
+        </PromptChip>
+      </Show>
+      <Show when={view() && ui()?.rpg}>
+        <PromptChip
+          type="button"
+          data-quiet=""
+          aria-pressed={heroOpen()}
+          onClick={() => setHeroOpen(!heroOpen())}
+        >
+          <Symbol size={16}>shield_person</Symbol>
+          {ui()?.rpg?.hero ? t`Herói` : t`Criar herói`}
+        </PromptChip>
+      </Show>
+      <Show when={view() && ui()?.rpg?.hero?.dojo ? ui()!.rpg : null}>
+        {(rpg) => (
+          <Suspense>
+            <TrainingChip link={view()!} rpg={rpg()} />
+          </Suspense>
+        )}
+      </Show>
+      <Show
+        when={
+          view() && Object.keys(ui()?.lobbies ?? {}).length > 0
+            ? ui()!.lobbies
+            : null
+        }
+      >
+        {(lobbies) => (
+          <Suspense>
+            <LobbyChip
+              link={view()!}
+              lobbies={lobbies()}
+              myId={client().user?.id ?? null}
+              onAct={() => host?.focus()}
+            />
+          </Suspense>
+        )}
+      </Show>
+      <Show
+        when={
+          view() && Object.keys(ui()?.runs ?? {}).length > 0 ? ui()!.runs : null
+        }
+      >
+        {(runs) => (
+          <Suspense>
+            <RunChip
+              link={view()!}
+              runs={runs()}
+              myId={client().user?.id ?? null}
+              onAct={() => host?.focus()}
+            />
+          </Suspense>
+        )}
+      </Show>
+      <Show when={ui()?.prompt && !ui()?.editor.enabled}>
+        {(_) => (
+          <PromptChip type="button" onClick={() => view()?.interact()}>
+            <Kbd>E</Kbd> {ui()!.prompt!.label}
+          </PromptChip>
+        )}
+      </Show>
+      <Show when={invite()}>
+        {(inv) => (
+          <PromptChip type="button" onClick={() => watch(inv().key)}>
+            <Symbol size={16}>present_to_all</Symbol>
+            {t`${inv().name} está apresentando · Assistir`}
+          </PromptChip>
+        )}
+      </Show>
+      <Show when={tvPlaying() && !(stageVisible() && stageTab() === "tv")}>
+        <PromptChip type="button" onClick={watchTv}>
+          <Symbol size={16}>live_tv</Symbol>
+          {tvListen() && tvMounted()
+            ? t`TV tocando · Abrir`
+            : t`TV da sala ligada · Assistir`}
+        </PromptChip>
+        <Show when={tvListen() && tvMounted()}>
+          <PromptChip
+            type="button"
+            data-quiet=""
+            onClick={() => setTvListen(false)}
+            title={t`Para o som da TV só para você; a sala continua assistindo`}
           >
-            {(lobbies) => (
-              <Suspense>
-                <LobbyChip
-                  view={view()!}
-                  lobbies={lobbies()}
-                  myId={client().user?.id ?? null}
-                  onAct={() => host?.focus()}
-                />
-              </Suspense>
-            )}
-          </Show>
-          <Show
-            when={
-              view() && Object.keys(ui()?.runs ?? {}).length > 0
-                ? ui()!.runs
-                : null
-            }
-          >
-            {(runs) => (
-              <Suspense>
-                <RunChip
-                  view={view()!}
-                  runs={runs()}
-                  myId={client().user?.id ?? null}
-                  onAct={() => host?.focus()}
-                />
-              </Suspense>
-            )}
-          </Show>
-          <Show when={ui()?.prompt && !ui()?.editor.enabled}>
-            {(_) => (
-              <PromptChip type="button" onClick={() => view()?.interact()}>
-                <Kbd>E</Kbd> {ui()!.prompt!.label}
-              </PromptChip>
-            )}
-          </Show>
-          <Show when={invite()}>
-            {(inv) => (
-              <PromptChip type="button" onClick={() => watch(inv().key)}>
-                <Symbol size={16}>present_to_all</Symbol>
-                {t`${inv().name} está apresentando · Assistir`}
-              </PromptChip>
-            )}
-          </Show>
-          <Show when={tvPlaying() && !(stageVisible() && stageTab() === "tv")}>
-            <PromptChip type="button" onClick={watchTv}>
-              <Symbol size={16}>live_tv</Symbol>
-              {tvListen() && tvMounted()
-                ? t`TV tocando · Abrir`
-                : t`TV da sala ligada · Assistir`}
-            </PromptChip>
-            <Show when={tvListen() && tvMounted()}>
-              <PromptChip
-                type="button"
-                data-quiet=""
-                onClick={() => setTvListen(false)}
-                title={t`Para o som da TV só para você; a sala continua assistindo`}
-              >
-                <Symbol size={16}>volume_off</Symbol>
-                {t`Parar de ouvir`}
-              </PromptChip>
-            </Show>
-          </Show>
+            <Symbol size={16}>volume_off</Symbol>
+            {t`Parar de ouvir`}
+          </PromptChip>
+        </Show>
+      </Show>
     </>
   );
 
@@ -1049,7 +1039,7 @@ function ServerSpace(props: { serverId: string }) {
               {(request) => (
                 <Suspense>
                   <TvMenu
-                    view={view()!}
+                    link={view()!}
                     request={request()}
                     hero={ui()?.rpg?.hero ?? null}
                     lobbies={Object.values(ui()?.lobbies ?? {}).filter(
@@ -1076,15 +1066,11 @@ function ServerSpace(props: { serverId: string }) {
                 </Suspense>
               )}
             </Match>
-            <Match
-              when={
-                heroOpen() && view() && ui()?.rpg?.hero ? ui()!.rpg : null
-              }
-            >
+            <Match when={heroOpen() && view() && ui()?.rpg ? ui()!.rpg : null}>
               {(rpg) => (
                 <Suspense>
                   <HeroSheet
-                    view={view()!}
+                    link={view()!}
                     rpg={rpg()}
                     name={
                       client().user?.displayName ??
@@ -1103,7 +1089,7 @@ function ServerSpace(props: { serverId: string }) {
               {(request) => (
                 <Suspense>
                   <NpcDialog
-                    view={view()!}
+                    link={view()!}
                     request={request()}
                     rpg={ui()?.rpg ?? null}
                     people={npcPeople()}
@@ -1119,7 +1105,7 @@ function ServerSpace(props: { serverId: string }) {
               {(request) => (
                 <Suspense>
                   <TrainingDialog
-                    view={view()!}
+                    link={view()!}
                     request={request()}
                     rpg={ui()?.rpg ?? null}
                     onClose={() => {
@@ -1156,10 +1142,8 @@ function ServerSpace(props: { serverId: string }) {
                   state={state()}
                   myId={client().user?.id ?? null}
                   hero={ui()?.rpg?.hero ?? null}
-                  paletteOf={(id) =>
-                    view()?.paletteOf(id) ?? defaultPalette(id)
-                  }
-                  view={view()!}
+                  paletteOf={(id) => view()?.paletteOf(id) ?? 0}
+                  link={view()!}
                   lobby={
                     Object.values(ui()?.lobbies ?? {}).find((l) =>
                       l.members.some((m) => m.user_id === client().user?.id),
@@ -1230,21 +1214,21 @@ function ServerSpace(props: { serverId: string }) {
                       "var(--md-sys-color-surface-container-lowest, #14151c)",
                   }
                 : stageVisible()
-                ? {
-                    "grid-area": "stage",
-                    display: "flex",
-                    "min-height": 0,
-                    "min-width": 0,
-                  }
-                : {
-                    position: "fixed",
-                    left: "-10000px",
-                    top: 0,
-                    width: "480px",
-                    height: "360px",
-                    display: "flex",
-                    "pointer-events": "none",
-                  }
+                  ? {
+                      "grid-area": "stage",
+                      display: "flex",
+                      "min-height": 0,
+                      "min-width": 0,
+                    }
+                  : {
+                      position: "fixed",
+                      left: "-10000px",
+                      top: 0,
+                      width: "480px",
+                      height: "360px",
+                      display: "flex",
+                      "pointer-events": "none",
+                    }
             }
           >
             <MediaStage
@@ -1735,7 +1719,10 @@ const PromptChip = styled("button", {
     fontSize: "0.85em",
     cursor: "pointer",
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
-    "@media (pointer: coarse)": { minHeight: "40px", paddingInline: "8px 14px" },
+    "@media (pointer: coarse)": {
+      minHeight: "40px",
+      paddingInline: "8px 14px",
+    },
   },
 });
 

@@ -1,5 +1,4 @@
 import type { AvatarGear } from "@muchat/space-core";
-import { itemDef, VOCATIONS } from "@muchat/space-core/game/ot";
 
 import { type FxArt, ELEMENT_COLOR, heroGear } from "./heroArt.ts";
 
@@ -22,10 +21,9 @@ export interface TrainShot {
   spin: boolean;
 }
 
-/** O ritmo de ataque da vocação [TFS vocations.xml attackspeed, 2000 ms em todas]. */
-export function attackPeriod(vocation: number | undefined): number {
-  const v = vocation === undefined ? undefined : VOCATIONS[vocation as keyof typeof VOCATIONS];
-  return v?.attackSpeedMs ?? 2000;
+/** O ritmo do ataque no boneco: o mesmo para todas as classes (é só desenho). */
+export function attackPeriod(_vocation: number | undefined): number {
+  return 2000;
 }
 
 /**
@@ -38,7 +36,7 @@ export function shotFor(gear: AvatarGear, n: number): TrainShot {
   switch (g.look) {
     case "arco":
       return {
-        art: gear.ammo && itemDef(gear.ammo)?.ammo === "virote" ? "virote" : "flecha",
+        art: gear.ammo === "virote" ? "virote" : "flecha",
         tint: 0xffffff,
         spin: false,
       };

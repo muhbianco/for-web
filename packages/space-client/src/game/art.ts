@@ -1,5 +1,5 @@
 import type { AvatarGear } from "@muchat/space-core";
-import { dungeonOf, monsterDef } from "@muchat/space-core/game/ot";
+import { dungeonById } from "@muchat/space-core/game/ot/balance";
 
 import { artCanvas as canvas, type Ctx, drawEquipped, outline, px } from "../render/heroArt.ts";
 import { OUTLINE, shade } from "../render/pixel.ts";
@@ -72,12 +72,9 @@ export function monsterSize(id: string, boss: boolean): number {
   return boss || BIG.has(likeOf(id)) ? 32 : 16;
 }
 
-/**
- * Os monstros das faixas do 85 ao 500 (24/11/2026, space-core tiers.ts) usam a arte de um
- * monstro de antes (`look.like`) com outra cor por cima (`look.tint`).
- */
+/** A chave da arte já é o desenho (o elenco v5 escolhe por família e região: script.ts foeArt). */
 function likeOf(id: string): string {
-  return monsterDef(id)?.look?.like ?? id;
+  return id;
 }
 
 /** Pinta por cima do desenho (só onde há desenho), guardando a luz e a sombra dele. */
@@ -1187,8 +1184,6 @@ export function monsterCanvas(id: string, boss: boolean): HTMLCanvasElement {
   const paint = MONSTERS[like];
   if (paint && (s === 32) === BIG.has(like)) paint(ctx);
   else generic(ctx, like, s);
-  const look = monsterDef(id)?.look;
-  if (look) tint(ctx, s, s, look.tint);
   outline(c);
   if (FLYING.has(like) && s === 16) px(ctx, 5, 14, 6, 1, "rgba(0, 0, 0, 0.35)");
   return c;
@@ -1867,11 +1862,25 @@ const THEMES: Record<string, Theme> = {
   },
 };
 
+/** O tema da sala de cada região (e a cor por cima, quando repete o tema de outra). */
+const REGION_ROOM: Readonly<Record<number, { like: string; tint?: string }>> = {
+  1: { like: "toca-dos-javalis" },
+  2: { like: "galerias-afogadas" },
+  3: { like: "mina-assombrada" },
+  4: { like: "bosque-petrificado", tint: "#c9a45a" },
+  5: { like: "abismo-gelado" },
+  6: { like: "cidadela-de-cinzas" },
+  7: { like: "galerias-afogadas", tint: "#2a6f8a" },
+  8: { like: "cripta-do-musgo", tint: "#6a5a8a" },
+  9: { like: "bosque-petrificado", tint: "#e8e0ff" },
+  10: { like: "trono-do-vazio" },
+};
+
 /** A sala `st` de uma dungeon: parede com enfeites, chão de lajes, portas dos dois lados. */
 export function roomCanvas(dungeon: string, st: number): HTMLCanvasElement {
-  // As faixas do 85 ao 500: o tema de uma dungeon de antes, com outra cor por cima no fim.
-  const look = dungeonOf(dungeon)?.look;
-  const th = THEMES[look?.like ?? dungeon] ?? THEMES["cripta-do-musgo"]!;
+  // As 10 regiões (§12.2) usam os temas que existem; as que repetem um tema ganham outra cor.
+  const look = REGION_ROOM[dungeonById(dungeon)?.region.index ?? 1] ?? REGION_ROOM[1]!;
+  const th = THEMES[look.like] ?? THEMES["cripta-do-musgo"]!;
   const { c, ctx } = canvas(SCENE_W, SCENE_H);
   const rnd = seeded(hash(`${dungeon}|${st}`));
   // Chão: lajes de 16 px com rejunte, umas mais claras, umas lascadas.
@@ -1903,6 +1912,6 @@ export function roomCanvas(dungeon: string, st: number): HTMLCanvasElement {
     px(ctx, x, doorY + TILE, SIDE, 2, "#6a4a2e");
   }
   px(ctx, 0, SCENE_H - 3, SCENE_W, 3, th.lip);
-  if (look) tint(ctx, SCENE_W, SCENE_H, look.tint, 0.35);
+  if (look.tint) tint(ctx, SCENE_W, SCENE_H, look.tint, 0.35);
   return c;
 }

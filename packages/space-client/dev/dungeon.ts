@@ -1,13 +1,25 @@
-import { DUNGEONS, type RunFrame, type RunHero, type RunResult, simulateRun, tierItems, TIERS, type VocationId } from "@muchat/space-core/game/ot";
+import {
+  type ClassId,
+  type HeroV5,
+  type RunFrame,
+  type RunResult,
+  DUNGEONS,
+  balanceHero,
+  createHero,
+  dungeonById,
+  heroDerived,
+  heroRunFighter,
+  simulateRun,
+} from "@muchat/space-core/game/ot/balance";
 import { Application, Graphics, Sprite, Text, Texture } from "pixi.js";
 
+import { avatarGearOf } from "../src/hero.ts";
 import { characterSheet, palette } from "../src/render/sprites.ts";
 import { DungeonScene, type DungeonRun } from "../src/game/index.ts";
-import { testHero } from "../src/game/testHero.ts";
 
 /**
- * Página de dev da dungeon vista de cima (docs/espaco/jogo/ot, etapa O10), sem servidor: uma
- * corrida simulada com as regras de verdade, um quadro por segundo como o `rpg.run.tick`.
+ * Página de dev da dungeon vista de cima (Idle Hunt v5), sem servidor: uma corrida simulada com o
+ * motor de verdade (`simulateRun` com `record`), um quadro por segundo como o `rpg.run.tick`.
  * Ao lado, um dublê do mapa (outra Application do Pixi desenhando sem parar) para provar que
  * abrir e fechar a cena não estraga a outra (o defeito do pool global de 14/11/2026).
  */
@@ -15,52 +27,43 @@ import { testHero } from "../src/game/testHero.ts";
 const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
 const q = new URLSearchParams(location.search);
 
-const hero = (vocation: VocationId, level: number, skill: number, ml: number, owned: string[], name: string) => testHero(vocation, level, skill, ml, owned, name);
+let uid = 0;
+/** Um herói da classe no nível (o kit do jogador novo, com poções de sobra). */
+function hero(cls: ClassId, level: number, name: string): HeroV5 & { name: string; id: string } {
+  const h = createHero(cls, () => `d${uid++}`);
+  return {
+    ...h,
+    level,
+    proficiency: 10 * level,
+    potions: { hp: { pequena: 100, media: 0, grande: 0 }, mp: { pequena: 100, media: 0, grande: 0 } },
+    name,
+    id: `u${name}`,
+  };
+}
 
-const PARTIES: Record<string, RunHero[]> = {
-  "cripta-do-musgo": [hero(4, 6, 25, 2, [], "Ana"), hero(2, 6, 10, 8, [], "Bia")],
-  "galerias-afogadas": [
-    hero(4, 20, 55, 4, ["espada-larga", "escudo-de-aco", "cota-de-malha"], "Ana"),
-    hero(2, 20, 10, 30, ["varinha-de-geada", "manto-azul"], "Bia"),
-    hero(3, 20, 55, 8, ["arco-composto"], "Caio"),
-    hero(1, 20, 10, 30, ["varinha-de-geada"], "Duda"),
-  ],
-  "forja-rachada": [
-    hero(4, 42, 72, 6, ["lamina-da-forja", "escudo-da-forja", "placa-de-ferreiro"], "Ana"),
-    hero(2, 42, 10, 48, [], "Bia"),
-    hero(3, 42, 72, 10, ["arco-de-guerra"], "Caio"),
-  ],
-};
+/** O grupo da DG: dupla na Caçada, quarteto na Masmorra e no Chefe de Região, no nível dela. */
+function partyFor(id: string) {
+  const d = dungeonById(id)!;
+  const L = Math.max(1, d.level);
+  return d.kind === "cacada"
+    ? [hero("guerreiro", L, "Ana"), hero("mago", L, "Bia")]
+    : [hero("guerreiro", L, "Ana"), hero("padre", L, "Bia"), hero("cacador", L, "Caio"), hero("mago", L, "Duda")];
+}
 const PALETTES = [0, 3, 5, 6];
 
-/**
- * As faixas do 85 ao 500 (tiers.ts): o quarteto no level de entrada com o equipamento da faixa.
- * Só para ver a cena (a arte de antes com outra cor), não o balanceamento.
- */
-for (const t of TIERS) {
-  const kit = tierItems(t).map((d) => d.id);
-  const L = t.level;
-  const skill = 100 + Math.floor(L / 25);
-  PARTIES[t.id] = [
-    hero(4, L, skill, 10, kit.filter((id) => /^(espada|escudo|armadura|elmo|calca|botas)-/.test(id)), "Ana"),
-    hero(2, L, 10, 90, kit.filter((id) => /^(cajado|manto|chapeu)-/.test(id)), "Bia"),
-    hero(3, L, skill, 10, kit.filter((id) => /^(arco|couraca|flecha)-/.test(id)), "Caio"),
-    hero(1, L, 10, 90, kit.filter((id) => /^(varinha|manto|chapeu)-/.test(id)), "Duda"),
-  ];
+// Todas as dungeons no seletor.
+$<HTMLSelectElement>("dungeon").innerHTML = "";
+for (const d of DUNGEONS) {
+  const o = document.createElement("option");
+  o.value = d.id;
+  o.textContent = `${d.name} (${d.minLevel})`;
+  $<HTMLSelectElement>("dungeon").append(o);
 }
-// Todas as dungeons no seletor (as das faixas também).
-for (const d of DUNGEONS)
-  if (!document.querySelector(`#dungeon option[value="${d.id}"]`)) {
-    const o = document.createElement("option");
-    o.value = d.id;
-    o.textContent = `${d.name} (${d.minLevel})`;
-    $<HTMLSelectElement>("dungeon").append(o);
-  }
 
-let dungeon = (q.get("d") as string) || ($<HTMLSelectElement>("dungeon").value as string);
+let dungeon = (q.get("d") as string) || "masmorra-40";
 $<HTMLSelectElement>("dungeon").value = dungeon;
 let seed = Number(q.get("seed") ?? 1);
-let result: RunResult;
+let result: RunResult & { frames: RunFrame[] };
 let run: DungeonRun;
 let sec = 0;
 let paused = false;
@@ -69,12 +72,22 @@ let scene: DungeonScene | null = null;
 let cyclesDone = 0;
 
 function newRun() {
-  const party = PARTIES[dungeon]!;
-  result = simulateRun({ seed, dungeon, heroes: party, rateLoot: 2 });
+  const party = partyFor(dungeon);
+  let s = seed;
+  const random = { next: () => ((s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296) };
+  const r = simulateRun(dungeonById(dungeon)!, party.map((h) => heroRunFighter(h)), { mode: "aleatorio", random, record: true });
+  result = { ...r, frames: r.frames ?? [] };
   run = {
     id: `dev-${dungeon}-${seed}`,
     dungeon,
-    members: party.map((h, i) => ({ userId: h.userId, name: h.name, vocation: h.vocation, healthMax: h.healthMax, palette: PALETTES[i]!, weapon: h.gear.weapon, shield: h.gear.shield, armor: h.gear.armor })),
+    members: party.map((h, i) => ({
+      userId: h.id,
+      name: h.name,
+      cls: h.cls,
+      healthMax: Math.round(heroDerived(balanceHero(h)).hp),
+      palette: PALETTES[i]!,
+      gear: avatarGearOf(h.equipment),
+    })),
   };
   sec = Number(q.get("at") ?? 0);
   $("feed").innerHTML = "";
@@ -85,7 +98,7 @@ function frameAt(s: number): RunFrame {
 }
 
 async function mountScene() {
-  scene = await DungeonScene.mount($("scene"), { reducedMotion: reduced, me: "u4" });
+  scene = await DungeonScene.mount($("scene"), { reducedMotion: reduced, me: "uAna" });
   scene.show(run, frameAt(sec), null);
 }
 
@@ -199,7 +212,7 @@ setInterval(() => {
       await new Promise((r) => setTimeout(r, 300));
       const before = longs.length;
       const t0 = performance.now();
-      const s = await DungeonScene.mount($("scene"), { reducedMotion: reduced, me: "u4" });
+      const s = await DungeonScene.mount($("scene"), { reducedMotion: reduced, me: "uAna" });
       const t1 = performance.now();
       s.show(run, frameAt(sec), null);
       const t2 = performance.now();

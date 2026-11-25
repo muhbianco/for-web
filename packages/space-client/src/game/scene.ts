@@ -1,5 +1,5 @@
 import type { AvatarGear } from "@muchat/space-core";
-import { dungeonOf, MONSTER_BASE, monsterDef, type RunFrame, type RunOutcome, stageMonsters, type VocationId } from "@muchat/space-core/game/ot";
+import { type ClassId, FOE_BASE, type RunFrame } from "@muchat/space-core/game/ot/balance";
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { RENDERER_DESTROY } from "../render/renderer.ts";
@@ -17,7 +17,11 @@ import {
   heroGear,
   type HeroGear,
   heroSpots,
+  type Foe,
   monsterSpots,
+  ROOMS,
+  roomFoes,
+  summonedFoe,
   type Plan,
   planSecond,
   roomCleared,
@@ -56,26 +60,12 @@ const POP_MS = 200;
 export interface DungeonMember {
   userId: string;
   name: string;
-  vocation: VocationId;
+  cls: ClassId;
   healthMax: number;
   /** Paleta do avatar da pessoa no Espaço (render/sprites.ts). */
   palette: number;
-  weapon: string | null;
-  shield: string | null;
-  /** A armadura vestida (o herói aparece como o avatar equipado do mapa). */
-  armor?: Readonly<Partial<Record<"cabeca" | "corpo" | "pernas" | "pes", string>>>;
-}
-
-/** O que o avatar do mapa mostra, a partir do equipamento da corrida. */
-function avatarGear(m: DungeonMember): AvatarGear {
-  const g: AvatarGear = {};
-  if (m.weapon) g.weapon = m.weapon;
-  if (m.shield) g.shield = m.shield;
-  if (m.armor?.cabeca) g.head = m.armor.cabeca;
-  if (m.armor?.corpo) g.body = m.armor.corpo;
-  if (m.armor?.pernas) g.legs = m.armor.pernas;
-  if (m.armor?.pes) g.feet = m.armor.pes;
-  return g;
+  /** O que o avatar mostra, no formato do mapa (hero.ts avatarGearOf: família e peso). */
+  gear: AvatarGear;
 }
 
 export interface DungeonRun {
@@ -154,7 +144,7 @@ export class DungeonScene {
   private readonly textures = new Map<string, Texture>();
   private heroes: Unit[] = [];
   private monsters: Unit[] = [];
-  private monsterIds: (string | undefined)[] = [];
+  private foes: Foe[] = [];
   private gears: HeroGear[] = [];
   private fx: Fx[] = [];
   private readonly fxPool: Sprite[] = [];
@@ -168,7 +158,7 @@ export class DungeonScene {
   private cueAt = 0;
   private planT0 = 0;
   private trans: { phase: "out" | "fade" | "in"; t0: number; next: number } | null = null;
-  private ended: RunOutcome | null = null;
+  private ended: string | null = null;
   private host: HTMLElement | null = null;
   private resizeObs: ResizeObserver | null = null;
   private raf = 0;
@@ -274,7 +264,7 @@ export class DungeonScene {
    * O estado da corrida como o app tem agora. Chamado a cada atualização do painel: a cena
    * decide se é corrida nova (começa do estado), segundo novo (anima) ou o mesmo de antes.
    */
-  show(run: DungeonRun, frame: RunFrame | null, end: RunOutcome | null) {
+  show(run: DungeonRun, frame: RunFrame | null, end: string | null) {
     if (this.destroyed) return;
     if (!this.run || this.run.id !== run.id) this.setRun(run);
     else if (run.members.some((m, i) => this.run!.members[i]?.palette !== m.palette)) this.refreshLooks(run);
@@ -348,10 +338,10 @@ export class DungeonScene {
     this.frame = null;
     this.shownSt = -1;
     this.ended = null;
-    this.gears = run.members.map((m) => heroGear(m.weapon, m.shield));
+    this.gears = run.members.map((m) => heroGear(m.gear.weapon, m.gear.shield));
     const homes = heroSpots(this.gears);
     this.heroes = run.members.map((m, i) => {
-      const look = this.heroLook(m.palette, avatarGear(m));
+      const look = this.heroLook(m.palette, m.gear);
       return this.makeUnit(i, true, m.userId === this.me, false, look.frames, TILE, m.name, homes[i]!, m.healthMax, look.fallen);
     });
   }
@@ -374,7 +364,7 @@ export class DungeonScene {
     run.members.forEach((m, i) => {
       const h = this.heroes[i];
       if (!h || prev.members[i]?.palette === m.palette) return;
-      const look = this.heroLook(m.palette, avatarGear(m));
+      const look = this.heroLook(m.palette, m.gear);
       const was = h.sprite.texture;
       const f = h.frames.indexOf(was);
       h.frames = look.frames;
@@ -431,19 +421,17 @@ export class DungeonScene {
     this.clearFx();
     for (const u of this.monsters) this.dropUnit(u);
     this.floor.texture = this.tex(`sala|${run.dungeon}|${st}`, () => roomCanvas(run.dungeon, st));
-    const list = stageMonsters(run.dungeon, st, run.members.length);
+    const list = roomFoes(run.dungeon, run.members.length)[st] ?? [];
     const n = Math.max(list.length, count);
-    this.monsterIds = Array.from({ length: n }, (_, i) => list[i]?.id);
-    const spots = monsterSpots(this.monsterIds);
-    this.monsters = this.monsterIds.map((id, i) => {
-      const def = id ? monsterDef(id) : undefined;
-      const key = id ?? `?${i}`;
-      const boss = !!def?.boss;
-      const body = monsterCanvas(key, boss);
-      const tex = this.tex(`monstro|${key}`, () => body);
-      const corpse = this.tex(`corpo|${key}`, () => corpseCanvas(key, body));
-      const max = list[i]?.health ?? 1;
-      return this.makeUnit(MONSTER_BASE + i, false, false, boss, [tex], monsterSize(key, boss), def?.name ?? "?", spots[i]!, max, corpse);
+    // Os invocados (Invocação do chefe, §12.3) chegam depois do elenco da sala.
+    this.foes = Array.from({ length: n }, (_, i) => list[i] ?? summonedFoe(run.dungeon));
+    const spots = monsterSpots(this.foes.map((f) => f.boss));
+    this.monsters = this.foes.map((f, i) => {
+      const key = f.art;
+      const body = monsterCanvas(key, f.boss);
+      const tex = this.tex(`monstro|${key}|${f.boss ? 1 : 0}`, () => body);
+      const corpse = this.tex(`corpo|${key}|${f.boss ? 1 : 0}`, () => corpseCanvas(key, body));
+      return this.makeUnit(FOE_BASE + i, false, false, f.boss, [tex], monsterSize(key, f.boss), f.name, spots[i]!, Math.max(1, f.hp), corpse);
     });
     const now = performance.now();
     let k = 0;
@@ -471,7 +459,7 @@ export class DungeonScene {
     this.clearFloaters();
     const delay = this.prepareRoom(frame.st, frame.x.length);
     this.frame = frame;
-    const plan = planSecond({ events: frame.e, gears: this.gears, vocations: this.run!.members.map((m) => m.vocation), monsters: this.monsterIds, delay });
+    const plan = planSecond({ events: frame.e, gears: this.gears, classes: this.run!.members.map((m) => m.cls), foes: this.foes, delay });
     if (this.reduced) {
       // Tudo de uma vez, sem movimento: o estado do quadro e os números parados até o próximo.
       const now = performance.now();
@@ -677,7 +665,7 @@ export class DungeonScene {
     const f = this.frame;
     const run = this.run;
     if (!f || !run || this.trans || this.ended || this.reduced || this.hidden()) return;
-    const stages = dungeonOf(run.dungeon)?.stages.length ?? 0;
+    const stages = ROOMS;
     if (!roomCleared(f, stages) || f.st !== this.shownSt) return;
     const now = performance.now();
     let k = 0;
@@ -959,7 +947,7 @@ export class DungeonScene {
   }
 
   private unit(ref: number): Unit | undefined {
-    return ref >= MONSTER_BASE ? this.monsters[ref - MONSTER_BASE] : this.heroes[ref];
+    return ref >= FOE_BASE ? this.monsters[ref - FOE_BASE] : this.heroes[ref];
   }
 
   /** O meio do corpo (de onde sai e onde chega o tiro). */

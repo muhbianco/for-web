@@ -1,5 +1,5 @@
 import type { AvatarGear, AvatarHero } from "@muchat/space-core";
-import type { RpgHeroView } from "@muchat/space-core/game/ot";
+import type { ClassId, RpgHeroState } from "@muchat/space-core/game/ot/balance";
 
 /**
  * The name under an avatar, with the idle game's hero (docs/espaco/jogo/ot): "⚔" while they
@@ -14,25 +14,48 @@ export function heroLabel(
 }
 
 /**
- * Our own hero as the map draws it, from `rpg.state` (the server's avatar view is for the
- * others): while training, the dummy, the vocation and what we wear.
+ * The look of each class in the training animation (1 magic, 2 healing, 3 bow, 4 melee); the same
+ * table as the server's `heroLook` (space-server game/ot/hero.ts), so we look like the others see us.
  */
-export function myHeroOf(h: RpgHeroView): AvatarHero {
-  if (!h.training) return { level: h.level, training: false };
-  const g = h.gear;
+const LOOK_OF_CLASS: Record<ClassId, number> = {
+  mago: 1,
+  padre: 2,
+  druida: 2,
+  cacador: 3,
+  guerreiro: 4,
+  paladino: 4,
+  assassino: 4,
+};
+
+/**
+ * What the map draws on a v5 hero, in the server's format: the weapon family, the off-hand and
+ * the armor weight of each piece (render/heroArt.ts turns them into the sprite).
+ */
+export function avatarGearOf(eq: RpgHeroState["hero"]["equipment"]): AvatarGear {
   const gear: AvatarGear = {};
-  if (g.weapon) gear.weapon = g.weapon;
-  if (g.shield) gear.shield = g.shield;
-  if (g.armor.cabeca) gear.head = g.armor.cabeca;
-  if (g.armor.corpo) gear.body = g.armor.corpo;
-  if (g.armor.pernas) gear.legs = g.armor.pernas;
-  if (g.armor.pes) gear.feet = g.armor.pes;
-  if (g.ammo) gear.ammo = g.ammo;
+  if (eq.arma) gear.weapon = eq.arma.family;
+  if (eq.arma?.family === "arco") gear.ammo = "flecha";
+  if (eq.arma?.family === "besta") gear.ammo = "virote";
+  if (eq.secundaria) gear.shield = eq.secundaria.offhand;
+  if (eq.elmo) gear.head = eq.elmo.weight;
+  if (eq.armadura) gear.body = eq.armadura.weight;
+  if (eq.calcas) gear.legs = eq.calcas.weight;
+  if (eq.botas) gear.feet = eq.botas.weight;
+  return gear;
+}
+
+/**
+ * Our own hero as the map draws it, from `rpg.state` (the server's avatar view is for the
+ * others): while training at the Dojô, the dummy, the look and what we wear.
+ */
+export function myHeroOf(s: RpgHeroState): AvatarHero {
+  const h = s.hero;
+  if (!s.dojo) return { level: h.level, training: false };
   return {
     level: h.level,
     training: true,
-    at: h.training.instance,
-    vocation: h.vocation,
-    gear,
+    at: s.dojo.instance,
+    vocation: LOOK_OF_CLASS[h.cls],
+    gear: avatarGearOf(h.equipment),
   };
 }

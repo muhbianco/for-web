@@ -26,20 +26,19 @@ import {
 const clampPos = (s: number) =>
   Math.max(0, Math.min(MAX_TV_POS_S, Number.isFinite(s) ? s : 0));
 
-import {
-  type PotionCounts,
-  type RpgBoardRun,
-  type RpgHeroView,
-  type RpgLobbyMember,
-  type RpgLobbyView,
-  type RpgRunEndView,
-  type RpgRunFeedItem,
-  type RpgRunView,
-  type RunFrame,
-  applyExpEvent,
-  applyPotionEvent,
-} from "@muchat/space-core/game/ot";
+import type {
+  HeroCarry,
+  RpgBoardRun,
+  RpgHeroState,
+  RpgLobbyMember,
+  RpgLobbyView,
+  RpgRunEndView,
+  RpgRunFeedItem,
+  RpgRunView,
+  RunFrame,
+} from "@muchat/space-core/game/ot/balance";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
+import { type RunState, applyFrames, runStateFrom } from "./runState.ts";
 import { type EditorState, Editor } from "./editor.ts";
 import { myHeroOf } from "./hero.ts";
 import { type Prompt, nearestInteractive } from "./interact.ts";
@@ -116,10 +115,16 @@ export interface SpaceUiState {
    */
   game: { available: boolean; enabled: boolean } | null;
   /**
-   * Idle game (docs/espaco/jogo/ot): our hero as the server last sent it, with the server's
-   * clock then (`serverNow`) and ours (`at`), so the app projects training progress.
+   * Idle game (docs/espaco/jogo/ot, engine v5): our hero as the server last sent it (null: no
+   * class chosen yet), with the server's clock then (`serverNow`) and ours (`at`), so the app
+   * projects the Dojô training. `rev` grows with every change the server saves.
    */
-  rpg: { hero: RpgHeroView | null; serverNow: number; at: number } | null;
+  rpg: {
+    hero: RpgHeroState | null;
+    serverNow: number;
+    at: number;
+    rev: number;
+  } | null;
   /** Someone used a training dummy on the map: the app opens the training dialog. */
   trainRequest: { instance: string; title: string; n: number } | null;
   /** We used an NPC of the idle game (stage O8): the app opens its dialog. */
@@ -147,27 +152,7 @@ export interface SpaceUiState {
   board: { lobbies: RpgLobbyView[]; runs: RpgBoardRun[]; at: number } | null;
 }
 
-/** A dungeon run as the app follows it: the last second and the recent log. */
-export interface RunState {
-  run: RpgRunView;
-  frame: RunFrame | null;
-  feed: RpgRunFeedItem[];
-  end: RpgRunEndView | null;
-  /**
-   * 24/11/2026: each hero's potions at `frame` (null: the server did not send them). The run
-   * message brings them at its second; the app follows with the frames that arrive later.
-   */
-  potions?: PotionCounts[] | null;
-  /** The last second each hero drank a potion (-1: not yet). */
-  potionAt?: number[];
-  /** Each hero's raw experience so far (null: not sent); it is credited at the end. */
-  exp?: number[] | null;
-  /** No frames (the run began before a restart that changed the rules): the result comes at the end. */
-  blind?: boolean;
-}
-
-/** How much of the run log the app keeps. */
-const RUN_FEED_MAX = 40;
+export type { RunState } from "./runState.ts";
 
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
@@ -673,25 +658,13 @@ export class SpaceView {
         if (!run || typeof run.id !== "string") return;
         const me = this.world.me?.userId;
         const mine = run.members.some((m) => m.user_id === me);
-        const feed = Array.isArray(d.feed)
-          ? (d.feed as RpgRunFeedItem[]).slice(-RUN_FEED_MAX)
-          : [];
-        const potionAt = run.members.map(() => -1);
-        for (const ev of feed)
-          if (ev.k === "pocao" && ev.a < potionAt.length)
-            potionAt[ev.a] = Math.max(potionAt[ev.a]!, ev.at);
-        const next: RunState = {
+        const next: RunState = runStateFrom({
           run,
           frame: (d.frame ?? null) as RunFrame | null,
-          feed,
-          end: (d.end ?? null) as RpgRunEndView | null,
-          potions: Array.isArray(d.potions)
-            ? (d.potions as PotionCounts[]).map((c) => ({ ...c }))
-            : null,
-          potionAt,
-          exp: Array.isArray(d.exp) ? [...(d.exp as number[])] : null,
-          blind: d.blind === true && !d.end,
-        };
+          feed: Array.isArray(d.feed) ? (d.feed as RpgRunFeedItem[]) : [],
+          ...(Array.isArray(d.carry) ? { carry: d.carry as HeroCarry[] } : {}),
+          ...(d.end ? { end: d.end as RpgRunEndView } : {}),
+        });
         // Runs that ended go once another one arrives, unless their summary is open.
         const runs: Record<string, RunState> = {};
         for (const [id, r] of Object.entries(this.state.runs))
@@ -728,55 +701,37 @@ export class SpaceView {
         const cur = this.state.runs[id];
         const frames = Array.isArray(d.frames) ? (d.frames as RunFrame[]) : [];
         if (!cur || frames.length === 0) return;
-        const feed = [...cur.feed];
-        const potions = cur.potions?.map((c) => ({ ...c })) ?? null;
-        const potionAt = [...(cur.potionAt ?? [])];
-        const exp = cur.exp ? [...cur.exp] : null;
         // The run message already counted up to its own second: a tick sent before it arrived
-        // can repeat those frames.
-        const seen = cur.frame?.s ?? -1;
-        for (const f of frames) {
-          if (f.s <= seen) continue;
-          for (const ev of f.e) {
-            feed.push({ ...ev, at: f.s, st: f.st });
-            if (potions) applyPotionEvent(potions, ev);
-            if (exp) applyExpEvent(exp, ev);
-            if (ev.k === "pocao") potionAt[ev.a] = f.s;
-          }
-        }
-        const last = frames[frames.length - 1]!;
-        this.patch({
-          runs: {
-            ...this.state.runs,
-            [id]: {
-              ...cur,
-              frame: last.s > seen ? last : cur.frame,
-              feed: feed.slice(-RUN_FEED_MAX),
-              potions,
-              potionAt,
-              exp,
-            },
-          },
-        });
+        // can repeat those frames (applyFrames skips them).
+        const next = applyFrames(cur, frames);
+        if (next === cur) return;
+        this.patch({ runs: { ...this.state.runs, [id]: next } });
         return;
       }
       case "rpg.state": {
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
-        const hero = (d.hero ?? null) as RpgHeroView | null;
-        this.world.myHero = hero ? myHeroOf(hero) : null;
-        this.renderer.invalidate();
-        this.patch({
-          rpg: {
-            hero,
-            serverNow:
-              typeof d.server_now === "number" ? d.server_now : Date.now(),
-            at: Date.now(),
-          },
-        });
-        // In a run we already see (it can arrive before we know who we are, on reload).
-        const runId = hero?.run?.id;
-        if (runId && this.state.runs[runId] && !this.state.runs[runId]!.end)
-          this.autoOpenRun(runId);
+        const hero = (d.hero ?? null) as RpgHeroState | null;
+        // A state older than the one we have (two commands in flight) does not go back in time;
+        // the command that waits for it still gets its answer below.
+        const rev = typeof d.rev === "number" ? d.rev : 0;
+        const stale = !!this.state.rpg && rev > 0 && rev < this.state.rpg.rev;
+        if (!stale) {
+          this.world.myHero = hero ? myHeroOf(hero) : null;
+          this.renderer.invalidate();
+          this.patch({
+            rpg: {
+              hero,
+              serverNow:
+                typeof d.server_now === "number" ? d.server_now : Date.now(),
+              at: Date.now(),
+              rev,
+            },
+          });
+          // In a run we already see (it can arrive before we know who we are, on reload).
+          const runId = hero?.run?.id;
+          if (runId && this.state.runs[runId] && !this.state.runs[runId]!.end)
+            this.autoOpenRun(runId);
+        }
         this.emitGame({
           t: "rpg.state",
           re: typeof e.re === "string" ? e.re : undefined,

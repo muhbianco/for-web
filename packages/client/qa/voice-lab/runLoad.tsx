@@ -1,112 +1,82 @@
 /**
- * Carga da corrida da dungeon para o laboratório de voz (etapas O6 e O10,
- * muchat/docs/espaco/jogo/ot): a tela da aventura de verdade (RunPanel, com o CSS e as
- * traduções do app) na mesma página que fala, recebendo um quadro por segundo como o app
- * recebe do servidor. Desde a O10 o painel monta a dungeon vista de cima (DungeonScene, Pixi
- * próprio) num tamanho de desktop, e cada segundo anima ~0,8 s a até 30 quadros/s. Uma corrida
- * atrás da outra com o painel sempre aberto: o pior caso do jogo novo no app (no uso normal o
- * painel fecha e as corridas param). O run.mjs carrega este módulo pelo vite do app com
- * `--run-load`.
+ * Carga da corrida da dungeon para o laboratório de voz (muchat/docs/espaco/jogo/ot): a tela da
+ * corrida de verdade (RunPanel, com o CSS e as traduções do app, e a dungeon vista de cima no Pixi
+ * próprio) na mesma página que fala, recebendo um quadro por segundo como o app recebe do servidor.
+ * Uma corrida atrás da outra com o painel sempre aberto: o pior caso do jogo no app (no uso normal
+ * o painel fecha e as corridas param). Desde o Idle Hunt v5 (25/11/2026) a corrida sai do motor
+ * novo (`simulateRun` com `record`). O run.mjs carrega este módulo pelo vite do app com `--run-load`.
  */
 import "../../src/index.css";
 
 import { Show, createSignal } from "solid-js";
 import { render } from "solid-js/web";
 
-import type { RunState } from "@muchat/space-client";
+import { type RunState, applyFrames, runStateFrom } from "@muchat/space-client";
 import {
-  type RpgRunFeedItem,
+  type ClassId,
+  type HeroV5,
   type RpgRunView,
-  type RunHero,
-  type SkillId,
-  type VocationId,
-  START,
-  VOCATIONS,
-  addExperience,
-  addItem,
-  autoEquip,
-  expForLevel,
-  gearOf,
+  type RunResult,
+  balanceHero,
+  createHero,
+  dungeonById,
+  heroDerived,
+  heroRunFighter,
   simulateRun,
-  starterInventory,
-} from "@muchat/space-core/game/ot";
+} from "@muchat/space-core/game/ot/balance";
 
 import { I18nProvider } from "../../components/i18n";
 import RunPanel from "../../components/space/game/RunPanel";
 
-const DUNGEON = "galerias-afogadas";
+const DUNGEON = "masmorra-40";
 /** Cada herói com uma paleta do Espaço, como as pessoas de verdade. */
 const PALETTES: Record<string, number> = { u1: 6, u2: 3, u3: 5, u4: 0 };
 
-function hero(
-  vocation: VocationId,
-  level: number,
-  skill: number,
-  ml: number,
-  owned: string[],
-): RunHero {
-  const voc = VOCATIONS[vocation];
-  const st = addExperience(
-    voc,
-    {
-      level: 1,
-      experience: 0,
-      healthMax: START.health,
-      manaMax: START.mana,
-      cap: START.cap,
-    },
-    expForLevel(level),
-  );
-  const skills = {
-    punhos: 10,
-    maca: 10,
-    espada: 10,
-    machado: 10,
-    distancia: 10,
-    escudo: 10,
-  } as Record<SkillId, number>;
-  if (voc.base === 4) {
-    skills.espada = skill;
-    skills.escudo = skill;
-  }
-  if (voc.base === 3) skills.distancia = skill;
-  // Etapa O7: o kit com a mochila, os itens a mais e o melhor vestido.
-  const inv = starterInventory(voc.base, "mochila");
-  for (const id of owned) addItem(inv, 100_000, id, 1);
-  autoEquip(inv, vocation, st.level, skills, st.manaMax);
+let uid = 0;
+function hero(cls: ClassId, name: string): HeroV5 & { name: string } {
+  const h = createHero(cls, () => `l${uid++}`);
   return {
-    userId: `u${vocation}`,
-    name: ["", "Feiticeira", "Druida", "Arqueiro", "Cavaleira"][vocation]!,
-    vocation,
-    level: st.level,
-    healthMax: st.healthMax,
-    manaMax: st.manaMax,
-    skills,
-    magicLevel: ml,
-    stamina: 2520,
-    gear: gearOf(inv),
-    inv,
-    cap: st.cap,
+    ...h,
+    level: 45,
+    proficiency: 450,
+    potions: {
+      hp: { pequena: 100, media: 0, grande: 0 },
+      mp: { pequena: 100, media: 0, grande: 0 },
+    },
+    name,
   };
 }
 
-// Grupo completo de level 20: 4 heróis e salas de 6 a 8 monstros, o registro mais cheio.
+// Grupo completo: 4 heróis, o registro mais cheio.
 const PARTY = [
-  hero(4, 20, 55, 4, [
-    "espada-larga",
-    "escudo-de-aco",
-    "cota-de-malha",
-    "calca-de-malha",
-  ]),
-  hero(2, 20, 10, 30, ["varinha-de-geada", "manto-azul"]),
-  hero(3, 20, 55, 8, ["arco-composto", "cota-de-malha"]),
-  hero(1, 20, 10, 30, ["varinha-de-geada", "manto-azul"]),
+  hero("guerreiro", "Cavaleira"),
+  hero("padre", "Padre"),
+  hero("cacador", "Arqueiro"),
+  hero("mago", "Feiticeira"),
 ];
+
+/** Nada sai da página: os comandos da tela da corrida (sair) caem aqui. */
+const LINK = {
+  gameSend: () => "x",
+  onGame: () => () => undefined,
+};
+
+function simulate(seed: number): RunResult {
+  let s = seed;
+  const random = {
+    next: () => (s = (Math.imul(s, 1664525) + 1013904223) >>> 0) / 4294967296,
+  };
+  return simulateRun(
+    dungeonById(DUNGEON)!,
+    PARTY.map((h) => heroRunFighter(h)),
+    { mode: "aleatorio", random, record: true },
+  );
+}
 
 export async function startRunLoad(): Promise<string> {
   const { DungeonScene } = await import("@muchat/space-client/game");
   const host = document.createElement("div");
-  // O painel com a cena no tamanho de um desktop (780 px de largura, cena ~500 × 300).
+  // O painel no tamanho de um desktop.
   host.style.cssText =
     "position:fixed;right:0;bottom:0;width:820px;height:640px;z-index:10";
   document.body.appendChild(host);
@@ -119,6 +89,9 @@ export async function startRunLoad(): Promise<string> {
             <RunPanel
               state={s()}
               myId="u4"
+              hero={null}
+              link={LINK}
+              lobby={null}
               onClose={() => undefined}
               paletteOf={(id) => PALETTES[id] ?? 0}
             />
@@ -136,12 +109,7 @@ export async function startRunLoad(): Promise<string> {
   let updateMsMax = 0;
   let updateMsSum = 0;
   let seed = 1;
-  let result = simulateRun({
-    seed,
-    dungeon: DUNGEON,
-    heroes: PARTY,
-    rateLoot: 2,
-  });
+  let result = simulate(seed);
   let sec = 0;
   let view: RpgRunView;
   const newView = () => {
@@ -153,64 +121,69 @@ export async function startRunLoad(): Promise<string> {
       dungeon: DUNGEON,
       started_at: now,
       ends_at: now + result.seconds * 1000,
-      members: PARTY.map((h) => ({
-        user_id: h.userId,
+      auto: false,
+      members: PARTY.map((h, i) => ({
+        user_id: `u${i + 1}`,
         name: h.name,
-        vocation: h.vocation,
+        cls: h.cls,
         level: h.level,
-        health_max: h.healthMax,
-        mana_max: h.manaMax,
-        gear: h.gear,
+        hp_max: Math.round(heroDerived(balanceHero(h)).hp),
+        mp_max: Math.round(heroDerived(balanceHero(h)).mp),
+        equipment: h.equipment,
+        skills: h.skills.slots.map((id) => ({ id, mana: 0, cd_ms: 0 })),
+        supplies: h.supplies,
+        belt: h.belt,
+        potions: { hp: 100, mp: 100 },
       })),
     };
   };
   newView();
-  let feed: RpgRunFeedItem[] = [];
+  let st = runStateFrom({ run: view!, frame: null, feed: [] });
 
   // Um quadro por segundo, como o rpg.run.tick do servidor; no fim, o resumo por 3 s e outra.
   const timer = setInterval(() => {
-    const t0 = performance.now();
-    if (sec < result.frames.length) {
-      const f = result.frames[sec]!;
-      for (const ev of f.e) feed.push({ ...ev, at: f.s, st: f.st });
-      feed = feed.slice(-40);
-      setState({ run: view, frame: f, feed, end: null });
+    const t1 = performance.now();
+    const list = result.frames ?? [];
+    if (sec < list.length) {
+      st = applyFrames(st, [list[sec]!]);
+      setState(st);
       frames++;
-    } else if (sec === result.frames.length) {
-      setState({
-        run: view,
-        frame: result.frames[result.frames.length - 1]!,
-        feed,
+    } else if (sec === list.length) {
+      st = {
+        ...st,
         end: {
           outcome: result.outcome,
-          members: PARTY.map((h, i) => ({
-            user_id: h.userId,
-            dead: result.members[i]!.dead,
+          members: view.members.map((m, i) => ({
+            user_id: m.user_id,
+            dead: !result.heroes[i]?.alive,
+            retreated: false,
             reward: {
-              exp: result.members[i]!.exp * 5,
-              gold: result.members[i]!.gold,
-              loot: result.members[i]!.loot,
-              tries: result.members[i]!.tries,
-              mana_spent: result.members[i]!.manaSpent,
+              xp: st.xp[i] ?? 0,
+              job_xp: 0,
+              gold: 0,
+              items: [],
+              ores: {},
+              stones: 0,
             },
+            left: [],
+            potions_used: { hp: 0, mp: 0 },
+            ammo_used: 0,
+            levels_gained: 0,
+            jobs_gained: 0,
           })),
         },
-      });
-    } else if (sec >= result.frames.length + 3) {
+      };
+      setState(st);
+    } else if (sec >= list.length + 3) {
       runs++;
       seed++;
-      result = simulateRun({
-        seed,
-        dungeon: DUNGEON,
-        heroes: PARTY,
-        rateLoot: 2,
-      });
+      result = simulate(seed);
       newView();
-      feed = [];
+      st = runStateFrom({ run: view, frame: null, feed: [] });
       sec = -1;
     }
     sec++;
-    const ms = performance.now() - t0;
+    const ms = performance.now() - t1;
     updateMsMax = Math.max(updateMsMax, ms);
     updateMsSum += ms;
   }, 1000);
@@ -221,7 +194,7 @@ export async function startRunLoad(): Promise<string> {
       frames,
       updateMsAvg: frames ? Math.round((updateMsSum / frames) * 100) / 100 : 0,
       updateMsMax: Math.round(updateMsMax * 100) / 100,
-      panel: !!host.querySelector("[role=region]"),
+      panel: !!host.querySelector("[role=dialog]"),
       scene: !!host.querySelector("canvas"),
       sceneFrames: DungeonScene.drawn - drawn0,
       sceneFps:

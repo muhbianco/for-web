@@ -1,5 +1,7 @@
 import type { AvatarGear, Direction } from "@muchat/space-core";
-import { type Element, itemDef } from "@muchat/space-core/game/ot";
+
+/** Elemento do tiro (a cor do orbe e dos números). */
+export type Element = "fisico" | "fogo" | "gelo" | "energia" | "terra" | "morte" | "sagrado";
 
 import { OUTLINE } from "./pixel.ts";
 import { type Palette, DIRS, drawCharacter, FRAMES, palette, SPRITE } from "./sprites.ts";
@@ -56,30 +58,29 @@ export interface HeroGear {
   shield: boolean;
 }
 
+/**
+ * O desenho de cada família de arma do Idle Hunt v5 (AvatarHero.gear.weapon = a família): as
+ * 12 famílias cabem nos 7 desenhos que existem (lança e adaga como espada, martelo como maça).
+ */
+const LOOK_OF_FAMILY: Readonly<Record<string, { look: HeroLook; element?: Element }>> = {
+  espada: { look: "espada" },
+  adaga: { look: "espada" },
+  katar: { look: "espada" },
+  lanca: { look: "espada" },
+  machado: { look: "machado" },
+  martelo: { look: "maca" },
+  maca: { look: "maca" },
+  arco: { look: "arco" },
+  besta: { look: "besta" },
+  cetro: { look: "varinha", element: "fogo" },
+  cajado: { look: "cajado", element: "energia" },
+  bastao: { look: "cajado", element: "terra" },
+};
+
+/** O que o herói tem na mão: `weapon` é a família da arma; `shield`, a mão secundária. */
 export function heroGear(weapon: string | null | undefined, shield: string | null | undefined): HeroGear {
-  const it = weapon ? itemDef(weapon) : undefined;
-  let look: HeroLook = "punhos";
-  let element: Element = "fisico";
-  if (it) {
-    switch (it.kind) {
-      case "espada":
-      case "machado":
-      case "maca":
-        look = it.kind;
-        break;
-      case "distancia":
-        look = it.id.includes("besta") ? "besta" : "arco";
-        break;
-      case "varinha":
-        look = /cajado|bastao/.test(it.id) ? "cajado" : "varinha";
-        element = it.wand?.element ?? "energia";
-        break;
-      default:
-        // Arma do kit sem tipo (a espada curta do arqueiro): luta com os punhos [run.ts weaponSkill].
-        look = it.id.includes("espada") ? "espada" : "punhos";
-    }
-  }
-  return { look, element, shield: !!shield };
+  const it = weapon ? LOOK_OF_FAMILY[weapon] : undefined;
+  return { look: it?.look ?? "punhos", element: it?.element ?? "fisico", shield: shield === "escudo" };
 }
 
 export function isRanged(look: HeroLook): boolean {
@@ -148,16 +149,9 @@ function weapon(ctx: Ctx, look: HeroLook) {
   }
 }
 
-/** As cores do escudo: o de tábuas (o da cena) e os outros pelo material. */
-const SHIELD_COLORS: Readonly<Record<string, readonly [string, string, string]>> = {
-  "escudo-de-tabuas": ["#8a5a34", "#b9823f", "#d7dce6"],
-  "escudo-de-bronze": ["#a8742f", "#e0b25a", "#fff0c0"],
-  "escudo-de-aco": ["#7f8796", "#c3cad6", "#f1f1f4"],
-  "escudo-da-forja": ["#9a3f26", "#e07a3c", "#ffd27a"],
-};
-
-function shieldColors(item?: string): readonly [string, string, string] {
-  return (item && SHIELD_COLORS[item]) || SHIELD_COLORS["escudo-de-tabuas"]!;
+/** As cores do escudo (madeira com aro e umbo de metal). */
+function shieldColors(_offhand?: string): readonly [string, string, string] {
+  return ["#8a5a34", "#b9823f", "#d7dce6"];
 }
 
 /** Escudo no braço de trás (virado para a direita, é o lado de dentro). */
@@ -195,52 +189,29 @@ export function heroFrames(pal: number, g: HeroGear): HTMLCanvasElement[] {
 
 // ---- armadura (o treino no mapa) -----------------------------------------------
 
-/** A cor de cada peça pelo material [nosso]: couro, escamas, malha, placa, túnica, manto. */
-const WEAR: Readonly<Record<string, string>> = {
-  "capuz-de-couro": "#8a5a34",
-  "elmo-de-ferro": "#9aa3ad",
-  "elmo-de-aco": "#d0d6de",
-  "gibao-de-couro": "#8a5a34",
-  "colete-de-escamas": "#5f7a5a",
-  "cota-de-malha": "#9aa3ad",
-  "placa-de-ferreiro": "#cfd5dd",
-  "tunica-de-linho": "#e8e3d3",
-  "manto-azul": "#3f5fbf",
-  "calca-de-couro": "#6e4a2b",
-  "calca-de-malha": "#8f98a3",
-  "botas-de-couro": "#4a3020",
-  "botas-de-viajante": "#2f3a44",
-  // 24/11/2026: o kit do Ragnarok.
-  bandana: "#a8322d",
-  "chapeu-de-aprendiz": "#7a5a3a",
-  "chapeu-de-mago": "#3c2f72",
-  "tiara-do-sabio": "#d9b45a",
-  "coroa-do-vidente": "#e3c15a",
-  "traje-de-aventureiro": "#6d5a3e",
-  "calca-de-linho": "#ddd6c4",
-  "calca-de-cacador": "#4d5a38",
-  sandalias: "#a07850",
-  "botas-do-mago": "#3c2f72",
-  "botas-aladas": "#e9e4d4",
+/**
+ * A cor de cada peça pelo peso da armadura (AvatarHero.gear.head/body/legs/feet = o peso, v5):
+ * tecido claro (leve), couro (média), metal (pesada); cada parte do corpo num tom próprio.
+ */
+const WEAR: Readonly<Record<string, Readonly<Record<"head" | "body" | "legs" | "feet", string>>>> = {
+  leve: { head: "#3c2f72", body: "#e8e3d3", legs: "#ddd6c4", feet: "#a07850" },
+  media: { head: "#8a5a34", body: "#8a5a34", legs: "#6e4a2b", feet: "#4a3020" },
+  pesada: { head: "#9aa3ad", body: "#9aa3ad", legs: "#8f98a3", feet: "#5d6470" },
 };
-/** O que vai na cabeça sem cobrir o cabelo (os óculos). */
-const NO_COVER = new Set(["oculos-de-cacador"]);
-/** Túnica e manto descem até os pés: a calça fica da cor deles. */
-const ROBES = new Set(["tunica-de-linho", "manto-azul"]);
-const METAL_HELMS = new Set(["elmo-de-ferro", "elmo-de-aco"]);
 
-function wear(item: string | undefined): string | null {
-  if (!item || NO_COVER.has(item)) return null;
-  return WEAR[item] ?? "#8f98a3";
+function wear(weight: string | undefined, part: "head" | "body" | "legs" | "feet"): string | null {
+  if (!weight) return null;
+  return WEAR[weight]?.[part] ?? null;
 }
 
 /** A paleta do avatar com a armadura por cima (camisa, calça, sapato; o capacete cobre o cabelo). */
 export function armoredPalette(base: Palette, gear: AvatarGear): Palette {
-  const body = wear(gear.body);
-  const legs = wear(gear.legs);
-  const feet = wear(gear.feet);
-  const head = wear(gear.head);
-  const robe = gear.body && ROBES.has(gear.body) ? body : null;
+  const body = wear(gear.body, "body");
+  const legs = wear(gear.legs, "legs");
+  const feet = wear(gear.feet, "feet");
+  const head = wear(gear.head, "head");
+  // A túnica leve desce até os pés: a calça fica da cor dela.
+  const robe = gear.body === "leve" ? body : null;
   return {
     skin: base.skin,
     hair: head ?? base.hair,
@@ -251,8 +222,8 @@ export function armoredPalette(base: Palette, gear: AvatarGear): Palette {
 }
 
 /** Brilho do elmo de metal (a luz vem de cima à esquerda). */
-function helmShine(ctx: Ctx, dir: Direction, item?: string) {
-  if (!item || !METAL_HELMS.has(item)) return;
+function helmShine(ctx: Ctx, dir: Direction, weight?: string) {
+  if (weight !== "pesada") return;
   px(ctx, dir === "right" ? 6 : 5, 1, 2, 1, "#f1f3f7");
   if (dir === "down") px(ctx, 5, 3, 6, 1, "#5d6470");
 }
