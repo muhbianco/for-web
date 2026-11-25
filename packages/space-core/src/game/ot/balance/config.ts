@@ -135,6 +135,15 @@ export const BALANCE = {
     /** Recarga global de 1 s, compartilhada entre vida e mana (o gabarito; mantida pelo dono em 25/11/2026, D27). */
     cooldownMs: 1000,
     /**
+     * D35: 3 tamanhos no cinto, com a mesma cura por segundo: pequena 1× (recarga 1 s), média 2× (2 s) e
+     * grande 3× (3 s); o preço segue o mesmo fator. O herói equipa um tamanho de vida e um de mana.
+     */
+    sizes: {
+      pequena: { mult: 1, cooldownMs: 1000 },
+      media: { mult: 2, cooldownMs: 2000 },
+      grande: { mult: 3, cooldownMs: 3000 },
+    },
+    /**
      * Níveis das faixas. O spec tinha 1, 20, 50, 100 e daí a cada 50; o 10, o 35 e o 75 entraram
      * (decisão do dono de 25/11/2026, P29): no fim das faixas largas o mago perdia o solo contra o
      * chefe menor (L18–19, L44–49, L89–99), porque a poção ficava pequena perto do HP dele.

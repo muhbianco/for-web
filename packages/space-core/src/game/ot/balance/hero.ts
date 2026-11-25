@@ -17,6 +17,7 @@ import {
   cannotEquip,
 } from "./equipment.ts";
 import { heroFighter } from "./fighter.ts";
+import type { BalanceConfig } from "./config.ts";
 import { type Balance, balance as gameBalance } from "./formulas.ts";
 import { autoEquip } from "./items/autoequip.ts";
 import {
@@ -68,6 +69,12 @@ export type OwnedEquipment = {
   [K in keyof Equipment]?: NonNullable<Equipment[K]> & { uid: string };
 };
 
+/** Tamanho da poção no cinto (D35): pequena, média ou grande. */
+export type PotionSize = keyof BalanceConfig["potions"]["sizes"];
+export const POTION_SIZES: PotionSize[] = ["pequena", "media", "grande"];
+type PotionStock = Record<PotionSize, number>;
+const noPotions = (): PotionStock => ({ pequena: 0, media: 0, grande: 0 });
+
 /** Espaços da mochila (P78: itens não têm peso; poção, munição e minério não ocupam espaço). */
 export const BAG_SLOTS = 40;
 
@@ -88,8 +95,10 @@ export interface HeroV5 {
   equipment: OwnedEquipment;
   bag: OwnedItem[];
   gold: number;
-  /** Poções no cinto (P79: valem o tier do herói na hora de beber). */
-  potions: { hp: number; mp: number };
+  /** Poções por tamanho (D35: cura fixa da faixa do herói na hora de beber, × o tamanho). */
+  potions: { hp: PotionStock; mp: PotionStock };
+  /** O tamanho que vai no cinto na corrida, para vida e para mana. */
+  belt: { hp: PotionSize; mp: PotionSize };
   /** Munição do caçador: a melhor que tiver vai na corrida. */
   ammo: Partial<Record<AmmoGrade, number>>;
   ores: Partial<Record<Material, number>>;
@@ -187,7 +196,8 @@ export function createHero(
     equipment,
     bag: [],
     gold: 0,
-    potions: { hp: 10, mp: 0 },
+    potions: { hp: { ...noPotions(), pequena: 10 }, mp: noPotions() },
+    belt: { hp: "pequena", mp: "pequena" },
     ammo: ranged ? { comum: 100 } : {},
     ores: {},
     essence: 0,
@@ -349,20 +359,26 @@ const positiveInt = (n: number) => Number.isInteger(n) && n > 0 && n <= 10_000;
 export function buyPotions(
   h: HeroV5,
   kind: "hp" | "mp",
+  size: PotionSize,
   count: number,
   B: Balance = gameBalance,
 ) {
   if (!positiveInt(count)) return fail("quantidade-invalida" as const);
-  const cost = potionPrice(h.level, B)[kind] * count;
+  if (!POTION_SIZES.includes(size)) return fail("tamanho-invalido" as const);
+  const cost =
+    potionPrice(h.level, B)[kind] * B.cfg.potions.sizes[size].mult * count;
   if (cost > h.gold) return fail("sem-ouro" as const);
+  const stock = { ...h.potions[kind], [size]: h.potions[kind][size] + count };
   return done(
-    {
-      ...h,
-      gold: h.gold - cost,
-      potions: { ...h.potions, [kind]: h.potions[kind] + count },
-    },
+    { ...h, gold: h.gold - cost, potions: { ...h.potions, [kind]: stock } },
     { cost },
   );
+}
+
+/** O tamanho de poção que vai no cinto (vida ou mana). */
+export function setBelt(h: HeroV5, kind: "hp" | "mp", size: PotionSize) {
+  if (!POTION_SIZES.includes(size)) return fail("tamanho-invalido" as const);
+  return done({ ...h, belt: { ...h.belt, [kind]: size } });
 }
 
 export function buyAmmo(
@@ -590,11 +606,13 @@ export function heroRunFighter(
     h.skills,
     {
       potions: {
-        hp: R.potionHp(h.level),
-        mp: R.potionMp(h.level),
-        stock: h.potions.hp + h.potions.mp,
-        hpStock: h.potions.hp,
-        mpStock: h.potions.mp,
+        hp: R.potionHp(h.level) * B.cfg.potions.sizes[h.belt.hp].mult,
+        mp: R.potionMp(h.level) * B.cfg.potions.sizes[h.belt.mp].mult,
+        stock: h.potions.hp[h.belt.hp] + h.potions.mp[h.belt.mp],
+        hpStock: h.potions.hp[h.belt.hp],
+        mpStock: h.potions.mp[h.belt.mp],
+        hpCooldownMs: B.cfg.potions.sizes[h.belt.hp].cooldownMs,
+        mpCooldownMs: B.cfg.potions.sizes[h.belt.mp].cooldownMs,
       },
       potionAt: h.supplies,
     },
@@ -647,8 +665,14 @@ export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
       ores,
       stones: h.stones + s.stones,
       potions: {
-        hp: Math.max(0, h.potions.hp - s.potionsUsed.hp),
-        mp: Math.max(0, h.potions.mp - s.potionsUsed.mp),
+        hp: {
+          ...h.potions.hp,
+          [h.belt.hp]: Math.max(0, h.potions.hp[h.belt.hp] - s.potionsUsed.hp),
+        },
+        mp: {
+          ...h.potions.mp,
+          [h.belt.mp]: Math.max(0, h.potions.mp[h.belt.mp] - s.potionsUsed.mp),
+        },
       },
       ammo,
     },

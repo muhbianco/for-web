@@ -313,6 +313,9 @@ export interface FighterInput {
     stock: number;
     hpStock?: number;
     mpStock?: number;
+    /** Recarga depois de beber, por tipo (D35: a poção maior demora mais); sem ela, a do config. */
+    hpCooldownMs?: number;
+    mpCooldownMs?: number;
   };
   /** Limiares de poção (fração): vida antes de mana. */
   potionAt?: { hp: number; mp: number };

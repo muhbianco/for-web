@@ -90,7 +90,14 @@ export const heroV5Schema = z.object({
   equipment: z.record(z.string(), item),
   bag: z.array(item).max(BAG_SLOTS),
   gold: count,
-  potions: z.object({ hp: count, mp: count }),
+  potions: z.object({
+    hp: z.object({ pequena: count, media: count, grande: count }),
+    mp: z.object({ pequena: count, media: count, grande: count }),
+  }),
+  belt: z.object({
+    hp: z.enum(["pequena", "media", "grande"]),
+    mp: z.enum(["pequena", "media", "grande"]),
+  }),
   ammo: z.partialRecord(z.enum(["comum", "afiada", "runica"]), count),
   ores: materials,
   essence: count,

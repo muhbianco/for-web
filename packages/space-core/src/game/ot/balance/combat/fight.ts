@@ -1656,7 +1656,8 @@ export function fight(
           if (h.hpPots !== null) h.hpPots--;
           h.potionsUsed++;
           h.hpPotions++;
-          h.potCd = cfg.potions.cooldownMs / 1000;
+          h.potCd =
+            (h.input.potions.hpCooldownMs ?? cfg.potions.cooldownMs) / 1000;
         } else if (h.mp / ch.mp < at.mp && hasMp) {
           const before = h.mp;
           h.mp = Math.min(ch.mp, h.mp + h.input.potions.mp);
@@ -1670,7 +1671,8 @@ export function fight(
           if (h.mpPots !== null) h.mpPots--;
           h.potionsUsed++;
           h.mpPotions++;
-          h.potCd = cfg.potions.cooldownMs / 1000;
+          h.potCd =
+            (h.input.potions.mpCooldownMs ?? cfg.potions.cooldownMs) / 1000;
         }
       }
 

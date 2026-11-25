@@ -28,6 +28,7 @@ import {
   respecAttributes,
   respecSkills,
   sellItem,
+  setBelt,
   startDojo,
   stopDojo,
   unequipItem,
@@ -65,7 +66,8 @@ test("jogador novo de cada classe: nível 1, kit Comum que ele veste, poções e
     assert.ok(worn.length >= 5, cls);
     for (const it of worn)
       assert.equal(cannotEquip(balanceHero(h), it!, B), null, cls);
-    assert.equal(h.potions.hp, 10);
+    assert.equal(h.potions.hp.pequena, 10);
+    assert.deepEqual(h.belt, { hp: "pequena", mp: "pequena" });
     assert.equal((h.ammo.comum ?? 0) > 0, cls === "cacador");
     assert.equal(new Set(worn.map((x) => x!.uid)).size, worn.length);
     // Já luta: o lutador sai do herói salvo.
@@ -140,9 +142,17 @@ test("auto-equipar veste o Raro melhor e devolve o Comum para a mochila", () => 
 
 test("Mercador: poções, munição e Comum pelo preço do tier; venda a 10%", () => {
   let h: HeroV5 = { ...createHero("cacador", id), level: 100, gold: 100_000 };
-  const p = ok(buyPotions(h, "hp", 10));
-  assert.equal(p.hero.potions.hp, 20);
+  const p = ok(buyPotions(h, "hp", "pequena", 10));
+  assert.equal(p.hero.potions.hp.pequena, 20);
   assert.equal(p.cost, 10 * Math.ceil(0.25 * B.lacaioGold(100)));
+  // D35: a grande custa e cura 3×, com recarga de 3 s.
+  const g = ok(buyPotions(p.hero, "hp", "grande", 2));
+  assert.equal(g.cost, 2 * 3 * Math.ceil(0.25 * B.lacaioGold(100)));
+  const belted = ok(setBelt(g.hero, "hp", "grande")).hero;
+  const f = heroRunFighter(belted);
+  assert.equal(f.potions.hpStock, 2);
+  assert.equal(f.potions.hpCooldownMs, 3000);
+  assert.equal(f.potions.hp, 3 * heroRunFighter(p.hero).potions.hp);
   h = ok(buyAmmo(p.hero, "afiada", 2)).hero;
   assert.equal(h.ammo.afiada, 200);
   const c = ok(buyCommonItem(h, { slot: "anel" }, id, rng()));
@@ -150,11 +160,11 @@ test("Mercador: poções, munição e Comum pelo preço do tier; venda a 10%", (
   assert.equal(c.item.rarity, "comum");
   const s = ok(sellItem(c.hero, c.item.uid, false));
   assert.equal(s.gold, Math.floor(0.1 * 20 * B.lacaioGold(100)));
-  assert.deepEqual(buyPotions({ ...h, gold: 0 }, "mp", 1), {
+  assert.deepEqual(buyPotions({ ...h, gold: 0 }, "mp", "pequena", 1), {
     ok: false,
     error: "sem-ouro",
   });
-  assert.deepEqual(buyPotions(h, "mp", 0), {
+  assert.deepEqual(buyPotions(h, "mp", "pequena", 0), {
     ok: false,
     error: "quantidade-invalida",
   });
@@ -235,7 +245,10 @@ test("Mestre: evolui no marco com os pontos gastos", () => {
 test("a corrida fecha no herói: XP, ouro, itens até encher a mochila, poções e munição gastas", () => {
   const h: HeroV5 = {
     ...createHero("cacador", id),
-    potions: { hp: 10, mp: 5 },
+    potions: {
+      hp: { pequena: 10, media: 0, grande: 0 },
+      mp: { pequena: 5, media: 0, grande: 0 },
+    },
     ammo: { comum: 50, afiada: 30 },
     bag: Array.from({ length: BAG_SLOTS - 1 }, () => own({ slot: "anel" })),
   };
@@ -259,14 +272,21 @@ test("a corrida fecha no herói: XP, ouro, itens até encher a mochila, poções
     r.left.map((x) => x.uid),
     [loot[1]!.uid],
   );
-  assert.deepEqual(r.hero.potions, { hp: 7, mp: 4 });
+  assert.deepEqual(r.hero.potions.hp.pequena, 7);
+  assert.deepEqual(r.hero.potions.mp.pequena, 4);
   // A afiada (melhor) sai primeiro.
   assert.deepEqual(r.hero.ammo, { comum: 40, afiada: 0 });
   assert.equal(r.hero.stones, 1);
 });
 
 test("estoques separados de poção no motor: vida e mana gastam cada uma a sua", () => {
-  const h = { ...createHero("mago", id), potions: { hp: 0, mp: 3 } };
+  const h = {
+    ...createHero("mago", id),
+    potions: {
+      hp: { pequena: 0, media: 0, grande: 0 },
+      mp: { pequena: 3, media: 0, grande: 0 },
+    },
+  };
   const f = heroRunFighter(h);
   const r = fight(
     [f],
