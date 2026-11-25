@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { Effect } from "../combat/types.ts";
-import { compileLoadout, compileSkill } from "./compile.ts";
+import { compileLoadout, compileSkill, skillCooldownMs } from "./compile.ts";
 import { skillOf } from "./index.ts";
 import { freshHeroSkills } from "./tree.ts";
 
@@ -112,4 +112,12 @@ test("o loadout sai na ordem dos slots, com a IA escolhida pelo jogador", () => 
   );
   assert.deepEqual(out[0]!.condition, [{ kind: "sempre" }]);
   assert.deepEqual(out[1]!.condition, [{ kind: "sempre" }]);
+});
+
+test("recarga final: a mesma conta do motor, com a recarga global e o piso de 50% da base", () => {
+  const s = { cooldownMs: 10_000, baseCooldownMs: 10_000, ownCooldownCut: 0.15 };
+  assert.equal(Math.round(skillCooldownMs(s, 0.2)), Math.round(10_000 * 0.8 * 0.85));
+  // Cortes enormes param no piso (§7: nunca abaixo de 50% da base).
+  assert.equal(skillCooldownMs({ ...s, ownCooldownCut: 0.9 }, 0.4), 5_000);
+  assert.equal(skillCooldownMs({ cooldownMs: 6_000 }, 0), 6_000);
 });

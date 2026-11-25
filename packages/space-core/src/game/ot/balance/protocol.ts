@@ -418,11 +418,17 @@ export interface RpgRunMemberView {
   name: string;
   cls: ClassId;
   level: number;
+  /** Job e Proficiência guardada (os retratos da tela da corrida; corridas antigas não trazem). */
+  job?: number;
+  proficiency?: number;
   hp_max: number;
   mp_max: number;
   /** O que veste (o app desenha o herói e os ícones). */
   equipment: HeroV5["equipment"];
-  /** As skills dos slots nesta corrida, com a mana e a recarga já com Eficiência. */
+  /**
+   * As skills dos slots nesta corrida: a mana e a recarga final, como o motor usa (Eficiência,
+   * recarga global da DES e dos afixos, nunca abaixo de 50% da base).
+   */
   skills: { id: string; mana: number; cd_ms: number }[];
   supplies: HeroV5["supplies"];
   belt: HeroV5["belt"];

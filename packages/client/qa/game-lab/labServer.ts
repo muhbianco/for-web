@@ -38,6 +38,7 @@ import {
   setSkillAi,
   setSkillSlots,
   simulateRun,
+  skillCooldownMs,
   spendSkillPoint,
   startDojo,
   stopDojo,
@@ -469,7 +470,14 @@ export class LabServer implements TvLink {
           hp_max: Math.round(dv.hp),
           mp_max: Math.round(dv.mp),
           equipment: x.equipment,
-          skills: x.skills.slots.map((id) => ({ id, mana: 0, cd_ms: 0 })),
+          job: x.job,
+          proficiency: x.proficiency,
+          // Como o servidor (service.ts runView): mana e recarga final de cada skill.
+          skills: heroRunFighter(x).skills.map((s) => ({
+            id: s.id,
+            mana: Math.round(s.manaPct * dv.manaBase),
+            cd_ms: Math.round(skillCooldownMs(s, dv.cooldownCut)),
+          })),
           supplies: x.supplies,
           belt: x.belt,
           potions: { hp: x.potions.hp[x.belt.hp], mp: x.potions.mp[x.belt.mp] },

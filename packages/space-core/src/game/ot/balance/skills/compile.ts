@@ -195,3 +195,20 @@ export function compileLoadout(
   }
   return out;
 }
+
+/**
+ * A recarga final de uma skill compilada em ms, a mesma conta do motor (combat/fight.ts): a base
+ * com os cortes fixos × (1 − recarga global) × (1 − cortes da própria skill), nunca abaixo do piso
+ * (50% da base). A tela da corrida mostra esta, não a da ficha da skill.
+ */
+export function skillCooldownMs(
+  s: Pick<SkillDef, "cooldownMs" | "baseCooldownMs" | "ownCooldownCut">,
+  globalCut: number,
+  B: Balance = gameBalance,
+): number {
+  const base = s.baseCooldownMs ?? s.cooldownMs;
+  return Math.max(
+    B.cfg.cooldown.floorOfBase * base,
+    s.cooldownMs * (1 - globalCut) * (1 - (s.ownCooldownCut ?? 0)),
+  );
+}

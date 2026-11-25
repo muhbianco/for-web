@@ -319,6 +319,17 @@ export interface BeltOption {
   equipped: boolean;
 }
 
+/** Cura de uma poção de `size` no nível (a faixa do herói; D35) e a recarga depois do gole. */
+export function potionOf(
+  kind: "hp" | "mp",
+  size: PotionSize,
+  level: number,
+): { heal: number; cooldownMs: number } {
+  const s = B.cfg.potions.sizes[size];
+  const base = kind === "hp" ? R.potionHp(level) : R.potionMp(level);
+  return { heal: Math.round(base * s.mult), cooldownMs: s.cooldownMs };
+}
+
 export function beltOptions(h: HeroV5, kind: "hp" | "mp"): BeltOption[] {
   const base = kind === "hp" ? R.potionHp(h.level) : R.potionMp(h.level);
   const price = potionPrice(h.level)[kind];

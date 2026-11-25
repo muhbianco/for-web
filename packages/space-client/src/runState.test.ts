@@ -104,6 +104,7 @@ test("joining in the middle: potions come from the carry, not counted twice", ()
   });
   assert.equal(st.potions[0]!.hp, 7);
   assert.equal(st.potionAt[0], mid.s);
+  assert.deepEqual(st.drank[0], { hp: mid.s, mp: -1 }, "o gole de vida, por tipo");
   assert.equal(st.xpFromStart, false);
 });
 

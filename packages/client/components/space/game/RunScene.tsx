@@ -16,14 +16,16 @@ import { styled } from "styled-system/jsx";
 const nextTask = () => new Promise<void>((r) => setTimeout(r, 0));
 
 /**
- * A dungeon vista de cima na tela da corrida (Pixi próprio, sob demanda; space-client/game). É o
- * "juice" da corrida: golpes, tiros, números e quedas animados a cada segundo. Sem WebGL (ou se o
- * módulo não carregar) some, e a tela segue com as barras. "Reduzir movimento" vale.
+ * A dungeon vista de cima (Pixi próprio, sob demanda; space-client/game): golpes, tiros, números e
+ * quedas animados a cada segundo, ocupando a tela da corrida (a cena se enquadra sozinha no
+ * espaço que tem). Sem WebGL (ou se o módulo não carregar) avisa por `onFailed` e some: a tela
+ * mostra as barras no lugar. "Reduzir movimento" vale.
  */
 export function RunScene(props: {
   state: RunState;
   myId: string | null;
   paletteOf?: (userId: string) => number;
+  onFailed?: () => void;
 }) {
   let host: HTMLDivElement | undefined;
   const [scene, setScene] = createSignal<DungeonScene | null>(null);
@@ -57,7 +59,9 @@ export function RunScene(props: {
         },
         (err: unknown) => {
           console.warn("[espaço] cena da dungeon indisponível", err);
-          if (alive) setFailed(true);
+          if (!alive) return;
+          setFailed(true);
+          props.onFailed?.();
         },
       );
     onCleanup(() => {
@@ -96,23 +100,15 @@ export function RunScene(props: {
   );
 }
 
+/** A cena ocupa a largura; a altura cabe na janela (a cena se enquadra se faltar). */
 const Stage = styled("div", {
   base: {
-    // A proporção da sala (15 × 9) sempre; a altura limita a largura (o canvas não estica).
     width: "100%",
     aspectRatio: "15 / 9",
-    maxWidth: "calc(42vh * 15 / 9)",
-    marginInline: "auto",
-    // No celular a cena divide a tela com o grupo e o chefe: mais baixa.
-    "@media (max-width: 600px)": { maxWidth: "calc(28vh * 15 / 9)" },
-    borderRadius: "12px",
-    overflow: "hidden",
-    background: "#0f1015",
-    border: "1px solid var(--md-sys-color-outline-variant)",
-    "& canvas": {
-      width: "100% !important",
-      height: "100% !important",
-      imageRendering: "pixelated",
-    },
+    maxHeight: "calc(100dvh - 330px)",
+    minHeight: "220px",
+    transition: "filter 0.6s ease",
+    "[data-dead] > &": { filter: "grayscale(0.85) brightness(0.7)" },
+    "@media (prefers-reduced-motion: reduce)": { transition: "none" },
   },
 });

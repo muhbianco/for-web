@@ -21,6 +21,8 @@ export interface RunState {
   potions: { hp: number; mp: number }[];
   /** O último segundo em que cada herói bebeu (−1: ainda não). */
   potionAt: number[];
+  /** O último segundo de cada gole por tipo (a recarga do cinto depende do tamanho de cada um). */
+  drank: { hp: number; mp: number }[];
   /** XP que cada herói levou dos abates que o app viu (sem o bônus de fim). */
   xp: number[];
   /** O app viu a corrida desde o 1º segundo (senão o XP de antes de chegar não está em `xp`). */
@@ -46,6 +48,11 @@ function countEvent(st: RunState, ev: RpgRunFeedItem): void {
       }
       if (ev.a < st.potionAt.length)
         st.potionAt[ev.a] = Math.max(st.potionAt[ev.a]!, ev.at);
+      const d = st.drank[ev.a];
+      if (d) {
+        if (ev.mana) d.mp = Math.max(d.mp, ev.at);
+        else d.hp = Math.max(d.hp, ev.at);
+      }
       return;
     }
     case "abate":
@@ -100,6 +107,7 @@ export function runStateFrom(d: {
       return c ? { hp: c.hpPots ?? c.pots, mp: c.mpPots ?? 0 } : { ...m.potions };
     }),
     potionAt: run.members.map(() => -1),
+    drank: run.members.map(() => ({ hp: -1, mp: -1 })),
     xp: run.members.map(() => 0),
     xpFromStart: fromStart,
     cataclysm: 0,
@@ -111,6 +119,11 @@ export function runStateFrom(d: {
     if (carried && ev.k === "pocao") {
       // As poções já vieram contadas no `carry`: só a hora em que bebeu.
       if (ev.a < st.potionAt.length) st.potionAt[ev.a] = Math.max(st.potionAt[ev.a]!, ev.at);
+      const d = st.drank[ev.a];
+      if (d) {
+        if (ev.mana) d.mp = Math.max(d.mp, ev.at);
+        else d.hp = Math.max(d.hp, ev.at);
+      }
       continue;
     }
     countEvent(st, ev);
@@ -127,6 +140,7 @@ export function applyFrames(cur: RunState, frames: RunFrame[]): RunState {
     feed: [...cur.feed],
     potions: cur.potions.map((p) => ({ ...p })),
     potionAt: [...cur.potionAt],
+    drank: cur.drank.map((d) => ({ ...d })),
     xp: [...cur.xp],
     casts: cur.casts.map((c) => ({ ...c })),
   };

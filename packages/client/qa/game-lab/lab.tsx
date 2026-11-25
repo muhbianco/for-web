@@ -5,6 +5,7 @@
  * Cenário pela URL: `#s=ficha`, `#s=corrida-chefe`… (lista à esquerda); `&speed=4` acelera a
  * corrida. As capturas de desktop e celular saem de `shots.mjs`.
  */
+import "material-symbols";
 import "../../src/index.css";
 
 import { For, Match, Show, Switch, createSignal, onCleanup } from "solid-js";
