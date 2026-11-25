@@ -213,6 +213,38 @@ test("corrida: PT completa vence sem mortes; sem DPS e sem tanque perdem", () =>
   }
 });
 
+// P63: com paladino de tanque, a Invocação (desde o 70) jogava os lacaios no suporte e no mago
+// (16 de 148 corridas com morte). Do T4 em diante o paladino leva a Consagração, que o cura por
+// inimigo consagrado; sem suporte ele continua perdendo.
+test("P63: as 4 PTs completas vencem as 37 Masmorras sem mortes; sem suporte o paladino perde", () => {
+  const FULL = [
+    ["guerreiro", "padre", "mago", "cacador"],
+    ["paladino", "druida", "assassino", "cacador"],
+    ["guerreiro", "druida", "mago", "assassino"],
+    ["paladino", "padre", "assassino", "mago"],
+  ] as const;
+  for (const d of DUNGEONS.filter((x) => x.kind === "masmorra")) {
+    const run = (c: readonly string[]) =>
+      simulateRun(
+        d,
+        c.map((x) => hero(x as FighterInput["cls"], d.level)),
+        { mode: "esperado" },
+      );
+    for (const c of FULL) {
+      const r = run(c);
+      assert.ok(
+        r.outcome === "vitoria" && r.heroes.every((h) => h.alive),
+        `${c.join("+")} L${d.level}: ${r.outcome}`,
+      );
+    }
+    assert.notEqual(
+      run(["paladino", "mago", "cacador", "assassino"]).outcome,
+      "vitoria",
+      `L${d.level} sem suporte`,
+    );
+  }
+});
+
 test("Caçada solo: toda classe vence toda Caçada até o 440", () => {
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada" && x.level <= 440))
     for (const c of [

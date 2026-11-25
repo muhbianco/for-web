@@ -16,6 +16,7 @@ import {
 import { type Reference, createReference } from "../reference.ts";
 import {
   REFERENCE_KITS,
+  REFERENCE_KITS_T4,
   REFERENCE_SOLO_KITS,
   SKILLS_BY_CLASS,
 } from "../skills/index.ts";
@@ -83,7 +84,9 @@ export function referenceSkills(
 ): HeroSkills {
   const rank = B.referencePotencyRank(tier, job);
   const learned = learnableSkills(cls, tier).map((s) => s.id);
-  const kit = (solo ? REFERENCE_SOLO_KITS : REFERENCE_KITS)[cls].filter((id) =>
+  const boss =
+    (tier >= 4 ? REFERENCE_KITS_T4[cls] : undefined) ?? REFERENCE_KITS[cls];
+  const kit = (solo ? REFERENCE_SOLO_KITS[cls] : boss).filter((id) =>
     learned.includes(id),
   );
   for (const id of learned)

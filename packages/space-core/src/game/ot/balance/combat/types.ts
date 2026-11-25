@@ -116,6 +116,11 @@ export type Effect =
       stacks?: number;
       /** A cada pulso (1 s), chance de atordoar lacaio/elite (Congelar). */
       tickStun?: { chance: number; durationMs: number };
+      /**
+       * Enquanto o DoT queima, cada inimigo atingido cura quem conjurou em x do HP máximo por segundo
+       * (Consagração, P63).
+       */
+      selfHealPctMaxHpPerSec?: number;
     }
   | {
       type: "cura";
@@ -381,6 +386,8 @@ export interface FighterResult {
   alive: boolean;
   /** Quantas vezes cada skill saiu. */
   casts: Record<string, number>;
+  /** Ameaça no fim, em cada inimigo (na ordem de `enemiesLeft`, invocados no fim). */
+  threat: number[];
   /** Estado no fim, para a próxima sala. */
   carry: HeroCarry;
 }
