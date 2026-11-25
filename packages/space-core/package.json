@@ -11,7 +11,8 @@
   },
   "scripts": {
     "test": "node --test \"src/**/*.test.ts\"",
-    "typecheck": "tsc -p tsconfig.json"
+    "typecheck": "tsc -p tsconfig.json",
+    "balance:report": "node scripts/balance-report.ts"
   },
   "dependencies": {
     "zod": "4.6.7"
