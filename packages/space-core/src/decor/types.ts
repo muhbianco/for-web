@@ -35,7 +35,8 @@ export type Rotation = 0 | 1 | 2 | 3;
  */
 /** `train`: dummy de treino do jogo idle (docs/espaco/jogo/ot): o herói treina ao lado dele. */
 /** `npc`: NPC do jogo idle (etapa O8): mercador, banqueiro ou mestre das vocações. */
-export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc";
+/** `news`: o quadro de avisos (25/11/2026): abre as novidades do produto, que vêm do servidor. */
+export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc" | "news";
 
 /** Os NPCs do jogo idle (etapa O8). */
 export type NpcKind = "mercador" | "banqueiro" | "mestre" | "ferreiro";

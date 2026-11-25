@@ -26,6 +26,7 @@ export const VERBS: Record<InteractionKind, string> = {
   tv: "Abrir Smart TV",
   train: "Treinar",
   npc: "Falar",
+  news: "Ler avisos",
 };
 
 /** The closest interactive instance within one tile of us, if any. */

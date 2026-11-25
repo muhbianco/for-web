@@ -2068,6 +2068,10 @@ msgstr "Profil Resmi"
 #~ msgid "Aventura"
 #~ msgstr ""
 
+#: components/space/NewsPanel.tsx
+msgid "Avisos"
+msgstr ""
+
 #: components/app/interface/settings/user/_AccountCard.tsx
 #: components/auth/src/flows/FlowCheck.tsx
 #: components/auth/src/flows/FlowCreate.tsx
@@ -2490,6 +2494,10 @@ msgstr "Bu mesaj düzenlenemez."
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Carrega {0}"
 #~ msgstr ""
+
+#: components/space/NewsPanel.tsx
+msgid "Carregando os avisos…"
+msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "Carregando…"
@@ -4977,6 +4985,7 @@ msgstr ""
 #: components/space/game/gameUi.tsx
 #: components/space/game/RunPanel.tsx
 #: components/space/InteractionDialog.tsx
+#: components/space/NewsPanel.tsx
 msgid "Fechar"
 msgstr ""
 
@@ -6892,6 +6901,10 @@ msgstr ""
 msgid "Não deu certo agora. Tente de novo."
 msgstr ""
 
+#: components/space/NewsPanel.tsx
+msgid "Não deu para carregar os avisos agora. Tente de novo em instantes."
+msgstr ""
+
 #: components/space/AudioCheck.tsx
 msgid "Não deu para testar o microfone agora."
 msgstr ""
@@ -6935,6 +6948,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
+msgstr ""
+
+#: components/space/NewsPanel.tsx
+msgid "Nenhum aviso por enquanto."
 msgstr ""
 
 #: components/space/AudioCheck.tsx
@@ -7161,6 +7178,14 @@ msgstr "Bu platformu kullanmak için gereken yaşta değil"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Notifications"
 msgstr "Bildirimler"
+
+#: components/space/NewsPanel.tsx
+msgid "nova"
+msgstr ""
+
+#: components/space/NewsPanel.tsx
+msgid "Novidades do Muchat e do jogo"
+msgstr ""
 
 #: components/space/game/HeroSheet.tsx
 #~ msgid "nunca"
@@ -9884,6 +9909,7 @@ msgstr ""
 msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr "Alt yetkideki üyelerin etkileşmesini geçici olarak önle"
 
+#: components/space/NewsPanel.tsx
 #: components/space/SpacePage.tsx
 msgid "Tentar de novo"
 msgstr ""

@@ -8,6 +8,7 @@ export * from "./media/naming.ts";
 export * from "./move/collision.ts";
 export * from "./move/movement.ts";
 export * from "./move/path.ts";
+export * from "./news.ts";
 export * from "./perm/stoat.ts";
 export * from "./protocol/messages.ts";
 export * from "./tv/tv.ts";

@@ -40,6 +40,8 @@ export interface ArtDef {
 }
 
 const T = ART_PX;
+/** Cortiça do quadro de avisos. */
+const CORK = "#c4955a";
 
 const GAMER: Record<string, string> = {
   "preto-vermelho": "#d2473f",
@@ -916,6 +918,37 @@ export const ART: Record<string, ArtDef> = {
       rect(g, 4, 7, g.W - 14, 1, "#d2473f");
       rect(g, 4, 9, g.W - 8, 1, "#2a2a2a");
       rect(g, 3, T - 4, g.W - 6, 1, shade(METAL, -0.2));
+    },
+  },
+  "notice-board": {
+    // O quadro de avisos (25/11/2026): moldura de madeira, cortiça e três papéis presos. Com nota
+    // que você ainda não leu, o renderer pede a variante "novo": um alfinete vermelho com brilho.
+    draw(g) {
+      const x = 1;
+      const y = 2;
+      const w = g.W - 2;
+      const h = T - 4;
+      outline(g, x, y, w, h);
+      rect(g, x + 1, y + 1, w - 2, h - 2, WOOD.escuro!);
+      rect(g, x + 2, y + 2, w - 4, h - 4, CORK);
+      for (let i = 0; i < w - 5; i += 3) dot(g, x + 3 + i, y + 3 + ((i * 5) % (h - 6)), shade(CORK, -0.28));
+      const paper = (px: number, py: number, pw: number, ph: number, c: string, ink: string, pin: string) => {
+        rect(g, px + 1, py + 1, pw, ph, shade(CORK, -0.45));
+        rect(g, px, py, pw, ph, c);
+        rect(g, px + 1, py + 2, pw - 2, 1, ink);
+        rect(g, px + 1, py + 4, pw - 3, 1, shade(ink, 0.35));
+        dot(g, px + Math.floor(pw / 2), py, pin);
+      };
+      paper(x + 3, y + 3, 7, 7, WHITE, "#3f6fd6", "#3f6fd6");
+      paper(x + 12, y + 4, 6, 6, "#f6e27a", "#2a2a2a", "#2a9d55");
+      paper(x + 20, y + 3, 7, 7, WHITE, "#2a9d55", "#e0a13c");
+      if (g.variant === "novo") {
+        glow(g, g.W - 7, y, 4, 4, "#ff4d4d", 0.5);
+        outline(g, g.W - 7, y, 4, 4);
+        rect(g, g.W - 6, y + 1, 2, 2, "#ff4d4d");
+        dot(g, g.W - 6, y + 1, "#ffb3b3");
+      }
+      rect(g, x + 1, y + h - 1, w - 2, 1, shade(WOOD.escuro!, -0.35));
     },
   },
   sign: {

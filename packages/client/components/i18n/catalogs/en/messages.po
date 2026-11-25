@@ -2067,6 +2067,10 @@ msgstr "Avatar"
 #~ msgid "Aventura"
 #~ msgstr "Aventura"
 
+#: components/space/NewsPanel.tsx
+msgid "Avisos"
+msgstr "Avisos"
+
 #: components/app/interface/settings/user/_AccountCard.tsx
 #: components/auth/src/flows/FlowCheck.tsx
 #: components/auth/src/flows/FlowCreate.tsx
@@ -2489,6 +2493,10 @@ msgstr "Cannot edit this message."
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Carrega {0}"
 #~ msgstr "Carrega {0}"
+
+#: components/space/NewsPanel.tsx
+msgid "Carregando os avisos…"
+msgstr "Carregando os avisos…"
 
 #: components/space/SmartTv.tsx
 msgid "Carregando…"
@@ -4974,6 +4982,7 @@ msgstr "Fecha a TV e para o som só para você; a sala continua assistindo"
 #: components/space/game/gameUi.tsx
 #: components/space/game/RunPanel.tsx
 #: components/space/InteractionDialog.tsx
+#: components/space/NewsPanel.tsx
 msgid "Fechar"
 msgstr "Fechar"
 
@@ -6889,6 +6898,10 @@ msgstr "não dá para vestir"
 msgid "Não deu certo agora. Tente de novo."
 msgstr "Não deu certo agora. Tente de novo."
 
+#: components/space/NewsPanel.tsx
+msgid "Não deu para carregar os avisos agora. Tente de novo em instantes."
+msgstr "Não deu para carregar os avisos agora. Tente de novo em instantes."
+
 #: components/space/AudioCheck.tsx
 msgid "Não deu para testar o microfone agora."
 msgstr "Não deu para testar o microfone agora."
@@ -6933,6 +6946,10 @@ msgstr "Natural"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "nenhum"
 msgstr "nenhum"
+
+#: components/space/NewsPanel.tsx
+msgid "Nenhum aviso por enquanto."
+msgstr "Nenhum aviso por enquanto."
 
 #: components/space/AudioCheck.tsx
 msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
@@ -7158,6 +7175,14 @@ msgstr "Not of minimum age to use the platform"
 #: components/app/menus/shared/NotificationContextMenu.tsx
 msgid "Notifications"
 msgstr "Notifications"
+
+#: components/space/NewsPanel.tsx
+msgid "nova"
+msgstr "nova"
+
+#: components/space/NewsPanel.tsx
+msgid "Novidades do Muchat e do jogo"
+msgstr "Novidades do Muchat e do jogo"
 
 #: components/space/game/HeroSheet.tsx
 #~ msgid "nunca"
@@ -9880,6 +9905,7 @@ msgstr "Tem item +7: toque mais uma vez"
 msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr "Temporarily prevent lower-ranking members from interacting"
 
+#: components/space/NewsPanel.tsx
 #: components/space/SpacePage.tsx
 msgid "Tentar de novo"
 msgstr "Tentar de novo"

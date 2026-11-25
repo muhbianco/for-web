@@ -76,6 +76,17 @@ cache.apply({
     },
   ],
 });
+/** Quadro de avisos de mentira: devolve as notas ou falha, conforme o teste pede. */
+let newsDown = false;
+const fakeNews = {
+  async get() {
+    if (newsDown) throw new Error("outline down");
+    return {
+      url: "https://outline.example/s/novidades",
+      items: [{ id: "n1", title: "2026-11-25 — START", publishedAt: "2026-11-25T18:00:00.000Z", markdown: "**oi**" }],
+    };
+  },
+};
 const store = new MemoryAssignmentStore();
 const registry = new Registry({ cache, store, members: memberSrc, log: silentLog, now: () => clock });
 const gateway = new Gateway({
@@ -84,6 +95,7 @@ const gateway = new Gateway({
   cache,
   runtimes: registry,
   profiles: new MemoryProfileStore(),
+  news: fakeNews,
   allowedOrigins: ["https://chat.example"],
   log: silentLog,
   // The privacy test sends a whole walk at once; the limiter is tested on its own below.
@@ -341,6 +353,26 @@ test("config: signed-in only; lists only the person's own servers (audit 16/11/2
   assert.equal(outBody.all, true, "the space is on everywhere in this fixture");
   const mine = await fetch(`http://${base}/v1/config`, { headers: { "x-session-token": "token-ana-0000000000" } });
   assert.deepEqual(((await mine.json()) as { servers: string[] }).servers, [SRV]);
+});
+
+test("news: só com sessão; o quadro da fonte; 503 quando o Outline cai; só GET", async () => {
+  const url = `http://${base}/v1/news`;
+  assert.equal((await fetch(url)).status, 401);
+  const H = { "x-session-token": "token-out-0000000000" };
+  const ok = await fetch(url, { headers: H });
+  assert.equal(ok.status, 200);
+  assert.equal(ok.headers.get("cache-control"), "no-store");
+  const body = (await ok.json()) as { items: { id: string }[]; url: string };
+  assert.deepEqual(body.items.map((i) => i.id), ["n1"]);
+  assert.equal((await fetch(url, { method: "POST", headers: H })).status, 405);
+  newsDown = true;
+  try {
+    const down = await fetch(url, { headers: H });
+    assert.equal(down.status, 503);
+    assert.deepEqual(await down.json(), { error: "news_unavailable" });
+  } finally {
+    newsDown = false;
+  }
 });
 
 test("profile: default look, validated patch, onboarding only moves forward; the new look reaches others", async () => {

@@ -7,6 +7,7 @@ import { type WebSocket, WebSocketServer } from "ws";
 
 import type { RpgService } from "../game/ot/service.ts";
 import type { Log } from "../log.ts";
+import type { NewsSource } from "../news/outline.ts";
 import type { StoatAuth, StoatMembers } from "../stoat/api.ts";
 import type { StoatCache } from "../stoat/cache.ts";
 import type { StoatUser } from "../stoat/types.ts";
@@ -46,6 +47,8 @@ export interface GatewayDeps {
   rateLimit?: { rate: number; burst: number };
   /** Idle game (docs/espaco/jogo/ot); without it every rpg command answers game_disabled. */
   rpg?: RpgService;
+  /** Quadro de avisos (SPACE_NEWS_URL); sem ele `GET /v1/news` responde um quadro vazio. */
+  news?: NewsSource;
 }
 
 class Session implements SessionPort {
@@ -366,6 +369,18 @@ export class Gateway {
           return json(200, profile);
         }
         return json(405, { error: "method" });
+      }
+      if (url.pathname === "/v1/news") {
+        // O quadro de avisos é o mesmo para todo mundo (a coleção é pública): só pede sessão
+        // para não virar proxy aberto do Outline. O cache e o prazo ficam na fonte.
+        if (req.method !== "GET") return json(405, { error: "method" });
+        if (!this.deps.news) return json(200, { items: [], url: null });
+        try {
+          return json(200, await this.deps.news.get());
+        } catch (err) {
+          this.deps.log.warn("news unavailable", { err: String(err) });
+          return json(503, { error: "news_unavailable" });
+        }
       }
       const m = /^\/v1\/spaces\/([0-9A-HJKMNP-TV-Z]{26})\/(layout\/([0-9a-f]{8})|decor)$/.exec(url.pathname);
       if (!m || req.method !== "GET") return json(404, { error: "not_found" });

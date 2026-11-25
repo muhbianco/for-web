@@ -14,6 +14,7 @@ import { jsonLog } from "./log.ts";
 import { startLoopDelayLog } from "./loopDelay.ts";
 import { MediaController } from "./media/controller.ts";
 import { FakeLeases, FakeLiveKit, FakeMinter } from "./media/fakes.ts";
+import { type NewsSource, OutlineNews, StaticNews } from "./news/outline.ts";
 import { MediaHub } from "./space/roomMedia.ts";
 import { Registry } from "./space/registry.ts";
 import type { SessionPort, SpaceRuntime } from "./space/runtime.ts";
@@ -124,6 +125,39 @@ const registry = new Registry({
   },
 });
 rpg.setHosts((serverId) => registry.liveRuntime(serverId));
+// Quadro de avisos: o Outline de verdade com SPACE_NEWS_URL; senão, duas notas fixas.
+const news: NewsSource = process.env.SPACE_NEWS_URL
+  ? new OutlineNews({ shareUrl: process.env.SPACE_NEWS_URL, log: jsonLog })
+  : new StaticNews({
+      url: "https://outline.example.invalid/s/novidades",
+      items: [
+        {
+          id: "dev-news-2",
+          title: "2026-11-25 — START",
+          publishedAt: "2026-11-25T18:00:00.000Z",
+          markdown: [
+            "**O Idle Hunt começou de novo.** Esta é uma nota de teste do servidor de dev.",
+            "",
+            "## Raridade",
+            "",
+            "| Raridade | Cor | Afixos |",
+            "|---|---|---|",
+            "| Comum | cinza | 0 |",
+            "| Raro | azul | 2 |",
+            "| Lendário | laranja | 3 + efeito único |",
+            "",
+            "- Morrer não tira XP.",
+            "- Leve poção.",
+          ].join("\n"),
+        },
+        {
+          id: "dev-news-1",
+          title: "2026-11-14 — Decoração",
+          publishedAt: "2026-11-14T12:44:00.000Z",
+          markdown: "Cada servidor decora o próprio Espaço pelo botão **Decorar**.",
+        },
+      ],
+    });
 const gateway = new Gateway({
   auth,
   members,
@@ -131,6 +165,7 @@ const gateway = new Gateway({
   runtimes: registry,
   profiles: new MemoryProfileStore(),
   rpg,
+  news,
   allowedOrigins: ["http://localhost:5180", "http://127.0.0.1:5180"],
   log: jsonLog,
 });

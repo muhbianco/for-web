@@ -96,6 +96,8 @@ export class World {
   readonly others = new Map<string, Remote>();
   /** Decoration of this space (ADR 0007); null until the first fetch. */
   decor: DecorState | null = null;
+  /** Há aviso que esta pessoa não leu: o quadro de avisos ganha o alfinete vermelho. */
+  newsUnread = false;
   decorUrl = "";
   /** Revision the server announced last; the fetch brings at least this one. */
   decorRevWanted = 0;

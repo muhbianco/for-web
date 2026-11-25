@@ -64,7 +64,8 @@ function hallSpecs(serverName: string): Spec[] {
     { item: "window-wide", x: 1, y: -1, variant: "dia" },
     { item: "clock", x: 4, y: -1 },
     { item: "sign", x: 6, y: -1, variant: "neon", config: { title: serverName || "Bem-vindo", text: `Bem-vindo ao espaço${serverName ? ` de ${serverName}` : ""}. Ande até uma sala para entrar na conversa.` } },
-    { item: "window-wide", x: 9, y: -1, variant: "dia" },
+    // O quadro de avisos (25/11/2026): as novidades na entrada, onde todo mundo passa.
+    { item: "notice-board", x: 9, y: -1 },
     // Reception corner and lounge.
     { item: "plant-tall", x: 0, y: 0, variant: "vaso-branco" },
     { item: "counter", x: 1, y: 1, variant: "escuro" },

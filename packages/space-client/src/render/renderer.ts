@@ -642,7 +642,9 @@ export class Renderer {
     const item = itemOf(CATALOG, inst.item);
     const zone = world.zones?.byKey.get(inst.zone);
     if (!item || !zone || item.layer === "floor") return;
-    const sp = new Sprite(textureFor(item, inst.rot, inst.variant));
+    // O quadro de avisos com nota não lida vira a arte "novo" só na tela: nada vai ao servidor.
+    const variant = item.interaction === "news" && world.newsUnread ? "novo" : inst.variant;
+    const sp = new Sprite(textureFor(item, inst.rot, variant));
     sp.anchor.set(0, 1);
     const rect = instanceRect(zone, item, inst);
     const bottom = (rect.y1 + 1) * TILE;
@@ -664,6 +666,17 @@ export class Renderer {
         this.scene.addChild(sp);
     }
     this.decor.set(inst.id, sp);
+  }
+
+  /** Redesenha só os quadros de avisos (o alfinete de "não lido" mudou). */
+  refreshNews(world: World) {
+    if (!world.decor) return;
+    for (const inst of world.decor.items) {
+      if (itemOf(CATALOG, inst.item)?.interaction !== "news") continue;
+      this.removeDecor(inst.id);
+      this.addDecor(world, inst);
+      this.dirty = true;
+    }
   }
 
   private removeDecor(id: string) {

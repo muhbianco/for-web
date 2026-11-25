@@ -6,6 +6,7 @@ import {
   type DecorSettings,
   type DecorState,
   type InteractionConfig,
+  type NewsWire as NewsWireT,
   type NpcKind,
   type ProfilePatch,
   type ProfileView,
@@ -18,6 +19,7 @@ import {
   instanceRect,
   itemOf,
   MAX_TV_POS_S,
+  NewsWire,
   regionAt,
   TILE,
   youtube,
@@ -134,6 +136,8 @@ export interface SpaceUiState {
     npc: NpcKind;
     n: number;
   } | null;
+  /** Usamos o quadro de avisos: o app abre o painel das novidades. */
+  newsRequest: { instance: string; title: string; n: number } | null;
   /** Someone used a TV with the game on: the app shows "watch" or "dungeon". */
   tvMenu: { instance: string; title: string; n: number } | null;
   /** Dungeon groups at the TVs of our room (stage O4), by TV instance. */
@@ -283,6 +287,7 @@ export class SpaceView {
       rpg: null,
       trainRequest: null,
       npcRequest: null,
+      newsRequest: null,
       tvMenu: null,
       lobbies: {},
       lobbyStarted: null,
@@ -1130,6 +1135,18 @@ export class SpaceView {
       });
       return;
     }
+    if (p.item.interaction === "news") {
+      // O quadro de avisos: o app busca as novidades e abre o painel.
+      this.patch({
+        newsRequest: {
+          instance: p.inst.id,
+          // O título do painel é o do quadro (ou o nome do item), não o verbo do balão.
+          title: p.inst.config?.title?.trim() || p.item.name,
+          n: (this.state.newsRequest?.n ?? 0) + 1,
+        },
+      });
+      return;
+    }
     if (p.item.interaction === "train") {
       // A training dummy (docs/espaco/jogo/ot): the app asks vocation and skill.
       this.patch({
@@ -1223,6 +1240,28 @@ export class SpaceView {
 
   closeNpcRequest() {
     if (this.state.npcRequest) this.patch({ npcRequest: null });
+  }
+
+  closeNewsRequest() {
+    if (this.state.newsRequest) this.patch({ newsRequest: null });
+  }
+
+  /** As novidades do quadro de avisos (o servidor guarda por minutos; o Outline fica atrás dele). */
+  async news(): Promise<NewsWireT> {
+    const res = await fetch(new URL("/_muchat/space/v1/news", this.opts.baseUrl), {
+      headers: { "X-Session-Token": this.opts.sessionToken },
+    });
+    if (!res.ok) throw new Error(`news ${res.status}`);
+    const parsed = NewsWire.safeParse(await res.json());
+    if (!parsed.success) throw new Error("news: resposta fora do contrato");
+    return parsed.data;
+  }
+
+  /** Liga ou desliga o alfinete vermelho dos quadros de avisos do mapa. */
+  setNewsUnread(on: boolean) {
+    if (this.world.newsUnread === on) return;
+    this.world.newsUnread = on;
+    this.renderer.refreshNews(this.world);
   }
 
   closeTrainRequest() {

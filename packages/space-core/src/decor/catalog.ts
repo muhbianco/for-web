@@ -132,6 +132,7 @@ const ITEMS: DecorItem[] = [
   def({ id: "curtain", name: "Cortina", category: "decor", layer: "wall", w: 2, h: 1, solid: false, variants: FABRIC }),
   def({ id: "clock", name: "Relógio", category: "decor", layer: "wall", solid: false }),
   def({ id: "whiteboard", name: "Quadro branco", category: "decor", layer: "wall", w: 2, h: 1, solid: false, interaction: "note", description: "Mostra um texto ao interagir.", tags: ["reunião", "anotações"] }),
+  def({ id: "notice-board", name: "Quadro de avisos", category: "decor", layer: "wall", w: 2, h: 1, solid: false, interaction: "news", description: "Mostra as novidades do Muchat e do jogo. Ganha um alfinete vermelho quando há nota nova.", tags: ["avisos", "novidades", "notícias", "mural", "cortiça"] }),
   def({ id: "sign", name: "Placa", category: "decor", layer: "wall", w: 2, h: 1, solid: false, interaction: "note", variants: ["madeira", "neon", "metal"], description: "Um aviso na parede, com texto ao interagir." }),
   def({ id: "trophy-shelf", name: "Prateleira de troféus", category: "decor", layer: "wall", w: 2, h: 1, solid: false }),
   def({ id: "trash-can", name: "Lixeira", category: "decor", variants: ["cinza", "azul", "verde"] }),

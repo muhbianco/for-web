@@ -98,7 +98,8 @@ export function validateConfig(item: DecorItem, config: InteractionConfig | unde
       return config.url === undefined && config.text === undefined && config.target === undefined;
     case "train":
     case "npc":
-      // A training dummy or an NPC only takes a title (what the prompt shows).
+    case "news":
+      // A training dummy, an NPC or the notice board only takes a title (what the prompt shows).
       return config.url === undefined && config.text === undefined && config.target === undefined;
     default:
       return true;

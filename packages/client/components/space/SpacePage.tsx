@@ -23,7 +23,11 @@ import {
   type SpaceView,
   wingHeading,
 } from "@muchat/space-client";
-import { type ProfileView, ONBOARDING_VERSION } from "@muchat/space-core";
+import {
+  type ProfileView,
+  ONBOARDING_VERSION,
+  hasUnreadNews,
+} from "@muchat/space-core";
 import { css } from "styled-system/css";
 import { styled } from "styled-system/jsx";
 
@@ -47,6 +51,7 @@ import {
   MediaStage,
   useStageShares,
 } from "./MediaStage";
+import { newsLastSeen } from "./newsSeen";
 import { AudioCheckDialog, Onboarding } from "./Onboarding";
 import { leaveSpacePage, openSpace } from "./session";
 import { SmartTv } from "./SmartTv";
@@ -59,6 +64,7 @@ const TrainingDialog = lazy(() => import("./game/TrainingDialog"));
 const TrainingChip = lazy(() => import("./game/TrainingChip"));
 const HeroSheet = lazy(() => import("./game/HeroSheet"));
 const NpcDialog = lazy(() => import("./game/NpcDialog"));
+const NewsPanel = lazy(() => import("./NewsPanel"));
 /** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
 const TvMenu = lazy(() => import("./game/TvMenu"));
 const LobbyChip = lazy(() => import("./game/LobbyChip"));
@@ -287,6 +293,29 @@ function ServerSpace(props: { serverId: string }) {
   // On a phone the object within reach is a button at the bottom, not a bubble
   // drawn on the map.
   createEffect(() => view()?.setMapPrompt(!compact()));
+  // Quadro de avisos (25/11/2026): ao entrar e a cada 15 min, confere se há nota que esta
+  // pessoa não leu; o quadro do mapa ganha o alfinete vermelho. Falha é silenciosa (só o alfinete).
+  createEffect(
+    on(view, (v) => {
+      if (!v) return;
+      let stopped = false;
+      const check = async () => {
+        try {
+          const wire = await v.news();
+          if (!stopped)
+            v.setNewsUnread(hasUnreadNews(wire.items, newsLastSeen()));
+        } catch {
+          // Sem novidades agora: o quadro fica sem alfinete.
+        }
+      };
+      void check();
+      const timer = setInterval(() => void check(), 15 * 60_000);
+      onCleanup(() => {
+        stopped = true;
+        clearInterval(timer);
+      });
+    }),
+  );
   // On a phone the notices pop over the map for a few seconds instead of
   // stretching the header.
   const [toast, setToast] = createSignal("");
@@ -440,6 +469,7 @@ function ServerSpace(props: { serverId: string }) {
     if (u.tvMenu) v.closeTvMenu();
     else if (heroOpen()) setHeroOpen(false);
     else if (u.npcRequest) v.closeNpcRequest();
+    else if (u.newsRequest) v.closeNewsRequest();
     else if (u.trainRequest) v.closeTrainRequest();
     else if (u.interaction) v.closeInteraction();
     else if (u.runOpen) v.closeRun();
@@ -1095,6 +1125,20 @@ function ServerSpace(props: { serverId: string }) {
                     people={npcPeople()}
                     onClose={() => {
                       view()?.closeNpcRequest();
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
+            </Match>
+            <Match when={view() && ui()?.newsRequest}>
+              {(request) => (
+                <Suspense>
+                  <NewsPanel
+                    view={view()!}
+                    title={request().title}
+                    onClose={() => {
+                      view()?.closeNewsRequest();
                       host?.focus();
                     }}
                   />

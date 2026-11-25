@@ -14,6 +14,7 @@ import { jsonLog as log } from "./log.ts";
 import { startLoopDelayLog } from "./loopDelay.ts";
 import { LiveKitRoomAdmin, LiveKitTokenMinter, RedisLeaseStore } from "./media/adapters.ts";
 import { MediaController } from "./media/controller.ts";
+import { type NewsSource, OutlineNews } from "./news/outline.ts";
 import type { ParticipantLite } from "./media/ports.ts";
 import { Sweeper } from "./media/sweeper.ts";
 import { MediaHub } from "./space/roomMedia.ts";
@@ -198,6 +199,16 @@ async function main() {
     switchTimer = setInterval(() => void spatial.sync(), 60_000);
     switchTimer.unref?.();
   }
+  // Quadro de avisos (25/11/2026): a coleção pública do Outline. Sem a chave, quadro vazio;
+  // com a chave inválida, avisa no log e segue sem (não derruba o espaço por causa dele).
+  let news: NewsSource | undefined;
+  if (process.env.SPACE_NEWS_URL) {
+    try {
+      news = new OutlineNews({ shareUrl: process.env.SPACE_NEWS_URL, log });
+    } catch (err) {
+      log.error("news disabled: bad SPACE_NEWS_URL", { err: String(err) });
+    }
+  }
   const gateway = new Gateway({
     auth: api,
     members,
@@ -205,6 +216,7 @@ async function main() {
     runtimes: registry,
     profiles: new MongoProfileStore(mongo),
     rpg,
+    news,
     allowedOrigins: env("SPACE_ALLOWED_ORIGINS", "https://chat.muhbianco.com.br").split(",").map((s) => s.trim()),
     log,
     ready: (): Record<string, boolean> =>
@@ -213,7 +225,7 @@ async function main() {
   bonfire.start();
   const port = Number(env("SPACE_PORT", "8095"));
   await gateway.listen(port);
-  log.info("space server listening", { port, enabled_servers: enabledIds.length, media: Boolean(media), game_servers: game.count });
+  log.info("space server listening", { port, enabled_servers: enabledIds.length, media: Boolean(media), game_servers: game.count, news: Boolean(news) });
   // ADR 0009, decision 10: the yardstick for anything new in this process.
   const stopLoopDelay = startLoopDelayLog(log);
 

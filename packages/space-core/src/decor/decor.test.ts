@@ -272,3 +272,26 @@ test("sala do jogo (24/11/2026): \"Idle Hunt\" se mobilia com a TV, os 3 bonecos
   }
   assert.equal(allReachable(map, solidMask(map, zones, CATALOG, d.items)), true);
 });
+
+test("quadro de avisos: item de parede 2×1, só aceita título e entra no hall do tema padrão", () => {
+  const { ix, ctx } = fixture();
+  const board = itemOf(CATALOG, "notice-board");
+  assert.ok(board);
+  assert.equal(board.layer, "wall");
+  assert.equal(board.interaction, "news");
+  assert.equal(board.solid, false);
+  assert.deepEqual([board.w, board.h], [2, 1]);
+  // Na parede, com título: ok. Endereço ou texto não são do quadro (as notas vêm do servidor).
+  assert.equal(validatePlacement(ctx(), inst({ item: "notice-board", zone: "hall", x: 0, y: -1, config: { title: "Avisos" } })), null);
+  assert.equal(
+    validatePlacement(ctx(), inst({ item: "notice-board", zone: "hall", x: 0, y: -1, config: { url: "https://x.test" } })),
+    "bad_config",
+  );
+  assert.equal(validatePlacement(ctx(), inst({ item: "notice-board", zone: "hall", x: 0, y: -1, config: { text: "oi" } })), "bad_config");
+  // O tema padrão põe um na parede norte do hall (servidor novo).
+  const decor = defaultDecor(ix, { serverName: "Teste" });
+  const placed = decor.items.filter((i) => i.item === "notice-board");
+  assert.equal(placed.length, 1);
+  assert.equal(placed[0]!.zone, "hall");
+  assert.equal(placed[0]!.y, -1);
+});
