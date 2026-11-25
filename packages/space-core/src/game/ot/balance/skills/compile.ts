@@ -76,6 +76,7 @@ interface Acc {
   effects: Effect[];
   hooks: SkillHook[];
   flatCutMs: number;
+  pctCut: number;
 }
 
 function applyMod(acc: Acc, mod: MechanicMod, ups: number): void {
@@ -117,6 +118,9 @@ function applyMod(acc: Acc, mod: MechanicMod, ups: number): void {
       for (const e of mod.effects ?? []) acc.effects.push(structuredClone(e));
       for (const h of mod.hooks ?? []) acc.hooks.push(structuredClone(h));
       return;
+    case "corte":
+      acc.pctCut += mod.pct * ups;
+      return;
   }
 }
 
@@ -125,12 +129,14 @@ export function compileSkill(
   build: SkillBuild,
   ai?: Condition[],
   B: Balance = gameBalance,
+  extra: MechanicMod[] = [],
 ): SkillDef {
   const sk = B.cfg.skills;
   const acc: Acc = {
     effects: structuredClone(content.effects),
     hooks: structuredClone(content.hooks ?? []),
     flatCutMs: 0,
+    pctCut: 0,
   };
   for (const m of content.mechanics) {
     const ups = Math.max(
@@ -142,10 +148,12 @@ export function compileSkill(
     if (ups === sk.mechanicMax)
       for (const mod of m.atMax ?? []) applyMod(acc, mod, 1);
   }
+  // Efeitos de fora da árvore (lendários), como um adereço de 1 up.
+  for (const mod of extra) applyMod(acc, mod, 1);
 
   const rank = Math.max(1, Math.min(sk.potencyMax, build.potency));
   const eff = Math.max(0, Math.min(sk.efficiencyMax, build.efficiency));
-  let ownCut = sk.efficiencyCooldownPerUp * eff;
+  let ownCut = sk.efficiencyCooldownPerUp * eff + acc.pctCut;
   if (isSupportSkill(content)) ownCut += sk.supportCooldownPerRank * (rank - 1);
   else {
     const pm = B.potencyMult(rank);
@@ -175,13 +183,15 @@ export function compileLoadout(
   cls: ClassId,
   hs: HeroSkills,
   B: Balance = gameBalance,
+  /** Efeitos de lendário por skill (items/legendary.ts). */
+  extra: Record<string, MechanicMod[]> = {},
 ): SkillDef[] {
   const out: SkillDef[] = [];
   for (const id of hs.slots) {
     const content = SKILLS_BY_CLASS[cls].find((s) => s.id === id);
     const build = hs.builds[id];
     if (!content || !build || content.tier > hs.tier) continue;
-    out.push(compileSkill(content, build, hs.ai[id], B));
+    out.push(compileSkill(content, build, hs.ai[id], B, extra[id] ?? []));
   }
   return out;
 }

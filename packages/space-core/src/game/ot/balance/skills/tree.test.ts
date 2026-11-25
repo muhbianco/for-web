@@ -5,10 +5,10 @@ import {
   type HeroSkills,
   evolve,
   freshHeroSkills,
-  skillPointsSpent,
   resetSkills,
   setSlots,
   skillPoints,
+  skillPointsSpent,
   spendPoint,
 } from "./tree.ts";
 

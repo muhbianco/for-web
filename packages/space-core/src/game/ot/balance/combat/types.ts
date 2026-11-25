@@ -247,7 +247,9 @@ export type SkillHook =
   /** Sempre crítico em alvos abaixo de x do HP (Disparo Fatal 5/5). */
   | { on: "criticoAbaixo"; pct: number }
   /** Uma 2ª conjuração com x do dano, logo depois (Chuva de Meteoros 5/5; Katar Bicéfalo). */
-  | { on: "repete"; pct: number };
+  | { on: "repete"; pct: number }
+  /** Chance de a skill não gastar mana (Cajado da Aurora). */
+  | { on: "semCusto"; chance: number };
 
 export interface SkillDef {
   id: string;

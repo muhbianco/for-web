@@ -41,6 +41,8 @@ interface ItemCommon {
   rarity: RarityId;
   refine: number;
   affixes: Affix[];
+  /** Lendário com efeito único (items/legendary.ts). */
+  legendary?: string;
 }
 
 export interface WeaponItem extends ItemCommon {

@@ -1091,6 +1091,9 @@ export function fight(
     cost: number,
   ) => {
     h.mp -= cost;
+    for (const hook of s.hooks ?? [])
+      if (hook.on === "semCusto" && proc(h, `${s.id}:semCusto`, hook.chance))
+        h.mp += cost;
     const base = (s.baseCooldownMs ?? s.cooldownMs) / 1000;
     const cd = Math.max(
       cfg.cooldown.floorOfBase * base,

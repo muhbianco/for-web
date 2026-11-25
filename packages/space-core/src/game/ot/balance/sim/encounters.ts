@@ -7,13 +7,13 @@ import type {
   SkillDef,
 } from "../combat/types.ts";
 import { type ClassId, CLASSES, FAMILIES } from "../content.ts";
+import { heroFighter } from "../fighter.ts";
 import {
   type Balance,
   type Tier,
   balance as gameBalance,
 } from "../formulas.ts";
 import { type Reference, createReference } from "../reference.ts";
-import { compileLoadout } from "../skills/compile.ts";
 import {
   REFERENCE_KITS,
   REFERENCE_SOLO_KITS,
@@ -140,13 +140,13 @@ export function createEncounters(B: Balance = gameBalance) {
         B,
         o.referenceAi,
       );
-      return {
-        ...common,
-        stats: { ...h, hit: h.hit * (1 + (c.trait.hitBonusPct ?? 0)) },
-        skills: compileLoadout(cls, hs, B),
-        potencyRank: 1,
-        poisonBonus: c.trait.poisonBonus ?? 0,
-      };
+      // O mesmo caminho do jogo (fighter.ts), com os traços que o gabarito não tinha.
+      const hero = R.referenceBalanceHero(
+        cls,
+        level,
+        o.proficiency ? { proficiency: o.proficiency(level) } : {},
+      );
+      return heroFighter(hero, hs, { potions: common.potions }, B, R);
     }
     return {
       ...common,

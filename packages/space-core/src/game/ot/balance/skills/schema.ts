@@ -31,7 +31,9 @@ export type MechanicMod =
   | { kind: "recarga"; perUpMs: number }
   | { kind: "efeito"; add: Effect; fields: FieldPath[]; perUp: number }
   | { kind: "gancho"; add: SkillHook; field: FieldPath; perUp: number }
-  | { kind: "fixo"; effects?: Effect[]; hooks?: SkillHook[] };
+  | { kind: "fixo"; effects?: Effect[]; hooks?: SkillHook[] }
+  /** Corte percentual da recarga da própria skill (Arco do Vendaval: −20%). */
+  | { kind: "corte"; pct: number };
 
 export interface MechanicDef {
   id: string;
@@ -126,6 +128,7 @@ const MechanicModSchema = z.discriminatedUnion("kind", [
     effects: z.array(anyObject).optional(),
     hooks: z.array(anyObject).optional(),
   }),
+  z.object({ kind: z.literal("corte"), pct: z.number().positive() }),
 ]);
 
 export const MechanicSchema = z.object({
