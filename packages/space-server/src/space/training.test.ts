@@ -18,6 +18,9 @@ import { MemoryDecorStore } from "./decorStore.ts";
 import { type SessionPort, type Viewer, SpaceRuntime } from "./runtime.ts";
 import { MemorySpotStore } from "./spotStore.ts";
 import { MemoryAssignmentStore } from "./store.ts";
+import { MemoryRunStore } from "../game/ot/runs.ts";
+import { RpgService } from "../game/ot/service.ts";
+import { MemoryRpgStore } from "../game/ot/store.ts";
 
 const SRV = "01JSRV00000000000000000000";
 const PUB = "01JPVB00000000000000000000";
@@ -582,4 +585,67 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   rt.tick();
   assert.equal(rt.lobbies.atTv(tv.id)[0], undefined);
   assert.equal(lobbyEvents(cai).at(-1)?.ended, "expired");
+});
+
+// ------------------------------------------------------------ jogo idle de ponta a ponta (Fase 8)
+
+test("jogo idle de ponta a ponta no runtime real: jogador novo, grupo na TV, Caçada, quadros e fechamento", async () => {
+  let now = 1_000_000;
+  const rt = new SpaceRuntime({
+    serverId: SRV,
+    cache: makeCache(),
+    store: new MemoryAssignmentStore(),
+    decorStore: new MemoryDecorStore(),
+    log: silentLog,
+    now: () => now,
+    gameAvailable: true,
+  });
+  await rt.init();
+  const store = new MemoryRpgStore();
+  const runStore = new MemoryRunStore();
+  const svc = new RpgService({ store, runStore, log: silentLog, now: () => now, autoTick: false });
+  svc.setHosts(() => rt);
+  rt.onLobbyDue = (leader, lobbyId) => svc.loopDue(rt, leader, lobbyId);
+  const ana = enter(rt, ANA, "Ana");
+  const tv = tvOfPub(rt);
+  placeAt(rt, ANA, tv.beside, PUB);
+  let n = 0;
+  const send = async (t: string, d?: Record<string, unknown>) => {
+    const id = `e${++n}`;
+    svc.handle(ana, rt, { v: 1, id, t, ...(d ? { d } : {}) } as never);
+    await svc.idle(ANA);
+    return id;
+  };
+  const hero = () =>
+    (ana.last("rpg.state")?.d as { hero: { hero: { level: number; xp: number; gold: number; cls: string } ; run: unknown } | null }).hero;
+
+  await send("rpg.open");
+  assert.equal(hero(), null, "jogador novo sem herói");
+  const c = await send("rpg.class", { cls: "guerreiro" });
+  assert.deepEqual(ana.errorsFor(c), []);
+  assert.equal(hero()?.hero.cls, "guerreiro");
+  // O avatar mostra o herói (nível sob o nome).
+  const create = await send("rpg.lobby.create", { tv: tv.id, dungeon: "cacada-1" });
+  assert.deepEqual(ana.errorsFor(create), []);
+  const start = await send("rpg.lobby.start");
+  assert.deepEqual(ana.errorsFor(start), []);
+  const runEv = ana.last("rpg.run")!.d as { run: { id: string; ends_at: number; members: unknown[] } };
+  assert.equal(runEv.run.members.length, 1);
+  assert.ok(hero()?.run, "o herói está na corrida");
+  // Os quadros chegam pela sala (sendRun do runtime).
+  now += 5_000;
+  await svc.tickRuns();
+  const ticks = ana.of("rpg.run.tick");
+  assert.ok(ticks.length >= 1);
+  // Até o fim: fecha, credita e o grupo fica pronto.
+  now = runEv.run.ends_at + 1_000;
+  await svc.tickRuns();
+  await svc.idle(ANA);
+  const end = (ana.last("rpg.run")!.d as { end?: { outcome: string; members: Array<{ reward: { xp: number; gold: number } | null }> } }).end;
+  assert.equal(end?.outcome, "vitoria");
+  assert.ok(end!.members[0]!.reward!.xp > 0);
+  assert.equal(hero()?.run, null);
+  assert.ok(hero()!.hero.gold > 0);
+  assert.equal(rt.lobbies.of(ANA)?.state, "ready");
+  assert.equal(runStore.docs.get(runEv.run.id)?.status, "settled");
 });
