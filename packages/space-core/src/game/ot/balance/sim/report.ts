@@ -10,6 +10,12 @@ import { compileSkill } from "../skills/compile.ts";
 import { skillOf } from "../skills/index.ts";
 import { runRewards } from "../run/rewards.ts";
 import { type RunResult, simulateRun } from "../run/simulate.ts";
+import {
+  type LimitStep,
+  LIMIT_GROUP_PARTIES,
+  LIMIT_STEPS,
+  limitFighter,
+} from "./calibration.ts";
 import { type SimOptions, createEncounters } from "./encounters.ts";
 
 /**
@@ -42,7 +48,7 @@ export function balanceReport(
   opts: ReportOptions = {},
   B: Balance = gameBalance,
 ): ReportLine[] {
-  const E = createEncounters(B);
+  const E = createEncounters(B, "limite");
   const M = createMonsters(B);
   const lines: ReportLine[] = [];
   const add = (
@@ -72,65 +78,56 @@ export function balanceReport(
     r.outcome === "vitoria" && r.heroes.every((h) => h.alive);
 
   // ------------------------------------------------------------ §14.1
-  const S1 = "§14.1 Composições (corrida inteira, modo esperado, 37 Masmorras)";
-  const TANKS: ClassId[] = ["guerreiro", "paladino"];
-  const SUPPORTS: ClassId[] = ["padre", "druida"];
-  const PAIRS: Comp[] = [
-    ["mago", "cacador"],
-    ["mago", "assassino"],
-    ["cacador", "assassino"],
+  // D41 (25/11/2026): a PT completa é de 5 e o conteúdo sai do perfil do limite (item da faixa, afixos
+  // da classe, build e kit de referência). Cada DG fica no ponto do grupo de calibração mais frágil
+  // (dungeons/edge.generated.ts); um degrau abaixo num eixo deve perder boa parte.
+  const S1 = "§14.1 Composições no limite (corrida inteira, modo esperado, 37 Masmorras e 10 Regiões)";
+  const groupDgs = DUNGEONS.filter((d) => d.kind !== "cacada");
+  const stepRun = (d: DungeonDef, c: Comp, step?: LimitStep["id"]) =>
+    simulateRun(
+      d,
+      c.map((x) => limitFighter(x, d.level, step ? { step } : {}, B)),
+      { mode: "esperado" },
+      B,
+      M,
+    );
+  for (const c of LIMIT_GROUP_PARTIES) {
+    const lost = groupDgs
+      .filter((d) => stepRun(d, [...c]).outcome !== "vitoria")
+      .map((d) => d.level);
+    add(
+      S1,
+      `grupo de 5 ${short([...c])} vence no limite`,
+      lost.length === 0 ? "ok" : "falha",
+      lost.length === 0
+        ? `${groupDgs.length}/${groupDgs.length}`
+        : `perde em ${lost.join(", ")} (rodar scripts/gen-edge.ts)`,
+    );
+  }
+  const main = [...LIMIT_GROUP_PARTIES[0]!];
+  for (const st of LIMIT_STEPS) {
+    const won = groupDgs.filter((d) => stepRun(d, main, st.id).outcome === "vitoria").length;
+    add(
+      S1,
+      `um degrau abaixo (${st.label}) no ${short(main)}`,
+      "info",
+      `vence ${won}/${groupDgs.length} (${pct(won / groupDgs.length)})` +
+        (st.id === "atributos"
+          ? " (P85: a build da classe rende ~15% a mais que a igual na função; o HP extra da igual compensa)"
+          : ""),
+    );
+  }
+  // Quem ficou de fora da calibração: medido, não cobrado.
+  const others: [string, Comp, string][] = [
+    ["druida de cura única", ["guerreiro", "druida", "mago", "cacador", "assassino"], " (P84: o druida segura como 2ª cura, não sozinho)"],
+    ["paladino de tanque", ["paladino", "padre", "mago", "cacador", "assassino"], ""],
+    ["grupo de 4", ["guerreiro", "padre", "mago", "cacador"], " (D41: a PT completa é de 5; com 4 a falta aparece)"],
+    ["trio", ["guerreiro", "padre", "mago"], " (a sala da Masmorra não encolhe abaixo de 3)"],
   ];
-  for (const t of TANKS)
-    for (const s of SUPPORTS)
-      for (const p of PAIRS) {
-        const c = [t, s, ...p];
-        const runs = masmorras.map((d) => ({ L: d.level, r: run(d, c) }));
-        const bad = runs.filter((x) => !clean(x.r)).map((x) => x.L);
-        // D40: sem descanso entre as salas, vencer perdendo 1 herói fica aceito; derrota não.
-        const d40 = runs
-          .filter((x) => !clean(x.r))
-          .every(
-            (x) =>
-              x.r.outcome === "vitoria" &&
-              x.r.heroes.filter((h) => !h.alive).length <= 1,
-          );
-        add(
-          S1,
-          `T/H/D/D ${short(c)} vence sem mortes`,
-          bad.length === 0
-            ? "ok"
-            : t === "paladino" || d40
-              ? "aceita"
-              : "falha",
-          bad.length === 0
-            ? "37/37"
-            : `${37 - bad.length}/37; com morte ou derrota: ${bad.join(", ")}${t === "paladino" ? " (P63: sobra depois da D32)" : d40 ? " (D40: vence com 1 morte, sem descanso)" : ""}`,
-        );
-      }
-  for (const t of TANKS)
-    for (const s of SUPPORTS) {
-      const c: Comp = [t, s, "mago"];
-      const lost = masmorras
-        .filter((d) => run(d, c).outcome !== "vitoria")
-        .map((d) => d.level);
-      const early = lost.filter((l) => l < 160);
-      const why =
-        early.length === 0
-          ? " (D20: do 160 em diante pode perder)"
-          : t === "paladino"
-            ? " (P63: sobra depois da D32)"
-            : "";
-      add(
-        S1,
-        `trio ${short(c)} vence`,
-        lost.length === 0
-          ? "ok"
-          : early.length === 0 || t === "paladino"
-            ? "aceita"
-            : "falha",
-        lost.length === 0 ? "37/37" : `perde em ${lost.join(", ")}${why}`,
-      );
-    }
+  for (const [what, c, why] of others) {
+    const won = groupDgs.filter((d) => stepRun(d, c).outcome === "vitoria").length;
+    add(S1, `${what} ${short(c)} no limite`, "info", `vence ${won}/${groupDgs.length}${why}`);
+  }
   const mustLose: [string, Comp][] = [
     ["sem tanque", ["padre", "mago", "cacador", "assassino"]],
     ["sem tanque", ["druida", "mago", "cacador", "assassino"]],
@@ -153,16 +150,17 @@ export function balanceReport(
 
   // ------------------------------------------------------------ §14.8
   const S8 = "§14.8 Proficiência";
-  const ref: Comp = ["guerreiro", "padre", "mago", "cacador"];
-  const lowLost = masmorras
-    .filter((d) => d.level <= 100)
-    .filter((d) => run(d, ref, { proficiency: () => 1 }).outcome !== "vitoria")
-    .map((d) => d.level);
+  // D41: a proficiência de 10 × L faz parte do limite; sem treino (b = 1) o grupo perde, e é o esperado.
+  const ref: Comp = [...LIMIT_GROUP_PARTIES[0]!];
+  const low = masmorras.filter((d) => d.level <= 100);
+  const lowWon = low.filter(
+    (d) => run(d, ref, { proficiency: () => 1 }).outcome === "vitoria",
+  ).length;
   add(
     S8,
-    "PT de referência com b = 1 vence até o L100",
-    lowLost.length === 0 ? "ok" : "falha",
-    lowLost.length === 0 ? "vence todas" : `perde em ${lowLost.join(", ")}`,
+    `grupo de 5 sem treino (b = 1) até o L100`,
+    "info",
+    `vence ${lowWon}/${low.length} (D41: o treino faz parte do limite)`,
   );
 
   // ------------------------------------------------------------ §14.9 e §14.10
@@ -180,11 +178,13 @@ export function balanceReport(
     return out;
   };
   const scenarios: [string, Comp, boolean][] = [
-    ["referência", ref, true],
-    ["T/H/D/D", ["paladino", "druida", "assassino", "cacador"], true],
+    ...LIMIT_GROUP_PARTIES.map((c) => ["grupo de 5", [...c], true] as [string, Comp, boolean]),
     ["sem tanque", ["padre", "mago", "cacador", "assassino"], false],
     ["sem DPS", ["guerreiro", "padre", "druida", "paladino"], false],
   ];
+  // D41: "vence 9 em 10" (decisão do dono) no grupo de calibração; o gerador confere com 20 corridas,
+  // aqui são `n`: até 5 p.p. abaixo fica aceito pelo sorteio.
+  const WIN = B.cfg.limit.winTarget;
   const cloth = (Object.keys(CLASSES) as ClassId[]).filter(
     (c) => CLASSES[c].armor === "leve",
   );
@@ -205,21 +205,18 @@ export function balanceReport(
           ).length / rs.length,
       };
     });
-    const bad = rates.filter((x) => (win ? x.rate < 0.95 : x.rate > 0.05));
+    const bad = rates.filter((x) => (win ? x.rate < WIN : x.rate > 0.05));
+    const nearWin = win && bad.every((x) => x.rate >= WIN - 0.05);
     // D29 e D33: até o L90 (onde a Consagração do paladino entra, D32) quem devia perder pode
     // vencer às vezes no aleatório; do 100 em diante, não.
     const earlyBand = !win && bad.length > 0 && bad.every((x) => x.L < 100);
     add(
       S9,
-      `${what} ${short(c)} ${win ? "vence em ≥ 95%" : "vence em ≤ 5%"}`,
-      bad.length === 0
-        ? "ok"
-        : c[0] === "paladino" || earlyBand
-          ? "aceita"
-          : "falha",
+      `${what} ${short(c)} ${win ? `vence em ≥ ${pct(WIN)}` : "vence em ≤ 5%"}`,
+      bad.length === 0 ? "ok" : earlyBand || nearWin ? "aceita" : "falha",
       rates.map((x) => `L${x.L} ${pct(x.rate)}`).join(" · ") +
-        (bad.length && c[0] === "paladino"
-          ? " (P63: sobra depois da D32)"
+        (bad.length && nearWin
+          ? " (D41: a até 5 p.p. da meta, sorteio)"
           : bad.length && !win
             ? earlyBand
               ? " (D29/D33: até o L90 fica como exceção)"
@@ -413,7 +410,7 @@ export function balanceReport(
   // ------------------------------------------------------------ §13 economia
   const S13 = "§13 Economia";
   const eco = masmorras.map((d) => {
-    const ps = party(ref, d.level);
+    const ps = ref.map((c) => limitFighter(c, d.level, {}, B));
     const r = simulateRun(d, ps, { mode: "esperado" }, B, M);
     const rw = runRewards(
       d,
@@ -439,13 +436,16 @@ export function balanceReport(
   // D40: sem descanso entre as salas a PT bebe mais (medido em 25/11/2026: até 21%). Aceito até 25%;
   // o piso de 5% continua valendo.
   const d40 = outside.every((x) => x.share >= 0.045 && x.share <= 0.25);
+  // D41: no limite o grupo bebe mais (vence apertado, gastando poção). A meta do §13 fica em aberto
+  // (P83: preço da poção ou ouro da Masmorra), medida aqui.
+  const d41 = outside.every((x) => x.share >= 0.045);
   add(
     S13,
-    "as poções de uma Masmorra custam 5–10% do ouro da corrida (PT de referência, 37 Masmorras)",
-    outside.length === 0 ? "ok" : near || d40 ? "aceita" : "falha",
+    "as poções de uma Masmorra custam 5–10% do ouro da corrida (grupo de 5 no limite, 37 Masmorras)",
+    outside.length === 0 ? "ok" : near || d40 || d41 ? "aceita" : "falha",
     `${eco.length - outside.length}/${eco.length} na faixa` +
       (outside.length
-        ? `; fora: ${outside.map((x) => `L${x.L} ${(x.share * 100).toFixed(1)}%`).join(", ")}${near ? " (P74: a até 0,5 p.p. da faixa)" : d40 ? " (D40: sem descanso, aceito até 25%)" : ""}`
+        ? `; fora: ${outside.map((x) => `L${x.L} ${(x.share * 100).toFixed(1)}%`).join(", ")}${near ? " (P74: a até 0,5 p.p. da faixa)" : d40 ? " (D40: sem descanso, aceito até 25%)" : d41 ? " (P83: no limite o grupo bebe mais; preço em aberto)" : ""}`
         : "") +
       ` · de ${(Math.min(...eco.map((x) => x.share)) * 100).toFixed(1)}% a ${(Math.max(...eco.map((x) => x.share)) * 100).toFixed(1)}%`,
   );

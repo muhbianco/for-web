@@ -6,7 +6,8 @@ import type { EnemyInput, FighterInput } from "../combat/types.ts";
 import { DUNGEONS, dungeonById, dungeonRooms } from "../dungeons/catalog.ts";
 import { balance as B } from "../formulas.ts";
 import { simulateRun } from "../run/simulate.ts";
-import { encounters as E } from "../sim/encounters.ts";
+import { LIMIT_GROUP_PARTIES, LIMIT_HUNT_GROUPS } from "../sim/calibration.ts";
+import { limitEncounters as E } from "../sim/encounters.ts";
 import { computeMonsterRow, createMonsters } from "./generate.ts";
 import { MONSTER_TABLE } from "./table.generated.ts";
 
@@ -82,7 +83,8 @@ test("§12.2 e D19: catálogo com 50 Caçadas, 37 Masmorras (só do 40) e 10 Che
   assert.ok(!DUNGEONS.some((d) => d.kind === "masmorra" && d.level < 40));
   const m = dungeonById("masmorra-130")!;
   assert.equal(m.minLevel, 125);
-  assert.deepEqual(m.party, { min: 3, max: 4 });
+  assert.deepEqual(m.party, { min: 1, max: 5 });
+  assert.deepEqual(dungeonById("cacada-130")!.party, { min: 1, max: 3 });
 });
 
 test("§12.1 e D14: salas 4 / 5 / 3 + elite / chefe; lacaios de R−4 a R; elite e chefe em R", () => {
@@ -184,77 +186,55 @@ test("D16: a Investida vale 1,5× o golpe do chefe menor (não o do chefe, calib
   assert.ok(Math.abs(b.autoRaw * b.charge!.mult - 1.5 * r.menorHit) < 1e-6);
 });
 
-// D40 (25/11/2026): sem descanso entre as salas, o grupo entra na sala seguinte com o que sobrou.
-// O dono aceitou o jogo mais difícil: a PT completa continua vencendo todas as Masmorras, mas pode
-// perder um herói no caminho (medido: gue+pad+mag+cac no 490, pal+pad+ass+mag no 230 e no 330).
-// O mago solo perde a Caçada do próprio nível nestas faixas (as outras classes vencem todas).
-const D40_MAGO_SOLO = new Set([30, 70, 120, 130, 140, 190]);
-const D40_MAX_DEATHS = 1;
-
+// D41 (25/11/2026, pedido do dono: "a pt só chega até o 500 se estiver no level máximo, com os
+// melhores itens da classe, o kit do meta e os atributos da classe"): os monstros saem do perfil do
+// limite e cada DG fica no ponto do grupo de calibração mais frágil (dungeons/edge.generated.ts). Os
+// heróis destes testes estão no limite (limitEncounters); um degrau abaixo perde, e isso fica no relatório.
 // D21/D22: nada se balanceia por tempo; a duração das salas não é cobrada.
-test("corrida: PT completa vence (D40: até 1 morte); sem DPS e sem tanque perdem", () => {
-  for (const L of [40, 70, 110, 160, 310, 490]) {
-    const d = DUNGEONS.find((x) => x.kind === "masmorra" && x.level === L)!;
-    const run = (c: string[]) =>
-      simulateRun(
-        d,
-        c.map((x) => hero(x as FighterInput["cls"], L)),
-        { mode: "esperado" },
-      );
-    const ok = run(["guerreiro", "padre", "mago", "cacador"]);
-    assert.equal(ok.outcome, "vitoria", `L${L}`);
-    assert.ok(
-      ok.heroes.filter((h) => !h.alive).length <= D40_MAX_DEATHS,
-      `L${L}: mortes`,
-    );
-    assert.notEqual(
-      run(["guerreiro", "padre", "druida", "paladino"]).outcome,
-      "vitoria",
-      `L${L} sem DPS`,
-    );
-    assert.notEqual(
-      run(["padre", "mago", "cacador", "assassino"]).outcome,
-      "vitoria",
-      `L${L} sem tanque`,
-    );
-  }
-});
-
-// P63: com paladino de tanque, a Invocação (desde o 70) jogava os lacaios no suporte e no mago
-// (16 de 148 corridas com morte). Do T4 em diante o paladino leva a Consagração, que o cura por
-// inimigo consagrado; sem suporte ele continua perdendo.
-test("P63: as 4 PTs completas vencem as 37 Masmorras (D40: até 1 morte); sem suporte o paladino perde", () => {
-  const FULL = [
-    ["guerreiro", "padre", "mago", "cacador"],
-    ["paladino", "druida", "assassino", "cacador"],
-    ["guerreiro", "druida", "mago", "assassino"],
-    ["paladino", "padre", "assassino", "mago"],
-  ] as const;
-  for (const d of DUNGEONS.filter((x) => x.kind === "masmorra")) {
+test("D41: os grupos de 5 da calibração vencem toda Masmorra e Região no limite; sem DPS e sem tanque perdem", () => {
+  for (const d of DUNGEONS.filter((x) => x.kind !== "cacada")) {
     const run = (c: readonly string[]) =>
       simulateRun(
         d,
         c.map((x) => hero(x as FighterInput["cls"], d.level)),
         { mode: "esperado" },
       );
-    for (const c of FULL) {
-      const r = run(c);
-      assert.ok(
-        r.outcome === "vitoria" &&
-          r.heroes.filter((h) => !h.alive).length <= D40_MAX_DEATHS,
-        `${c.join("+")} L${d.level}: ${r.outcome}`,
-      );
-    }
+    for (const c of LIMIT_GROUP_PARTIES)
+      assert.equal(run(c).outcome, "vitoria", `${c.join("+")} ${d.id}`);
+    if (![40, 70, 110, 160, 310, 490].includes(d.level)) continue;
     assert.notEqual(
-      run(["paladino", "mago", "cacador", "assassino"]).outcome,
+      run(["guerreiro", "padre", "druida", "paladino", "padre"]).outcome,
       "vitoria",
-      `L${d.level} sem suporte`,
+      `${d.id} sem DPS`,
+    );
+    assert.notEqual(
+      run(["padre", "mago", "cacador", "assassino", "druida"]).outcome,
+      "vitoria",
+      `${d.id} sem tanque`,
     );
   }
 });
 
-test("Caçada solo: toda classe vence toda Caçada até o 440 (D40: menos o mago em 6 faixas)", () => {
-  for (const d of DUNGEONS.filter((x) => x.kind === "cacada" && x.level <= 440))
+// P63: sem suporte o paladino continua perdendo, agora também no limite e em grupo de 5.
+test("P63: sem suporte, o grupo de 5 com paladino de tanque perde a Masmorra", () => {
+  for (const d of DUNGEONS.filter(
+    (x) => x.kind === "masmorra" && x.level % 50 === 0,
+  ))
+    assert.notEqual(
+      simulateRun(
+        d,
+        (["paladino", "mago", "cacador", "assassino", "mago"] as const).map(
+          (c) => hero(c, d.level),
+        ),
+        { mode: "esperado" },
+      ).outcome,
+      "vitoria",
+      `${d.id} sem suporte`,
+    );
+});
+
+test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio da calibração em grupo", () => {
+  for (const d of DUNGEONS.filter((x) => x.kind === "cacada")) {
     for (const c of [
       "guerreiro",
       "paladino",
@@ -269,12 +249,22 @@ test("Caçada solo: toda classe vence toda Caçada até o 440 (D40: menos o mago
         [E.fighter(c, d.level, { ...SPEC, solo: true })],
         { mode: "esperado" },
       );
-      if (c === "mago" && D40_MAGO_SOLO.has(d.level)) continue;
       assert.equal(r.outcome, "vitoria", `${c} ${d.id}`);
     }
+    for (const group of Object.values(LIMIT_HUNT_GROUPS))
+      for (const c of group)
+        assert.equal(
+          simulateRun(
+            d,
+            c.map((x) => hero(x, d.level)),
+            { mode: "esperado" },
+          ).outcome,
+          "vitoria",
+          `${c.join("+")} ${d.id}`,
+        );
+  }
 });
 
-// D20: trios do L160 em diante ficam como estão (podem perder com todas as mecânicas).
 // D21: sem teto de tempo — a Caçada lenta do druida termina, só leva mais.
 test("Caçada solo sem teto de tempo: o druida termina a do 451", () => {
   const d = DUNGEONS.find((x) => x.kind === "cacada" && x.level === 451)!;

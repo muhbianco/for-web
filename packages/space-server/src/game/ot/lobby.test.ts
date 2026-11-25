@@ -16,7 +16,7 @@ const m = (
   level,
 });
 
-test("grupo na TV: cria, entra até 4, vários grupos por TV e um por pessoa", () => {
+test("grupo na TV: cria, entra até 5 (D41), vários grupos por TV e um por pessoa", () => {
   const hub = new LobbyHub();
   assert.equal(hub.create("tv1", "R1", "masmorra-40", m("A"), 0).ok, true);
   // 24/11/2026: a TV aceita outro grupo (o que fica montado não a prende mais).
@@ -33,15 +33,15 @@ test("grupo na TV: cria, entra até 4, vários grupos por TV e um por pessoa", (
     ok: false,
     reason: "in_lobby",
   });
-  for (const id of ["B", "C", "D"])
+  for (const id of ["B", "C", "D", "E"])
     assert.equal(hub.join("tv1", undefined, m(id)).ok, true);
-  assert.deepEqual(hub.join("tv1", hub.of("A")!.id, m("E")), { ok: false, reason: "full" });
+  assert.deepEqual(hub.join("tv1", hub.of("A")!.id, m("F")), { ok: false, reason: "full" });
   // Sem id, a TV não tem grupo com vaga.
-  assert.deepEqual(hub.join("tv1", undefined, m("E")), { ok: false, reason: "no_lobby" });
-  assert.equal(hub.atTv("tv1")[0]!.members.length, 4);
+  assert.deepEqual(hub.join("tv1", undefined, m("F")), { ok: false, reason: "no_lobby" });
+  assert.equal(hub.atTv("tv1")[0]!.members.length, 5);
   // Entrar de novo na mesma sala não duplica.
   assert.equal(hub.join("tv1", undefined, m("B")).ok, true);
-  assert.equal(hub.atTv("tv1")[0]!.members.length, 4);
+  assert.equal(hub.atTv("tv1")[0]!.members.length, 5);
   assert.deepEqual(hub.join("tv9", undefined, m("Z")), { ok: false, reason: "no_lobby" });
   // O id de um grupo de outra TV não serve.
   assert.deepEqual(hub.join("tv9", hub.of("A")!.id, m("Z")), { ok: false, reason: "no_lobby" });

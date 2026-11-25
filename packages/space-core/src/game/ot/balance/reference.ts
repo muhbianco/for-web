@@ -1,10 +1,14 @@
 import {
+  type AffixId,
   type ClassId,
   type RarityId,
   type Stat,
   type Stats,
+  AFFIXES,
   ARMOR_SLOTS,
   CLASSES,
+  JEWEL_EXTRA_AFFIXES,
+  RARITIES,
 } from "./content.ts";
 import {
   type Affix,
@@ -53,8 +57,34 @@ export interface ReferenceVersus {
   missVsLacaio: number;
 }
 
-export function createReference(B: Balance = gameBalance) {
+/**
+ * "referencia": o perfil do spec (Raro +4, 5 + 3 afixos de atributo), que dá o kit inicial, as poções
+ * e o "escolher o melhor sozinho". "limite" (D41): o item da faixa do `limit` do config, com os
+ * afixos da classe; é dele que os monstros saem.
+ */
+export type ReferenceProfile = "referencia" | "limite";
+
+/** Valor nominal de um afixo no iL (o meio da rolagem; nos de %, o meio da faixa). */
+export function affixNominal(id: AffixId, ilvl: number, B: Balance): number {
+  const a = AFFIXES[id];
+  if (a.scale === "atributo") return B.attributeAffix(ilvl);
+  if (a.scale === "rating") return B.ratingAffix(ilvl);
+  return ((a.min ?? 0) + (a.max ?? 0)) / 2;
+}
+
+export function createReference(
+  B: Balance = gameBalance,
+  profile: ReferenceProfile = "referencia",
+) {
   const cfg = B.cfg;
+  // As poções são as do jogo (perfil de referência), também quando os monstros saem do limite.
+  const game = profile === "referencia" ? null : createReference(B);
+
+  /** A faixa do limite do nível (a última vale acima dela). */
+  function limitBand(level: number) {
+    const bands = cfg.limit.bands;
+    return bands.find((b) => level <= b.upTo) ?? bands[bands.length - 1]!;
+  }
 
   /** Os dois atributos que recebem os afixos do perfil: os de maior peso na build (empate: ordem). */
   function affixTargets(cls: ClassId): [Stat, Stat] {
@@ -74,8 +104,11 @@ export function createReference(B: Balance = gameBalance) {
   ): Equipment {
     const c = CLASSES[cls];
     const ilvl = opts.ilvl ?? level;
-    const rarity = (opts.rarity ?? cfg.reference.rarity) as RarityId;
-    const refine = opts.refine ?? cfg.reference.refine;
+    const band = profile === "limite" ? limitBand(level) : null;
+    const rarity = (opts.rarity ??
+      band?.rarity ??
+      cfg.reference.rarity) as RarityId;
+    const refine = opts.refine ?? band?.refine ?? cfg.reference.refine;
     const common = { ilvl, rarity, refine };
     const items: ItemInstance[] = [
       { ...common, slot: "arma", family: c.referenceWeapon, affixes: [] },
@@ -92,7 +125,20 @@ export function createReference(B: Balance = gameBalance) {
     items.push({ ...common, slot: "colar", affixes: [] });
     items.push({ ...common, slot: "anel", affixes: [] });
 
-    if (opts.gearAttrs !== false) {
+    if (opts.gearAttrs !== false && profile === "limite") {
+      // D41: cada peça com os primeiros afixos do plano da classe que a raridade dá.
+      const plan = cfg.limit.affixPlan[cls] ?? {};
+      for (const it of items) {
+        const n =
+          RARITIES[it.rarity].affixes +
+          (it.slot === "colar" || it.slot === "anel" ? JEWEL_EXTRA_AFFIXES : 0);
+        for (const id of (plan[it.slot] ?? []).slice(0, n))
+          it.affixes.push({
+            id: id as AffixId,
+            value: affixNominal(id as AffixId, it.ilvl, B),
+          });
+      }
+    } else if (opts.gearAttrs !== false) {
       const [main, second] = affixTargets(cls);
       const v = B.attributeAffix(ilvl);
       const affixes: Affix[] = [
@@ -203,6 +249,7 @@ export function createReference(B: Balance = gameBalance) {
 
   /** Poção de vida: 6% do HP do caçador de referência no nível do tier, arredondado (cura inteira). */
   function potionHp(level: number): number {
+    if (game) return game.potionHp(level);
     return Math.round(
       cfg.potions.hpPctOfReference *
         referenceHero("cacador", B.potionTierLevel(level)).hp,

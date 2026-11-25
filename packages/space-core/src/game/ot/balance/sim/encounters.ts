@@ -13,7 +13,11 @@ import {
   type Tier,
   balance as gameBalance,
 } from "../formulas.ts";
-import { type Reference, createReference } from "../reference.ts";
+import {
+  type Reference,
+  type ReferenceProfile,
+  createReference,
+} from "../reference.ts";
 import {
   REFERENCE_KITS,
   REFERENCE_KITS_T4,
@@ -101,8 +105,11 @@ export function referenceSkills(
   return { tier, builds, slots: kit, ai: overrides, resets: 0 };
 }
 
-export function createEncounters(B: Balance = gameBalance) {
-  const R: Reference = createReference(B);
+export function createEncounters(
+  B: Balance = gameBalance,
+  profile: ReferenceProfile = "referencia",
+) {
+  const R: Reference = createReference(B, profile);
   const cfg = B.cfg;
   const partyDpsCache = new Map<string, number>();
   const soloDpsCache = new Map<string, number>();
@@ -312,3 +319,9 @@ export function createEncounters(B: Balance = gameBalance) {
 export type Encounters = ReturnType<typeof createEncounters>;
 
 export const encounters: Encounters = createEncounters();
+
+/** D41: os heróis no perfil do limite, contra quem os monstros são feitos (testes de corrida). */
+export const limitEncounters: Encounters = createEncounters(
+  gameBalance,
+  "limite",
+);

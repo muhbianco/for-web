@@ -329,7 +329,7 @@ export const BALANCE = {
   },
 
   /** §11.2: escala(n) = 1 + 0,75·(n−1); a Masmorra usa n mínimo de 3. */
-  partyScale: { perExtra: 0.75, masmorraMin: 3, maxParty: 4 },
+  partyScale: { perExtra: 0.75, masmorraMin: 3, maxParty: 5 },
 
   /** §11.1: arquétipos (multiplicadores sobre N(m) e K(m)). */
   archetypes: {
@@ -417,6 +417,12 @@ export const BALANCE = {
     menorCataclysmAtSeconds: 120,
     cataclysmPct: 0.4,
     cataclysmEverySeconds: 2,
+    /**
+     * D41: o aperto do limite, por tipo de DG, sobre a vida e o golpe (lacaio, elite, chefe e pulso)
+     * de todo monstro. 1 = os números do spec contra o perfil do limite.
+     */
+    limitHp: { cacada: 1, masmorra: 1, regional: 1 },
+    limitHit: { cacada: 1, masmorra: 1, regional: 1 },
   },
 
   /** §12.3: mecânicas de chefe por faixa de nível (entram junto com as respostas dos tiers). */
@@ -498,6 +504,112 @@ export const BALANCE = {
     /** Custo: 50 × (1 + iL/20) × r² em ouro + r minérios da região. */
     costBase: 50,
     costIlvlDiv: 20,
+  },
+
+  /**
+   * O perfil do limite (D41, 25/11/2026, pedido do dono: "a pt só chega até o 500 se estiver no level
+   * máximo e totalmente equipada com os melhores itens da classe, com o kit de skill do meta e os
+   * atributos da classe"). Os monstros saem dele (monsters/generate.ts): a DG do nível L pede o
+   * item da faixa de L, com os afixos que a classe escolheria. O perfil de referência (abaixo) segue
+   * dando o kit inicial do herói, o tamanho das poções e a conta do "escolher o melhor sozinho".
+   */
+  limit: {
+    /**
+     * O item de cada faixa, até o nível `upTo` (curva escolhida pelo dono). Até o 39 fica o kit
+     * inicial (Raro +4, hero.ts): a Épica quase só cai das Masmorras, que abrem no 40 (D19).
+     */
+    bands: [
+      { upTo: 39, rarity: "raro", refine: 4 },
+      { upTo: 150, rarity: "epico", refine: 5 },
+      { upTo: 300, rarity: "epico", refine: 7 },
+      { upTo: 450, rarity: "lendario", refine: 8 },
+      { upTo: 500, rarity: "lendario", refine: 10 },
+    ],
+    /**
+     * Os afixos de cada peça, na ordem de escolha (a peça leva os primeiros que a raridade dá; colar e
+     * anel, um a mais). Medido com scripts/limit-affixes.ts: cada espaço com o afixo que mais sobe a
+     * nota da função da classe. Valor nominal, sem a rolagem.
+     */
+    affixPlan: {
+      guerreiro: {
+        arma: ["VIT", "FOR", "atkPct"],
+        secundaria: ["VIT", "defPct", "FOR"],
+        elmo: ["hpPct", "VIT", "defPct"],
+        armadura: ["hpPct", "VIT", "defPct"],
+        calcas: ["hpPct", "VIT", "defPct"],
+        botas: ["VIT", "hpPct", "defPct"],
+        colar: ["VIT", "hpPct", "FOR", "atkPct"],
+        anel: ["VIT", "hpPct", "FOR", "atkPct"],
+      },
+      paladino: {
+        arma: ["VIT", "AGI", "FOR"],
+        secundaria: ["VIT", "defPct", "FOR"],
+        elmo: ["hpPct", "VIT", "defPct"],
+        armadura: ["hpPct", "VIT", "defPct"],
+        calcas: ["hpPct", "VIT", "defPct"],
+        botas: ["VIT", "hpPct", "defPct"],
+        colar: ["VIT", "hpPct", "FOR", "atkPct"],
+        anel: ["VIT", "hpPct", "FOR", "atkPct"],
+      },
+      padre: {
+        arma: ["healPct", "INT", "matkPct"],
+        elmo: ["INT", "VIT", "hpPct"],
+        armadura: ["INT", "VIT", "hpPct"],
+        calcas: ["INT", "VIT", "hpPct"],
+        botas: ["INT", "VIT", "hpPct"],
+        colar: ["healPct", "matkPct", "INT", "VIT"],
+        anel: ["matkPct", "INT", "VIT", "hpPct"],
+      },
+      druida: {
+        arma: ["healPct", "INT", "matkPct"],
+        elmo: ["INT", "VIT", "hpPct"],
+        armadura: ["INT", "VIT", "hpPct"],
+        calcas: ["INT", "VIT", "hpPct"],
+        botas: ["INT", "VIT", "hpPct"],
+        colar: ["healPct", "matkPct", "INT", "VIT"],
+        anel: ["matkPct", "INT", "VIT", "hpPct"],
+      },
+      mago: {
+        arma: ["matkPct", "INT", "AGI"],
+        elmo: ["INT", "AGI", "DES"],
+        armadura: ["INT", "AGI", "DES"],
+        calcas: ["INT", "AGI", "DES"],
+        botas: ["INT", "AGI", "DES"],
+        colar: ["matkPct", "INT", "DES", "SOR"],
+        anel: ["matkPct", "INT", "DES", "SOR"],
+      },
+      cacador: {
+        arma: ["DES", "atkPct", "hastePct"],
+        secundaria: ["DES", "SOR", "FOR"],
+        elmo: ["DES", "critRating", "SOR"],
+        armadura: ["DES", "SOR", "FOR"],
+        calcas: ["DES", "SOR", "FOR"],
+        botas: ["DES", "critRating", "SOR"],
+        colar: ["DES", "atkPct", "SOR", "cooldownPct"],
+        anel: ["atkPct", "DES", "critMultPct", "critRating"],
+      },
+      assassino: {
+        arma: ["FOR", "atkPct", "DES"],
+        elmo: ["FOR", "DES", "hit"],
+        armadura: ["FOR", "DES", "SOR"],
+        calcas: ["FOR", "DES", "SOR"],
+        botas: ["FOR", "DES", "hastePct"],
+        colar: ["atkPct", "FOR", "DES", "SOR"],
+        anel: ["atkPct", "FOR", "critMultPct", "DES"],
+      },
+    } as Partial<Record<string, Partial<Record<string, readonly string[]>>>>,
+    /**
+     * Margem abaixo do ponto em que o grupo de calibração no limite deixa de vencer (scripts/gen-edge.ts):
+     * o golpe de cada DG fica isto abaixo do máximo que ele aguenta no modo esperado.
+     */
+    edgeMargin: 0.08,
+    /** O Cataclismo do chefe de Masmorra e Região vem isto depois do grupo de calibração mais lento. */
+    timeMargin: 0.1,
+    /** "Vence 9 em 10" (decisão do dono): cada grupo de calibração no limite, em `mcRuns` corridas no aleatório. */
+    winTarget: 0.9,
+    mcRuns: 40,
+    /** O gerador pede isto acima de `winTarget` nas suas corridas: com 40 o sorteio erra uns 3 p.p. */
+    mcSafety: 0.03,
   },
 
   /** O perfil de referência que calibra o conteúdo (§9.4, §11.2). */

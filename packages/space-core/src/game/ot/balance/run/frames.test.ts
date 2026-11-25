@@ -6,7 +6,7 @@ import { randomSource } from "../combat/fight.ts";
 import type { FighterInput } from "../combat/types.ts";
 import type { ClassId } from "../content.ts";
 import { DUNGEONS, dungeonById } from "../dungeons/catalog.ts";
-import { encounters as E } from "../sim/encounters.ts";
+import { limitEncounters as E } from "../sim/encounters.ts";
 import { simulateRun } from "./simulate.ts";
 
 // Quadros da corrida para a tela (Fase 8): um por segundo, com os eventos daquele segundo.

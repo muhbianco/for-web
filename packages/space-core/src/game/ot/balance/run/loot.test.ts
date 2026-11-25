@@ -9,7 +9,7 @@ import { cannotEquip } from "../equipment.ts";
 import { balance as B } from "../formulas.ts";
 import { materialOf } from "../items/generate.ts";
 import { LEGENDARIES } from "../items/legendary.ts";
-import { encounters as E } from "../sim/encounters.ts";
+import { limitEncounters as E } from "../sim/encounters.ts";
 import { lootFor, rollBase, rollItem, rollRarity, runLoot } from "./loot.ts";
 import type { RewardKill } from "./rewards.ts";
 import { simulateRun } from "./simulate.ts";

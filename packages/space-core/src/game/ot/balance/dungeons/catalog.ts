@@ -1,6 +1,7 @@
 import type { EnemyInput, Family } from "../combat/types.ts";
 import type { DungeonType } from "../formulas.ts";
 import type { Monsters } from "../monsters/generate.ts";
+import { DUNGEON_EDGE } from "./edge.generated.ts";
 
 /**
  * O catálogo de DGs (spec §12): 10 regiões de 50 níveis; em cada uma, Caçadas em X+1, X+10, X+20,
@@ -172,7 +173,9 @@ function dungeon(
     level,
     region,
     minLevel: Math.max(1, level - 5),
-    party: kind === "cacada" ? { min: 1, max: 2 } : { min: 3, max: 4 },
+    // D41 (25/11/2026, pedido do dono): Caçada de 1 a 3, Masmorra e Região de 1 a 5 (a sala da
+    // Masmorra continua do tamanho de um trio para menos de 3, `partyScale.masmorraMin`).
+    party: kind === "cacada" ? { min: 1, max: 3 } : { min: 1, max: 5 },
     aliases,
   };
 }
@@ -217,7 +220,8 @@ export function dungeonRooms(
   M: Monsters,
 ): EnemyInput[][] {
   const type = dungeonType(d);
-  const o = { partySize, type };
+  const edge = DUNGEON_EDGE[d.id];
+  const o = { partySize, type, ...(edge ? { edge } : {}) };
   const R = d.level;
   let k = 0;
   const family = () => d.region.families[k % d.region.families.length]!;

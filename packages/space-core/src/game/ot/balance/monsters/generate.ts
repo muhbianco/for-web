@@ -1,4 +1,5 @@
 import type { ArchetypeKey, EnemyInput, Family } from "../combat/types.ts";
+import type { DungeonEdge } from "../dungeons/edge.generated.ts";
 import {
   type Balance,
   type DungeonType,
@@ -21,6 +22,11 @@ export const MONSTER_REFERENCE: SimOptions = {
   referenceAi: "gabarito",
 };
 
+/**
+ * Uma linha da tabela, medida nos heróis do perfil do LIMITE (D41: item da faixa do `limit` do config,
+ * com os afixos da classe), não no Raro +4 do spec; o aperto de cada DG vem por cima
+ * (dungeons/edge.generated.ts).
+ */
 export interface MonsterRow {
   /** DPS_solo_ref(m): média de mago, caçador e assassino em alvo único, 60 s. */
   soloDps: number;
@@ -38,8 +44,8 @@ export function computeMonsterRow(
   m: number,
   B: Balance = gameBalance,
 ): MonsterRow {
-  const E = createEncounters(B);
-  const R = createReference(B);
+  const E = createEncounters(B, "limite");
+  const R = createReference(B, "limite");
   const hits = R.monsterHits(m);
   return {
     soloDps: E.referenceSoloDps(m, MONSTER_REFERENCE),
@@ -57,6 +63,8 @@ export interface MonsterOptions {
   type: DungeonType;
   family?: Family;
   magic?: boolean;
+  /** D41: o aperto da DG (dungeons/edge.generated.ts): o golpe de todo monstro e o Cataclismo do chefe. */
+  edge?: DungeonEdge;
 }
 
 export function createMonsters(
@@ -116,6 +124,11 @@ export function createMonsters(
         ? mon.huntHitMult.solo
         : mon.huntHitMult.duo;
 
+  /** D41: o aperto do limite por tipo de DG, sobre a vida e o golpe de todo monstro. */
+  const hpMult = (o: MonsterOptions): number => mon.limitHp[o.type];
+  const hitMult = (o: MonsterOptions): number =>
+    mon.limitHit[o.type] * (o.edge?.party?.[o.partySize] ?? o.edge?.hit ?? 1);
+
   /**
    * Lacaio: HP = 3 s × DPS_solo_ref × escala(n) (o spec; D22); golpe = 6% do HP do caçador ÷
    * (1 − redução dele), × o redutor da Caçada.
@@ -126,8 +139,11 @@ export function createMonsters(
       "lacaio",
       m,
       o,
-      mon.lacaioHpSeconds * r.soloDps * B.partyScale(o.partySize, o.type),
-      r.lacaioHit * roomHitMult(o, summoned),
+      mon.lacaioHpSeconds *
+        r.soloDps *
+        B.partyScale(o.partySize, o.type) *
+        hpMult(o),
+      r.lacaioHit * roomHitMult(o, summoned) * hitMult(o),
     );
   }
 
@@ -139,7 +155,10 @@ export function createMonsters(
       m,
       o,
       mon.eliteHpMult * l.hp,
-      mon.eliteHitMult * row(m).lacaioHit * roomHitMult(o, false, "elite"),
+      mon.eliteHitMult *
+        row(m).lacaioHit *
+        roomHitMult(o, false, "elite") *
+        hitMult(o),
     );
   }
 
@@ -151,8 +170,11 @@ export function createMonsters(
         "chefeMenor",
         m,
         o,
-        mon.menorHpSeconds * r.soloDps * B.partyScale(o.partySize, o.type),
-        r.menorHit,
+        mon.menorHpSeconds *
+          r.soloDps *
+          B.partyScale(o.partySize, o.type) *
+          hpMult(o),
+        r.menorHit * hitMult(o),
       ),
       cataclysm: {
         atSeconds: mon.menorCataclysmAtSeconds,
@@ -193,13 +215,14 @@ export function createMonsters(
         "chefe",
         m,
         o,
-        (mon.masmorraHpSeconds * r.partyDps * scale) / mon.masmorraHpDivisor,
-        r.bossHit,
+        ((mon.masmorraHpSeconds * r.partyDps * scale) / mon.masmorraHpDivisor) *
+          hpMult(o),
+        r.bossHit * hitMult(o),
       ),
       buster: { everySeconds: mon.busterEverySeconds, mult: mon.busterMult },
-      pulse: { everySeconds: mon.pulseEverySeconds, raw: r.pulse },
+      pulse: { everySeconds: mon.pulseEverySeconds, raw: r.pulse * hitMult(o) },
       cataclysm: {
-        atSeconds: mon.cataclysmAtSeconds,
+        atSeconds: o.edge?.cataclysmAt ?? mon.cataclysmAtSeconds,
         pct: mon.cataclysmPct,
         everySeconds: mon.cataclysmEverySeconds,
       },
