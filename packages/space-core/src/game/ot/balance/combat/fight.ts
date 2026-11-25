@@ -76,6 +76,9 @@ interface Hero {
   auto: number;
   potCd: number;
   pots: number;
+  /** Estoques separados de vida e mana (null = um estoque só, `pots`). */
+  hpPots: number | null;
+  mpPots: number | null;
   shield: number;
   shieldUntil: number;
   /** O que acontece quando o escudo atual quebra (Reflexo Sagrado, Espinhos de Luz). */
@@ -194,6 +197,8 @@ export function fight(
     auto: 0,
     potCd: 0,
     pots: opts.carry?.[i]?.pots ?? input.potions.stock,
+    hpPots: opts.carry?.[i]?.hpPots ?? input.potions.hpStock ?? null,
+    mpPots: opts.carry?.[i]?.mpPots ?? input.potions.mpStock ?? null,
     shield: 0,
     shieldUntil: 0,
     shieldBreak: null,
@@ -1637,19 +1642,22 @@ export function fight(
       });
 
       h.potCd -= DT;
-      if (h.potCd <= 0 && h.pots > 0) {
+      const hasHp = h.hpPots === null ? h.pots > 0 : h.hpPots > 0;
+      const hasMp = h.mpPots === null ? h.pots > 0 : h.mpPots > 0;
+      if (h.potCd <= 0 && (hasHp || hasMp)) {
         const at = h.input.potionAt ?? { hp: 0.5, mp: 0.3 };
-        if (ratio(h) < at.hp) {
+        if (ratio(h) < at.hp && hasHp) {
           const before = h.hp;
           source = "pocao";
           heal(h, h.input.potions.hp, null);
           source = "auto";
           emit({ k: "pocao", a: who(h), v: Math.round(h.hp - before) });
           h.pots--;
+          if (h.hpPots !== null) h.hpPots--;
           h.potionsUsed++;
           h.hpPotions++;
           h.potCd = cfg.potions.cooldownMs / 1000;
-        } else if (h.mp / ch.mp < at.mp) {
+        } else if (h.mp / ch.mp < at.mp && hasMp) {
           const before = h.mp;
           h.mp = Math.min(ch.mp, h.mp + h.input.potions.mp);
           emit({
@@ -1659,6 +1667,7 @@ export function fight(
             mana: true,
           });
           h.pots--;
+          if (h.mpPots !== null) h.mpPots--;
           h.potionsUsed++;
           h.mpPotions++;
           h.potCd = cfg.potions.cooldownMs / 1000;
@@ -1762,6 +1771,8 @@ export function fight(
         mp: h.mp,
         alive: h.alive,
         pots: h.pots,
+        ...(h.hpPots !== null ? { hpPots: h.hpPots } : {}),
+        ...(h.mpPots !== null ? { mpPots: h.mpPots } : {}),
         cooldowns: Object.fromEntries(
           [...h.cds]
             .map(([id, until]) => [id, Math.max(0, until - t)] as const)

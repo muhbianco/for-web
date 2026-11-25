@@ -1,0 +1,148 @@
+import { z } from "zod";
+
+import { validAllocation } from "./attributes.ts";
+import {
+  AFFIX_IDS,
+  ARMOR_SLOTS,
+  ARMOR_WEIGHTS,
+  CLASS_IDS,
+  FAMILY_IDS,
+  OFFHAND_IDS,
+  RARITY_IDS,
+} from "./content.ts";
+import { cannotEquip } from "./equipment.ts";
+import { type Balance, balance as gameBalance } from "./formulas.ts";
+import { BAG_SLOTS, HERO_VERSION, type HeroV5, balanceHero } from "./hero.ts";
+import { MATERIALS } from "./items/generate.ts";
+import { LEGENDARIES } from "./items/legendary.ts";
+import { vaultSlots } from "./npcs/bank.ts";
+import { skillPoints, skillPointsSpent } from "./skills/tree.ts";
+
+/**
+ * Validação do herói v5 lido do banco (Fase 8). Um documento que não passa NÃO é consertado em
+ * silêncio (o erro do `normalizeHero` antigo, que zerava atributos e mochila): volta o motivo, e o
+ * servidor recusa e registra.
+ */
+
+const count = z.number().int().min(0).max(1e12);
+const common = {
+  uid: z.string().min(1).max(64),
+  ilvl: z.number().int().min(1).max(500),
+  rarity: z.enum(RARITY_IDS),
+  refine: z.number().int().min(0).max(10),
+  affixes: z
+    .array(z.object({ id: z.enum(AFFIX_IDS), value: z.number().finite() }))
+    .max(6),
+  legendary: z
+    .string()
+    .refine((x) => LEGENDARIES.some((l) => l.id === x))
+    .optional(),
+};
+const item = z.union([
+  z.object({ ...common, slot: z.literal("arma"), family: z.enum(FAMILY_IDS) }),
+  z.object({
+    ...common,
+    slot: z.literal("secundaria"),
+    offhand: z.enum(OFFHAND_IDS),
+  }),
+  z.object({
+    ...common,
+    slot: z.enum(ARMOR_SLOTS),
+    weight: z.enum(ARMOR_WEIGHTS),
+  }),
+  z.object({ ...common, slot: z.enum(["colar", "anel"]) }),
+]);
+const stats = z.object({
+  FOR: z.number().int().min(1),
+  AGI: z.number().int().min(1),
+  VIT: z.number().int().min(1),
+  INT: z.number().int().min(1),
+  DES: z.number().int().min(1),
+  SOR: z.number().int().min(1),
+});
+const materials = z.partialRecord(z.enum(MATERIALS), count);
+
+export const heroV5Schema = z.object({
+  v: z.literal(HERO_VERSION),
+  cls: z.enum(CLASS_IDS),
+  level: z.number().int().min(1).max(500),
+  xp: count,
+  job: z.number().int().min(1).max(150),
+  jobXp: count,
+  proficiency: z.number().int().min(1).max(5000),
+  proficiencyXp: z.number().min(0).finite(),
+  attrs: stats,
+  attrResets: z.number().int().min(0),
+  skills: z.object({
+    tier: z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4)]),
+    builds: z.record(
+      z.string(),
+      z.object({
+        potency: z.number().int().min(1).max(20),
+        efficiency: z.number().int().min(0).max(5),
+        mechanics: z.record(z.string(), z.number().int().min(0).max(5)),
+      }),
+    ),
+    slots: z.array(z.string()).max(4),
+    ai: z.record(z.string(), z.array(z.any()).min(1).max(3)),
+    resets: z.number().int().min(0),
+  }),
+  equipment: z.record(z.string(), item),
+  bag: z.array(item).max(BAG_SLOTS),
+  gold: count,
+  potions: z.object({ hp: count, mp: count }),
+  ammo: z.partialRecord(z.enum(["comum", "afiada", "runica"]), count),
+  ores: materials,
+  essence: count,
+  stones: count,
+  vault: z.object({
+    gold: count,
+    items: z.array(item).max(2000),
+    expansions: z.number().int().min(0).max(100),
+  }),
+  supplies: z.object({
+    hp: z.number().min(0).max(1),
+    mp: z.number().min(0).max(1),
+  }),
+  autoEquip: z.boolean(),
+  dojo: z.object({ since: z.number().int().min(0) }).nullable(),
+});
+
+export type HeroCheck =
+  | { ok: true; hero: HeroV5 }
+  | { ok: false; reason: string };
+
+/** Confere forma e coerência (pontos, slots, cofre, ids únicos, o que está vestido cabe). */
+export function checkHero(doc: unknown, B: Balance = gameBalance): HeroCheck {
+  const p = heroV5Schema.safeParse(doc);
+  if (!p.success)
+    return { ok: false, reason: `forma: ${p.error.issues[0]?.path.join(".")}` };
+  const h = p.data as unknown as HeroV5;
+  if (!validAllocation(h.level, h.attrs, B))
+    return { ok: false, reason: "atributos acima dos pontos do nível" };
+  if (skillPointsSpent(h.skills) > skillPoints(h.job, B))
+    return { ok: false, reason: "skills acima dos pontos do job" };
+  if (h.vault.items.length > vaultSlots(h.vault.expansions, B))
+    return { ok: false, reason: "cofre acima do espaço" };
+  const uids = [
+    ...Object.values(h.equipment).map((x) => x!.uid),
+    ...h.bag.map((x) => x.uid),
+    ...h.vault.items.map((x) => x.uid),
+  ];
+  if (new Set(uids).size !== uids.length)
+    return { ok: false, reason: "item repetido" };
+  for (const [slot, it] of Object.entries(h.equipment)) {
+    if (!it || it.slot !== slot) return { ok: false, reason: `slot ${slot}` };
+    const others = { ...h.equipment } as Record<string, unknown>;
+    delete others[slot];
+    const err = cannotEquip(
+      balanceHero({ ...h, equipment: others as HeroV5["equipment"] }),
+      it,
+      B,
+    );
+    // O requisito de nível vale para vestir, não para continuar vestido.
+    if (err && err !== "nivel-baixo")
+      return { ok: false, reason: `${slot}: ${err}` };
+  }
+  return { ok: true, hero: h };
+}

@@ -303,7 +303,17 @@ export interface FighterInput {
   poisonBonus?: number;
   /** Auto-ataque mágico (fração do MATQ) para armas mágicas. */
   magicAutoAttack?: number;
-  potions: { hp: number; mp: number; stock: number };
+  /**
+   * Cura de cada poção e o estoque. Sem `hpStock`/`mpStock` o estoque é um só (o gabarito); com eles,
+   * vida e mana têm cada uma o seu (o herói de verdade, Fase 8).
+   */
+  potions: {
+    hp: number;
+    mp: number;
+    stock: number;
+    hpStock?: number;
+    mpStock?: number;
+  };
   /** Limiares de poção (fração): vida antes de mana. */
   potionAt?: { hp: number; mp: number };
 }
@@ -356,6 +366,9 @@ export interface HeroCarry {
   mp: number;
   alive: boolean;
   pots: number;
+  /** Estoques separados (quando o lutador os tem). */
+  hpPots?: number;
+  mpPots?: number;
   /** Segundos que faltam de cada recarga. */
   cooldowns: Record<string, number>;
   revived: boolean;

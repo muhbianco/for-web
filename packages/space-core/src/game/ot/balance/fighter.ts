@@ -16,7 +16,7 @@ export function heroFighter(
   hero: BalanceHero,
   skills: HeroSkills,
   opts: {
-    potions?: { hp: number; mp: number; stock: number };
+    potions?: FighterInput["potions"];
     potionAt?: { hp: number; mp: number };
   } = {},
   B: Balance = gameBalance,
