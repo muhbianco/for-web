@@ -133,7 +133,12 @@ export const BALANCE = {
   /** §5: poções. 1 por segundo, compartilhado entre vida e mana. */
   potions: {
     cooldownMs: 1000,
-    tiers: [1, 20, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
+    /**
+     * Níveis das faixas. O spec tinha 1, 20, 50, 100 e daí a cada 50; o 10, o 35 e o 75 entraram
+     * (decisão do dono de 25/11/2026, P29): no fim das faixas largas o mago perdia o solo contra o
+     * chefe menor (L18–19, L44–49, L89–99), porque a poção ficava pequena perto do HP dele.
+     */
+    tiers: [1, 10, 20, 35, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500],
     /** Vida = 6% do HP do caçador de referência no nível do tier. */
     hpPctOfReference: 0.06,
     /** Mana = 4% da mana-base do mago no nível do tier. */

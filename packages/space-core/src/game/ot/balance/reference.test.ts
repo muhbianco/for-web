@@ -4,10 +4,10 @@ import test from "node:test";
 import { type ClassId, CLASS_IDS } from "./content.ts";
 import { balance as B } from "./formulas.ts";
 import { reference as R } from "./reference.ts";
+import { encounters as E } from "./sim/encounters.ts";
 
-// As tabelas de referência do spec (§17, tolerância de ±2%) e os invariantes 6 e 7 da §14 que não
-// dependem de luta. HP de lacaio, de chefe menor e de chefe de masmorra saem do DPS de referência, que
-// só existe com o combate: entram como fixture agora e viram teste na Fase 6.
+// As tabelas de referência do spec (§17, tolerância de ±2%) e os invariantes 6 e 7 da §14. HP de
+// lacaio, de chefe menor e de chefe de masmorra saem do DPS de referência medido pelo motor de luta.
 
 const TOL = 0.02;
 
@@ -35,12 +35,15 @@ function pct(actual: number, expected: number, what: string) {
  * §17, 1ª tabela. Colunas: nível, job, tier, N, K, XP para o próximo, corridas acumuladas, HP tanque,
  * HP caçador, HP lacaio*, golpe lacaio, HP chefe menor*, golpe chefe menor, HP chefe de masmorra (4)*,
  * golpe chefe, pulso, poção de vida, poção de mana, ouro por lacaio. (*) dependem do combate.
+ *
+ * Poções do L10 e do L40 trocadas pelas faixas novas (10 e 35; decisão do dono de 25/11/2026, P29):
+ * no spec eram 7/4 e 18/13.
  */
 const PROGRESSION: ReadonlyArray<readonly number[]> = [
   [1, 1, 1, 11.9, 56, 374, 0, 157, 111, 102, 9, 853, 15, 7555, 33, 29, 7, 4, 4],
   [
     10, 11, 1, 37.4, 110, 4319, 16, 359, 193, 420, 18, 3500, 30, 32441, 94, 55,
-    7, 4, 14,
+    12, 8, 14,
   ],
   [
     20, 17, 1, 52.7, 170, 14717, 44, 660, 293, 914, 28, 7620, 47, 69516, 184,
@@ -52,7 +55,7 @@ const PROGRESSION: ReadonlyArray<readonly number[]> = [
   ],
   [
     40, 26, 3, 73.9, 290, 58033, 133, 1330, 523, 1938, 52, 16154, 87, 142686,
-    387, 158, 18, 13, 59,
+    387, 158, 28, 20, 59,
   ],
   [
     50, 30, 3, 82.4, 350, 92345, 194, 1700, 653, 2512, 66, 20929, 110, 183426,
@@ -143,9 +146,17 @@ test("§17: progressão, golpes dos monstros, poções e ouro por nível", () =>
   }
 });
 
-test.todo(
-  "§17: HP de lacaio, chefe menor e chefe de masmorra pelo DPS de referência (Fase 6)",
-);
+test("§17: HP de lacaio, elite, chefe menor e chefe de masmorra pelo DPS de referência", () => {
+  const mon = B.cfg.monsters;
+  for (const row of PROGRESSION) {
+    const [L, , , , , , , , , hpLacaio, , hpMenor, , hpBoss] = row as number[];
+    const at = `L${L}`;
+    const solo = E.referenceSoloDps(L!);
+    within(mon.lacaioHpSeconds * solo, hpLacaio!, `${at} HP lacaio`);
+    within(mon.menorHpSeconds * solo, hpMenor!, `${at} HP chefe menor`);
+    within(E.dungeonBoss(L!, 4).hp, hpBoss!, `${at} HP chefe de masmorra (4)`);
+  }
+});
 
 /** §17, 2ª tabela: HP, MP, ATQ, MATQ, red. física %, red. mágica %, crítico vs chefe %, evasão vs chefe %, erro vs lacaio %, ataques/s. */
 const HEROES: ReadonlyArray<readonly [ClassId, number, ...number[]]> = [
