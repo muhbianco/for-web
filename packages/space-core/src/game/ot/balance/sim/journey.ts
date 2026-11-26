@@ -46,6 +46,11 @@ export interface JourneyOptions {
   maxRuns?: number;
   /** Derrotas seguidas que contam como "empacou" no nível. */
   stuckAfter?: number;
+  /**
+   * Depois de tantas derrotas seguidas, caça na Caçada de baixo (10 níveis abaixo) até subir de
+   * nível, como faria um jogador que bateu na parede. Sem isso, insiste na do próprio nível.
+   */
+  retreatAfter?: number;
   seed?: number;
 }
 
@@ -69,6 +74,8 @@ export interface JourneyResult {
   /** Ouro em poções / ouro ganho, na jornada toda. */
   potionShare: number;
   marks: JourneyLevelMark[];
+  /** O herói no fim (onde chegou ou empacou), para medir a corrida que travou. */
+  hero: HeroV5;
 }
 
 const MARKS = [10, 20, 30, 40, 50, 70, 100, 150, 200];
@@ -204,6 +211,8 @@ export function simulateJourney(
   let spentOnPotions = 0;
   let stuckAt: number | null = null;
   let cautiousUntil = 0;
+  /** O nível em que bateu na parede e foi para a Caçada de baixo (`retreatAfter`). */
+  let retreatAt: number | null = null;
   const marks: JourneyLevelMark[] = [];
   let nextMark = 0;
 
@@ -217,10 +226,11 @@ export function simulateJourney(
       };
     const group = mode === "grupo" && h.level >= 40;
     // Perdeu: volta para a do próprio nível (ou abaixo) até subir de nível, como um jogador faria.
+    const retreating = !group && retreatAt === h.level;
     const d = pickDungeon(
-      h.level,
+      retreating ? h.level - 10 : h.level,
       group ? "masmorra" : "cacada",
-      cautiousUntil > h.level || streak > 0,
+      cautiousUntil > h.level || streak > 0 || retreating,
     );
     const me = heroRunFighter(h, B);
     const party: FighterInput[] = group
@@ -244,6 +254,8 @@ export function simulateJourney(
       losses++;
       streak++;
       cautiousUntil = h.level + 1;
+      if (opts.retreatAfter !== undefined && streak >= opts.retreatAfter)
+        retreatAt = h.level;
     } else streak = 0;
     const levels = party.map(() => h.level);
     const rw = runRewards(d, levels, r, B).heroes[0]!;
@@ -324,5 +336,6 @@ export function simulateJourney(
     stuckAt,
     potionShare: earned > 0 ? spentOnPotions / earned : 0,
     marks,
+    hero: h,
   };
 }
