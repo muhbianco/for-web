@@ -73,7 +73,10 @@ export function AttributesPanel(props: {
 
   const bump = (s: Stat, n: number) => {
     setOk(null);
-    const next = { ...add(), [s]: Math.max(0, (add()[s] ?? 0) + n) };
+    const v = Math.max(0, (add()[s] ?? 0) + n);
+    const next = { ...add(), [s]: v };
+    // Voltou ao zero: a chave sai (o servidor antigo recusava a mensagem inteira com um 0).
+    if (v === 0) delete next[s];
     const r = previewRaise(bh(), next);
     if (n > 0 && !r.ok) return;
     setAdd(next);
@@ -98,7 +101,10 @@ export function AttributesPanel(props: {
     setAdd(next);
   };
   const confirm = async () => {
-    const r = await cmd.run("rpg.attrs", { add: add() });
+    const only = Object.fromEntries(
+      Object.entries(add()).filter(([, n]) => (n ?? 0) > 0),
+    );
+    const r = await cmd.run("rpg.attrs", { add: only });
     if (r?.ok) {
       setOk(t`Pontos confirmados.`);
       setAdd({});

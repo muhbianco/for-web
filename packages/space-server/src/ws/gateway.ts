@@ -159,7 +159,8 @@ export class Gateway {
       const rpg = text.includes('"rpg.') ? parseRpgCommand(text) : null;
       if (rpg) {
         if (!s.runtime) return s.close(Close.Protocol, "hello expected");
-        if (!rpg.ok) return s.send({ v: 1, t: "error", d: { code: "invalid_message" } });
+        // With the id the app gets the refusal now, not a 10 s timeout and a generic error.
+        if (!rpg.ok) return s.send({ v: 1, t: "error", ...(rpg.id ? { re: rpg.id } : {}), d: { code: "invalid_message" } });
         const re = rpg.cmd.id;
         if (s.mode === "observe") return s.send({ v: 1, t: "error", re, d: { code: "not_allowed" } });
         if (!this.deps.rpg) return s.send({ v: 1, t: "error", re, d: { code: "game_disabled" } });

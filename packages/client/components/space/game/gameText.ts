@@ -341,6 +341,8 @@ export function errorText(code?: string, reason?: string): string {
       return t`A aljava só vai com arco ou besta.`;
     case "sem-pontos":
       return t`Sem pontos livres.`;
+    case "pedido-vazio":
+      return t`Marque algum ponto antes de confirmar.`;
     case "potencia-no-teto":
       return t`A Potência chegou ao teto do seu tier. Evolua no Mestre.`;
     case "eficiencia-no-teto":

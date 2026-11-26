@@ -50,12 +50,18 @@ export const RpgDojoStartCmd = cmd(
 );
 export const RpgDojoStopCmd = cmd("rpg.dojo.stop", empty);
 
-/** Atributos: quanto subir em cada um (os pontos livres e a escada de custo valem). */
+/**
+ * Atributos: quanto subir em cada um (os pontos livres e a escada de custo valem). Um atributo com 0
+ * passa (o painel deixa a chave ao voltar com o "−"; o núcleo pula): recusar a mensagem inteira
+ * travava o "Confirmar" com "Não deu certo agora" (26/11/2026). Tudo em 0 continua recusado.
+ */
 export const RpgAttrsCmd = cmd(
   "rpg.attrs",
   z
     .object({
-      add: z.partialRecord(z.enum(STATS), z.number().int().min(1).max(5000)),
+      add: z
+        .partialRecord(z.enum(STATS), z.number().int().min(0).max(5000))
+        .refine((a) => Object.values(a).some((n) => (n ?? 0) > 0)),
     })
     .strict(),
 );
@@ -359,9 +365,16 @@ export const RpgCommand = z.discriminatedUnion("t", [
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
 /** `null` = não é comando do jogo idle (o gateway segue para os outros parsers). */
+/**
+ * Lê um comando `rpg.*`. Recusado pelo esquema, devolve o `id` da mensagem (quando há um válido)
+ * para o gateway responder com `re`: sem ele o app esperava 10 s e mostrava um erro genérico.
+ */
 export function parseRpgCommand(
   raw: string,
-): { ok: true; cmd: RpgCommand } | { ok: false; error: string } | null {
+):
+  | { ok: true; cmd: RpgCommand }
+  | { ok: false; error: string; id?: string }
+  | null {
   if (raw.length > MAX_FRAME_BYTES) return null;
   let json: unknown;
   try {
@@ -373,9 +386,13 @@ export function parseRpgCommand(
   const t = (json as { t?: unknown }).t;
   if (typeof t !== "string" || !t.startsWith("rpg.")) return null;
   const res = RpgCommand.safeParse(json);
-  return res.success
-    ? { ok: true, cmd: res.data }
-    : { ok: false, error: "invalid_message" };
+  if (res.success) return { ok: true, cmd: res.data };
+  const id = env.id.safeParse((json as { id?: unknown }).id);
+  return {
+    ok: false,
+    error: "invalid_message",
+    ...(id.success ? { id: id.data } : {}),
+  };
 }
 
 // ------------------------------------------------------------ eventos do servidor

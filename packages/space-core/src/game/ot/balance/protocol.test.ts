@@ -17,6 +17,8 @@ test("os comandos novos passam com os dados certos", () => {
     ["rpg.dojo.start", { instance: "boneco-1" }],
     ["rpg.dojo.stop"],
     ["rpg.attrs", { add: { FOR: 5, VIT: 2 } }],
+    // O painel deixa a chave com 0 ao voltar com o "−" (26/11/2026).
+    ["rpg.attrs", { add: { FOR: 5, AGI: 0 } }],
     ["rpg.skill.spend", { skill: "curar", target: "potencia" }],
     [
       "rpg.skill.spend",
@@ -96,11 +98,17 @@ test("dados errados e comandos antigos são recusados; o que não é rpg. passa 
   ];
   for (const [t, d] of bad) {
     const r = send(t, d);
-    assert.deepEqual(r, { ok: false, error: "invalid_message" }, t);
+    // Com o id, para o gateway responder na hora (`re`).
+    assert.deepEqual(r, { ok: false, error: "invalid_message", id: "c1" }, t);
   }
   assert.equal(
     parseRpgCommand(JSON.stringify({ v: 1, id: "x", t: "move" })),
     null,
   );
   assert.equal(parseRpgCommand("não é json"), null);
+});
+
+test("mensagem recusada sem id válido não inventa um", () => {
+  const r = parseRpgCommand(JSON.stringify({ v: 1, t: "rpg.attrs", d: {} }));
+  assert.deepEqual(r, { ok: false, error: "invalid_message" });
 });

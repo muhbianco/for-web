@@ -6993,6 +6993,10 @@ msgid "Mark this channel as mature?"
 msgstr "このチャンネルを成人向けとしてマークしますか？"
 
 #: components/space/game/gameText.ts
+msgid "Marque algum ponto antes de confirmar."
+msgstr ""
+
+#: components/space/game/gameText.ts
 msgid "Masmorra"
 msgstr ""
 
