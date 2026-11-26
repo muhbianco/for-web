@@ -610,6 +610,12 @@ export const BALANCE = {
     mcRuns: 40,
     /** O gerador pede isto acima de `winTarget` nas suas corridas: com 40 o sorteio erra uns 3 p.p. */
     mcSafety: 0.03,
+    /**
+     * DGs fora do aperto (ficam com os números do spec contra o perfil do limite). A 1ª Caçada é a
+     * entrada do jogador novo (D37: o kit inicial vence ela); com o aperto, o mago recém-criado (sem
+     * treino) perdia 59% delas (medido em 26/11/2026, logo depois do deploy do D41).
+     */
+    exempt: ["cacada-1"] as readonly string[],
   },
 
   /** O perfil de referência que calibra o conteúdo (§9.4, §11.2). */

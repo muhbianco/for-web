@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { fight } from "../combat/fight.ts";
+import { Rng } from "../../../rng.ts";
+import { fight, randomSource } from "../combat/fight.ts";
 import type { EnemyInput, FighterInput } from "../combat/types.ts";
+import { CLASS_IDS } from "../content.ts";
 import { DUNGEONS, dungeonById, dungeonRooms } from "../dungeons/catalog.ts";
+import { DUNGEON_EDGE } from "../dungeons/edge.generated.ts";
 import { balance as B } from "../formulas.ts";
+import { createHero, heroRunFighter } from "../hero.ts";
 import { simulateRun } from "../run/simulate.ts";
 import { LIMIT_GROUP_PARTIES, LIMIT_HUNT_GROUPS } from "../sim/calibration.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
@@ -263,6 +267,31 @@ test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio
           "vitoria",
           `${c.join("+")} ${d.id}`,
         );
+  }
+});
+
+// D37 e D41: a 1ª Caçada fica fora do aperto (`limit.exempt`): o herói recém-criado de toda classe,
+// com o kit do jogo e sem treino, vence ela (com o aperto, o mago novo perdia 59%, 26/11/2026).
+test("D37: o herói recém-criado de toda classe vence a 1ª Caçada, no esperado e no aleatório", () => {
+  const d = dungeonById("cacada-1")!;
+  assert.equal(DUNGEON_EDGE[d.id], undefined);
+  let n = 0;
+  for (const cls of CLASS_IDS) {
+    const f = heroRunFighter(createHero(cls, () => `h${n++}`));
+    assert.equal(
+      simulateRun(d, [f], { mode: "esperado" }).outcome,
+      "vitoria",
+      cls,
+    );
+    for (let i = 0; i < 40; i++)
+      assert.equal(
+        simulateRun(d, [f], {
+          mode: "aleatorio",
+          random: randomSource(new Rng(77 + i * 7919)),
+        }).outcome,
+        "vitoria",
+        `${cls} semente ${i}`,
+      );
   }
 });
 
