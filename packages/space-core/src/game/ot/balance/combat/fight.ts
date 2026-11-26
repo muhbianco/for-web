@@ -61,9 +61,11 @@ interface Timed {
   stat: BuffStat | DebuffStat;
   value: number;
   until: number;
-  /** A skill que pôs e o herói (só a tela da corrida lê). */
+  /** A skill que pôs e o herói (a tela da corrida lê; `selfless` também). */
   src?: string;
   by?: number;
+  /** Não vale para quem soltou (`excludeCaster` do efeito). */
+  selfless?: boolean;
 }
 
 interface Dot {
@@ -1386,6 +1388,7 @@ export function fight(
           until: dur(eff.durationMs),
           src: s.id,
           by: who(h),
+          ...(eff.excludeCaster ? { selfless: true } : {}),
         });
         if (eff.stat === "hpMaxPct")
           for (const q of eff.target === "grupo" ? aliveHeroes() : [h])
@@ -1768,7 +1771,12 @@ export function fight(
       const regen =
         ch.mp * cfg.regen.mpPctPerSecond +
         cfg.regen.mpPerIntPerSecond * ch.attrs.INT +
-        ch.mp * sum(active(partyBuffs, "regenManaPct"));
+        ch.mp *
+          sum(
+            active(partyBuffs, "regenManaPct").filter(
+              (b) => !(b.selfless && b.by === h.i),
+            ),
+          );
       h.mp = Math.min(ch.mp, h.mp + regen * DT);
       const hpRegen = buffOf(h, "regenVidaPct");
       if (hpRegen > 0) heal(h, maxHp(h) * hpRegen * DT, null);

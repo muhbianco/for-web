@@ -156,6 +156,8 @@ export type Effect =
       durationMs: number;
       /** Buffs do mesmo grupo se sobrescrevem; sem grupo, cada skill tem o seu e eles multiplicam. */
       group?: string;
+      /** Buff de grupo que não vale para quem soltou (o druida dá a mana às custas da própria). */
+      excludeCaster?: boolean;
     }
   | {
       type: "debuff";

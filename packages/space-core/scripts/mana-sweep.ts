@@ -53,6 +53,8 @@ interface Params {
   cancao: number;
   /** Ajuste por classe (assassino, caçador). */
   classCost?: Record<string, number>;
+  /** A mana da Canção não vale para o druida que soltou. */
+  selfless?: boolean;
 }
 
 function balanceOf(p: Params): Balance {
@@ -73,6 +75,7 @@ function playerFighter(
   B: Balance,
   build: typeof BUILD,
   cancao: number,
+  selfless = false,
 ): FighterInput {
   const RL = createReference(B, "limite");
   const R0 = createReference(B);
@@ -113,6 +116,10 @@ function playerFighter(
     for (const s of f.skills)
       for (const e of s.effects)
         if (e.type === "buff" && e.stat === "regenManaPct") e.value = cancao;
+  if (selfless)
+    for (const s of f.skills)
+      for (const e of s.effects)
+        if (e.type === "buff" && e.stat === "regenManaPct") e.excludeCaster = true;
   return f;
 }
 
@@ -154,7 +161,9 @@ function evaluate(p: Params) {
     const d = masmorraAt(L);
     const price = potionPrice(d.level, B);
     for (const [pi, comp] of PARTIES.entries()) {
-      const party = comp.map((c) => playerFighter(c, d.level, B, BUILD, p.cancao));
+      const party = comp.map((c) =>
+        playerFighter(c, d.level, B, BUILD, p.cancao, p.selfless ?? false),
+      );
       const run = (fs: FighterInput[]) =>
         simulateRun(d, fs, { mode: "esperado" }, B, M);
       const r = run(party);
@@ -236,6 +245,20 @@ function report(p: Params, detail: boolean) {
       );
     }
   }
+}
+
+if (process.argv.includes("--druid")) {
+  // D44 em vigor; varia o custo do druida e se a Canção vale para ele.
+  const base = { costScale: 1.3, perRank: 0.01, perUp: 0.02, cutPerInt: 0.003, regenPct: 0.004, cancao: 0.02 };
+  console.log(`build ${BUILD}`);
+  console.log("Canção no druida	druida×	vitórias	druida	druida barra	mago	mago+dru	caçador+dru	assassino+dru	guerreiro+dru");
+  for (const selfless of [true])
+    for (const dc of [1.1, 1.15, 1.2, 1.25]) {
+      const e = evaluate({ ...base, selfless, classCost: { assassino: 0.86, cacador: 0.89, druida: dc } });
+      const v = (k: string) => n1(avg(e.byCls.get(k)?.potMP ?? []));
+      console.log([selfless ? "não" : "sim", dc, `${e.wins}/${e.total}`, v("druida"), pct(avg(e.byCls.get("druida")?.barred ?? [])), v("mago"), v("mago+dru"), v("cacador+dru"), v("assassino+dru"), v("guerreiro+dru")].join("	"));
+    }
+  process.exit(0);
 }
 
 if (process.argv.includes("--tune")) {
