@@ -1,8 +1,6 @@
 import {
   type ArchetypeKey,
   type ClassId,
-  type DungeonDef,
-  type DungeonKind,
   type Effect,
   type EnemyInput,
   type GearSlot,
@@ -11,7 +9,6 @@ import {
   type ItemInstance,
   type OwnedItem,
   type PotionSize,
-  type Region,
   type SkillBuild,
   type SkillContent,
   type SkillDef,
@@ -29,7 +26,6 @@ import {
   createReference,
   dungeonById,
   dungeonRooms,
-  DUNGEONS,
   equipItem,
   evolve,
   freshBuild,
@@ -39,7 +35,6 @@ import {
   levelProgress,
   POTION_SIZES,
   potionPrice,
-  REGIONS,
   roleScore,
   scoreHero,
   skillPoints,
@@ -563,42 +558,7 @@ export function respecCosts(h: HeroV5) {
   };
 }
 
-// ------------------------------------------------------------ DGs (§12)
-
-export interface DungeonRow {
-  def: DungeonDef;
-  locked: boolean;
-  /** A do nível do herói para o tipo (a mais alta em que ele entra). */
-  best: boolean;
-}
-
-export interface RegionGroup {
-  region: Region;
-  rows: DungeonRow[];
-  /** O herói está nesta faixa. */
-  current: boolean;
-}
-
-export function dungeonGroups(
-  level: number,
-  kind: DungeonKind | "todas",
-): RegionGroup[] {
-  const best = new Map<DungeonKind, string>();
-  for (const d of DUNGEONS) if (d.minLevel <= level) best.set(d.kind, d.id);
-  return REGIONS.map((region) => ({
-    region,
-    current: level >= region.from && level <= region.to,
-    rows: DUNGEONS.filter(
-      (d) =>
-        d.region.index === region.index &&
-        (kind === "todas" || d.kind === kind),
-    ).map((def) => ({
-      def,
-      locked: level < def.minLevel,
-      best: best.get(def.kind) === def.id,
-    })),
-  })).filter((g) => g.rows.length > 0);
-}
+// ------------------------------------------------------------ DGs (§12; a escolha na TV mora em dungeonUi.ts)
 
 export const dungeonOf = (id: string) => dungeonById(id);
 

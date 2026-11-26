@@ -53,6 +53,11 @@ export interface RunStore {
   running(limit: number): Promise<RpgRunDoc[]>;
   /** Marca como fechada; false se já estava (outro processo fechou). */
   settle(id: string, at: number): Promise<boolean>;
+  /**
+   * As DGs das corridas fechadas em vitória de que a pessoa participou (ids como gravados, sem
+   * repetir). É de onde sai a lista de concluídas do herói gravado antes de 26/11/2026.
+   */
+  victories(userId: string): Promise<string[]>;
 }
 
 export class MemoryRunStore implements RunStore {
@@ -78,6 +83,18 @@ export class MemoryRunStore implements RunStore {
     d.settled_at = at;
     return true;
   }
+
+  async victories(userId: string): Promise<string[]> {
+    const out = new Set<string>();
+    for (const d of this.docs.values())
+      if (
+        d.status === "settled" &&
+        d.outcome === "vitoria" &&
+        d.members.some((m) => m.userId === userId)
+      )
+        out.add(d.dungeon);
+    return [...out];
+  }
 }
 
 type RunMongo = RpgRunDoc & { expire_at: Date | null };
@@ -100,6 +117,11 @@ export class MongoRunStore implements RunStore {
     await this.col.createIndex(
       { expire_at: 1 },
       { expireAfterSeconds: 0, maxTimeMS: 10_000 },
+    );
+    // As vitórias de uma pessoa (a lista de DGs concluídas de quem jogou antes de 26/11/2026).
+    await this.col.createIndex(
+      { "members.userId": 1, outcome: 1 },
+      { maxTimeMS: 10_000 },
     );
   }
 
@@ -129,5 +151,14 @@ export class MongoRunStore implements RunStore {
       OP,
     );
     return res.matchedCount === 1;
+  }
+
+  async victories(userId: string): Promise<string[]> {
+    const ids = await this.col.distinct(
+      "dungeon",
+      { "members.userId": userId, outcome: "vitoria", status: "settled" },
+      OP,
+    );
+    return ids.filter((x): x is string => typeof x === "string");
   }
 }

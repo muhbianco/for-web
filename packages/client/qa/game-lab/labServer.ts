@@ -14,6 +14,8 @@ import {
   autoEquipBag,
   balanceHero,
   bankGold,
+  bossMissing,
+  bossRegions,
   buyAmmo,
   buyCommonItem,
   buyPotions,
@@ -49,6 +51,7 @@ import {
   vaultExpand,
   vaultPut,
   vaultTake,
+  withCleared,
 } from "@muchat/space-core/game/ot/balance";
 
 import type { TvLink } from "../../components/space/game/TvMenu";
@@ -137,6 +140,10 @@ export class LabServer implements TvLink {
   }
   private hero(): HeroV5 | null {
     return this.world.rpg.hero?.hero ?? null;
+  }
+  /** As DGs concluídas do herói (o servidor manda no estado; 26/11/2026). */
+  private cleared(): string[] {
+    return this.world.rpg.hero?.cleared ?? [];
   }
   private save(
     re: string,
@@ -338,6 +345,9 @@ export class LabServer implements TvLink {
         });
       }
       case "rpg.lobby.create": {
+        const dg = dungeonById(String(d.dungeon));
+        if (dg && bossMissing(dg, this.cleared()).length > 0)
+          return this.refuse(re, "region", "rpg_invalid");
         const l = this.lobby(String(d.dungeon), String(d.tv));
         this.set({ lobbies: { [l.id]: l } });
         return this.emit({
@@ -350,6 +360,12 @@ export class LabServer implements TvLink {
         const cur = Object.values(this.world.lobbies)[0];
         if (!cur) return this.refuse(re, "no_lobby");
         const d2 = dungeonById(String(d.dungeon));
+        // Como o servidor: o chefe pede a região de todos do grupo (26/11/2026).
+        if (
+          d2?.kind === "regional" &&
+          cur.members.some((m) => !(m.regions ?? []).includes(d2.region.index))
+        )
+          return this.refuse(re, "region", "rpg_invalid");
         const l = {
           ...cur,
           dungeon: String(d.dungeon),
@@ -431,7 +447,15 @@ export class LabServer implements TvLink {
       room: "sala-lab",
       dungeon,
       leader: this.me,
-      members: [{ user_id: this.me, name: "Ana", cls: h.cls, level: h.level }],
+      members: [
+        {
+          user_id: this.me,
+          name: "Ana",
+          cls: h.cls,
+          level: h.level,
+          regions: bossRegions(this.cleared()),
+        },
+      ],
       max: d?.party.max ?? 4,
       expires_at: Date.now() + 600_000,
       state: "forming",
@@ -683,6 +707,12 @@ export class LabServer implements TvLink {
         ]),
       ),
     });
-    this.save("", hero, { run: null });
+    this.save("", hero, {
+      run: null,
+      // A vitória do grupo conclui a DG (26/11/2026).
+      ...(res.outcome === "vitoria"
+        ? { cleared: withCleared(this.cleared(), view.dungeon) }
+        : {}),
+    });
   }
 }

@@ -707,3 +707,107 @@ test("Mercador e Ferreiro em lote: um comando para a lista inteira, tudo ou nada
   assert.equal(s.hero()!.hero.bag.length, 0);
   assert.ok(Object.values(s.hero()!.hero.ores).some((n) => (n ?? 0) > 0));
 });
+
+test("DG concluída: a vitória marca a DG no herói, no estado e no grupo (26/11/2026)", async () => {
+  const t = setup();
+  const run = await huntRun(t);
+  assert.deepEqual(t.s.hero()!.cleared, []);
+  const doc = t.runStore.docs.get(run.id)!;
+  t.clock.advance(doc.seconds * 1000);
+  await t.svc.tickRuns();
+  await t.svc.idle("U1");
+  assert.equal(doc.outcome, "vitoria");
+  assert.deepEqual(t.s.hero()!.cleared, ["cacada-1"]);
+  assert.deepEqual(t.store.docs.get("U1")!.cleared, ["cacada-1"]);
+  // Outra vitória na mesma DG não repete.
+  const again = await t.send("rpg.lobby.start");
+  assert.deepEqual(t.s.errors(again), []);
+  t.clock.advance(LOBBY.countdownMs);
+  await t.tick();
+  const run2 = t.s.of<RpgRunEvent>("rpg.run").at(-1)!.d.run;
+  t.clock.advance(t.runStore.docs.get(run2.id)!.seconds * 1000);
+  await t.svc.tickRuns();
+  await t.svc.idle("U1");
+  assert.deepEqual(t.store.docs.get("U1")!.cleared, ["cacada-1"]);
+});
+
+test("Chefe de Região: trancado até concluir as Caçadas e a Masmorra da região; a largada relê o herói", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "guerreiro" });
+  edit(t, "U1", (h) => ({ ...h, level: 50 }));
+  const locked = await t.send("rpg.lobby.create", {
+    tv: "tv1",
+    dungeon: "regiao-1",
+  });
+  assert.deepEqual(t.s.errors(locked), [
+    { code: "rpg_invalid", reason: "region" },
+  ]);
+  const all = ["cacada-1", "cacada-10", "cacada-20", "cacada-30", "cacada-40"];
+  t.store.docs.get("U1")!.cleared = all;
+  t.svc.forget("U1");
+  const still = await t.send("rpg.lobby.create", {
+    tv: "tv1",
+    dungeon: "regiao-1",
+  });
+  assert.deepEqual(t.s.errors(still), [
+    { code: "rpg_invalid", reason: "region" },
+  ]);
+  t.store.docs.get("U1")!.cleared = [...all, "masmorra-40"];
+  t.svc.forget("U1");
+  const ok = await t.send("rpg.lobby.create", {
+    tv: "tv1",
+    dungeon: "regiao-1",
+  });
+  assert.deepEqual(t.s.errors(ok), []);
+  assert.deepEqual(t.host.lobbies.of("U1")!.members[0]!.regions, [1]);
+  // A lista sumiu depois do grupo montado: a largada lê o herói de novo e recusa.
+  t.store.docs.get("U1")!.cleared = all;
+  t.svc.forget("U1");
+  const start = await t.send("rpg.lobby.start");
+  assert.deepEqual(t.s.errors(start), []);
+  t.clock.advance(LOBBY.countdownMs);
+  await t.tick();
+  const l = t.host.lobbies.of("U1")!;
+  assert.equal(l.stopped, "start_failed");
+  assert.equal(l.stoppedDetail, "region");
+  assert.equal(t.s.of<RpgRunEvent>("rpg.run").length, 0);
+});
+
+test("herói de antes de 26/11: as vitórias guardadas em rpg_runs5 viram concluídas na leitura e gravam", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "mago" });
+  const d = t.store.docs.get("U1")!;
+  delete d.cleared;
+  const rev = d.rev;
+  const run = (
+    id: string,
+    dungeon: string,
+    outcome: string,
+    status: string,
+    user = "U1",
+  ) =>
+    t.runStore.docs.set(id, {
+      _id: id,
+      dungeon,
+      outcome,
+      status,
+      members: [{ userId: user }],
+    } as unknown as Parameters<MemoryRunStore["create"]>[0]);
+  run("r1", "cacada-10", "vitoria", "settled");
+  run("r2", "toca", "vitoria", "settled");
+  run("r3", "cacada-20", "derrota", "settled");
+  run("r4", "cacada-30", "vitoria", "running");
+  run("r5", "cacada-40", "vitoria", "settled", "U2");
+  run("r6", "cacada-10", "vitoria", "settled");
+  t.svc.forget("U1");
+  await t.send("rpg.open");
+  assert.deepEqual(t.s.hero()!.cleared, ["cacada-1", "cacada-10"]);
+  const saved = t.store.docs.get("U1")!;
+  assert.deepEqual(saved.cleared, ["cacada-1", "cacada-10"]);
+  assert.equal(saved.rev, rev + 1);
+  // Já gravado: a próxima leitura não consulta de novo.
+  t.runStore.docs.clear();
+  t.svc.forget("U1");
+  await t.send("rpg.open");
+  assert.deepEqual(t.s.hero()!.cleared, ["cacada-1", "cacada-10"]);
+});

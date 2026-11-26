@@ -30,6 +30,8 @@ import {
   buyCommonItem,
   buyPotions,
   discardItem,
+  bossMissing,
+  bossRegions,
   changeClass,
   dismantleItem,
   dismantleItems,
@@ -38,6 +40,7 @@ import {
   evolveTier,
   heroRunFighter,
   meterOf,
+  normalizeCleared,
   skillManaCostFor,
   skillCooldownMs,
   planTransfer,
@@ -78,6 +81,7 @@ import {
   closeDojo,
   heroLook,
   inRun,
+  markCleared,
   markRun,
   newRpgHero,
   openDojo,
@@ -166,6 +170,8 @@ export interface RpgHost {
     runId: string,
     outcome: RpgRunEnd,
     levels: Record<string, number>,
+    /** As regiões cujo chefe cada um pode enfrentar depois desta corrida (`RpgLobbyMember.regions`). */
+    regions?: Record<string, number[]>,
   ): void;
   lobbyLoopFailed(
     id: string,
@@ -791,6 +797,7 @@ export class RpgService {
           name: host.displayName(userId),
           cls: doc.hero.cls,
           level: doc.hero.level,
+          regions: bossRegions(doc.cleared ?? []),
         };
         const res =
           cmd.t === "rpg.lobby.create"
@@ -862,6 +869,11 @@ export class RpgService {
             return fail("rpg_invalid", "party_size");
           if (peek.members.some((m) => m.level < dg.minLevel))
             return fail("rpg_invalid", "level");
+          if (
+            dg.kind === "regional" &&
+            peek.members.some((m) => !(m.regions ?? []).includes(dg.region.index))
+          )
+            return fail("rpg_invalid", "region");
         }
         const res = host.lobbyRequestStart(userId);
         if (!res.ok) return fail("rpg_invalid", res.reason);
@@ -1073,6 +1085,9 @@ export class RpgService {
       if (!d) return { ok: false, code: "rpg_invalid", reason: "no_hero" };
       if (d.hero.level < dungeon.minLevel)
         return { ok: false, code: "rpg_invalid", reason: "level" };
+      // O Chefe de Região só para quem concluiu as Caçadas e Masmorras da região (26/11/2026).
+      if (bossMissing(dungeon, d.cleared ?? []).length > 0)
+        return { ok: false, code: "rpg_invalid", reason: "region" };
       if (inRun(d, now))
         return { ok: false, code: "rpg_invalid", reason: "in_run" };
     }
@@ -1408,6 +1423,7 @@ export class RpgService {
       const cost = runStaminaCost(doc.seconds);
       const abandoned = doc.members.every((m) => run.left.has(m.userId));
       const levels: Record<string, number> = {};
+      const regions: Record<string, number[]> = {};
       const ends: RpgRunMemberEnd[] = [];
       for (const m of doc.members) {
         if (run.left.has(m.userId)) {
@@ -1429,6 +1445,8 @@ export class RpgService {
           const out = await this.mutate(m.userId, null, (d) => {
             const r = settleRunHero(d, doc._id, m.spoils, m.spoils, cost, now);
             if (!r.ok) return r;
+            // A vitória do grupo conclui a DG para quem ficou até o fim (vivo ou não; 26/11/2026).
+            if (doc.outcome === "vitoria") markCleared(d, doc.dungeon);
             end = {
               ...end,
               reward: {
@@ -1447,6 +1465,7 @@ export class RpgService {
           });
           if (out && "doc" in out) {
             levels[m.userId] = out.doc.hero.level;
+            regions[m.userId] = bossRegions(out.doc.cleared ?? []);
             this.push(
               host?.sessionOf(m.userId) ?? null,
               out.doc,
@@ -1460,7 +1479,7 @@ export class RpgService {
       await this.runStore.settle(doc._id, now);
       this.active.delete(doc._id);
       const outcome: RpgRunEnd = abandoned ? "retirada" : doc.outcome;
-      host?.lobbyRunEnded(doc._id, outcome, levels);
+      host?.lobbyRunEnded(doc._id, outcome, levels, regions);
       host?.sendRun(
         doc.room,
         [...doc.members.map((m) => m.userId), ...run.watchers],
@@ -1580,7 +1599,7 @@ export class RpgService {
   ): Promise<RpgHeroDoc | null> {
     if (!fresh) {
       const hit = this.cache.get(userId);
-      if (hit) {
+      if (hit && hit.cleared !== undefined) {
         this.cache.delete(userId);
         this.cache.set(userId, hit);
         return structuredClone(hit);
@@ -1599,10 +1618,46 @@ export class RpgService {
       });
       throw new Error(`rpg hero ${userId} invalid: ${checked.reason}`);
     }
-    const doc = checked.doc;
+    let doc = checked.doc;
+    if (doc.cleared === undefined) doc = await this.backfillCleared(doc);
     this.keep(doc);
     if (doc.outbox.length > 0) this.deliver(doc);
     return structuredClone(doc);
+  }
+
+  /**
+   * O herói gravado antes das DGs concluídas (26/11/2026) ganha a lista das vitórias guardadas em
+   * `rpg_runs5` (30 dias: tudo desde o recomeço de 25/11) e grava na hora, com CAS. Se outro
+   * processo gravou antes, a lista fica só no cache e vai na próxima gravação; se a consulta falhar,
+   * segue sem a lista (o chefe fica trancado) e a próxima leitura tenta de novo.
+   */
+  private async backfillCleared(doc: RpgHeroDoc): Promise<RpgHeroDoc> {
+    let cleared: string[];
+    try {
+      cleared = normalizeCleared(await this.runStore.victories(doc._id));
+    } catch (err) {
+      this.log.error("rpg cleared backfill failed", {
+        user: doc._id,
+        err: String(err),
+      });
+      return doc;
+    }
+    const next: RpgHeroDoc = { ...doc, cleared, rev: doc.rev + 1 };
+    let saved = false;
+    try {
+      saved = await this.store.save(next, doc.rev);
+    } catch (err) {
+      this.log.error("rpg cleared backfill save failed", {
+        user: doc._id,
+        err: String(err),
+      });
+    }
+    this.log.info("rpg cleared backfill", {
+      user: doc._id,
+      cleared: cleared.length,
+      saved,
+    });
+    return saved ? next : { ...doc, cleared };
   }
 
   private keep(doc: RpgHeroDoc) {

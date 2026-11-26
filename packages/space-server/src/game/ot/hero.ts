@@ -4,6 +4,7 @@ import {
   type OwnedItem,
   type RpgHeroState,
   type RunSpoils,
+  CLEARED_MAX,
   applyRun,
   checkHero,
   createHero,
@@ -11,6 +12,7 @@ import {
   itemTransferFee,
   startDojo,
   stopDojo,
+  withCleared,
 } from "@muchat/space-core/game/ot/balance";
 import {
   regenStamina,
@@ -68,6 +70,11 @@ export interface RpgHeroDoc {
   run: RpgRunMark | null;
   outbox: RpgTransfer[];
   inbox: string[];
+  /**
+   * As DGs concluídas (o grupo venceu com o herói; 26/11/2026), ids canônicos. Ausente: documento de
+   * antes disso; o serviço preenche na leitura com as vitórias guardadas em `rpg_runs5`.
+   */
+  cleared?: string[];
 }
 
 export type RpgOutcome = { ok: true } | { ok: false; reason: string };
@@ -94,6 +101,7 @@ export function newRpgHero(
     run: null,
     outbox: [],
     inbox: [],
+    cleared: [],
   };
 }
 
@@ -111,7 +119,19 @@ export function checkHeroDoc(
   if (!h.ok) return { ok: false, reason: `herói: ${h.reason}` };
   if (!Array.isArray(d.outbox) || !Array.isArray(d.inbox))
     return { ok: false, reason: "transferências" };
+  if (
+    d.cleared !== undefined &&
+    (!Array.isArray(d.cleared) ||
+      d.cleared.length > CLEARED_MAX ||
+      d.cleared.some((x) => typeof x !== "string"))
+  )
+    return { ok: false, reason: "concluídas" };
   return { ok: true, doc: d as RpgHeroDoc };
+}
+
+/** A DG vencida pelo grupo fica concluída para o herói (uma vez; ids canônicos). */
+export function markCleared(d: RpgHeroDoc, dungeon: string): void {
+  d.cleared = withCleared(d.cleared, dungeon);
 }
 
 export function inRun(d: RpgHeroDoc, now: number): boolean {
@@ -331,6 +351,7 @@ export function rpgHeroState(
     dojo: d.dojo ? { instance: d.dojo.instance, since: d.dojo.since } : null,
     run: d.run,
     rates: { exp: rates.exp },
+    cleared: d.cleared ?? [],
   };
 }
 

@@ -411,6 +411,11 @@ export interface RpgHeroState {
   run: { id: string; dungeon: string; ends_at: number } | null;
   /** Taxa de XP do servidor em vigor. */
   rates: { exp: number };
+  /**
+   * As DGs que o herói já concluiu (o grupo venceu com ele; 26/11/2026), ids canônicos na ordem do
+   * catálogo. Ausente: servidor anterior a isso (o app trata como nenhuma).
+   */
+  cleared?: string[];
 }
 
 export interface RpgStateEvent {
@@ -427,6 +432,11 @@ export interface RpgLobbyMember {
   name: string;
   cls: ClassId;
   level: number;
+  /**
+   * As regiões cujo Chefe o herói já pode enfrentar (concluiu as Caçadas e Masmorras dela; 26/11/2026).
+   * Ausente: servidor anterior a isso.
+   */
+  regions?: number[];
 }
 
 /** Como a corrida acabou para o grupo: o resultado da luta, ou "retirada" (todos saíram antes). */

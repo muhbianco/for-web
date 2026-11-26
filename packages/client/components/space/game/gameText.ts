@@ -3,6 +3,7 @@ import type {
   ArchetypeKey,
   ClassId,
   Condition,
+  DungeonDef,
   DungeonKind,
   Family,
   GearSlot,
@@ -142,6 +143,19 @@ export function weightName(w: string): string {
   return w === "leve" ? t`leve` : w === "media" ? t`média` : t`pesada`;
 }
 
+/** "Caçada 40", "Masmorra 40"; o Chefe de Região pelo nome dele (o catálogo da TV). */
+export function dungeonTitle(d: DungeonDef): string {
+  const level = d.level;
+  switch (d.kind) {
+    case "cacada":
+      return t`Caçada ${level}`;
+    case "masmorra":
+      return t`Masmorra ${level}`;
+    case "regional":
+      return d.name;
+  }
+}
+
 export function kindName(k: DungeonKind): string {
   return k === "cacada"
     ? t`Caçada`
@@ -150,14 +164,27 @@ export function kindName(k: DungeonKind): string {
       : t`Chefe de Região`;
 }
 
-export function kindBlurb(k: DungeonKind): string {
+/**
+ * O tipo de DG numa frase, com os números do núcleo (o tamanho do grupo e o item do chefe):
+ * `party` de `kindParty` e `boss` de `bossLoot` (dungeonUi.ts).
+ */
+export function kindBlurb(
+  k: DungeonKind,
+  party: { min: number; max: number },
+  boss: { perPlayer: boolean; floor: RarityId },
+): string {
+  const { min, max } = party;
+  const rarity = rarityName(boss.floor);
+  const item = boss.perPlayer
+    ? t`1 item ${rarity} ou melhor para cada um`
+    : t`1 item ${rarity} ou melhor para alguém do grupo`;
   switch (k) {
     case "cacada":
-      return t`1 ou 2 heróis. Três salas de monstros e um chefe menor: dá para ir sozinho.`;
+      return t`De ${min} a ${max} heróis. Três salas de monstros e um chefe menor: dá para ir sozinho. O chefe dá ${item}.`;
     case "masmorra":
-      return t`3 ou 4 heróis. O chefe tem mecânicas: precisa de tanque, suporte e dano.`;
+      return t`De ${min} a ${max} heróis. O chefe tem mecânicas: tanque, suporte e dano fazem falta. O chefe dá ${item}.`;
     case "regional":
-      return t`3 ou 4 heróis. O chefe da região em 3 fases, com todas as mecânicas. Dá um Épico garantido.`;
+      return t`De ${min} a ${max} heróis. O chefe da região, em 3 fases. Abre quando as Caçadas e Masmorras da região estão concluídas. O chefe dá ${item}.`;
   }
 }
 
@@ -394,6 +421,8 @@ export function errorText(code?: string, reason?: string): string {
       return t`O grupo está cheio.`;
     case "level":
       return t`Alguém do grupo ainda não tem o nível desta dungeon.`;
+    case "region":
+      return t`O Chefe de Região só abre para quem concluiu as Caçadas e Masmorras da região. Alguém do grupo ainda não concluiu.`;
     case "not_leader":
       return t`Só quem montou o grupo pode fazer isso.`;
     case "tv_busy":
