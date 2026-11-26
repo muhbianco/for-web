@@ -251,6 +251,28 @@ const SHOTS = [
     s: "corrida-fim&speed=0",
     act: tipOn("[data-covers-map] [role=img][tabindex='0']", 0),
   },
+  // O detalhe da skill ao parar em cima (25/11/2026): a lista e os slots da ficha, a barra da corrida.
+  {
+    name: "43-skill-ficha-lista",
+    s: "ficha",
+    act: seq(
+      tab("skills"),
+      tipOn("[aria-label='Skills da classe'] button[aria-pressed]", 2),
+    ),
+  },
+  {
+    name: "44-skill-ficha-slot",
+    s: "ficha",
+    act: seq(
+      tab("skills"),
+      tipOn("[aria-label='Slots da corrida'] button:not([aria-label])", 3),
+    ),
+  },
+  {
+    name: "45-skill-corrida",
+    s: "corrida-chefe&speed=0",
+    act: tipOn("ul[aria-label^='Habilidades'] > li", 2),
+  },
 ];
 
 mkdirSync(OUT, { recursive: true });

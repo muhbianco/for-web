@@ -34,6 +34,7 @@ import {
   freshBuild,
   GEAR_SLOTS,
   heroDerived,
+  legendaryMods,
   levelProgress,
   POTION_SIZES,
   potionPrice,
@@ -400,6 +401,8 @@ export interface SkillNumbers {
   main: MainNumber;
   mana: number;
   cooldownS: number;
+  /** A skill como o motor recebe (com os efeitos de lendário), para o texto do detalhe. */
+  def: SkillDef;
 }
 
 export function skillNumbers(
@@ -408,7 +411,14 @@ export function skillNumbers(
   build: SkillBuild,
   d: HeroStats = derivedOf(h),
 ): SkillNumbers {
-  const def = compileSkill(s, build, h.skills.ai[s.id]);
+  // Com os lendários vestidos, como o motor monta o kit (fighter.ts): a ficha e a corrida batem.
+  const def = compileSkill(
+    s,
+    build,
+    h.skills.ai[s.id],
+    B,
+    legendaryMods(h.equipment)[s.id] ?? [],
+  );
   // A mesma conta do motor (combat/fight.ts): nunca abaixo de 50% da base.
   const base = (def.baseCooldownMs ?? def.cooldownMs) / 1000;
   return {
@@ -420,6 +430,7 @@ export function skillNumbers(
         (1 - d.cooldownCut) *
         (1 - (def.ownCooldownCut ?? 0)),
     ),
+    def,
   };
 }
 

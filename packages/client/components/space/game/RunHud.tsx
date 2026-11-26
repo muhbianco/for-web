@@ -17,6 +17,8 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { sizeName } from "./gameText";
 import { heroBars, num, potionOf } from "./heroModel";
+import { skillIcon } from "./skillText";
+import { SkillTip, runSkillInfo } from "./SkillTip";
 
 /**
  * O painel de baixo da tela da corrida, no jeito do Diablo (o mesmo arranjo da tela de 24/11/2026,
@@ -77,6 +79,7 @@ export function RunHud(props: {
             mana={mp()}
             dead={dead()}
             casts={props.state.casts[props.index] ?? {}}
+            hero={props.hero}
           />
         </Center>
         <Side data-side="mana">
@@ -401,55 +404,6 @@ export const CLASS_ICON: Record<ClassId, string> = {
   assassino: "skull",
 };
 
-/** O ícone de uma skill pelo que ela faz (o primeiro efeito do conteúdo). */
-export function skillIcon(cls: ClassId, id: string): string {
-  const s = skillOf(cls, id);
-  const e = s?.effects[0];
-  if (!e) return "star";
-  switch (e.type) {
-    case "dano": {
-      const el = e.parts[0]?.element;
-      if (el === "sagrado") return "flare";
-      if (el === "magico")
-        return cls === "druida"
-          ? "eco"
-          : cls === "padre"
-            ? "flare"
-            : "local_fire_department";
-      if (e.targets === "area") return "cyclone";
-      return cls === "cacador" ? "north_east" : "swords";
-    }
-    case "dot":
-      return e.poison
-        ? "science"
-        : e.element === "magico"
-          ? "whatshot"
-          : "water_drop";
-    case "cura":
-      return "healing";
-    case "hot":
-      return "spa";
-    case "escudo":
-    case "escudoDeMana":
-      return "shield";
-    case "buff":
-      return "trending_up";
-    case "debuff":
-      return "trending_down";
-    case "provocar":
-      return "campaign";
-    case "atordoar":
-      return "flash_on";
-    case "reviver":
-      return "favorite";
-    case "purificar":
-      return "water_drop";
-    case "cortaAmeaca":
-      return "visibility_off";
-  }
-  return "star";
-}
-
 /**
  * As 4 habilidades na ordem de prioridade: disponível (acesa), em recarga (a cortina desce com os
  * segundos que faltam), sem mana (apagada e fria) e acesa no segundo em que sai.
@@ -461,6 +415,8 @@ function SkillBar(props: {
   mana: number;
   dead: boolean;
   casts: Record<string, number>;
+  /** O meu herói (o detalhe da skill com os meus pontos); null: assistindo. */
+  hero: HeroV5 | null;
 }) {
   const { t } = useLingui();
   return (
@@ -490,27 +446,32 @@ function SkillBar(props: {
                   ? t`${name}: sem mana (${s.mana})`
                   : t`${name}: pronta`;
           return (
-            <Slot
-              title={`${name} · ${t`${s.mana} de mana`} · ${t`recarga ${(s.cd_ms / 1000).toFixed(1).replace(".", ",")} s`}`}
-              aria-label={state()}
-              data-cd={left() > 0 ? "" : undefined}
-              data-nomana={noMana() ? "" : undefined}
-              data-ready={
-                !props.dead && left() <= 0 && !noMana() ? "" : undefined
-              }
-              data-cast={at() === props.nowS ? "" : undefined}
-            >
-              <Symbol size={24}>{skillIcon(props.member.cls, s.id)}</Symbol>
-              <Prio aria-hidden="true">{i() + 1}</Prio>
-              <Cost aria-hidden="true" data-cost="">
-                {s.mana}
-              </Cost>
-              <Wipe style={{ height: `${Math.round(frac() * 100)}%` }} />
-              <Show when={left() > 0}>
-                <Secs>{secs()}</Secs>
-              </Show>
-              <SkillName aria-hidden="true">{name}</SkillName>
-            </Slot>
+            <SkillTip info={() => runSkillInfo(props.member, s, props.hero)}>
+              {(bind) => (
+                <Slot
+                  {...bind}
+                  tabIndex={0}
+                  aria-label={state()}
+                  data-cd={left() > 0 ? "" : undefined}
+                  data-nomana={noMana() ? "" : undefined}
+                  data-ready={
+                    !props.dead && left() <= 0 && !noMana() ? "" : undefined
+                  }
+                  data-cast={at() === props.nowS ? "" : undefined}
+                >
+                  <Symbol size={24}>{skillIcon(props.member.cls, s.id)}</Symbol>
+                  <Prio aria-hidden="true">{i() + 1}</Prio>
+                  <Cost aria-hidden="true" data-cost="">
+                    {s.mana}
+                  </Cost>
+                  <Wipe style={{ height: `${Math.round(frac() * 100)}%` }} />
+                  <Show when={left() > 0}>
+                    <Secs>{secs()}</Secs>
+                  </Show>
+                  <SkillName aria-hidden="true">{name}</SkillName>
+                </Slot>
+              )}
+            </SkillTip>
           );
         }}
       </For>
@@ -817,6 +778,7 @@ const Slot = styled("li", {
     "&[data-nomana] > [data-cost]": { color: "#ff8a7a" },
     // No segundo em que sai: acende.
     "&[data-cast]": { boxShadow: "0 0 0 2px #fff, 0 0 12px #d9b45a" },
+    "&:focus-visible": { outline: "2px solid #f0dcae", outlineOffset: "2px" },
     "@container hud (max-width: 520px)": { width: "56px", height: "56px" },
   },
 });

@@ -107,6 +107,7 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
+#: components/space/game/SkillTip.tsx
 msgid "(padrão)"
 msgstr ""
 
@@ -324,8 +325,8 @@ msgstr ""
 
 #. placeholder {0}: s.mana
 #: components/space/game/RunHud.tsx
-msgid "{0} de mana"
-msgstr ""
+#~ msgid "{0} de mana"
+#~ msgstr ""
 
 #. placeholder {0}: s.mana
 #: components/space/game/SkillBar.tsx
@@ -622,6 +623,10 @@ msgstr ""
 #~ msgid "{a} bebeu {item}: +{0} de mana"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "{a} de dano {el}"
+msgstr ""
+
 #. placeholder {0}: ev.n
 #: components/space/game/runUi.ts
 #~ msgid "{a} desafiou {0} monstros: eles ficam no cavaleiro"
@@ -711,12 +716,56 @@ msgstr ""
 #~ msgid "{b} se defendeu de {a}"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "{base}, a cada {every} durante {dur}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{c} de chance de atordoar {whom} por {dur}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{c} de chance de funcionar."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{c} de chance de não gastar mana."
+msgstr ""
+
 #: components/space/game/RunHud.tsx
 #~ msgid "{count} na mochila"
 #~ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{device} Hz (não bate com {context} Hz)"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de dano causado"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de dano dos golpes certeiros"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de dano físico recebido"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de dano mágico recebido"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de dano recebido"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de DEF"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{down} de precisão"
 msgstr ""
 
 #: components/space/game/runUi.ts
@@ -731,6 +780,10 @@ msgstr ""
 #~ msgid "{h} h {m} min"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "{hits} golpes de {amount} {where}."
+msgstr ""
+
 #: components/space/game/ClassPicker.tsx
 msgid "{hp} poções de vida"
 msgstr ""
@@ -738,6 +791,10 @@ msgstr ""
 #: components/space/game/runUi.ts
 #~ msgid "{item} de {a} se desfez"
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{m} contra {fs}."
+msgstr ""
 
 #: components/space/game/rpgUi.ts
 #~ msgid "{m} min"
@@ -836,6 +893,34 @@ msgstr ""
 #~ msgid "{names} na {dungeon} · sala {n} de {of}"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "{p} da cura que passar do máximo vira escudo no alvo."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{p} da vida máxima"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{p} do ATQ"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{p} do dano causado cura o aliado com menos vida."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{p} do dano causado cura você."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{p} do escudo vai também para o aliado com menos vida."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{p} do MATQ"
+msgstr ""
+
 #. placeholder {0}: ms.toFixed(1)
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "{pct}% ({0} ms)"
@@ -862,6 +947,10 @@ msgstr ""
 msgid "{pieces} peças {rarity}{refine} (arma: {0})"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "{rest} e {last}"
+msgstr ""
+
 #. placeholder {0}: names()![tier - 1]
 #: components/space/game/SkillTree.tsx
 #~ msgid "{tier}ª classe: {0}"
@@ -869,6 +958,46 @@ msgstr ""
 
 #: components/ui/components/features/messaging/elements/Reactions.tsx
 msgid "{unknown} reacted"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de ATQ e MATQ"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de chance de crítico"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de cura recebida"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de dano causado"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de dano recebido"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de esquiva"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de fuga"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de precisão"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} de vida máxima"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{up} no dano do crítico"
 msgstr ""
 
 #: components/space/game/HeroSheet.tsx
@@ -883,9 +1012,29 @@ msgstr ""
 msgid "{usernames} reacted"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "{v} de chance de crítico no último golpe."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{v} de chance de crítico."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{v} de cura {when}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{v} de dano {when}."
+msgstr ""
+
 #: components/space/game/runUi.ts
 #~ msgid "{v} de ouro"
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "{v} no dano do crítico."
+msgstr ""
 
 #: components/space/game/itemUi.ts
 #~ msgid "{v} oz"
@@ -1126,6 +1275,10 @@ msgstr ""
 #~ msgid "≈ {0} para o próximo ponto"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "≈ {total} no total, em cada inimigo atingido."
+msgstr ""
+
 #. placeholder {0}: Math.round((p().score - 1) * 100)
 #: components/space/game/ItemCard.tsx
 msgid "▲ melhor para o seu papel (+{0}%)"
@@ -1152,6 +1305,11 @@ msgstr ""
 msgid "🔒 abre no T{0}"
 msgstr ""
 
+#. placeholder {0}: i().content.tier
+#: components/space/game/SkillTip.tsx
+msgid "🔒 Abre no T{0}: evolua no Mestre da evolução."
+msgstr ""
+
 #. placeholder {0}: row.def.minLevel
 #: components/space/game/TvMenu.tsx
 msgid "🔒 entra a partir do nível {0}"
@@ -1164,6 +1322,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "1 hora"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "1 inimigo"
 msgstr ""
 
 #: components/space/game/runUi.ts
@@ -1254,6 +1416,10 @@ msgstr ""
 #: components/space/game/GamePanel.tsx
 #~ msgid "A cada ação, o herói usa a primeira magia pronta da lista; sem nenhuma, ataca."
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "A cada segundo, {c} de chance de atordoar lacaios e elites por {sd}."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "A chamada está saudável"
@@ -1501,6 +1667,14 @@ msgstr ""
 
 #: components/modal/modals/PolicyChange.tsx
 msgid "Acknowledge"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Acumula até {n} vezes no mesmo aliado."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Acumula até {n} vezes no mesmo alvo."
 msgstr ""
 
 #: components/modal/modals/AddBot.tsx
@@ -1758,6 +1932,30 @@ msgstr ""
 msgid "Antes → depois"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Ao acertar, {c} de chance, em outro inimigo: {s}"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Ao acertar, {c} de chance: {s}"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Ao acertar, em outro inimigo: {s}"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Ao acertar: {s}"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Ao bloquear, {c} de chance de zerar a recarga desta skill."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Ao esquivar, {c} de chance de contra-atacar: {s}"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "ao vivo"
 msgstr ""
@@ -1978,12 +2176,20 @@ msgstr ""
 #~ msgid "Ataque no alvo"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "ataques {p} mais lentos"
+msgstr ""
+
 #: components/space/game/StatsPanel.tsx
 #~ msgid "Ataques por segundo"
 #~ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Ataques/s"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "até {max} inimigos"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
@@ -1997,6 +2203,10 @@ msgstr ""
 #: components/space/game/itemUi.ts
 #~ msgid "Atira {ammo}; usa as duas mãos"
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Atordoa {whom} por {dur}."
+msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "ATQ"
@@ -2263,6 +2473,14 @@ msgstr ""
 msgid "Bônus do refino"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Bônus em você por {dur}: {what}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Bônus no grupo todo por {dur}: {what}."
+msgstr ""
+
 #: components/app/interface/channels/text/Message.tsx
 msgid "Bot"
 msgstr "Robot"
@@ -2353,12 +2571,20 @@ msgstr ""
 msgid "cada"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Cada acerto tira {s} da recarga das outras skills."
+msgstr ""
+
 #: components/space/DecorPanel.tsx
 msgid "Cada avatar é um herói: treina nos dummies das salas e entra em dungeons em grupo pela TV. Desligar aqui esconde o jogo neste servidor; os heróis continuam guardados."
 msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Cada inimigo atingido cura você em {p} da vida máxima."
 msgstr ""
 
 #: components/space/game/StatsPanel.tsx
@@ -2547,6 +2773,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Categorias"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Causa {amount} {where}."
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -2899,6 +3129,10 @@ msgstr ""
 #~ msgid "com {0} ups: {1}"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "com 3 ou mais inimigos"
+msgstr ""
+
 #: components/space/game/AttributesPanel.tsx
 msgid "Com 4 atacantes em volta."
 msgstr ""
@@ -3184,6 +3418,10 @@ msgstr ""
 #~ msgid "Confirmar: vender {0} por {1}"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Conjuração de {c}: o efeito cai depois desse tempo."
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Connect"
 msgstr "Pellgomz"
@@ -3234,8 +3472,20 @@ msgstr ""
 msgid "Continue to app"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "contra {fs}"
+msgstr ""
+
 #: components/space/game/AttributesPanel.tsx
 msgid "Contra 1 atacante."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "contra alvos abaixo de 35% da vida"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "contra alvos acima de 70% da vida"
 msgstr ""
 
 #: components/space/game/AttributesPanel.tsx
@@ -3361,6 +3611,10 @@ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Corridas rolando"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Corta {p} da sua ameaça: os monstros tendem a largar você."
 msgstr ""
 
 #: components/i18n/errors.tsx
@@ -3505,6 +3759,10 @@ msgstr ""
 #~ msgid "crítico +{0}%"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Crítico garantido se o alvo não estiver atacando você."
+msgstr ""
+
 #. placeholder {0}: num(p().heal)
 #: components/space/game/RunHud.tsx
 msgid "cura {0}"
@@ -3545,6 +3803,14 @@ msgstr ""
 msgid "Cura ao longo do tempo, devolve mana e enfraquece os monstros."
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Cura contínua em um aliado por {dur}: {amount} por segundo."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Cura contínua no grupo todo por {dur}: {amount} por segundo."
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Cura direta, escudos e ressurreição: mantém o grupo de pé."
 msgstr ""
@@ -3569,9 +3835,21 @@ msgstr ""
 #~ msgid "Cura no grupo"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Cura o grupo todo: {amount}."
+msgstr ""
+
 #: components/space/game/heroUi.ts
 #~ msgid "cura também o resto do grupo, com {pct}% do valor"
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Cura um aliado: {amount}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Cura você: {amount}."
+msgstr ""
 
 #. placeholder {0}: RULES.restHealPct
 #: components/space/game/GamePanel.tsx
@@ -3623,6 +3901,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Dano constante à distância; esquiva os golpes com facilidade."
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Dano contínuo por {dur}: {per} de dano {el} por segundo {where}."
+msgstr ""
 
 #. placeholder {0}: pct(lvl())
 #: components/space/game/NpcDialog.tsx
@@ -4006,6 +4288,10 @@ msgstr ""
 #~ msgid "Devolve {a} a {b} de mana"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Devolve {p} do dano recebido enquanto dura."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Diagnóstico da chamada"
 msgstr ""
@@ -4161,6 +4447,10 @@ msgstr ""
 msgid "Duplicar"
 msgstr ""
 
+#: components/space/game/SkillTip.tsx
+msgid "Duração"
+msgstr ""
+
 #: components/modal/modals/TimeoutMember.tsx
 msgid "Duration"
 msgstr ""
@@ -4300,8 +4590,20 @@ msgstr ""
 #~ msgid "Em andamento"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "em até {max} inimigos em linha"
+msgstr ""
+
 #: components/space/game/partyUi.ts
 msgid "em corrida"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "em inimigos sorteados a cada golpe"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "em todos os inimigos"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
@@ -4380,6 +4682,14 @@ msgstr ""
 #~ msgid "energia"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Enfraquece {whom} por {dur}: {what}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Enfraquece o chefe por {dur}: {b}."
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Engine"
 msgstr ""
@@ -4390,6 +4700,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Enhanced (RNNoise)"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Enquanto queima, cada inimigo atingido cura você em {p} da vida máxima por segundo."
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -4617,6 +4931,22 @@ msgstr ""
 msgid "Escudo"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Escudo de {amount} em cada um do grupo por {dur}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Escudo de {amount} em quem o chefe estiver atacando, por {dur}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Escudo de {amount} em um aliado por {dur}."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Escudo de {amount} em você por {dur}."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "escudo de 15% da vida em cada luta"
 #~ msgstr ""
@@ -4754,6 +5084,10 @@ msgstr ""
 
 #: components/space/game/GearPanel.tsx
 msgid "Essência"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Esta cura não usa os seus bônus de cura."
 msgstr ""
 
 #. placeholder {0}: d()?.party.min
@@ -5113,9 +5447,9 @@ msgstr ""
 #~ msgid "Fique perto dos dois dummies para treinar nos dois."
 #~ msgstr ""
 
-#: components/space/game/itemUi.ts
-#~ msgid "físico"
-#~ msgstr ""
+#: components/space/game/skillText.ts
+msgid "físico"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Flecha luminosa"
@@ -5181,6 +5515,10 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "fora da chamada"
+msgstr ""
+
+#: components/space/game/SkillTip.tsx
+msgid "Fora dos slots: não sai na corrida."
 msgstr ""
 
 #: components/space/game/gameText.ts
@@ -5273,6 +5611,10 @@ msgstr ""
 #: components/modal/modals/CreateInvite.tsx
 msgid "Generating invite…"
 msgstr "O genel ur pedadenn…"
+
+#: components/space/game/skillText.ts
+msgid "Gera {m} de ameaça: o monstro tende a mirar você."
+msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Gerenciar a Smart TV"
@@ -5565,6 +5907,10 @@ msgstr "Ezvezant"
 
 #: components/space/game/TvMenu.tsx
 msgid "Idle Hunt"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Ignora {p} da defesa do alvo."
 msgstr ""
 
 #: components/space/game/heroUi.ts
@@ -6108,6 +6454,10 @@ msgstr ""
 msgid "Login"
 msgstr "Kevreañ"
 
+#: components/space/game/skillText.ts
+msgid "logo depois de um bloqueio"
+msgstr ""
+
 #: components/app/interface/settings/user/Sessions.tsx
 msgid "Logs you out of all sessions except this device."
 msgstr ""
@@ -6230,9 +6580,9 @@ msgstr ""
 #~ msgid "Magias, curas e varinhas: INT + (INT/7)² até INT + (INT/5)². Cada ponto é +0,15%."
 #~ msgstr ""
 
-#: components/space/game/RunPanel.tsx
-#~ msgid "mágico"
-#~ msgstr ""
+#: components/space/game/skillText.ts
+msgid "mágico"
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Mágico"
@@ -6257,6 +6607,7 @@ msgstr ""
 #: components/space/game/gameText.ts
 #: components/space/game/GearPanel.tsx
 #: components/space/game/SkillsPanel.tsx
+#: components/space/game/SkillTip.tsx
 msgid "Mana"
 msgstr ""
 
@@ -6860,6 +7211,10 @@ msgstr ""
 #~ msgid "na entrada"
 #~ msgstr ""
 
+#: components/space/game/SkillTip.tsx
+msgid "na hora"
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Na mão"
 msgstr ""
@@ -6997,6 +7352,10 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Não há pontos postos para redistribuir."
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Não pega no chefe."
+msgstr ""
 
 #. placeholder {0}: skipped().map(itemName).join(", ")
 #: components/space/game/HeroSheet.tsx
@@ -7166,12 +7525,28 @@ msgstr ""
 msgid "Nivelamento de volume"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "no alvo"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "no alvo e em mais {hops}, perdendo {loss} a cada salto"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "No chefe: {b}."
+msgstr ""
+
 #: components/space/game/MerchantPanel.tsx
 msgid "no cinto"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
 msgid "No cofre"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "No fim, {p} da mana gasta pelo escudo de mana volta."
 msgstr ""
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
@@ -7207,6 +7582,10 @@ msgstr ""
 msgid "No permissions set yet"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "no primeiro inimigo da fila"
+msgstr ""
+
 #. placeholder {0}: h().lobby.length
 #: components/space/game/GamePanel.tsx
 #~ msgid "No quarto ({0})"
@@ -7214,6 +7593,11 @@ msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsOverview.tsx
 msgid "No role overrides have been configured."
+msgstr ""
+
+#. placeholder {0}: (i().slot ?? 0) + 1
+#: components/space/game/SkillTip.tsx
+msgid "No slot {0}º da corrida."
 msgstr ""
 
 #: src/interface/Friends.tsx
@@ -7272,6 +7656,10 @@ msgstr ""
 msgid "Novidades do Muchat e do jogo"
 msgstr ""
 
+#: components/space/game/SkillTip.tsx
+msgid "Números de base: os pontos de quem joga não chegam para quem assiste."
+msgstr ""
+
 #: components/space/game/HeroSheet.tsx
 #~ msgid "nunca"
 #~ msgstr ""
@@ -7285,6 +7673,10 @@ msgstr ""
 #. placeholder {0}: m.level
 #: components/space/game/RunPanel.tsx
 msgid "Nv {0}"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "o alvo"
 msgstr ""
 
 #: components/space/game/NpcDialog.tsx
@@ -7309,6 +7701,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "O chefe ficou mais forte e mais rápido."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "O chefe nunca é atordoado."
 msgstr ""
 
 #: components/space/game/RunPanel.tsx
@@ -7480,6 +7876,11 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
+msgstr ""
+
+#: components/space/game/SkillsPanel.tsx
+#: components/space/game/SkillTip.tsx
+msgid "O que faz"
 msgstr ""
 
 #: components/space/game/AttributesPanel.tsx
@@ -7665,6 +8066,7 @@ msgid "Other"
 msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
+#: components/space/game/SkillTip.tsx
 msgid "ou"
 msgstr ""
 
@@ -8140,6 +8542,10 @@ msgstr ""
 #~ msgid "Pontos livres: {0}"
 #~ msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Por {dur}, {p} do dano que você recebe sai da mana em vez da vida."
+msgstr ""
+
 #: components/space/game/GearPanel.tsx
 msgid "Por lugar"
 msgstr ""
@@ -8171,6 +8577,12 @@ msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
 msgid "Potência"
+msgstr ""
+
+#. placeholder {0}: b().potency
+#. placeholder {1}: b().efficiency
+#: components/space/game/SkillTip.tsx
+msgid "Potência {0} · Eficiência {1}"
 msgstr ""
 
 #. placeholder {0}: skillPointsSpent(h().skills)
@@ -8310,6 +8722,14 @@ msgstr ""
 msgid "Provided email or password is wrong."
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Provoca a sala inteira por {dur}: todos passam a atacar você."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Provoca o alvo por {dur}: ele passa a atacar você."
+msgstr ""
+
 #. placeholder {0}: secs()
 #: components/space/game/RunPanel.tsx
 #~ msgid "Próxima corrida em {0} s"
@@ -8363,8 +8783,20 @@ msgstr ""
 msgid "Quando a cura rende"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Quando o escudo quebra, {p} do que ele absorveu vira dano sagrado em quem bateu."
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Quando o escudo quebra, {p} do que ele absorveu vira dano sagrado em todos os inimigos."
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Quando sou o alvo"
+msgstr ""
+
+#: components/space/game/SkillTip.tsx
+msgid "Quando usa"
 msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
@@ -8523,13 +8955,14 @@ msgid "Reason: {0} Contact support for more information."
 msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
+#: components/space/game/SkillTip.tsx
 msgid "Recarga"
 msgstr ""
 
 #. placeholder {0}: (s.cd_ms / 1000).toFixed(1).replace(".", ",")
 #: components/space/game/RunHud.tsx
-msgid "recarga {0} s"
-msgstr ""
+#~ msgid "recarga {0} s"
+#~ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Recarga −"
@@ -8588,6 +9021,14 @@ msgstr "Daspunadur kod"
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "Recovery Codes"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "recupera {p} da mana máxima por segundo"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "recupera {p} da vida máxima por segundo"
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -8945,6 +9386,10 @@ msgstr "Hudur dial pe bugale"
 msgid "Review policy changes"
 msgstr "Gwiriekaat ar c'hemmoù reolennoù"
 
+#: components/space/game/skillText.ts
+msgid "Revive um aliado caído com {p} da vida."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Ritmo"
 #~ msgstr ""
@@ -8995,12 +9440,16 @@ msgstr ""
 msgid "Sacar"
 msgstr ""
 
-#: components/space/game/itemUi.ts
-#~ msgid "sagrado"
-#~ msgstr ""
+#: components/space/game/skillText.ts
+msgid "sagrado"
+msgstr ""
 
 #: components/space/game/BankPanel.tsx
 msgid "Sai da sua mão"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Sai de novo logo depois, com {p} do dano."
 msgstr ""
 
 #: components/space/game/LobbyChip.tsx
@@ -9337,6 +9786,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Sempre"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Sempre crítico em alvos abaixo de {p} da vida."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -10317,6 +10770,22 @@ msgstr "Ehanañ an Izili"
 msgid "Tipo de dungeon"
 msgstr ""
 
+#: components/space/game/skillText.ts
+msgid "Tira {n} efeitos ruins de cada um do grupo"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Tira {n} efeitos ruins de um aliado"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Tira 1 efeito ruim de cada um do grupo"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Tira 1 efeito ruim de um aliado"
+msgstr ""
+
 #: components/space/game/StatsPanel.tsx
 #~ msgid "Tirada de cada golpe físico, depois da armadura."
 #~ msgstr ""
@@ -10381,6 +10850,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Todos"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "todos os inimigos"
 msgstr ""
 
 #. placeholder {0}: pointsSpent(h().attrs) - pointsSpent({ FOR: 1, AGI: 1, VIT: 1, INT: 1, DES: 1, SOR: 1 })
@@ -10600,6 +11073,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Uma vez"
+msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Uma vez por luta, um golpe fatal deixa você com 1 de vida e solta esta skill, se ela estiver pronta."
 msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
@@ -10894,6 +11371,10 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Vendido."
 #~ msgstr ""
+
+#: components/space/game/skillText.ts
+msgid "Veneno por {dur}: {per} de dano {el} por segundo {where}."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Ventilador, rua, gente conversando perto. Remove mais ruído, com a voz um pouco menos natural."
