@@ -3,7 +3,7 @@ import test from "node:test";
 
 import { Rng } from "../../../rng.ts";
 import { randomSource } from "../combat/fight.ts";
-import type { FighterInput } from "../combat/types.ts";
+import { type FighterInput, FOE_BASE } from "../combat/types.ts";
 import type { ClassId } from "../content.ts";
 import { DUNGEONS, dungeonById } from "../dungeons/catalog.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
@@ -169,4 +169,44 @@ test("medidor: dano, dano recebido e cura de cada herói somam os eventos; quadr
   const half = meterOf(f, 4, 10);
   assert.equal(half.s, 10);
   assert.ok(half.dmg[2]! < m.dmg[2]!);
+});
+
+test("o erro do herói aparece nos quadros (ataque básico e skill), sem mudar a corrida (26/11/2026)", () => {
+  // Precisão baixa contra a Fuga dos monstros: o herói erra; antes o golpe sumia da tela.
+  const d = dungeonById("masmorra-70")!;
+  const clumsy = party(REF, 70).map((f) => ({
+    ...f,
+    stats: { ...f.stats, hit: f.stats.hit * 0.1 },
+  }));
+  const opts = { mode: "aleatorio" as const, random: randomSource(new Rng(11)) };
+  const rec = simulateRun(d, clumsy, { ...opts, record: true });
+  const plain = simulateRun(d, clumsy, {
+    mode: "aleatorio",
+    random: randomSource(new Rng(11)),
+  });
+  assert.equal(rec.outcome, plain.outcome);
+  assert.equal(rec.seconds, plain.seconds);
+  const evs = rec.frames!.flatMap((x) => x.e);
+  const heroMiss = (k: string) =>
+    evs.filter(
+      (e) =>
+        e.k === k &&
+        "bl" in e &&
+        e.bl === "erro" &&
+        e.a < FOE_BASE &&
+        e.b >= FOE_BASE,
+    ).length;
+  assert.ok(heroMiss("golpe") > 0, "ataque básico que errou");
+  assert.ok(heroMiss("magia") > 0, "skill que errou");
+  // Errar não vira dano no medidor.
+  for (const e of evs)
+    if ("bl" in e && e.bl === "erro") assert.equal(e.v, 0);
+  // No modo esperado (a calibração) nada muda: o erro já entra na média, sem evento.
+  const exp = simulateRun(d, party(REF, 70), { mode: "esperado", record: true });
+  assert.equal(
+    exp.frames!.flatMap((x) => x.e).filter(
+      (e) => "bl" in e && e.bl === "erro" && e.a < FOE_BASE,
+    ).length,
+    0,
+  );
 });

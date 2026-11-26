@@ -1164,7 +1164,18 @@ export function fight(
           d *= eff.vsFamilies.mult;
         d *= (1 + skillBonus(h, s, x)) * scale * (ctx.scale ?? 1);
         any ||= landed;
-        if (d <= 0 && !landed) continue;
+        if (d <= 0 && !landed) {
+          // Errou (Precisão × Fuga): só para a tela, sem sorteio (26/11/2026).
+          emit({
+            k: "magia",
+            a: who(h),
+            b: FOE_BASE + x.i,
+            v: 0,
+            s: s.id,
+            bl: "erro",
+          });
+          continue;
+        }
         const dealt = deal(h, x, d);
         dealtHere += dealt;
         if (s.threatMult)
@@ -1831,6 +1842,9 @@ export function fight(
                     critMult: buffOf(h, "multCritico") + ch.critMultBonus,
                   });
             h.autos++;
+            // Errou (Precisão × Fuga): a tela mostra; antes o golpe sumia (26/11/2026).
+            if (!r.landed)
+              emit({ k: "golpe", a: who(h), b: FOE_BASE + e.i, v: 0, bl: "erro" });
             h.autoDamage += deal(h, e, r.value);
           }
           h.auto += 1 / ch.attacksPerSecond;

@@ -47,6 +47,11 @@ import {
 export const SCENE_MAX_FPS = 30;
 const MAX_RESOLUTION = 2;
 const FLOATER_MAX = 24;
+/** O que sobe quando o golpe não entra inteiro (o jogo é em português; a cena não usa o lingui). */
+export const MISS_WORDS = { missed: "errou", dodged: "esquivou", blocked: "bloq." };
+const MISS_COLOR = 0xc9c3b8;
+const DODGE_COLOR = 0x9fd8ff;
+const BLOCK_COLOR = 0xb9c6d6;
 const FLOAT_MS = 700;
 const WALK_OUT_MS = 750;
 /** Um herói sai um pouco depois do outro. */
@@ -593,6 +598,11 @@ export class DungeonScene {
         const head = { x: b.pos.x, y: b.pos.y - b.size };
         const up = c.how === "cura" || c.how === "mana";
         if (c.how === "dano" || up) this.floater(up ? `+${c.v}` : String(c.v), ELEMENT_COLOR[c.el], head, now);
+        // Não acertou: em cima de quem foi atacado. Herói = esquivou do monstro; monstro = o herói
+        // errou (antes só a fumacinha, e o erro do herói nem chegava aqui; 26/11/2026).
+        else if (c.how === "erro") this.floater(b.hero ? MISS_WORDS.dodged : MISS_WORDS.missed, b.hero ? DODGE_COLOR : MISS_COLOR, head, now);
+        // Bloqueado: o número que passou, com a marca (antes não aparecia número nenhum).
+        else if (c.how === "bloqueio") this.floater(`${c.v} ${MISS_WORDS.blocked}`, BLOCK_COLOR, head, now);
         if (c.how === "dano" && motion) b.flashUntil = now + 120;
         if (up && motion) {
           for (let i = 0; i < 4; i++) {

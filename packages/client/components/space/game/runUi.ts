@@ -88,6 +88,11 @@ export function feedLine(
         };
       }
       const s = skillName(st, ev.a, ev.s);
+      if (ev.bl === "erro")
+        return {
+          text: t`${who(ev.b)} desviou de ${s} (${who(ev.a)})`,
+          tone: "info",
+        };
       return ev.cura
         ? {
             text: t`${who(ev.a)} · ${s} cura ${who(ev.b)} (+${num(ev.v)})`,

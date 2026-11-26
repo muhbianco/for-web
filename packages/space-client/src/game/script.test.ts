@@ -233,3 +233,31 @@ test("nome comprido corta em palavra, com reticências", () => {
   assert.equal(fitName("Chefe da masmorra", 30, m), "Chefe…");
   assert.equal(fitName("X", 1, m), "…");
 });
+
+test("errou e esquivou: o golpe sai sem o impacto, com o erro em quem foi atacado (26/11/2026)", () => {
+  const p = planSecond({
+    events: [
+      // O herói (espada) errou o monstro; a skill dele também.
+      { k: "golpe", a: 0, b: FOE_BASE, v: 0, bl: "erro" },
+      { k: "magia", a: 0, b: FOE_BASE, v: 0, s: "golpe-brutal", bl: "erro" },
+      // O monstro errou o herói (esquiva) e depois bateu num bloqueio.
+      { k: "golpe", a: FOE_BASE, b: 0, v: 0, bl: "erro" },
+      { k: "golpe", a: FOE_BASE, b: 0, v: 7, bl: "bloqueio" },
+    ] as unknown as { k: string }[],
+    gears: [heroGear("espada", null)],
+    classes: ["guerreiro"],
+    foes: [{ magic: false }],
+  });
+  const hits = p.cues.filter((c): c is Extract<Cue, { k: "hit" }> => c.k === "hit");
+  assert.deepEqual(
+    hits.map((h) => [h.who, h.how, h.v]),
+    [
+      [FOE_BASE, "erro", 0],
+      [FOE_BASE, "erro", 0],
+      [0, "erro", 0],
+      [0, "bloqueio", 7],
+    ],
+  );
+  // A skill que errou não tem o corte do impacto.
+  assert.equal(p.cues.filter((c) => c.k === "slash").length, 0);
+});

@@ -365,6 +365,12 @@ msgstr ""
 msgid "{0} desviou de {1}"
 msgstr ""
 
+#. placeholder {0}: who(ev.b)
+#. placeholder {1}: who(ev.a)
+#: components/space/game/runUi.ts
+msgid "{0} desviou de {s} ({1})"
+msgstr ""
+
 #. placeholder {0}: instance.globalLimits.server_emoji - props.server.emojis.length
 #: components/app/interface/settings/server/emojis/EmojiList.tsx
 msgid "{0} emoji slots remaining"

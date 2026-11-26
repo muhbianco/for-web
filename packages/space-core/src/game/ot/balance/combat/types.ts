@@ -430,10 +430,21 @@ export type MechanicEvent =
  * alvo e origem ("auto" = ataque básico; senão o id da skill ou da mecânica).
  */
 export type FightEvent =
-  /** Ataque básico (herói ou monstro); `bl`: o herói esquivou ("erro") ou bloqueou. */
+  /**
+   * Ataque básico (herói ou monstro); `bl`: "erro" quando não acertou (o herói esquivou do monstro,
+   * ou o herói errou o monstro, 26/11/2026) ou "bloqueio" quando o herói bloqueou.
+   */
   | { k: "golpe"; a: number; b: number; v: number; bl?: "erro" | "bloqueio" }
-  /** Skill de herói ou mecânica de monstro; `cura` quando curou. */
-  | { k: "magia"; a: number; b: number; v: number; s: string; cura?: true }
+  /** Skill de herói ou mecânica de monstro; `cura` quando curou; `bl: "erro"` quando a skill errou. */
+  | {
+      k: "magia";
+      a: number;
+      b: number;
+      v: number;
+      s: string;
+      cura?: true;
+      bl?: "erro";
+    }
   /** O herói soltou a skill (aparece mesmo quando ela não dá dano nem cura). */
   | { k: "lanca"; a: number; s: string }
   /** `xp`: o XP que cada herói levou deste abate (a corrida preenche; sem o bônus de fim). */

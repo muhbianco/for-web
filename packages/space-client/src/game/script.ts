@@ -353,15 +353,18 @@ export function planSecond(p: PlanInput): Plan {
           const cls = p.classes[e.a];
           const el = skillElement(cls, e.s);
           const melee = !isRanged(p.gears[e.a]?.look ?? "punhos");
+          // A skill errou o alvo (Precisão × Fuga): o golpe sai, sem o impacto.
+          const missed = e.bl === "erro";
+          const how: HitHow = missed ? "erro" : "dano";
           if (el === "fisico" && melee) {
             push({ k: "lunge", at: t, who: e.a, to: e.b }, 140);
-            push({ k: "slash", at: t + MELEE_LAND, who: e.b, el }, 200);
-            hit(e.b, t + MELEE_LAND, e.v, el, "dano");
+            if (!missed) push({ k: "slash", at: t + MELEE_LAND, who: e.b, el }, 200);
+            hit(e.b, t + MELEE_LAND, e.v, el, how);
           } else {
             const shot: Shot = el === "fisico" ? (cls === "cacador" ? "flecha" : "lanca") : "orbe";
             push({ k: "shot", at: t, dur: SPELL_MS, from: e.a, to: e.b, shot, el }, SPELL_MS);
-            push({ k: "burst", at: t + SPELL_MS, who: e.b, el }, 200);
-            hit(e.b, t + SPELL_MS, e.v, el, "dano");
+            if (!missed) push({ k: "burst", at: t + SPELL_MS, who: e.b, el }, 200);
+            hit(e.b, t + SPELL_MS, e.v, el, how);
           }
           break;
         }
