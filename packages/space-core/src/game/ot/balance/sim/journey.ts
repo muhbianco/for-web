@@ -227,8 +227,10 @@ export function simulateJourney(
     const group = mode === "grupo" && h.level >= 40;
     // Perdeu: volta para a do próprio nível (ou abaixo) até subir de nível, como um jogador faria.
     const retreating = !group && retreatAt === h.level;
+    // D53: sozinho se farma a Caçada 10 abaixo, fora da zona de entrada (lá, a do próprio nível).
+    const farm = !group && h.level > B.cfg.limit.entryHuntsUpTo ? 10 : 0;
     const d = pickDungeon(
-      retreating ? h.level - 10 : h.level,
+      (retreating ? h.level - 10 : h.level) - farm,
       group ? "masmorra" : "cacada",
       cautiousUntil > h.level || streak > 0 || retreating,
     );

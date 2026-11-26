@@ -95,7 +95,10 @@ test("§2: toda Caçada solo do próprio nível rende o XP de 1 corrida da curva
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada")) {
     const L = d.level;
     if (D40_MAGO_SOLO_ENTRY.has(L)) continue;
-    const party = [E.fighter("mago", L, { ...SPEC, solo: true })];
+    // D53: fora da zona de entrada o solo do próprio nível vence ~50%; a vitória vem do herói 10 acima
+    // e o XP é contado para o nível da Caçada (a curva é da recompensa, não de quem vence).
+    const hunter = L > B.cfg.limit.entryHuntsUpTo ? Math.min(500, L + 10) : L;
+    const party = [E.fighter("mago", hunter, { ...SPEC, solo: true })];
     const run = simulateRun(d, party, { mode: "esperado" });
     assert.equal(run.outcome, "vitoria", `L${L}`);
     const r = runRewards(d, [L], run);

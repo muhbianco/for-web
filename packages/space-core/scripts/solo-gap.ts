@@ -14,12 +14,12 @@ import {
   type FighterInput,
   DUNGEONS,
   Rng,
-  encounters,
   randomSource,
   simulateRun,
 } from "../src/game/ot/balance/index.ts";
 import {
   LIMIT_HUNT_GROUPS,
+  belowLimitFighter,
   limitFighter,
 } from "../src/game/ot/balance/sim/calibration.ts";
 
@@ -50,14 +50,14 @@ function huntsFor(L: number): (DungeonDef | null)[] {
     [...HUNTS].reverse().find((d) => d.level <= own.level - n) ?? null;
   return [own, below(10), below(20)];
 }
-const SPEC = { source: "spec", referenceAi: "gabarito" } as const;
-const solo = (cls: ClassId, L: number, profile: "limite" | "referencia") =>
+// D53: "abaixo" é o herói abaixo do limite (itens do nível, refino do farm, sem ups).
+const solo = (cls: ClassId, L: number, profile: "limite" | "abaixo") =>
   profile === "limite"
     ? limitFighter(cls, L, { solo: true })
-    : encounters.fighter(cls, L, { ...SPEC, solo: true });
+    : belowLimitFighter(cls, L, { solo: true });
 const group = (comp: readonly ClassId[], L: number, profile: string) =>
   comp.map((c) =>
-    profile === "limite" ? limitFighter(c, L) : encounters.fighter(c, L, SPEC),
+    profile === "limite" ? limitFighter(c, L) : belowLimitFighter(c, L),
   );
 
 function wins(d: DungeonDef, party: () => FighterInput[]): number {
@@ -73,7 +73,7 @@ function wins(d: DungeonDef, party: () => FighterInput[]): number {
   return Math.round((100 * w) / SEEDS);
 }
 
-for (const profile of ["limite", "referencia"] as const) {
+for (const profile of ["limite", "abaixo"] as const) {
   console.log(`\n== perfil ${profile} (${SEEDS} corridas por célula; % de vitória)`);
   console.log(
     `nível  Caçada(própria/−10/−20)  ${CLASSES.map((c) => c.slice(0, 4).padStart(14)).join("")}   dupla  trio`,

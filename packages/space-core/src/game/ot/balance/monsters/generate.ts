@@ -177,7 +177,8 @@ export function createMonsters(
         r.menorHit * hitMult(o),
       ),
       cataclysm: {
-        atSeconds: mon.menorCataclysmAtSeconds,
+        // D53: a Caçada solo tem o tempo dela (o da classe mais lenta no limite); sem aperto, o do config.
+        atSeconds: o.edge?.cataclysmAt ?? mon.menorCataclysmAtSeconds,
         pct: mon.cataclysmPct,
         everySeconds: mon.cataclysmEverySeconds,
       },

@@ -10,7 +10,12 @@ import { DUNGEON_EDGE } from "../dungeons/edge.generated.ts";
 import { balance as B } from "../formulas.ts";
 import { createHero, heroRunFighter } from "../hero.ts";
 import { simulateRun } from "../run/simulate.ts";
-import { LIMIT_GROUP_PARTIES, LIMIT_HUNT_GROUPS } from "../sim/calibration.ts";
+import {
+  FARM_TRIOS,
+  LIMIT_HUNT_GROUPS,
+  REGION_PARTIES,
+  belowLimitFighter,
+} from "../sim/calibration.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
 import { computeMonsterRow, createMonsters } from "./generate.ts";
 import { MONSTER_TABLE } from "./table.generated.ts";
@@ -169,11 +174,13 @@ test("a corrida leva HP e recargas de uma sala para a outra e acaba em vitória 
   const win = simulateRun(d, party, { mode: "esperado" });
   assert.equal(win.outcome, "vitoria");
   assert.equal(win.rooms.length, 4);
-  assert.ok(win.seconds >= win.rooms.reduce((a, r) => a + r.seconds, 0));
+  // Tolerância de ponto flutuante (127,3 × 127,30000000000001).
+  assert.ok(win.seconds >= win.rooms.reduce((a, r) => a + r.seconds, 0) - 1e-6);
+  // D53: perto do limite a composição pesa menos; sem tanque, abaixo do limite, perde.
   const lose = simulateRun(
     d,
     ["padre", "mago", "cacador", "assassino"].map((c) =>
-      hero(c as FighterInput["cls"], 70),
+      belowLimitFighter(c as FighterInput["cls"], 70),
     ),
     {
       mode: "esperado",
@@ -195,54 +202,44 @@ test("D16: a Investida vale 1,5× o golpe do chefe menor (não o do chefe, calib
 // limite e cada DG fica no ponto do grupo de calibração mais frágil (dungeons/edge.generated.ts). Os
 // heróis destes testes estão no limite (limitEncounters); um degrau abaixo perde, e isso fica no relatório.
 // D21/D22: nada se balanceia por tempo; a duração das salas não é cobrada.
-test("D41: os grupos de 5 da calibração vencem toda Masmorra e Região no limite; sem DPS e sem tanque perdem", () => {
-  for (const d of DUNGEONS.filter((x) => x.kind !== "cacada")) {
-    const run = (c: readonly string[]) =>
-      simulateRun(
-        d,
-        c.map((x) => hero(x as FighterInput["cls"], d.level)),
-        { mode: "esperado" },
-      );
-    for (const c of LIMIT_GROUP_PARTIES)
-      assert.equal(run(c).outcome, "vitoria", `${c.join("+")} ${d.id}`);
+test("D53: o farm (trio tanque + cura + dano abaixo do limite) vence toda Masmorra do nível; sem tanque e sem cura, abaixo do limite, perdem", () => {
+  const below = (d: (typeof DUNGEONS)[number], c: readonly string[]) =>
+    simulateRun(
+      d,
+      c.map((x) => belowLimitFighter(x as FighterInput["cls"], d.level)),
+      { mode: "esperado" },
+    );
+  for (const d of DUNGEONS.filter((x) => x.kind === "masmorra")) {
+    for (const c of FARM_TRIOS)
+      assert.equal(below(d, c).outcome, "vitoria", `${c.join("+")} ${d.id}`);
     if (![40, 70, 110, 160, 310, 490].includes(d.level)) continue;
-    assert.notEqual(
-      // D42: o druida de batalha bate; o grupo sem DPS leva só tanques e padres.
-      run(["guerreiro", "padre", "paladino", "padre", "paladino"]).outcome,
-      "vitoria",
-      `${d.id} sem DPS`,
-    );
-    assert.notEqual(
-      run(["padre", "mago", "cacador", "assassino", "druida"]).outcome,
-      "vitoria",
-      `${d.id} sem tanque`,
-    );
+    assert.notEqual(below(d, ["padre", "mago", "cacador"]).outcome, "vitoria", `${d.id} sem tanque`);
+    assert.notEqual(below(d, ["guerreiro", "mago", "cacador"]).outcome, "vitoria", `${d.id} sem cura`);
   }
 });
 
-// P63: sem suporte o paladino continua perdendo, agora também no limite e em grupo de 5.
-test("P63: sem suporte, o grupo de 5 com paladino de tanque perde a Masmorra", () => {
-  for (const d of DUNGEONS.filter(
-    (x) => x.kind === "masmorra" && x.level % 50 === 0,
-  ))
-    assert.notEqual(
-      simulateRun(
-        d,
-        (["paladino", "mago", "cacador", "assassino", "mago"] as const).map(
-          (c) => hero(c, d.level),
-        ),
-        { mode: "esperado" },
-      ).outcome,
-      "vitoria",
-      `${d.id} sem suporte`,
-    );
+test("D53: o chefe de Região (até o do 500) cai para os 4 no limite perfeito: tanque, tanque, cura, dano; tanque, cura, cura, dano; tanque, cura, dano, dano", () => {
+  for (const d of DUNGEONS.filter((x) => x.kind === "regional"))
+    for (const c of REGION_PARTIES)
+      assert.equal(
+        simulateRun(
+          d,
+          c.map((x) => hero(x as FighterInput["cls"], d.level)),
+          { mode: "esperado" },
+        ).outcome,
+        "vitoria",
+        `${c.join("+")} ${d.id}`,
+      );
 });
 
 /** D40: na zona de entrada (fora do aperto do D41) o mago solo segue perdendo a Caçada do 30. */
 const D40_MAGO_SOLO_ENTRY = new Set([30]);
 
-test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio da calibração em grupo", () => {
+test("D41/D53: no limite, toda classe vence sozinha a Caçada 10 níveis abaixo (a de entrada, a do nível), e a dupla e o trio a do próprio nível", () => {
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada")) {
+    // D53: fora da zona de entrada, sozinho se farma 10 abaixo; quem tem de vencer é o herói 10 acima.
+    const soloLevel =
+      d.level > B.cfg.limit.entryHuntsUpTo ? Math.min(500, d.level + 10) : d.level;
     for (const c of [
       "guerreiro",
       "paladino",
@@ -254,7 +251,7 @@ test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio
     ] as const) {
       const r = simulateRun(
         d,
-        [E.fighter(c, d.level, { ...SPEC, solo: true })],
+        [E.fighter(c, soloLevel, { ...SPEC, solo: true })],
         { mode: "esperado" },
       );
       // Zona de entrada (sem aperto, como antes do D41): o mago solo perde a do 30 desde a D40.

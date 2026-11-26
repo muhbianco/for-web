@@ -12,8 +12,11 @@ import { runRewards } from "../run/rewards.ts";
 import { type RunResult, simulateRun } from "../run/simulate.ts";
 import {
   type LimitStep,
+  FARM_TRIOS,
   LIMIT_GROUP_PARTIES,
   LIMIT_STEPS,
+  REGION_PARTIES,
+  belowLimitFighter,
   limitFighter,
 } from "./calibration.ts";
 import { type SimOptions, createEncounters } from "./encounters.ts";
@@ -74,14 +77,29 @@ export function balanceReport(
       B,
       M,
     );
+  /** D53: a corrida com o herói abaixo do limite (o farm de Masmorra). */
+  const runBelow = (
+    d: DungeonDef,
+    c: Comp,
+    random?: { next(): number },
+  ): RunResult =>
+    simulateRun(
+      d,
+      c.map((x) => belowLimitFighter(x, d.level, {}, B)),
+      random ? { mode: "aleatorio", random } : { mode: "esperado" },
+      B,
+      M,
+    );
+  const regioes = DUNGEONS.filter((d) => d.kind === "regional");
   const clean = (r: RunResult) =>
     r.outcome === "vitoria" && r.heroes.every((h) => h.alive);
 
   // ------------------------------------------------------------ §14.1
-  // D41 (25/11/2026): a PT completa é de 5 e o conteúdo sai do perfil do limite (item da faixa, afixos
-  // da classe, build e kit de referência). Cada DG fica no ponto do grupo de calibração mais frágil
-  // (dungeons/edge.generated.ts); um degrau abaixo num eixo deve perder boa parte.
-  const S1 = "§14.1 Composições no limite (corrida inteira, modo esperado, 37 Masmorras e 10 Regiões)";
+  // D53 (26/11/2026, o dono): a Masmorra é o farm — o trio tanque + cura + dano ABAIXO do limite vence a
+  // do próprio nível; a Região é o desafio — 4 heróis no limite perfeito vencem, apertado. Perto do
+  // limite a composição pesa menos (o grupo de 5 no limite passa com folga). Nada engessado: são
+  // referências de build.
+  const S1 = "§14.1 Composições (D53: farm de Masmorra abaixo do limite; Região com 4 no limite)";
   const groupDgs = DUNGEONS.filter((d) => d.kind !== "cacada");
   const stepRun = (d: DungeonDef, c: Comp, step?: LimitStep["id"]) =>
     simulateRun(
@@ -91,30 +109,44 @@ export function balanceReport(
       B,
       M,
     );
-  for (const c of LIMIT_GROUP_PARTIES) {
-    const lost = groupDgs
+  for (const c of FARM_TRIOS) {
+    const lost = masmorras
+      .filter((d) => runBelow(d, [...c]).outcome !== "vitoria")
+      .map((d) => d.level);
+    add(
+      S1,
+      `farm: trio ${short([...c])} abaixo do limite vence a Masmorra do nível`,
+      lost.length === 0 ? "ok" : "falha",
+      lost.length === 0
+        ? `${masmorras.length}/${masmorras.length}`
+        : `perde em ${lost.join(", ")} (rodar scripts/gen-edge.ts)`,
+    );
+  }
+  for (const c of REGION_PARTIES) {
+    const lost = regioes
       .filter((d) => stepRun(d, [...c]).outcome !== "vitoria")
       .map((d) => d.level);
     add(
       S1,
-      `grupo de 5 ${short([...c])} vence no limite`,
+      `Região: ${short([...c])} no limite vence`,
       lost.length === 0 ? "ok" : "falha",
       lost.length === 0
-        ? `${groupDgs.length}/${groupDgs.length}`
+        ? `${regioes.length}/${regioes.length}`
         : `perde em ${lost.join(", ")} (rodar scripts/gen-edge.ts)`,
     );
   }
-  const main = [...LIMIT_GROUP_PARTIES[0]!];
+  for (const c of LIMIT_GROUP_PARTIES) {
+    const won = groupDgs.filter((d) => stepRun(d, [...c]).outcome === "vitoria").length;
+    add(S1, `grupo de 5 ${short([...c])} no limite`, "info", `vence ${won}/${groupDgs.length}`);
+  }
+  const main = [...REGION_PARTIES[0]!];
   for (const st of LIMIT_STEPS) {
-    const won = groupDgs.filter((d) => stepRun(d, main, st.id).outcome === "vitoria").length;
+    const won = regioes.filter((d) => stepRun(d, main, st.id).outcome === "vitoria").length;
     add(
       S1,
-      `um degrau abaixo (${st.label}) no ${short(main)}`,
+      `Região, um degrau abaixo (${st.label}) no ${short(main)}`,
       "info",
-      `vence ${won}/${groupDgs.length} (${pct(won / groupDgs.length)})` +
-        (st.id === "atributos"
-          ? " (P85: a build da classe rende ~15% a mais que a igual na função; o HP extra da igual compensa)"
-          : ""),
+      `vence ${won}/${regioes.length} (${pct(won / regioes.length)})`,
     );
   }
   // Quem ficou de fora da calibração: medido, não cobrado.
@@ -129,24 +161,25 @@ export function balanceReport(
     const won = groupDgs.filter((d) => stepRun(d, c).outcome === "vitoria").length;
     add(S1, `${what} ${short(c)} no limite`, "info", `vence ${won}/${groupDgs.length}${why}`);
   }
+  // D53: o farm precisa de tanque, cura e dano; no limite a composição pesa menos (não é cobrado lá).
   const mustLose: [string, Comp][] = [
-    ["sem tanque", ["padre", "mago", "cacador", "assassino"]],
-    ["sem tanque", ["druida", "mago", "cacador", "assassino"]],
-    ["sem suporte", ["guerreiro", "mago", "cacador", "assassino"]],
-    ["sem suporte", ["paladino", "mago", "cacador", "assassino"]],
-    // D42: o druida de batalha bate (metade do mago): o "sem DPS" leva dois padres.
-    ["sem DPS", ["guerreiro", "padre", "paladino", "padre"]],
-    ["só DPS", ["mago", "cacador", "assassino", "mago"]],
+    ["sem tanque", ["padre", "mago", "cacador"]],
+    ["sem tanque", ["druida", "mago", "assassino"]],
+    ["sem cura", ["guerreiro", "mago", "cacador"]],
+    ["sem cura", ["paladino", "mago", "assassino"]],
+    ["sem dano", ["guerreiro", "padre", "paladino"]],
   ];
   for (const [what, c] of mustLose) {
     const won = masmorras
-      .filter((d) => run(d, c).outcome === "vitoria")
+      .filter((d) => runBelow(d, c).outcome === "vitoria")
       .map((d) => d.level);
     add(
       S1,
-      `${what} ${short(c)} perde`,
-      won.length === 0 ? "ok" : "falha",
-      won.length === 0 ? "perde as 37" : `vence em ${won.join(", ")}`,
+      `${what} ${short(c)} abaixo do limite perde a Masmorra do nível`,
+      won.length === 0 ? "ok" : won.length <= 4 ? "aceita" : "falha",
+      won.length === 0
+        ? `perde as ${masmorras.length}`
+        : `vence em ${won.join(", ")}`,
     );
   }
 
@@ -173,16 +206,26 @@ export function balanceReport(
       Math.abs(d.level - L) < Math.abs(a.level - L) ? d : a,
     ),
   );
-  const mc = (d: DungeonDef, c: Comp) => {
+  const regionLevels = [100, 200, 300, 400, 500].map(
+    (L) => regioes.find((d) => d.level === L) ?? regioes.at(-1)!,
+  );
+  const mc = (d: DungeonDef, c: Comp, below: boolean) => {
     const out: RunResult[] = [];
-    for (let s = 1; s <= n; s++)
-      out.push(run(d, c, {}, randomSource(new Rng(s * 7919 + d.level))));
+    for (let s = 1; s <= n; s++) {
+      const random = randomSource(new Rng(s * 7919 + d.level));
+      out.push(below ? runBelow(d, c, random) : run(d, c, {}, random));
+    }
     return out;
   };
-  const scenarios: [string, Comp, boolean][] = [
-    ...LIMIT_GROUP_PARTIES.map((c) => ["grupo de 5", [...c], true] as [string, Comp, boolean]),
-    ["sem tanque", ["padre", "mago", "cacador", "assassino"], false],
-    ["sem DPS", ["guerreiro", "padre", "paladino", "padre"], false],
+  // [o que é, composição, deve vencer, abaixo do limite?, onde]
+  const scenarios: [string, Comp, boolean, boolean, DungeonDef[]][] = [
+    ...FARM_TRIOS.map(
+      (c) => ["farm", [...c], true, true, mcLevels] as [string, Comp, boolean, boolean, DungeonDef[]],
+    ),
+    ...REGION_PARTIES.map(
+      (c) => ["Região", [...c], true, false, regionLevels] as [string, Comp, boolean, boolean, DungeonDef[]],
+    ),
+    ["sem tanque", ["padre", "mago", "cacador"], false, true, mcLevels],
   ];
   // D41: "vence 9 em 10" (decisão do dono) no grupo de calibração; o gerador confere com 20 corridas,
   // aqui são `n`: até 5 p.p. abaixo fica aceito pelo sorteio.
@@ -191,9 +234,9 @@ export function balanceReport(
     (c) => CLASSES[c].armor === "leve",
   );
   let roomLine: { L: number; roomDeath: number }[] | null = null;
-  for (const [what, c, win] of scenarios) {
-    const rates = mcLevels.map((d) => {
-      const rs = mc(d, c);
+  for (const [what, c, win, below, dgs] of scenarios) {
+    const rates = dgs.map((d) => {
+      const rs = mc(d, c, below);
       return {
         L: d.level,
         rate: rs.filter((r) => r.outcome === "vitoria").length / rs.length,

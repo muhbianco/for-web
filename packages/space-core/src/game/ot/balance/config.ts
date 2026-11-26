@@ -562,6 +562,24 @@ export const BALANCE = {
      * O item de cada faixa, até o nível `upTo` (curva escolhida pelo dono). Até o 39 fica o kit
      * inicial (Raro +4, hero.ts): a Épica quase só cai das Masmorras, que abrem no 40 (D19).
      */
+    /**
+     * D53 (26/11/2026, o dono: "em farm de Masmorra do mesmo nível, comp abaixo do limite e com equips
+     * mínimos do level +3, é necessário tanque, dano e cura"): o herói abaixo do limite usa os itens
+     * do nível na raridade de referência com este refino, os afixos e o kit de referência e nenhum
+     * up de mecânica. É ele quem calibra as Masmorras (o trio tanque + cura + dano vence ~9 em 10).
+     */
+    farmRefine: 3,
+    /**
+     * D53: a Região é o desafio do limite — a margem do golpe e a do tempo são menores que as das outras
+     * DGs (os 4 no limite vencem; um degrau abaixo, bem menos).
+     */
+    regionEdgeMargin: 0.03,
+    regionTimeMargin: 0.05,
+    /**
+     * D53: o farm de Masmorra tem folga no tempo — o Cataclismo vem 25% depois do grupo do farm mais
+     * lento (com 10%, o grupo com um herói de equipamento atrasado não derrubava o chefe a tempo).
+     */
+    farmTimeMargin: 0.25,
     bands: [
       // A faixa de entrada é o perfil de referência inteiro, com os afixos dele: com os afixos da
       // classe, os monstros do começo ficavam fortes demais para o equipamento de quem está subindo (o

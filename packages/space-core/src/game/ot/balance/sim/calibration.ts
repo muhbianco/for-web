@@ -28,6 +28,31 @@ export const LIMIT_GROUP_PARTIES: readonly (readonly ClassId[])[] = [
   ["paladino", "druida", "mago", "cacador", "assassino"],
 ];
 
+/**
+ * D53: o farm de Masmorra do próprio nível — tanque + cura + dano ABAIXO do limite (`belowLimitFighter`)
+ * vencem ~9 em 10. Mais perto do limite, a composição pesa menos (o dono: "conforme os players vão
+ * chegando do limite, vai reduzindo a necessidade da comp"). São referências, não obrigação.
+ */
+export const FARM_TRIOS: readonly (readonly ClassId[])[] = [
+  ["guerreiro", "padre", "mago"],
+  ["paladino", "druida", "cacador"],
+  // Mais gente não pode deixar o farm mais difícil (a sala cresce com o grupo): o de 4 e o de 5
+  // abaixo do limite também farmam (o mago da jornada em grupo de 4 empacava no L80).
+  ["guerreiro", "padre", "mago", "cacador"],
+  ["guerreiro", "padre", "mago", "cacador", "assassino"],
+];
+
+/**
+ * D53: a Região (o chefe do 500 e os de cada 50 níveis) — 4 heróis no limite perfeito vencem, apertado,
+ * em cada uma destas composições: tanque, tanque, cura, dano; tanque, cura, cura, dano; tanque, cura,
+ * dano, dano.
+ */
+export const REGION_PARTIES: readonly (readonly ClassId[])[] = [
+  ["guerreiro", "paladino", "padre", "mago"],
+  ["guerreiro", "padre", "druida", "cacador"],
+  ["guerreiro", "padre", "mago", "assassino"],
+];
+
 /** Caçada sozinho: cada classe de dano (o tanque e o suporte caçam com folga, D41). */
 export const LIMIT_HUNT_SOLO: readonly (readonly ClassId[])[] = [
   ["mago"],
@@ -48,6 +73,36 @@ export const LIMIT_HUNT_GROUPS: Readonly<
     ["padre", "mago", "assassino"],
   ],
 };
+
+/**
+ * D53: o herói abaixo do limite — os itens do nível na raridade de referência com o refino do farm
+ * (`limit.farmRefine`), afixos, build e kit de referência, sem up de mecânica, com as poções do jogo.
+ */
+export function belowLimitFighter(
+  cls: ClassId,
+  level: number,
+  opts: { solo?: boolean } = {},
+  B: Balance = gameBalance,
+): FighterInput {
+  const R0 = createReference(B);
+  const L = Math.max(1, level);
+  const h = R0.referenceBalanceHero(cls, L, { refine: B.cfg.limit.farmRefine });
+  const hs = referenceSkills(
+    cls,
+    B.tierFor(h.job),
+    h.job,
+    opts.solo ?? false,
+    B,
+    "gabarito",
+  );
+  return heroFighter(
+    h,
+    hs,
+    { potions: { hp: R0.potionHp(L), mp: R0.potionMp(L), stock: 100 } },
+    B,
+    R0,
+  );
+}
 
 /** Um degrau abaixo do limite num eixo (D41: o relatório mede quanto cada um perde). */
 export interface LimitStep {

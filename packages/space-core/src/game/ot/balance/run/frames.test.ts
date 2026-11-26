@@ -8,6 +8,7 @@ import type { ClassId } from "../content.ts";
 import { DUNGEONS, dungeonById } from "../dungeons/catalog.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
 import { addFrame, cloneMeter, meterOf } from "./meter.ts";
+import { belowLimitFighter } from "../sim/calibration.ts";
 import { simulateRun } from "./simulate.ts";
 
 // Quadros da corrida para a tela (Fase 8): um por segundo, com os eventos daquele segundo.
@@ -85,10 +86,12 @@ test("mesma semente, mesmos quadros", () => {
 
 test("o chefe anuncia as mecânicas e o Cataclismo cresce como buff até o fim", () => {
   const d = DUNGEONS.find((x) => x.kind === "masmorra" && x.level === 110)!;
-  // Sem DPS a sala do chefe passa dos 150 s: o Cataclismo entra e cresce a cada pulso.
+  // Sem DPS (e abaixo do limite: D53) a sala do chefe passa do tempo: o Cataclismo entra e cresce.
   const r = simulateRun(
     d,
-    party(["guerreiro", "padre", "druida", "paladino"], 110),
+    (["guerreiro", "padre", "druida", "paladino"] as const).map((c) =>
+      belowLimitFighter(c, 110),
+    ),
     {
       mode: "esperado",
       record: true,
