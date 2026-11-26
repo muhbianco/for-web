@@ -1,10 +1,14 @@
-import type {
-  HeroCarry,
-  MechanicEvent,
-  RpgRunEndView,
-  RpgRunFeedItem,
-  RpgRunView,
-  RunFrame,
+import {
+  type HeroCarry,
+  type MechanicEvent,
+  type RpgRunEndView,
+  type RpgRunFeedItem,
+  type RpgRunView,
+  type RunFrame,
+  type RunMeter,
+  addFrame,
+  cloneMeter,
+  emptyMeter,
 } from "@muchat/space-core/game/ot/balance";
 
 /**
@@ -33,6 +37,10 @@ export interface RunState {
   mechanic: { s: MechanicEvent; a: number; b?: number; at: number } | null;
   /** Cada herói soltou cada skill pela última vez neste segundo (a barra pisca). */
   casts: Record<string, number>[];
+  /** O medidor (dano, dano recebido e cura de cada herói; 26/11/2026). */
+  meter: RunMeter;
+  /** O medidor conta desde o começo (o servidor mandou o total, ou o app viu o 1º segundo). */
+  meterFromStart: boolean;
 }
 
 /** Quanto do registro o app guarda. */
@@ -91,6 +99,7 @@ export function runStateFrom(d: {
   feed?: RpgRunFeedItem[];
   carry?: HeroCarry[];
   end?: RpgRunEndView;
+  meter?: RunMeter;
 }): RunState {
   const run = d.run;
   const feed = Array.isArray(d.feed) ? d.feed : [];
@@ -113,6 +122,7 @@ export function runStateFrom(d: {
     cataclysm: 0,
     mechanic: null,
     casts: run.members.map(() => ({})),
+    ...meterFrom(d.meter, run.members.length, frame),
   };
   const carried = !!d.carry;
   for (const ev of feed) {
@@ -131,6 +141,32 @@ export function runStateFrom(d: {
   return st;
 }
 
+/** O medidor de quem chega: o total do servidor, ou zerado a partir do segundo que chegou. */
+function meterFrom(
+  m: RunMeter | undefined,
+  heroes: number,
+  frame: RunFrame | null,
+): Pick<RunState, "meter" | "meterFromStart"> {
+  const ok =
+    !!m &&
+    Array.isArray(m.dmg) &&
+    m.dmg.length === heroes &&
+    Array.isArray(m.taken) &&
+    Array.isArray(m.heal);
+  if (ok)
+    return {
+      meter: cloneMeter({
+        ...m!,
+        dmgBy: Array.isArray(m!.dmgBy) ? m!.dmgBy : m!.dmg.map(() => ({})),
+        healBy: Array.isArray(m!.healBy) ? m!.healBy : m!.dmg.map(() => ({})),
+      }),
+      meterFromStart: true,
+    };
+  const meter = emptyMeter(heroes);
+  meter.s = frame?.s ?? 0;
+  return { meter, meterFromStart: !frame || frame.s <= 1 };
+}
+
 /** Os segundos que chegaram depois (`rpg.run.tick`). Quadros repetidos (já vistos) são ignorados. */
 export function applyFrames(cur: RunState, frames: RunFrame[]): RunState {
   if (frames.length === 0) return cur;
@@ -143,11 +179,13 @@ export function applyFrames(cur: RunState, frames: RunFrame[]): RunState {
     drank: cur.drank.map((d) => ({ ...d })),
     xp: [...cur.xp],
     casts: cur.casts.map((c) => ({ ...c })),
+    meter: cloneMeter(cur.meter),
   };
   let last: RunFrame | null = null;
   for (const f of frames) {
     if (f.s <= seen) continue;
     last = f;
+    addFrame(st.meter, f);
     for (const ev of f.e) {
       const item = { ...ev, at: f.s, st: f.st } as RpgRunFeedItem;
       st.feed.push(item);

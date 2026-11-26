@@ -3,6 +3,7 @@ import { type ClassId, FOE_BASE, type RunFrame } from "@muchat/space-core/game/o
 import { Application, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 
 import { RENDERER_DESTROY } from "../render/renderer.ts";
+import { STATUS_COLOR, statusGood, statusTone } from "../status.ts";
 import { type FxArt, fxCanvas, gearKey } from "../render/heroArt.ts";
 import { corpseCanvas, equippedFrames, fallenCanvas, monsterCanvas, monsterSize, roomCanvas } from "./art.ts";
 import {
@@ -913,11 +914,46 @@ export class DungeonScene {
       const color = frac > 0.5 ? 0x4dd26a : frac > 0.25 ? 0xf0c03a : 0xe0574f;
       this.bars.rect(sx - bw / 2 - 1, by - 1, bw + 2, 5).fill({ color: 0x0b0b0f });
       this.bars.rect(sx - bw / 2, by, Math.round(bw * frac), 3).fill({ color });
+      this.drawStatuses(u, sx, by, bw, frac);
     }
     for (const f of this.floaters) {
       const k = this.reduced ? 0 : clamp01((now - f.t0) / FLOAT_MS);
       f.t.position.set(Math.round(ox + f.x * s), Math.round(oy + f.y * s - 8 - k * 16));
       f.t.alpha = this.reduced ? 1 : k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+    }
+  }
+
+  /**
+   * Os efeitos ativos (26/11/2026): o escudo como faixa clara por cima da vida e, embaixo da barra,
+   * uma marca colorida por efeito (até 5; o que é ruim primeiro). O nome e o tempo ficam no HUD.
+   */
+  private drawStatuses(u: Unit, sx: number, by: number, bw: number, frac: number) {
+    const u0 = this.frame?.u;
+    if (!u0) return;
+    const list = u.hero ? u0.h[u.ref] : u0.x[u.ref - FOE_BASE];
+    if (!list || list.length === 0) return;
+    const author = (a: number | undefined, fallback: ClassId | null) =>
+      (a !== undefined ? this.run?.members[a]?.cls : undefined) ?? fallback;
+    const own = u.hero ? (this.run?.members[u.ref]?.cls ?? null) : null;
+    const marks = list
+      .map((st) => ({ st, tone: statusTone(st, author(st.a, own)) }))
+      .sort((a, b) => Number(statusGood(a.tone)) - Number(statusGood(b.tone)));
+    const shield = list.find((s) => s.k === "escudo");
+    if (shield?.v && u.max > 0) {
+      const w = Math.round(bw * Math.min(1, shield.v / u.max));
+      const x0 = Math.min(sx - bw / 2 + Math.round(bw * frac), sx + bw / 2 - w);
+      this.bars.rect(x0, by, w, 1).fill({ color: STATUS_COLOR.shield });
+    }
+    const n = Math.min(5, marks.length);
+    const size = 3;
+    const gap = 2;
+    const total = n * size + (n - 1) * gap;
+    let x = Math.round(sx - total / 2);
+    const y = by + 5;
+    for (let i = 0; i < n; i++) {
+      this.bars.rect(x - 1, y - 1, size + 2, size + 2).fill({ color: 0x0b0b0f });
+      this.bars.rect(x, y, size, size).fill({ color: STATUS_COLOR[marks[i]!.tone] });
+      x += size + gap;
     }
   }
 

@@ -34,10 +34,12 @@ import type {
   RpgHeroState,
   RpgLobbyMember,
   RpgLobbyView,
+  RpgPrepKind,
   RpgRunEndView,
   RpgRunFeedItem,
   RpgRunView,
   RunFrame,
+  RunMeter,
 } from "@muchat/space-core/game/ot/balance";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type RunState, applyFrames, runStateFrom } from "./runState.ts";
@@ -152,6 +154,11 @@ export interface SpaceUiState {
   runs: Record<string, RunState>;
   /** The app shows the adventure panel of this run. */
   runOpen: { id: string; n: number } | null;
+  /**
+   * The app shows our group's start (26/11/2026): asked for, no run yet, waiting for whoever is
+   * preparing and then the 3 s countdown. The run panel takes its place when the run arrives.
+   */
+  stageOpen: { lobby: string; n: number } | null;
   /** The game menu's board: groups forming at the TVs of this space and runs going on. */
   board: { lobbies: RpgLobbyView[]; runs: RpgBoardRun[]; at: number } | null;
 }
@@ -293,6 +300,7 @@ export class SpaceView {
       lobbyStarted: null,
       runs: {},
       runOpen: null,
+      stageOpen: null,
       board: null,
     };
   }
@@ -302,6 +310,11 @@ export class SpaceView {
   private readonly gameListeners = new Set<(e: GameWireEvent) => void>();
   /** Runs whose panel already opened by itself (once per run). */
   private readonly autoOpened = new Set<string>();
+  /** `rpg.lobby` events that arrived before the snapshot (replayed once we know who we are). */
+  private readonly earlyLobbies: Record<string, unknown>[] = [];
+  /** What holds our group's start now: the hero sheet or an NPC (26/11/2026). */
+  private prepWhat: RpgPrepKind | null = null;
+  private prepSentAt = 0;
   /** Ids of game commands in flight, so their errors go to the game, not the editor. */
   private readonly gameCommands = new Set<string>();
 
@@ -570,6 +583,9 @@ export class SpaceView {
         if (d.layout.fingerprint !== this.world.fingerprint)
           await this.loadMap(d.layout.url);
         this.world.applySnapshot(d, now);
+        // Groups that arrived while the map was loading (we did not know who we were yet).
+        const early = this.earlyLobbies.splice(0);
+        for (const ev of early) void this.onEvent(ev);
         this.mover.resync();
         this.renderer.rebuildStatic(this.world);
         if (!this.world.decor || this.world.decor.rev !== d.decor?.rev)
@@ -613,6 +629,12 @@ export class SpaceView {
         this.world.setRights(d);
         return;
       case "rpg.lobby": {
+        // Before the snapshot we do not know who we are or where: our own group would be
+        // dropped (it came right after the snapshot, while the map was still loading).
+        if (!this.world.me) {
+          if (this.earlyLobbies.length < 64) this.earlyLobbies.push(e);
+          return;
+        }
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
         const tv = typeof d.tv === "string" ? d.tv : "";
         const lobbies = { ...this.state.lobbies };
@@ -640,7 +662,13 @@ export class SpaceView {
           d.ended === "started" && d.started
             ? (d.started as { dungeon: string; members: RpgLobbyMember[] })
             : null;
+        const before = Object.values(this.state.lobbies).find((l) =>
+          l.members.some((m) => m.user_id === me),
+        );
+        const mineNow =
+          lobby && lobby.members.some((m) => m.user_id === me) ? lobby : null;
         this.patch({
+          ...this.stageFor(before ?? null, mineNow, key),
           lobbies,
           ...(started
             ? {
@@ -651,6 +679,7 @@ export class SpaceView {
               }
             : {}),
         });
+        if (mineNow) this.syncPrep(mineNow);
         this.emitGame({
           t: "rpg.lobby",
           re: typeof e.re === "string" ? e.re : undefined,
@@ -669,6 +698,7 @@ export class SpaceView {
           feed: Array.isArray(d.feed) ? (d.feed as RpgRunFeedItem[]) : [],
           ...(Array.isArray(d.carry) ? { carry: d.carry as HeroCarry[] } : {}),
           ...(d.end ? { end: d.end as RpgRunEndView } : {}),
+          ...(d.meter ? { meter: d.meter as RunMeter } : {}),
         });
         // Runs that ended go once another one arrives, unless their summary is open.
         const runs: Record<string, RunState> = {};
@@ -680,10 +710,15 @@ export class SpaceView {
         const openNow = this.state.runOpen
           ? this.state.runs[this.state.runOpen.id]
           : null;
+        // Whoever watches our group's start (the stage) follows it into the run.
         const follow =
           !run.auto ||
+          !!this.state.stageOpen ||
           (!!openNow?.end && openNow.run.members.some((m) => m.user_id === me));
-        this.patch({ runs });
+        this.patch({
+          runs,
+          ...(mine && this.state.stageOpen ? { stageOpen: null } : {}),
+        });
         if (mine && !next.end && follow) this.autoOpenRun(run.id);
         const re = typeof e.re === "string" ? e.re : undefined;
         if (re) this.gameCommands.delete(re);
@@ -1198,6 +1233,73 @@ export class SpaceView {
   paletteOf(userId: string): number {
     if (this.world.me?.userId === userId) return this.world.me.palette;
     return this.world.others.get(userId)?.palette ?? defaultPalette(userId);
+  }
+
+  /**
+   * The hero sheet or an NPC opened (or closed, null): it holds our group's start until it closes
+   * (26/11/2026). Sent only while we are in a group; said again when the server forgot it
+   * (reconnect) — see `syncPrep`.
+   */
+  setPrep(what: RpgPrepKind | null) {
+    if (this.prepWhat === what) return;
+    this.prepWhat = what;
+    const me = this.world.me?.userId;
+    const mine = Object.values(this.state.lobbies).some((l) =>
+      l.members.some((m) => m.user_id === me),
+    );
+    if (!mine) return;
+    this.prepSentAt = Date.now();
+    this.gameSend("rpg.lobby.prep", { what });
+  }
+
+  /** The server's idea of what holds us differs from ours (reconnect, new group): say it again. */
+  private syncPrep(l: RpgLobbyView) {
+    if (!Array.isArray(l.prep)) return; // older server: no hold
+    const me = this.world.me?.userId;
+    const theirs = l.prep.find((p) => p.user_id === me)?.what ?? null;
+    if (theirs === this.prepWhat) return;
+    if (Date.now() - this.prepSentAt < 1500) return;
+    this.prepSentAt = Date.now();
+    this.gameSend("rpg.lobby.prep", { what: this.prepWhat });
+  }
+
+  /**
+   * Our group's start panel: it opens by itself when the leader asks for the start (not the loop's:
+   * whoever closed the panel to chat keeps chatting); it closes when the start is called off.
+   */
+  private stageFor(
+    before: RpgLobbyView | null,
+    now: RpgLobbyView | null,
+    key: string,
+  ): Partial<Pick<SpaceUiState, "stageOpen">> {
+    const open = this.state.stageOpen;
+    if (!now) return open ? { stageOpen: null } : {};
+    const id = now.id || key;
+    if (now.pending) {
+      if (open) return {};
+      const was = before && before.id === now.id && before.pending;
+      if (was || now.pending_auto) return {};
+      // The run panel already open (the last run's summary) shows the start itself.
+      if (this.state.runOpen) return {};
+      return { stageOpen: { lobby: id, n: 1 } };
+    }
+    // The start came out: keep the stage until the run arrives (the panel takes over).
+    if (open && now.state !== "running") return { stageOpen: null };
+    return {};
+  }
+
+  /** Open our group's start panel (the group frame's button, while the start is pending). */
+  watchStage() {
+    const me = this.world.me?.userId;
+    const l = Object.values(this.state.lobbies).find((x) =>
+      x.members.some((m) => m.user_id === me),
+    );
+    if (!l?.pending) return;
+    this.patch({ tvMenu: null, stageOpen: { lobby: l.id, n: 1 } });
+  }
+
+  closeStage() {
+    if (this.state.stageOpen) this.patch({ stageOpen: null });
   }
 
   /** The adventure panel closed; a run that already ended is dismissed with it. */

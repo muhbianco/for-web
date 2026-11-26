@@ -444,6 +444,33 @@ export type FightEvent =
   /** O Cataclismo como buff do chefe que cresce: `n` marcas (uma por pulso; D24). */
   | { k: "cataclismo"; a: number; n: number };
 
+/**
+ * Um efeito ativo num herói ou inimigo no fim do segundo (26/11/2026, só para a tela: gravar não
+ * muda a luta). `s`: a skill que pôs (ou a mecânica do chefe, "maldicao" e "drenar").
+ */
+export interface FrameStatus {
+  s: string;
+  k:
+    | "buff"
+    | "debuff"
+    | "dot"
+    | "hot"
+    | "escudo"
+    | "mana"
+    | "atordoado"
+    | "provocado";
+  /** O atributo do buff ou do debuff (poder, reducao, lentidao…). */
+  st?: string;
+  /** Segundos que faltam (para cima). */
+  t: number;
+  /** Camadas (DoT ou HoT da mesma skill e do mesmo autor). */
+  n?: number;
+  /** Quem pôs: o herói (índice), nos efeitos dos inimigos e nos de grupo. */
+  a?: number;
+  /** O que o escudo ainda segura. */
+  v?: number;
+}
+
 /** O estado no fim de um segundo da luta: vida e mana dos heróis, vida de cada inimigo. */
 export interface FightFrame {
   /** O segundo da luta (1, 2, …). */
@@ -452,6 +479,8 @@ export interface FightFrame {
   m: number[];
   x: number[];
   e: FightEvent[];
+  /** Os efeitos ativos de cada herói (`h`) e inimigo (`x`); sem nenhum, o campo não vem. */
+  u?: { h: FrameStatus[][]; x: FrameStatus[][] };
 }
 
 /** Um inimigo abatido: quem estava de pé na hora divide o XP e o ouro (D4). */

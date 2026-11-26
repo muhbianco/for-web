@@ -20,6 +20,8 @@ export default function NpcDialog(props: {
   request: { instance: string; title: string; npc: NpcKind };
   rpg: { hero: RpgHeroState | null } | null;
   people: { id: string; name: string }[];
+  /** Estou num grupo: a janela aberta segura a largada (menos a do Mercador). */
+  inGroup?: boolean;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -48,7 +50,14 @@ export default function NpcDialog(props: {
           <>
             <Show when={s().run}>
               <Muted role="note">
-                {t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
+                {props.request.npc === "mercador"
+                  ? t`Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada.`
+                  : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
+              </Muted>
+            </Show>
+            <Show when={!s().run && props.request.npc !== "mercador" && props.inGroup}>
+              <Muted role="note">
+                {t`Enquanto esta janela estiver aberta, a próxima corrida do seu grupo espera por você.`}
               </Muted>
             </Show>
             <Switch>

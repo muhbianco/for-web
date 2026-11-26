@@ -7,6 +7,7 @@ import type { FighterInput } from "../combat/types.ts";
 import type { ClassId } from "../content.ts";
 import { DUNGEONS, dungeonById } from "../dungeons/catalog.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
+import { addFrame, cloneMeter, meterOf } from "./meter.ts";
 import { simulateRun } from "./simulate.ts";
 
 // Quadros da corrida para a tela (Fase 8): um por segundo, com os eventos daquele segundo.
@@ -112,4 +113,60 @@ test("o chefe anuncia as mecânicas e o Cataclismo cresce como buff até o fim",
   const last = r.frames!.at(-1)!;
   assert.ok(last.h.every((hp) => hp === 0));
   assert.equal(ev.filter((e) => e.k === "queda").length, 4);
+});
+
+test("os quadros mostram os efeitos ativos: o veneno do assassino no monstro, a Canção do druida no grupo (26/11/2026)", () => {
+  const d = dungeonById("masmorra-110")!;
+  const r = simulateRun(
+    d,
+    party(["guerreiro", "druida", "assassino", "mago"], 110),
+    { mode: "esperado", record: true },
+  );
+  const f = r.frames!;
+  const foe = f.flatMap((x) => x.u?.x.flat() ?? []);
+  const hero = f.flatMap((x) => x.u?.h.flat() ?? []);
+  assert.ok(foe.some((s) => s.k === "dot" && s.a === 2), "DoT do assassino");
+  assert.ok(
+    hero.some((s) => s.k === "buff" && s.s === "cancao-da-floresta"),
+    "Canção de Guerra",
+  );
+  for (const s of [...foe, ...hero]) {
+    assert.ok(s.t >= 1, "tempo que falta, para cima");
+    assert.ok(s.s.length > 0);
+  }
+  // O tamanho bate com o quadro: um por herói e um por inimigo.
+  for (const x of f)
+    if (x.u) {
+      assert.equal(x.u.h.length, x.h.length);
+      assert.equal(x.u.x.length, x.x.length);
+    }
+});
+
+test("medidor: dano, dano recebido e cura de cada herói somam os eventos; quadro repetido não conta duas vezes", () => {
+  const d = dungeonById("masmorra-70")!;
+  const r = simulateRun(d, party(REF, 70), { mode: "esperado", record: true });
+  const f = r.frames!;
+  const m = meterOf(f, 4);
+  assert.equal(m.s, f.at(-1)!.s);
+  // O dano do medidor é o que tirou de vida (sem o excesso do golpe que mata), até o total do herói.
+  r.rooms
+    .reduce(
+      (acc, room) => acc.map((v, i) => v + room.heroes[i]!.damage),
+      [0, 0, 0, 0],
+    )
+    .forEach((total, i) =>
+      assert.ok(
+        m.dmg[i]! <= total + 5 && m.dmg[i]! >= total * 0.85,
+        `${i}: ${m.dmg[i]} × ${total}`,
+      ),
+    );
+  assert.ok(m.taken[0]! > m.taken[2]!, "o tanque apanha mais que o mago");
+  assert.ok(m.heal[1]! > 0, "o padre cura");
+  assert.ok((m.dmgBy[2]!.auto ?? 0) >= 0);
+  const again = cloneMeter(m);
+  addFrame(again, f.at(-1)!);
+  assert.deepEqual(again, m);
+  const half = meterOf(f, 4, 10);
+  assert.equal(half.s, 10);
+  assert.ok(half.dmg[2]! < m.dmg[2]!);
 });

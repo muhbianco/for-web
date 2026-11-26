@@ -100,7 +100,16 @@ export function MerchantPanel(props: {
         </For>
       </Show>
       <Show when={tab() === "itens"}>
-        <Commons state={props.state} busy={cmd.busy()} onBuy={buy} />
+        <Show when={props.state.run}>
+          <Muted role="note">
+            {t`Durante a corrida o Mercador só vende poção e munição. Equipamento, quando ela acabar.`}
+          </Muted>
+        </Show>
+        <Commons
+          state={props.state}
+          busy={cmd.busy() || !!props.state.run}
+          onBuy={buy}
+        />
       </Show>
       <Show when={tab() === "vender"}>
         <Sell

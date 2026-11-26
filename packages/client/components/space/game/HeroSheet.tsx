@@ -24,6 +24,8 @@ export default function HeroSheet(props: {
   link: GameLink;
   rpg: { hero: RpgHeroState | null; serverNow: number; at: number };
   name: string;
+  /** Estou num grupo: a ficha aberta segura a largada (26/11/2026). */
+  inGroup?: boolean;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -95,6 +97,15 @@ export default function HeroSheet(props: {
         <Show when={inRun()}>
           <Lock role="note">
             {t`Seu herói está numa dungeon: dá para olhar tudo, mas as trocas ficam para quando a corrida acabar.`}
+            <Show when={props.inGroup}>
+              {" "}
+              {t`Com a ficha aberta, a próxima corrida do grupo espera você fechar.`}
+            </Show>
+          </Lock>
+        </Show>
+        <Show when={!inRun() && props.inGroup}>
+          <Lock role="note">
+            {t`Enquanto a ficha estiver aberta, a próxima corrida do seu grupo espera por você.`}
           </Lock>
         </Show>
         <Tabs

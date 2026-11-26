@@ -271,6 +271,11 @@ msgstr "{0} caiu"
 msgid "{0} caiu!"
 msgstr "{0} caiu!"
 
+#. placeholder {0}: st.n
+#: components/space/game/StatusIcons.tsx
+msgid "{0} camadas"
+msgstr "{0} camadas"
+
 #. placeholder {0}: (message.systemMessage as ChannelEditSystemMessage).by?.username
 #: components/client/NotificationsWorker.tsx
 msgid "{0} changed the channel description"
@@ -479,6 +484,11 @@ msgstr "{0} pontos não cabem mais neste tier: evolua no Mestre da evolução pa
 #: components/client/NotificationsWorker.tsx
 msgid "{0} renamed the channel"
 msgstr "{0} renamed the channel"
+
+#. placeholder {0}: st.t
+#: components/space/game/StatusIcons.tsx
+msgid "{0} s"
+msgstr "{0} s"
 
 #. placeholder {0}: have()
 #: components/space/game/GamePanel.tsx
@@ -1436,8 +1446,16 @@ msgstr "A conexão de {0} está instável"
 #~ msgstr "A corrida acabou: {0}"
 
 #: components/space/game/RunPanel.tsx
+msgid "A corrida começa em"
+msgstr "A corrida começa em"
+
+#: components/space/game/RunPanel.tsx
 #~ msgid "A corrida está começando…"
 #~ msgstr "A corrida está começando…"
+
+#: components/space/game/gameText.ts
+msgid "A corrida está largando agora; tente de novo num instante."
+msgstr "A corrida está largando agora; tente de novo num instante."
 
 #: components/space/game/RunPanel.tsx
 #~ msgid "A corrida segue no servidor; o resultado chega no fim."
@@ -1455,6 +1473,16 @@ msgstr "A cura é fixa pela faixa do seu nível; as três curam o mesmo por segu
 #: components/space/game/TvMenu.tsx
 #~ msgid "A experiência não vai ser dividida: para dividir, todos precisam de nível {0} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa."
 #~ msgstr "A experiência não vai ser dividida: para dividir, todos precisam de nível {0} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa."
+
+#. placeholder {0}: l.stopped_detail ?? "?"
+#: components/space/game/partyUi.ts
+msgid "A largada desistiu depois de 5 minutos esperando: {0} ficou com a ficha ou um NPC aberto."
+msgstr "A largada desistiu depois de 5 minutos esperando: {0} ficou com a ficha ou um NPC aberto."
+
+#. placeholder {0}: errorText(l.stopped_detail ?? undefined)
+#: components/space/game/partyUi.ts
+msgid "A largada não saiu: {0}"
+msgstr "A largada não saiu: {0}"
 
 #. placeholder {0}: Math.ceil((retryMs ?? 0) / 1000)
 #: components/space/game/labels.ts
@@ -1628,6 +1656,10 @@ msgstr "Abrindo…"
 msgid "Abrir"
 msgstr "Abrir"
 
+#: components/space/game/PartyDock.tsx
+msgid "Abrir a corrida"
+msgstr "Abrir a corrida"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Abrir links, notas, imagens e portais desta sala e assistir à Smart TV dela"
 msgstr "Abrir links, notas, imagens e portais desta sala e assistir à Smart TV dela"
@@ -1773,6 +1805,10 @@ msgstr "Agora"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "aguardando a primeira janela"
 msgstr "aguardando a primeira janela"
+
+#: components/space/game/RunPanel.tsx
+msgid "Aguardando os heróis se equiparem"
+msgstr "Aguardando os heróis se equiparem"
 
 #: components/space/game/RunPanel.tsx
 msgid "Aguardando quem lidera começar a próxima."
@@ -2127,6 +2163,10 @@ msgstr "Assistir"
 msgid "Ataca de longe sem parar; gasta flechas e ajuda com utilidades."
 msgstr "Ataca de longe sem parar; gasta flechas e ajuda com utilidades."
 
+#: components/space/game/StatusIcons.tsx
+msgid "ataca mais devagar"
+msgstr "ataca mais devagar"
+
 #: components/space/DecorPanel.tsx
 msgid "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
 msgstr "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · arraste para mover"
@@ -2168,6 +2208,14 @@ msgstr "Atalhos: R gira · Delete remove · Ctrl+D duplica · Ctrl+Z desfaz · a
 #~ msgid "ataque atinge mais um"
 #~ msgstr "ataque atinge mais um"
 
+#: components/space/game/RunMeter.tsx
+msgid "Ataque básico"
+msgstr "Ataque básico"
+
+#: components/space/game/StatusIcons.tsx
+msgid "ataque e magia mais fortes"
+msgstr "ataque e magia mais fortes"
+
 #: components/space/game/heroUi.ts
 #~ msgid "Ataque em área"
 #~ msgstr "Ataque em área"
@@ -2207,6 +2255,14 @@ msgstr "Até o +4 é certo."
 #: components/space/game/skillText.ts
 msgid "Atordoa {whom} por {dur}."
 msgstr "Atordoa {whom} por {dur}."
+
+#: components/space/game/StatusIcons.tsx
+msgid "atordoado"
+msgstr "atordoado"
+
+#: components/space/game/StatusIcons.tsx
+msgid "Atordoado"
+msgstr "Atordoado"
 
 #: components/space/game/gameText.ts
 msgid "ATQ"
@@ -2374,6 +2430,7 @@ msgstr "Banner"
 
 #: components/space/game/BankPanel.tsx
 #: components/space/game/NpcDialog.tsx
+#: components/space/game/partyUi.ts
 msgid "Banqueiro"
 msgstr "Banqueiro"
 
@@ -2463,6 +2520,10 @@ msgstr "Bloqueio"
 #: components/space/game/TrainingDialog.tsx
 msgid "Boneco de treino"
 msgstr "Boneco de treino"
+
+#: components/space/game/StatusIcons.tsx
+msgid "bônus"
+msgstr "bônus"
 
 #. placeholder {0}: bonusPct()
 #: components/space/game/TvMenu.tsx
@@ -2721,6 +2782,11 @@ msgstr "Cancelar"
 #~ msgid "Cancelar grupo"
 #~ msgstr "Cancelar grupo"
 
+#: components/space/game/PartyDock.tsx
+#: components/space/game/RunPanel.tsx
+msgid "Cancelar largada"
+msgstr "Cancelar largada"
+
 #: components/app/interface/settings/user/Account.tsx
 msgid "Cannot delete account until servers are deleted or transferred"
 msgstr "Cannot delete account until servers are deleted or transferred"
@@ -2778,6 +2844,14 @@ msgstr "Categorias"
 #: components/space/game/skillText.ts
 msgid "Causa {amount} {where}."
 msgstr "Causa {amount} {where}."
+
+#: components/space/game/StatusIcons.tsx
+msgid "causa mais dano"
+msgstr "causa mais dano"
+
+#: components/space/game/StatusIcons.tsx
+msgid "causa menos dano"
+msgstr "causa menos dano"
 
 #: components/space/game/rpgUi.ts
 #~ msgid "Cavaleiro"
@@ -2906,6 +2980,10 @@ msgstr "Check back often to see if your {0} has been approved!"
 #: components/auth/src/flows/FlowCheck.tsx
 msgid "Check your mail!"
 msgstr "Check your mail!"
+
+#: components/space/game/PartyDock.tsx
+msgid "chefe"
+msgstr "chefe"
 
 #: components/space/game/AttributesPanel.tsx
 #: components/space/game/gameText.ts
@@ -3142,6 +3220,10 @@ msgstr "Com 4 atacantes em volta."
 #~ msgid "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
 #~ msgstr "Com a árvore cheia (todos os adereços da sua classe no último ponto), ela pode renascer: a árvore e os pontos de habilidade ganhos zeram (o treino no dummy de habilidade recomeça) e um adereço à sua escolha passa a render {MASTERY_PCT}% a mais por ponto, para sempre. {0} renascimentos até agora."
 
+#: components/space/game/HeroSheet.tsx
+msgid "Com a ficha aberta, a próxima corrida do grupo espera você fechar."
+msgstr "Com a ficha aberta, a próxima corrida do grupo espera você fechar."
+
 #: components/space/game/TvMenu.tsx
 #~ msgid "Com o grupo completo (as 4 classes), confortável a partir do level {group}."
 #~ msgstr "Com o grupo completo (as 4 classes), confortável a partir do level {group}."
@@ -3166,6 +3248,11 @@ msgstr "Com 4 atacantes em volta."
 msgid "Começa como {0}; evolui para {1} (job 20), {2} (nível 40) e {3} (nível 70)."
 msgstr "Começa como {0}; evolui para {1} (job 20), {2} (nível 40) e {3} (nível 70)."
 
+#. placeholder {0}: s.secs
+#: components/space/game/PartyDock.tsx
+msgid "começa em {0}"
+msgstr "começa em {0}"
+
 #: components/space/game/RunPanel.tsx
 #~ msgid "Começando a próxima…"
 #~ msgstr "Começando a próxima…"
@@ -3175,6 +3262,7 @@ msgstr "Começa como {0}; evolui para {1} (job 20), {2} (nível 40) e {3} (níve
 #~ msgstr "começando…"
 
 #: components/space/game/LobbyChip.tsx
+#: components/space/game/PartyDock.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Começar"
 msgstr "Começar"
@@ -3446,6 +3534,10 @@ msgstr "Consumíveis"
 #: components/app/interface/settings/shared/Discoverable.tsx
 msgid "Contact support to remove this {0} from discover"
 msgstr "Contact support to remove this {0} from discover"
+
+#: components/space/game/RunMeter.tsx
+msgid "Contando desde que você abriu a corrida."
+msgstr "Contando desde que você abriu a corrida."
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Content breaks one or more laws"
@@ -3763,6 +3855,10 @@ msgstr "Crítico (nota)"
 msgid "Crítico garantido se o alvo não estiver atacando você."
 msgstr "Crítico garantido se o alvo não estiver atacando você."
 
+#: components/space/game/RunMeter.tsx
+msgid "Cura"
+msgstr "Cura"
+
 #. placeholder {0}: num(p().heal)
 #: components/space/game/RunHud.tsx
 msgid "cura {0}"
@@ -3839,6 +3935,10 @@ msgstr "Cura esperada"
 msgid "Cura o grupo todo: {amount}."
 msgstr "Cura o grupo todo: {amount}."
 
+#: components/space/game/StatusIcons.tsx
+msgid "cura por segundo"
+msgstr "cura por segundo"
+
 #: components/space/game/heroUi.ts
 #~ msgid "cura também o resto do grupo, com {pct}% do valor"
 #~ msgstr "cura também o resto do grupo, com {pct}% do valor"
@@ -3888,6 +3988,7 @@ msgid "Customisation"
 msgstr "Customisation"
 
 #: components/space/game/gameText.ts
+#: components/space/game/RunMeter.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Dano"
 msgstr "Dano"
@@ -3923,6 +4024,10 @@ msgstr "Dano esperado"
 msgid "Dano mágico em todo o grupo."
 msgstr "Dano mágico em todo o grupo."
 
+#: components/space/game/StatusIcons.tsx
+msgid "dano sagrado por segundo"
+msgstr "dano sagrado por segundo"
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 #: components/app/interface/settings/user/appearance/AppearanceMenu.tsx
 msgid "Dark"
@@ -3942,6 +4047,10 @@ msgstr "Date format"
 msgid "de {0} (1 por nível de job)"
 msgstr "de {0} (1 por nível de job)"
 
+#: components/space/game/StatusIcons.tsx
+msgid "de {by}"
+msgstr "de {by}"
+
 #. placeholder {0}: lvl()
 #. placeholder {1}: lvl() + 1
 #. placeholder {2}: refineChance(lvl())
@@ -3950,6 +4059,14 @@ msgstr "de {0} (1 por nível de job)"
 #: components/space/game/NpcDialog.tsx
 #~ msgid "De +{0} para +{1}: chance de {2}%, dano de +{3}% para +{4}%."
 #~ msgstr "De +{0} para +{1}: chance de {2}%, dano de +{3}% para +{4}%."
+
+#: components/space/game/RunMeter.tsx
+msgid "de cura/s"
+msgstr "de cura/s"
+
+#: components/space/game/RunMeter.tsx
+msgid "de dano/s"
+msgstr "de dano/s"
 
 #: components/space/game/LobbyChip.tsx
 #~ msgid "De novo"
@@ -4038,6 +4155,10 @@ msgstr "Defende o grupo de golpes e de magia; bate com dano sagrado."
 #: components/space/game/StatsPanel.tsx
 #~ msgid "Defesa mágica"
 #~ msgstr "Defesa mágica"
+
+#: components/space/game/StatusIcons.tsx
+msgid "defesa menor"
+msgstr "defesa menor"
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Definir o que os objetos interativos desta sala mostram (link, nota, imagem, página, portal)"
@@ -4451,6 +4572,14 @@ msgstr "Duplicar"
 msgid "Duração"
 msgstr "Duração"
 
+#: components/space/game/gameText.ts
+msgid "Durante a corrida o Mercador só vende poção e munição; equipamento, quando ela acabar."
+msgstr "Durante a corrida o Mercador só vende poção e munição; equipamento, quando ela acabar."
+
+#: components/space/game/MerchantPanel.tsx
+msgid "Durante a corrida o Mercador só vende poção e munição. Equipamento, quando ela acabar."
+msgstr "Durante a corrida o Mercador só vende poção e munição. Equipamento, quando ela acabar."
+
 #: components/modal/modals/TimeoutMember.tsx
 msgid "Duration"
 msgstr "Duration"
@@ -4548,6 +4677,13 @@ msgstr "Edited"
 #: components/space/game/SkillsPanel.tsx
 msgid "Efeito de apoio (a Potência tira recarga)"
 msgstr "Efeito de apoio (a Potência tira recarga)"
+
+#. placeholder {0}: b().name
+#. placeholder {0}: focusMember().name
+#. placeholder {0}: m.name
+#: components/space/game/RunPanel.tsx
+msgid "Efeitos em {0}"
+msgstr "Efeitos em {0}"
 
 #. placeholder {0}: num(d()!.effective)
 #. placeholder {1}: num(d()!.recommended)
@@ -4690,6 +4826,10 @@ msgstr "Enfraquece {whom} por {dur}: {what}."
 msgid "Enfraquece o chefe por {dur}: {b}."
 msgstr "Enfraquece o chefe por {dur}: {b}."
 
+#: components/space/game/StatusIcons.tsx
+msgid "enfraquecido"
+msgstr "enfraquecido"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Engine"
 msgstr "Engine"
@@ -4701,6 +4841,14 @@ msgstr "Enhanced"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Enhanced (RNNoise)"
 msgstr "Enhanced (RNNoise)"
+
+#: components/space/game/HeroSheet.tsx
+msgid "Enquanto a ficha estiver aberta, a próxima corrida do seu grupo espera por você."
+msgstr "Enquanto a ficha estiver aberta, a próxima corrida do seu grupo espera por você."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Enquanto esta janela estiver aberta, a próxima corrida do seu grupo espera por você."
+msgstr "Enquanto esta janela estiver aberta, a próxima corrida do seu grupo espera por você."
 
 #: components/space/game/skillText.ts
 msgid "Enquanto queima, cada inimigo atingido cura você em {p} da vida máxima por segundo."
@@ -4922,12 +5070,13 @@ msgstr "Escolher personagem"
 msgid "Esconder lista de salas"
 msgstr "Esconder lista de salas"
 
-#: components/space/game/itemUi.ts
-#~ msgid "escudo"
-#~ msgstr "escudo"
+#: components/space/game/StatusIcons.tsx
+msgid "escudo"
+msgstr "escudo"
 
 #: components/space/game/MerchantPanel.tsx
 #: components/space/game/SkillsPanel.tsx
+#: components/space/game/StatusIcons.tsx
 msgid "Escudo"
 msgstr "Escudo"
 
@@ -4951,6 +5100,10 @@ msgstr "Escudo de {amount} em você por {dur}."
 #~ msgid "escudo de 15% da vida em cada luta"
 #~ msgstr "escudo de 15% da vida em cada luta"
 
+#: components/space/game/StatusIcons.tsx
+msgid "escudo de mana"
+msgstr "escudo de mana"
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/space/SpacePage.tsx
 #: components/space/SpaceSidebarEntry.tsx
@@ -4972,6 +5125,15 @@ msgstr "Espaço"
 #: components/space/game/rpgUi.ts
 #~ msgid "Espada, machado ou maça e escudo; a vocação com mais vida."
 #~ msgstr "Espada, machado ou maça e escudo; a vocação com mais vida."
+
+#. placeholder {0}: s.waiting.map((w) => w.name).join(", ")
+#: components/space/game/PartyDock.tsx
+msgid "esperando {0}"
+msgstr "esperando {0}"
+
+#: components/space/game/partyUi.ts
+msgid "esperando quem se prepara"
+msgstr "esperando quem se prepara"
 
 #: components/space/game/labels.ts
 #~ msgid "Espinheiro"
@@ -5001,6 +5163,10 @@ msgstr "Esquiva"
 #: components/space/game/AttributesPanel.tsx
 msgid "Esquiva cercado"
 msgstr "Esquiva cercado"
+
+#: components/space/game/StatusIcons.tsx
+msgid "esquiva mais"
+msgstr "esquiva mais"
 
 #: components/space/game/StatsPanel.tsx
 #~ msgid "Esquiva perfeita"
@@ -5361,6 +5527,7 @@ msgid "Fecha a TV e para o som só para você; a sala continua assistindo"
 msgstr "Fecha a TV e para o som só para você; a sala continua assistindo"
 
 #: components/space/game/gameUi.tsx
+#: components/space/game/RunMeter.tsx
 #: components/space/game/RunPanel.tsx
 #: components/space/InteractionDialog.tsx
 #: components/space/NewsPanel.tsx
@@ -5399,6 +5566,10 @@ msgstr "Fechar o palco (Esc): a chamada continua; o botão Palco abre de novo"
 #~ msgid "Fechar o Refúgio"
 #~ msgstr "Fechar o Refúgio"
 
+#: components/space/game/RunPanel.tsx
+msgid "Fechar o resumo"
+msgstr "Fechar o resumo"
+
 #: components/app/interface/settings/user/Feedback.tsx
 #: components/app/interface/settings/UserSettings.tsx
 msgid "Feedback"
@@ -5418,6 +5589,7 @@ msgstr "fera"
 #~ msgstr "Ferido: a vida volta sozinha em alguns minutos (precisa de {0}%)."
 
 #: components/space/game/NpcDialog.tsx
+#: components/space/game/partyUi.ts
 #: components/space/game/SmithPanel.tsx
 msgid "Ferreiro"
 msgstr "Ferreiro"
@@ -5429,6 +5601,14 @@ msgstr "Fica tudo no registro de transferências."
 #: components/space/game/RunPanel.tsx
 msgid "Ficar"
 msgstr "Ficar"
+
+#: components/space/game/RunPanel.tsx
+msgid "Ficar mais forte vale a espera: a corrida sai 3 s depois que todos fecharem."
+msgstr "Ficar mais forte vale a espera: a corrida sai 3 s depois que todos fecharem."
+
+#: components/space/game/partyUi.ts
+msgid "ficha"
+msgstr "ficha"
 
 #: components/space/game/HeroSheet.tsx
 msgid "Ficha do herói"
@@ -5721,6 +5901,7 @@ msgstr "Grátis (a 1ª)"
 msgid "Group Name"
 msgstr "Group Name"
 
+#: components/space/game/RunMeter.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Grupo"
 msgstr "Grupo"
@@ -6138,6 +6319,7 @@ msgstr "Job {0} (você tem {1})"
 msgid "Job {0}: {1}% para o próximo"
 msgstr "Job {0}: {1}% para o próximo"
 
+#: components/space/game/PartyDock.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Jogar de novo"
 msgstr "Jogar de novo"
@@ -6250,6 +6432,16 @@ msgstr "Lacaio invocado"
 msgid "Language"
 msgstr "Language"
 
+#. placeholder {0}: dungeonName(props.lobby.dungeon)
+#: components/space/game/RunPanel.tsx
+msgid "Largada: {0}"
+msgstr "Largada: {0}"
+
+#: components/space/game/PartyDock.tsx
+#: components/space/game/partyUi.ts
+msgid "largando"
+msgstr "largando"
+
 #: components/app/interface/settings/user/Sync.tsx
 msgid "Last sync <0/>"
 msgstr "Last sync <0/>"
@@ -6358,6 +6550,10 @@ msgstr "Libera 30 dias de VIP."
 #: components/space/game/MasterPanel.tsx
 msgid "Libera: {0}; Potência até {1}; e mecânicas novas."
 msgstr "Libera: {0}; Potência até {1}; e mecânicas novas."
+
+#: components/space/game/PartyDock.tsx
+msgid "lidera"
+msgstr "lidera"
 
 #: components/space/game/GearPanel.tsx
 msgid "Ligado depois de cada corrida"
@@ -6472,10 +6668,12 @@ msgstr "Logs you out of all sessions except this device."
 #~ msgstr "Loja de decoração"
 
 #: components/space/game/LobbyChip.tsx
+#: components/space/game/PartyDock.tsx
 msgid "Loop"
 msgstr "Loop"
 
 #: components/space/game/LobbyChip.tsx
+#: components/space/game/PartyDock.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Loop ligado"
 msgstr "Loop ligado"
@@ -6487,6 +6685,10 @@ msgstr "Loop ligado"
 #: components/space/game/partyUi.ts
 msgid "loop: a próxima começa sozinha"
 msgstr "loop: a próxima começa sozinha"
+
+#: components/space/game/PartyDock.tsx
+msgid "loop: a próxima já vem"
+msgstr "loop: a próxima já vem"
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Loud ({rounded} dBFS)"
@@ -6592,9 +6794,22 @@ msgstr "mágico"
 msgid "Mais"
 msgstr "Mais"
 
+#. placeholder {0}: views().length - max()
+#: components/space/game/StatusIcons.tsx
+msgid "Mais {0} efeitos"
+msgstr "Mais {0} efeitos"
+
+#: components/space/game/StatusIcons.tsx
+msgid "mais crítico"
+msgstr "mais crítico"
+
 #: components/ui/components/design/LoadingScreen.tsx
 msgid "Major Outage"
 msgstr "Major Outage"
+
+#: components/space/game/StatusIcons.tsx
+msgid "maldição"
+msgstr "maldição"
 
 #: components/space/game/gameText.ts
 msgid "Maldição"
@@ -6776,6 +6991,18 @@ msgstr "média"
 msgid "Média"
 msgstr "Média"
 
+#: components/space/game/RunMeter.tsx
+msgid "Medidor"
+msgstr "Medidor"
+
+#: components/space/game/RunMeter.tsx
+msgid "Medidor da corrida"
+msgstr "Medidor da corrida"
+
+#: components/space/game/RunPanel.tsx
+msgid "Medidor: dano, dano recebido e cura"
+msgstr "Medidor: dano, dano recebido e cura"
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Medindo…"
 msgstr "Medindo…"
@@ -6899,6 +7126,10 @@ msgstr "Message was sent on another platform"
 msgid "Messaging"
 msgstr "Messaging"
 
+#: components/space/game/partyUi.ts
+msgid "Mestre"
+msgstr "Mestre"
+
 #: components/space/game/NpcDialog.tsx
 msgid "Mestre da evolução"
 msgstr "Mestre da evolução"
@@ -6906,6 +7137,15 @@ msgstr "Mestre da evolução"
 #: components/space/game/labels.ts
 #~ msgid "Meteoro"
 #~ msgstr "Meteoro"
+
+#. placeholder {0}: dungeonName(l().dungeon)
+#: components/space/game/PartyDock.tsx
+msgid "Meu grupo: {0}"
+msgstr "Meu grupo: {0}"
+
+#: components/space/game/StatusIcons.tsx
+msgid "mexe na precisão"
+msgstr "mexe na precisão"
 
 #: components/app/interface/settings/user/Account.tsx
 msgid "MFA setup canceled."
@@ -7014,6 +7254,12 @@ msgstr "Monstros"
 msgid "montando"
 msgstr "montando"
 
+#. placeholder {0}: l().members.length
+#. placeholder {1}: l().max
+#: components/space/game/PartyDock.tsx
+msgid "montando · {0}/{1}"
+msgstr "montando · {0}/{1}"
+
 #: components/space/game/TvMenu.tsx
 msgid "Montar"
 msgstr "Montar"
@@ -7053,6 +7299,10 @@ msgstr "morto-vivo"
 #: components/space/SpacePage.tsx
 msgid "Mostrar lista de salas"
 msgstr "Mostrar lista de salas"
+
+#: components/space/game/PartyDock.tsx
+msgid "Mostrar o grupo"
+msgstr "Mostrar o grupo"
 
 #: components/space/game/AttributesPanel.tsx
 #: components/space/game/ItemCard.tsx
@@ -7211,6 +7461,10 @@ msgstr "Na corrida vai a melhor que você tiver; gasta 1 por ataque básico."
 #~ msgid "na entrada"
 #~ msgstr "na entrada"
 
+#: components/space/game/partyUi.ts
+msgid "na ficha do herói"
+msgstr "na ficha do herói"
+
 #: components/space/game/SkillTip.tsx
 msgid "na hora"
 msgstr "na hora"
@@ -7348,6 +7602,10 @@ msgstr "Não foi possível carregar o player do YouTube neste aparelho (bloquead
 #: components/space/game/rpgUi.ts
 #~ msgid "Não foi possível fazer isso agora. Tente de novo."
 #~ msgstr "Não foi possível fazer isso agora. Tente de novo."
+
+#: components/space/game/gameText.ts
+msgid "Não há largada para cancelar."
+msgstr "Não há largada para cancelar."
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Não há pontos postos para redistribuir."
@@ -7533,6 +7791,10 @@ msgstr "no alvo"
 msgid "no alvo e em mais {hops}, perdendo {loss} a cada salto"
 msgstr "no alvo e em mais {hops}, perdendo {loss} a cada salto"
 
+#: components/space/game/partyUi.ts
+msgid "no Banqueiro"
+msgstr "no Banqueiro"
+
 #: components/space/game/skillText.ts
 msgid "No chefe: {b}."
 msgstr "No chefe: {b}."
@@ -7544,6 +7806,10 @@ msgstr "no cinto"
 #: components/space/game/BankPanel.tsx
 msgid "No cofre"
 msgstr "No cofre"
+
+#: components/space/game/partyUi.ts
+msgid "no Ferreiro"
+msgstr "no Ferreiro"
 
 #: components/space/game/skillText.ts
 msgid "No fim, {p} da mana gasta pelo escudo de mana volta."
@@ -7573,6 +7839,10 @@ msgstr "No loop, a próxima corrida começa sozinha quando a anterior acaba; par
 #: components/space/game/heroUi.ts
 #~ msgid "No máximo."
 #~ msgstr "No máximo."
+
+#: components/space/game/partyUi.ts
+msgid "no Mestre da evolução"
+msgstr "no Mestre da evolução"
 
 #: components/space/game/ClassPicker.tsx
 msgid "No nível 1"
@@ -7671,6 +7941,7 @@ msgstr "Nv"
 #. placeholder {0}: b().level
 #. placeholder {0}: focusMember().level
 #. placeholder {0}: m.level
+#: components/space/game/PartyDock.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Nv {0}"
 msgstr "Nv {0}"
@@ -7810,8 +8081,8 @@ msgstr "O jogo está desligado neste servidor."
 
 #. placeholder {0}: errorText(l.stopped_detail ?? undefined)
 #: components/space/game/partyUi.ts
-msgid "O loop parou: {0}"
-msgstr "O loop parou: {0}"
+#~ msgid "O loop parou: {0}"
+#~ msgstr "O loop parou: {0}"
 
 #: components/space/game/partyUi.ts
 msgid "O loop parou: a liderança mudou de mãos."
@@ -8457,6 +8728,10 @@ msgstr "Please select a method to authenticate your request."
 msgid "Please select a reason"
 msgstr "Please select a reason"
 
+#: components/space/game/RunMeter.tsx
+msgid "Poção"
+msgstr "Poção"
+
 #. placeholder {0}: p()
 #. placeholder {0}: shop().potionPrice
 #: components/space/game/GamePanel.tsx
@@ -8607,6 +8882,10 @@ msgstr "Precisão"
 #~ msgid "prende os monstros por mais {s} s"
 #~ msgstr "prende os monstros por mais {s} s"
 
+#: components/space/game/StatusIcons.tsx
+msgid "preso em {by}"
+msgstr "preso em {by}"
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Preview"
 msgstr "Preview"
@@ -8700,6 +8979,7 @@ msgstr "Pronouns"
 msgid "pronta"
 msgstr "pronta"
 
+#: components/space/game/PartyDock.tsx
 #: components/space/game/partyUi.ts
 msgid "pronto"
 msgstr "pronto"
@@ -8729,6 +9009,14 @@ msgstr "Provoca a sala inteira por {dur}: todos passam a atacar você."
 #: components/space/game/skillText.ts
 msgid "Provoca o alvo por {dur}: ele passa a atacar você."
 msgstr "Provoca o alvo por {dur}: ele passa a atacar você."
+
+#: components/space/game/StatusIcons.tsx
+msgid "provocado"
+msgstr "provocado"
+
+#: components/space/game/StatusIcons.tsx
+msgid "Provocado"
+msgstr "Provocado"
 
 #. placeholder {0}: secs()
 #: components/space/game/RunPanel.tsx
@@ -8836,6 +9124,10 @@ msgstr "Quantos no mínimo"
 msgid "Quase cheia: o que cair na dungeon e não couber fica para trás. Venda, guarde no cofre ou desmonte."
 msgstr "Quase cheia: o que cair na dungeon e não couber fica para trás. Venda, guarde no cofre ou desmonte."
 
+#: components/space/game/StatusIcons.tsx
+msgid "queimadura"
+msgstr "queimadura"
+
 #: components/space/DecorPanel.tsx
 msgid "Quem decora, configura objetos e controla a TV agora é definido nos cargos do servidor (grupo \"Espaço\") e, para cada sala, nas permissões do canal dela. Quem gerencia o servidor sempre pode decorar."
 msgstr "Quem decora, configura objetos e controla a TV agora é definido nos cargos do servidor (grupo \"Espaço\") e, para cada sala, nas permissões do canal dela. Quem gerencia o servidor sempre pode decorar."
@@ -8848,6 +9140,10 @@ msgstr "Quem decora, configura objetos e controla a TV agora é definido nos car
 #: components/space/SpacePage.tsx
 msgid "Quem está em {0}"
 msgstr "Quem está em {0}"
+
+#: components/space/game/PartyDock.tsx
+msgid "Quem está no grupo"
+msgstr "Quem está no grupo"
 
 #: components/space/DecorPanel.tsx
 #~ msgid "Quem gerencia o servidor sempre pode."
@@ -8981,6 +9277,22 @@ msgstr "recarga: {0} s"
 #~ msgid "Recebe a mais: {bad}"
 #~ msgstr "Recebe a mais: {bad}"
 
+#: components/space/game/StatusIcons.tsx
+msgid "recebe mais cura"
+msgstr "recebe mais cura"
+
+#: components/space/game/StatusIcons.tsx
+msgid "recebe mais dano"
+msgstr "recebe mais dano"
+
+#: components/space/game/StatusIcons.tsx
+msgid "recebe menos dano"
+msgstr "recebe menos dano"
+
+#: components/space/game/RunMeter.tsx
+msgid "Recebido"
+msgstr "Recebido"
+
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive notifications while the app is open and in the background."
 msgstr "Receive notifications while the app is open and in the background."
@@ -8992,6 +9304,10 @@ msgstr "Receive notifications while the tab is open."
 #: components/app/interface/settings/user/notifications/Notifications.tsx
 msgid "Receive push notifications while the app is closed."
 msgstr "Receive push notifications while the app is closed."
+
+#: components/space/game/PartyDock.tsx
+msgid "Recolher o grupo"
+msgstr "Recolher o grupo"
 
 #. placeholder {0}: num(prof().recommended)
 #. placeholder {1}: num(prof().stored)
@@ -9030,6 +9346,14 @@ msgstr "recupera {p} da mana máxima por segundo"
 #: components/space/game/skillText.ts
 msgid "recupera {p} da vida máxima por segundo"
 msgstr "recupera {p} da vida máxima por segundo"
+
+#: components/space/game/StatusIcons.tsx
+msgid "recupera mana"
+msgstr "recupera mana"
+
+#: components/space/game/StatusIcons.tsx
+msgid "recupera vida"
+msgstr "recupera vida"
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Recusar"
@@ -9350,6 +9674,10 @@ msgstr "Restaurar o mapa (F)"
 msgid "Restore call window"
 msgstr "Restore call window"
 
+#: components/space/game/RunPanel.tsx
+msgid "Resumo"
+msgstr "Resumo"
+
 #: components/space/game/MasterPanel.tsx
 msgid "Resumo da build"
 msgstr "Resumo da build"
@@ -9481,6 +9809,7 @@ msgstr "Sair da corrida?"
 msgid "Sair da tela cheia"
 msgstr "Sair da tela cheia"
 
+#: components/space/game/PartyDock.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Sair do grupo"
 msgstr "Sair do grupo"
@@ -9523,6 +9852,8 @@ msgstr "Saiu antes e abriu mão da recompensa."
 #~ msgstr "Sala {0} de {1}"
 
 #. placeholder {0}: room() + 1
+#. placeholder {0}: st + 1
+#: components/space/game/PartyDock.tsx
 #: components/space/game/RunPanel.tsx
 msgid "sala {0} de 4"
 msgstr "sala {0} de 4"
@@ -9585,6 +9916,10 @@ msgstr "Salvar IA"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Sample rate"
 msgstr "Sample rate"
+
+#: components/space/game/StatusIcons.tsx
+msgid "sangramento"
+msgstr "sangramento"
 
 #: components/app/interface/settings/channel/Overview.tsx
 #: components/app/interface/settings/channel/webhooks/ViewWebhook.tsx
@@ -9678,6 +10013,11 @@ msgstr "Search for users..."
 #: components/space/game/GamePanel.tsx
 #~ msgid "Seguir"
 #~ msgstr "Seguir"
+
+#. placeholder {0}: num(st.v)
+#: components/space/game/StatusIcons.tsx
+msgid "segura {0}"
+msgstr "segura {0}"
 
 #: components/space/game/gameText.ts
 msgid "Segura os monstros com muita vida e cura um pouco a cada golpe."
@@ -9928,6 +10268,11 @@ msgstr "Setup one-time password authenticator"
 msgid "Setup recovery codes"
 msgstr "Setup recovery codes"
 
+#. placeholder {0}: tg().name
+#: components/space/game/RunPanel.tsx
+msgid "Seu alvo: {0}"
+msgstr "Seu alvo: {0}"
+
 #: components/space/AudioCheck.tsx
 msgid "Seu áudio"
 msgstr "Seu áudio"
@@ -9977,6 +10322,10 @@ msgstr "Seu herói está numa dungeon: dá para olhar tudo, mas as trocas ficam 
 #: components/space/game/NpcDialog.tsx
 msgid "Seu herói está numa dungeon: volte quando a corrida acabar."
 msgstr "Seu herói está numa dungeon: volte quando a corrida acabar."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada."
+msgstr "Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada."
 
 #. placeholder {0}: vocationName(v())
 #: components/space/game/NpcDialog.tsx
@@ -11372,6 +11721,10 @@ msgstr "Vendido: {n} itens por {0} de ouro."
 #~ msgid "Vendido."
 #~ msgstr "Vendido."
 
+#: components/space/game/StatusIcons.tsx
+msgid "veneno"
+msgstr "veneno"
+
 #: components/space/game/skillText.ts
 msgid "Veneno por {dur}: {per} de dano {el} por segundo {where}."
 msgstr "Veneno por {dur}: {per} de dano {el} por segundo {where}."
@@ -11396,6 +11749,10 @@ msgstr "Ver no mapa"
 #: components/space/game/GearPanel.tsx
 msgid "Ver o que trocaria agora"
 msgstr "Ver o que trocaria agora"
+
+#: components/space/game/RunPanel.tsx
+msgid "Ver o resumo e o loot desta corrida"
+msgstr "Ver o resumo e o loot desta corrida"
 
 #: components/space/game/ClassPicker.tsx
 msgid "Ver outra"
@@ -11478,10 +11835,15 @@ msgstr "Vida {0} · Mana {1}"
 #. placeholder {0}: b().name
 #. placeholder {0}: m.name
 #. placeholder {0}: props.name
+#: components/space/game/PartyDock.tsx
 #: components/space/game/RunHud.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Vida de {0}"
 msgstr "Vida de {0}"
+
+#: components/space/game/StatusIcons.tsx
+msgid "vida máxima maior"
+msgstr "vida máxima maior"
 
 #: components/space/game/GamePanel.tsx
 #~ msgid "Vida na expedição"
@@ -11606,6 +11968,10 @@ msgstr "Você é apoiador."
 #: components/space/MediaStage.tsx
 msgid "Você está apresentando"
 msgstr "Você está apresentando"
+
+#: components/space/game/RunPanel.tsx
+msgid "Você está com a janela aberta: feche quando terminar."
+msgstr "Você está com a janela aberta: feche quando terminar."
 
 #: components/space/SpacePage.tsx
 msgid "Você está fora do áudio da sala"

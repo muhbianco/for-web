@@ -67,10 +67,20 @@ const NpcDialog = lazy(() => import("./game/NpcDialog"));
 const NewsPanel = lazy(() => import("./NewsPanel"));
 /** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
 const TvMenu = lazy(() => import("./game/TvMenu"));
-const LobbyChip = lazy(() => import("./game/LobbyChip"));
-/** A corrida da dungeon: a faixa e a tela da aventura (etapa O5). */
+/**
+ * A corrida da dungeon: a faixa das corridas dos outros, a tela da aventura (etapa O5), a largada,
+ * o quadro do meu grupo e o medidor (26/11/2026).
+ */
 const RunChip = lazy(() => import("./game/RunChip"));
 const RunPanel = lazy(() => import("./game/RunPanel"));
+const RunStage = lazy(() =>
+  import("./game/RunPanel").then((m) => ({ default: m.RunStage })),
+);
+const PartyDock = lazy(() => import("./game/PartyDock"));
+const RunMeter = lazy(() => import("./game/RunMeter"));
+
+/** O que segura a largada do grupo (a ficha e os NPCs; o Mercador não, ele vende na corrida). */
+const HOLDS = new Set(["ferreiro", "banqueiro", "mestre"]);
 
 const STAGE_MODE_KEY = "muchat.space.stageMode";
 
@@ -176,6 +186,41 @@ function ServerSpace(props: { serverId: string }) {
   const [notice, setNotice] = createSignal("");
   // The hero sheet (game stage O7): equipment, backpack, coins.
   const [heroOpen, setHeroOpen] = createSignal(false);
+  const [meterOpen, setMeterOpen] = createSignal(false);
+  /** O meu grupo, onde quer que esteja. */
+  const myGroup = createMemo(() => {
+    const me = client().user?.id;
+    if (!me) return null;
+    for (const l of Object.values(ui()?.lobbies ?? {}))
+      if (l.members.some((m) => m.user_id === me)) return l;
+    return null;
+  });
+  /** A corrida do meu grupo que o app acompanha: a em andamento, ou a última (que acabou). */
+  const myRun = createMemo(() => {
+    const me = client().user?.id;
+    const runs = Object.values(ui()?.runs ?? {}).filter((r) =>
+      r.run.members.some((m) => m.user_id === me),
+    );
+    return runs.find((r) => !r.end) ?? runs.at(-1) ?? null;
+  });
+  /** O relógio do servidor agora (a contagem da largada vem nele). */
+  const serverNow = () => {
+    const r = ui()?.rpg;
+    return r ? r.serverNow + (Date.now() - r.at) : Date.now();
+  };
+  // A ficha do herói e os NPCs (menos o Mercador) seguram a largada do meu grupo (26/11/2026).
+  createEffect(() => {
+    const v = view();
+    if (!v) return;
+    const npc = ui()?.npcRequest?.npc;
+    v.setPrep(
+      heroOpen() && ui()?.rpg?.hero
+        ? "heroi"
+        : npc && HOLDS.has(npc)
+          ? (npc as "ferreiro" | "banqueiro" | "mestre")
+          : null,
+    );
+  });
   // Who is in the space now, for the banker's transfer (stage O8): the rooms' people, not us.
   const npcPeople = createMemo(() => {
     const me = client().user?.id;
@@ -813,28 +858,17 @@ function ServerSpace(props: { serverId: string }) {
           </Suspense>
         )}
       </Show>
+      {/* O meu grupo e a minha corrida ficam no quadro do grupo, no canto do mapa (26/11/2026). */}
       <Show
-        when={
-          view() && Object.keys(ui()?.lobbies ?? {}).length > 0
-            ? ui()!.lobbies
-            : null
-        }
-      >
-        {(lobbies) => (
-          <Suspense>
-            <LobbyChip
-              link={view()!}
-              lobbies={lobbies()}
-              myId={client().user?.id ?? null}
-              onAct={() => host?.focus()}
-            />
-          </Suspense>
-        )}
-      </Show>
-      <Show
-        when={
-          view() && Object.keys(ui()?.runs ?? {}).length > 0 ? ui()!.runs : null
-        }
+        when={(() => {
+          const me = client().user?.id;
+          const others = Object.fromEntries(
+            Object.entries(ui()?.runs ?? {}).filter(
+              ([, r]) => !r.run.members.some((m) => m.user_id === me),
+            ),
+          );
+          return view() && Object.keys(others).length > 0 ? others : null;
+        })()}
       >
         {(runs) => (
           <Suspense>
@@ -1107,6 +1141,7 @@ function ServerSpace(props: { serverId: string }) {
                       client().user?.username ??
                       ""
                     }
+                    inGroup={!!myGroup()}
                     onClose={() => {
                       setHeroOpen(false);
                       host?.focus();
@@ -1123,6 +1158,7 @@ function ServerSpace(props: { serverId: string }) {
                     request={request()}
                     rpg={ui()?.rpg ?? null}
                     people={npcPeople()}
+                    inGroup={!!myGroup()}
                     onClose={() => {
                       view()?.closeNpcRequest();
                       host?.focus();
@@ -1193,10 +1229,79 @@ function ServerSpace(props: { serverId: string }) {
                       l.members.some((m) => m.user_id === client().user?.id),
                     ) ?? null
                   }
+                  serverNow={serverNow}
+                  meterOpen={meterOpen()}
+                  onMeter={() => setMeterOpen(!meterOpen())}
                   onClose={() => {
                     view()?.closeRun();
                     host?.focus();
                   }}
+                />
+              </Suspense>
+            )}
+          </Show>
+          <Show
+            when={
+              view() && !ui()?.runOpen && ui()?.stageOpen && myGroup()?.pending
+                ? myGroup()
+                : null
+            }
+          >
+            {(l) => (
+              <Suspense>
+                <RunStage
+                  lobby={l()}
+                  myId={client().user?.id ?? null}
+                  link={view()!}
+                  serverNow={serverNow}
+                  onClose={() => {
+                    view()?.closeStage();
+                    host?.focus();
+                  }}
+                />
+              </Suspense>
+            )}
+          </Show>
+          <Show when={view() && myGroup()}>
+            {(l) => (
+              <Suspense>
+                <PartyDock
+                  link={view()!}
+                  lobby={l()}
+                  run={myRun()}
+                  myId={client().user?.id ?? null}
+                  serverNow={serverNow}
+                  compact={
+                    !!ui()?.runOpen || (!!ui()?.stageOpen && !!l().pending)
+                  }
+                  onOpen={
+                    myRun() || l().pending
+                      ? () => {
+                          // A corrida (a que acabou mostra a largada por cima); sem ela, a largada.
+                          const r = myRun();
+                          if (r) view()?.watchRun(r.run.id);
+                          else view()?.watchStage();
+                        }
+                      : undefined
+                  }
+                />
+              </Suspense>
+            )}
+          </Show>
+          <Show
+            when={
+              view() && meterOpen()
+                ? ((ui()?.runOpen ? ui()!.runs[ui()!.runOpen!.id] : null) ??
+                  myRun())
+                : null
+            }
+          >
+            {(state) => (
+              <Suspense>
+                <RunMeter
+                  state={state()}
+                  myId={client().user?.id ?? null}
+                  onClose={() => setMeterOpen(false)}
                 />
               </Suspense>
             )}

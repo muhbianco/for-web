@@ -121,7 +121,7 @@ const registry = new Registry({
     trainingLeft: (rt, userId) => rpg.trainingLeft(rt, userId),
     avatarJoined: (rt, userId) => rpg.avatarJoined(rt, userId),
     roomEntered: (rt, userId, room) => rpg.roomEntered(rt, userId, room),
-    loopDue: (rt, leader, tv) => rpg.loopDue(rt, leader, tv),
+    launchDue: (rt, leader, id, auto) => rpg.launchDue(rt, leader, id, auto),
   },
 });
 rpg.setHosts((serverId) => registry.liveRuntime(serverId));

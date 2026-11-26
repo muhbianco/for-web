@@ -4,6 +4,7 @@ import {
   type RpgLobbyMember,
   type RpgLobbyView,
   type RpgLoopStop,
+  type RpgPrepKind,
   type RpgRunEnd,
   dungeonById,
 } from "@muchat/space-core/game/ot/balance";
@@ -14,8 +15,15 @@ export const LOBBY = {
   ttlMs: 5 * 60 * 1000,
   /** O grupo que já correu fica montado; desfaz sozinho depois disto sem corrida nenhuma. */
   idleMs: 30 * 60 * 1000,
-  /** O loop: a próxima corrida começa sozinha depois disto (o tempo de ver o resultado). */
-  loopDelayMs: 12 * 1000,
+  /**
+   * O loop: a próxima largada é pedida sozinha depois disto (o tempo de ver o resultado); com a
+   * contagem, dá os 12 s de antes entre uma corrida e outra.
+   */
+  loopDelayMs: 9 * 1000,
+  /** A contagem antes de cada largada (pedido do dono, 26/11/2026). */
+  countdownMs: 3 * 1000,
+  /** Quanto a largada espera por quem está na ficha ou num NPC; depois desiste (e avisa quem). */
+  prepHoldMaxMs: 5 * 60 * 1000,
 } as const;
 
 /**
@@ -49,6 +57,21 @@ export interface Lobby {
   last: RpgRunEnd | null;
   stopped: RpgLoopStop | null;
   stoppedDetail: string | null;
+  /**
+   * A largada pedida que ainda não saiu (26/11/2026): pelo líder ("Começar") ou pelo loop. Espera
+   * ninguém estar se preparando (`prep`), conta `countdownMs` e sai pelo runtime (`launchDue`).
+   */
+  pending: boolean;
+  /** A largada pendente veio do loop. */
+  pendingAuto: boolean;
+  /** Quando a corrida sai; null enquanto alguém se prepara (ou fora de largada). */
+  startAt: number | null;
+  /** Desde quando a largada espera alguém se preparar. */
+  heldSince: number | null;
+  /** A largada foi entregue ao serviço (lendo os heróis): não sai de novo no próximo tique. */
+  launching: boolean;
+  /** Quem está na ficha ou num NPC agora (segura a largada). */
+  prep: Map<string, RpgPrepKind>;
 }
 
 export type LobbyResult =
@@ -131,6 +154,12 @@ export class LobbyHub {
       last: null,
       stopped: null,
       stoppedDetail: null,
+      pending: false,
+      pendingAuto: false,
+      startAt: null,
+      heldSince: null,
+      launching: false,
+      prep: new Map(),
     };
     this.byId.set(id, lobby);
     this.memberOf.set(leader.user_id, id);
@@ -169,21 +198,25 @@ export class LobbyHub {
    * entrou primeiro depois dele (o loop desliga: o novo líder decide); sem ninguém, o grupo
    * acaba. Devolve o grupo que mudou e se ele acabou.
    */
-  leave(userId: string): { lobby: Lobby; ended?: "cancelled" } | null {
+  leave(
+    userId: string,
+    now = Date.now(),
+  ): { lobby: Lobby; ended?: "cancelled" } | null {
     const id = this.memberOf.get(userId);
     if (!id) return null;
     const lobby = this.byId.get(id);
     this.memberOf.delete(userId);
     if (!lobby) return null;
     lobby.members = lobby.members.filter((m) => m.user_id !== userId);
+    lobby.prep.delete(userId);
     if (lobby.members.length === 0) {
       this.close(lobby);
       return { lobby, ended: "cancelled" };
     }
     if (lobby.leader === userId) {
       lobby.leader = lobby.members[0]!.user_id;
-      if (lobby.loop) this.stopLoop(lobby, "leader_left");
-    }
+      if (lobby.loop || lobby.pending) this.stopLoop(lobby, "leader_left");
+    } else if (lobby.pending) this.schedule(lobby, now);
     return { lobby };
   }
 
@@ -197,8 +230,94 @@ export class LobbyHub {
   }
 
   /**
-   * O líder começa (ou o loop, por ele): o grupo fica "running" até a corrida fechar. Quem
-   * chamou grava a corrida e avisa com `running`; se a gravação falhar, `abort` volta atrás.
+   * O líder pede a largada (26/11/2026): ela espera ninguém estar se preparando, conta 3 s e sai
+   * pelo `launchDue` (o runtime entrega ao serviço, que lê os heróis e chama `start`). Pedir de
+   * novo com a largada pendente não muda nada.
+   */
+  requestStart(userId: string, now: number, auto = false): LobbyResult {
+    const lobby = this.of(userId);
+    if (!lobby) return { ok: false, reason: "no_lobby" };
+    if (lobby.leader !== userId) return { ok: false, reason: "not_leader" };
+    if (lobby.state === "running") return { ok: false, reason: "in_run" };
+    if (lobby.pending) return { ok: true, lobby };
+    if (now >= lobby.expiresAt) return { ok: false, reason: "expired" };
+    this.pend(lobby, now, auto);
+    return { ok: true, lobby };
+  }
+
+  /** O líder desiste da largada pendente (o loop desliga junto: ele decide quando volta). */
+  cancelStart(userId: string, now: number): LobbyResult {
+    const lobby = this.of(userId);
+    if (!lobby) return { ok: false, reason: "no_lobby" };
+    if (lobby.leader !== userId) return { ok: false, reason: "not_leader" };
+    if (!lobby.pending || lobby.launching)
+      return { ok: false, reason: "no_start" };
+    this.unpend(lobby);
+    lobby.loop = false;
+    lobby.nextAt = null;
+    lobby.expiresAt = now + (lobby.runs > 0 ? LOBBY.idleMs : LOBBY.ttlMs);
+    return { ok: true, lobby };
+  }
+
+  /**
+   * A pessoa abriu (ou fechou, `what` null) a ficha do herói ou um NPC que segura a largada.
+   * Devolve o grupo se algo mudou (para avisar todos), null se nada mudou.
+   */
+  setPrep(userId: string, what: RpgPrepKind | null, now: number): Lobby | null {
+    const lobby = this.of(userId);
+    if (!lobby) return null;
+    if ((lobby.prep.get(userId) ?? null) === what) return null;
+    if (what) lobby.prep.set(userId, what);
+    else lobby.prep.delete(userId);
+    if (lobby.pending && !lobby.launching) this.schedule(lobby, now);
+    return lobby;
+  }
+
+  /** Largadas cuja contagem acabou: o runtime entrega cada uma ao serviço (uma vez). */
+  launchDue(now: number): Lobby[] {
+    const out: Lobby[] = [];
+    for (const l of this.all())
+      if (
+        l.pending &&
+        !l.launching &&
+        l.startAt !== null &&
+        now >= l.startAt &&
+        l.state !== "running"
+      ) {
+        l.launching = true;
+        out.push(l);
+      }
+    return out;
+  }
+
+  /**
+   * Largadas que esperaram demais por alguém na ficha ou num NPC: desistem e avisam quem (o loop
+   * desliga). Sem isso, quem esquece a ficha aberta prende o grupo inteiro.
+   */
+  holdTimeouts(now: number): Lobby[] {
+    const out: Lobby[] = [];
+    for (const l of this.all())
+      if (
+        l.pending &&
+        !l.launching &&
+        l.heldSince !== null &&
+        now - l.heldSince >= LOBBY.prepHoldMaxMs
+      ) {
+        const names = l.members
+          .filter((m) => l.prep.has(m.user_id))
+          .map((m) => m.name)
+          .join(", ");
+        this.stopLoop(l, "prep", names);
+        l.expiresAt = now + (l.runs > 0 ? LOBBY.idleMs : LOBBY.ttlMs);
+        out.push(l);
+      }
+    return out;
+  }
+
+  /**
+   * A largada sai de fato (o serviço leu e conferiu os heróis): o grupo fica "running" até a
+   * corrida fechar. Quem chamou grava a corrida e avisa com `running`; se a gravação falhar,
+   * `abort` volta atrás.
    */
   start(userId: string, now: number): LobbyResult {
     const lobby = this.of(userId);
@@ -210,6 +329,7 @@ export class LobbyHub {
     lobby.runId = null;
     lobby.nextAt = null;
     lobby.expiresAt = NEVER;
+    this.unpend(lobby);
     // Começou de novo: o motivo da última parada do loop já foi visto.
     lobby.stopped = null;
     lobby.stoppedDetail = null;
@@ -278,8 +398,13 @@ export class LobbyHub {
     lobby.loop = on;
     lobby.stopped = null;
     lobby.stoppedDetail = null;
+    // Desligar no meio da contagem do loop desiste dessa largada também.
+    if (!on && lobby.pending && lobby.pendingAuto && !lobby.launching)
+      this.unpend(lobby);
     lobby.nextAt =
-      on && lobby.state === "ready" ? now + LOBBY.loopDelayMs : null;
+      on && lobby.state === "ready" && !lobby.pending
+        ? now + LOBBY.loopDelayMs
+        : null;
     return { ok: true, lobby };
   }
 
@@ -291,12 +416,25 @@ export class LobbyHub {
     return lobby;
   }
 
-  /** Grupos cuja próxima corrida do loop venceu (o runtime manda começar, pelo líder). */
-  due(now: number): Lobby[] {
-    return this.all().filter(
-      (l) =>
-        l.state === "ready" && l.loop && l.nextAt !== null && now >= l.nextAt,
-    );
+  /**
+   * Grupos cuja próxima corrida do loop venceu: a largada fica pedida (espera quem se prepara e
+   * conta 3 s, como a do líder). Devolve os que mudaram, para o runtime avisar.
+   */
+  loopDue(now: number): Lobby[] {
+    const out: Lobby[] = [];
+    for (const l of this.all())
+      if (
+        l.state === "ready" &&
+        l.loop &&
+        !l.pending &&
+        l.nextAt !== null &&
+        now >= l.nextAt
+      ) {
+        l.nextAt = null;
+        this.pend(l, now, true);
+        out.push(l);
+      }
+    return out;
   }
 
   /** A TV sumiu (decoração mudou): os grupos dela acabam. */
@@ -310,7 +448,8 @@ export class LobbyHub {
   expire(now: number): Lobby[] {
     const out: Lobby[] = [];
     for (const lobby of this.all()) {
-      if (lobby.state === "running" || lobby.nextAt !== null) continue;
+      if (lobby.state === "running" || lobby.nextAt !== null || lobby.pending)
+        continue;
       if (now >= lobby.expiresAt) {
         this.close(lobby);
         out.push(lobby);
@@ -324,6 +463,40 @@ export class LobbyHub {
     lobby.nextAt = null;
     lobby.stopped = why;
     lobby.stoppedDetail = detail ?? null;
+    this.unpend(lobby);
+  }
+
+  private pend(lobby: Lobby, now: number, auto: boolean) {
+    lobby.pending = true;
+    lobby.pendingAuto = auto;
+    lobby.launching = false;
+    lobby.startAt = null;
+    lobby.heldSince = null;
+    lobby.nextAt = null;
+    lobby.expiresAt = NEVER;
+    lobby.stopped = null;
+    lobby.stoppedDetail = null;
+    this.schedule(lobby, now);
+  }
+
+  private unpend(lobby: Lobby) {
+    lobby.pending = false;
+    lobby.pendingAuto = false;
+    lobby.launching = false;
+    lobby.startAt = null;
+    lobby.heldSince = null;
+  }
+
+  /** Alguém se preparando: a contagem para; ninguém: ela começa (ou segue, se já corria). */
+  private schedule(lobby: Lobby, now: number) {
+    const busy = lobby.members.some((m) => lobby.prep.has(m.user_id));
+    if (busy) {
+      lobby.startAt = null;
+      lobby.heldSince ??= now;
+    } else {
+      lobby.heldSince = null;
+      lobby.startAt ??= now + LOBBY.countdownMs;
+    }
   }
 
   private close(lobby: Lobby) {
@@ -352,5 +525,11 @@ export function lobbyView(l: Lobby): RpgLobbyView {
     last: l.last,
     stopped: l.stopped,
     stopped_detail: l.stoppedDetail,
+    pending: l.pending,
+    pending_auto: l.pending && l.pendingAuto,
+    start_at: l.pending ? l.startAt : null,
+    prep: l.members
+      .filter((m) => l.prep.has(m.user_id))
+      .map((m) => ({ user_id: m.user_id, what: l.prep.get(m.user_id)! })),
   };
 }

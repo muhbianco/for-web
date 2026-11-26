@@ -17,6 +17,7 @@ import {
 } from "./content.ts";
 import type { HeroV5, OwnedItem } from "./hero.ts";
 import type { Material } from "./items/generate.ts";
+import type { RunMeter } from "./run/meter.ts";
 import type { RunFrame, RunOutcome } from "./run/simulate.ts";
 
 /**
@@ -261,7 +262,22 @@ export const RpgLobbyLeaveCmd = cmd(
   "rpg.lobby.leave",
   z.object({ disband: z.boolean().optional() }).strict().optional(),
 );
-export const RpgLobbyStartCmd = cmd("rpg.lobby.start", empty);
+/**
+ * O líder pede a largada (26/11/2026): a corrida sai depois da contagem de 3 s, e espera enquanto
+ * alguém do grupo está na ficha ou num NPC (`rpg.lobby.prep`). `cancel`: desiste da largada.
+ */
+export const RpgLobbyStartCmd = cmd(
+  "rpg.lobby.start",
+  z.object({ cancel: z.boolean().optional() }).strict().optional(),
+);
+/** O que segura a largada do grupo: a ficha do herói ou um NPC aberto (o Mercador não segura). */
+export const PREP_KINDS = ["heroi", "ferreiro", "banqueiro", "mestre"] as const;
+export type RpgPrepKind = (typeof PREP_KINDS)[number];
+/** A pessoa abriu (ou fechou, `what: null`) uma janela que segura a largada do grupo. */
+export const RpgLobbyPrepCmd = cmd(
+  "rpg.lobby.prep",
+  z.object({ what: z.enum(PREP_KINDS).nullable() }).strict(),
+);
 export const RpgLobbyDungeonCmd = cmd(
   "rpg.lobby.dungeon",
   z.object({ dungeon: npc }).strict(),
@@ -308,6 +324,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgLobbyStartCmd,
   RpgLobbyDungeonCmd,
   RpgLobbyLoopCmd,
+  RpgLobbyPrepCmd,
   RpgRunLeaveCmd,
   RpgRunWatchCmd,
   RpgBoardCmd,
@@ -376,7 +393,9 @@ export type RpgLoopStop =
   | "start_failed"
   | "offline"
   | "leader_left"
-  | "retreat";
+  | "retreat"
+  /** A largada esperou demais por alguém na ficha ou num NPC (`stopped_detail`: os nomes). */
+  | "prep";
 
 /** O grupo de uma TV (fica montado entre as corridas). */
 export interface RpgLobbyView {
@@ -398,6 +417,17 @@ export interface RpgLobbyView {
   last: RpgRunEnd | null;
   stopped: RpgLoopStop | null;
   stopped_detail: string | null;
+  /**
+   * A largada pedida (pelo líder ou pelo loop) que ainda não saiu: espera quem está se preparando e
+   * depois conta 3 s. Servidor antigo não manda (o app trata como false).
+   */
+  pending?: boolean;
+  /** A largada pendente veio do loop (só quem deixou a tela aberta acompanha). */
+  pending_auto?: boolean;
+  /** Quando a corrida sai (a contagem); null enquanto alguém se prepara. */
+  start_at?: number | null;
+  /** Quem está na ficha ou num NPC agora (segura a largada). */
+  prep?: { user_id: string; what: RpgPrepKind }[];
 }
 
 export interface RpgLobbyEvent {
@@ -492,6 +522,8 @@ export interface RpgRunEvent {
     /** Estado de cada herói no fim de `frame` (poções e recargas que faltam). */
     carry?: HeroCarry[];
     end?: RpgRunEndView;
+    /** O medidor até `frame` (dano, dano recebido e cura de cada herói; 26/11/2026). */
+    meter?: RunMeter;
   };
 }
 

@@ -4,6 +4,7 @@ import {
   type ClassId,
   type RpgLobbyMember,
   type RpgLobbyView,
+  type RpgPrepKind,
   CLASSES,
   dungeonById,
 } from "@muchat/space-core/game/ot/balance";
@@ -26,9 +27,61 @@ export function myLobby(
   return null;
 }
 
+/** O que segura a largada, em palavras ("na ficha do herói", "no Ferreiro"). */
+export function prepText(what: RpgPrepKind): string {
+  switch (what) {
+    case "heroi":
+      return t`na ficha do herói`;
+    case "ferreiro":
+      return t`no Ferreiro`;
+    case "banqueiro":
+      return t`no Banqueiro`;
+    case "mestre":
+      return t`no Mestre da evolução`;
+  }
+}
+
+/** O mesmo, curto (o quadro do grupo): "ficha", "Ferreiro"… */
+export function prepShort(what: RpgPrepKind): string {
+  switch (what) {
+    case "heroi":
+      return t`ficha`;
+    case "ferreiro":
+      return t`Ferreiro`;
+    case "banqueiro":
+      return t`Banqueiro`;
+    case "mestre":
+      return t`Mestre`;
+  }
+}
+
+/**
+ * A largada pedida que ainda não saiu (26/11/2026): quem ainda se prepara, ou os segundos da
+ * contagem (`now` no relógio do servidor). null: sem largada pendente.
+ */
+export function startView(
+  l: RpgLobbyView,
+  now: number,
+): { waiting: { name: string; what: RpgPrepKind }[]; secs: number | null } | null {
+  if (!l.pending) return null;
+  const waiting = (l.prep ?? []).map((p) => ({
+    name: l.members.find((m) => m.user_id === p.user_id)?.name ?? "?",
+    what: p.what,
+  }));
+  const secs =
+    waiting.length === 0 && typeof l.start_at === "number"
+      ? Math.max(0, Math.ceil((l.start_at - now) / 1000))
+      : null;
+  return { waiting, secs };
+}
+
 /** O estado em poucas palavras (o chip, a TV). */
 export function partyState(l: RpgLobbyView): string {
   if (l.state === "running") return t`em corrida`;
+  if (l.pending)
+    return (l.prep?.length ?? 0) > 0
+      ? t`esperando quem se prepara`
+      : t`largando`;
   if (l.loop && l.state === "ready") return t`loop: a próxima começa sozinha`;
   if (l.state === "ready") return t`pronto`;
   return t`montando`;
@@ -46,8 +99,10 @@ export function loopStopText(l: RpgLobbyView): string | null {
       return t`O loop parou: a liderança mudou de mãos.`;
     case "retreat":
       return t`O loop parou: alguém saiu da corrida.`;
+    case "prep":
+      return t`A largada desistiu depois de 5 minutos esperando: ${l.stopped_detail ?? "?"} ficou com a ficha ou um NPC aberto.`;
     case "start_failed":
-      return t`O loop parou: ${errorText(l.stopped_detail ?? undefined)}`;
+      return t`A largada não saiu: ${errorText(l.stopped_detail ?? undefined)}`;
   }
   return null;
 }

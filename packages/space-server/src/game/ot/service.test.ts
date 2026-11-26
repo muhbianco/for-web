@@ -10,7 +10,7 @@ import {
 
 import { silentLog } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
-import { LobbyHub } from "./lobby.ts";
+import { LOBBY, LobbyHub } from "./lobby.ts";
 import { MemoryRunStore } from "./runs.ts";
 import { type RpgHost, RpgService, ratesFromEnv } from "./service.ts";
 import { MemoryRpgStore } from "./store.ts";
@@ -121,6 +121,15 @@ class FakeHost implements RpgHost {
   lobbyLoop(u: string, on: boolean) {
     return this.lobbies.setLoop(u, on, this.now());
   }
+  lobbyRequestStart(u: string) {
+    return this.lobbies.requestStart(u, this.now());
+  }
+  lobbyCancelStart(u: string) {
+    return this.lobbies.cancelStart(u, this.now());
+  }
+  lobbyPrep(u: string, what: Parameters<LobbyHub["setPrep"]>[1]) {
+    return this.lobbies.setPrep(u, what, this.now()) ?? this.lobbies.of(u) ?? null;
+  }
   lobbyRunning(id: string, runId: string) {
     this.lobbies.running(id, runId);
   }
@@ -186,8 +195,18 @@ function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
     return id;
   };
   const s = session("U1");
+  /** O tique do runtime para os grupos: o loop pede, a contagem acaba, o serviço solta a corrida. */
+  const tick = async () => {
+    host.lobbies.loopDue(now);
+    host.lobbies.holdTimeouts(now);
+    for (const l of host.lobbies.launchDue(now)) {
+      svc.launchDue(host, l.leader, l.id, l.pendingAuto);
+      await svc.idle(l.leader);
+    }
+  };
   return {
     svc,
+    tick,
     store,
     runStore,
     host,
@@ -279,6 +298,10 @@ async function huntRun(t: ReturnType<typeof setup>) {
   await t.send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
   const start = await t.send("rpg.lobby.start");
   assert.deepEqual(t.s.errors(start), []);
+  // A largada conta 3 s antes de sair (26/11/2026).
+  assert.equal(t.s.of<RpgRunEvent>("rpg.run").length, 0);
+  t.clock.advance(LOBBY.countdownMs);
+  await t.tick();
   const run = t.s.of<RpgRunEvent>("rpg.run").at(-1)!.d.run;
   return run;
 }
@@ -403,4 +426,154 @@ test("taxa do operador: só a de XP vale na engine nova", () => {
   assert.deepEqual(ratesFromEnv("exp=2,skill=5,loot=3"), { exp: 2 });
   assert.deepEqual(ratesFromEnv(undefined), { exp: 1 });
   assert.deepEqual(ratesFromEnv("exp=-1"), { exp: 1 });
+});
+
+/** Um banco que segura a gravação de alguém até soltar (o save "no meio do caminho"). */
+class GatedStore extends MemoryRpgStore {
+  gate: { user: string; open: Promise<void> } | null = null;
+  override async save(
+    doc: Parameters<MemoryRpgStore["save"]>[0],
+    rev: number,
+  ): Promise<boolean> {
+    const g = this.gate;
+    if (g && doc._id === g.user) await g.open;
+    return super.save(doc, rev);
+  }
+}
+
+const turn = () => new Promise((r) => setImmediate(r));
+
+test("largada: o save que estava gravando entra na corrida; o que chega no meio da largada espera (26/11/2026)", async () => {
+  const store = new GatedStore();
+  const t = setup({ store, runStore: new MemoryRunStore() });
+  const bia = t.session("U2");
+  await t.send("rpg.class", { cls: "mago" });
+  await t.sendAs(bia, "rpg.class", { cls: "padre" });
+  edit(t, "U2", (h) => ({ ...h, level: 10 }));
+  await t.sendAs(bia, "rpg.open");
+  await t.send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
+  await t.sendAs(bia, "rpg.lobby.join", { tv: "tv1" });
+  await t.send("rpg.lobby.start");
+  t.clock.advance(LOBBY.countdownMs);
+  const before = store.docs.get("U2")!.hero.attrs.INT;
+  // A Bia confirma os pontos e a gravação demora; a contagem acaba nesse meio.
+  let release!: () => void;
+  store.gate = { user: "U2", open: new Promise<void>((r) => (release = r)) };
+  t.svc.handle(bia, t.host, {
+    v: 1,
+    id: "save-1",
+    t: "rpg.attrs",
+    d: { add: { INT: 3 } },
+  } as RpgCommand);
+  await turn();
+  const ticking = t.tick();
+  await turn();
+  // Outro comando chega com a largada em andamento: espera ela sair, não grava por baixo.
+  t.svc.handle(bia, t.host, {
+    v: 1,
+    id: "save-2",
+    t: "rpg.attrs",
+    d: { add: { INT: 1 } },
+  } as RpgCommand);
+  store.gate = null;
+  release();
+  await ticking;
+  await t.svc.idle("U2");
+  assert.deepEqual(bia.errors("save-1"), []);
+  assert.deepEqual(bia.errors("save-2"), [
+    { code: "rpg_invalid", reason: "run_starting" },
+  ]);
+  const run = [...t.runStore.docs.values()][0]!;
+  assert.equal(
+    run.members.find((m) => m.userId === "U2")!.hero.attrs.INT,
+    before + 3,
+    "a corrida luta com o herói que respondeu ok",
+  );
+  assert.equal(store.docs.get("U2")!.hero.attrs.INT, before + 3);
+  assert.equal(store.docs.get("U2")!.run?.id, run._id);
+});
+
+test("largada: espera quem está na ficha (rpg.lobby.prep) e sai 3 s depois que todos fecham", async () => {
+  const t = setup();
+  const bia = t.session("U2");
+  await t.send("rpg.class", { cls: "mago" });
+  await t.sendAs(bia, "rpg.class", { cls: "padre" });
+  // Sem grupo, o preparo só responde.
+  const alone = await t.sendAs(bia, "rpg.lobby.prep", { what: "heroi" });
+  assert.deepEqual(bia.errors(alone), []);
+  await t.send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
+  await t.sendAs(bia, "rpg.lobby.join", { tv: "tv1" });
+  await t.sendAs(bia, "rpg.lobby.prep", { what: "heroi" });
+  await t.send("rpg.lobby.start");
+  t.clock.advance(60_000);
+  await t.tick();
+  assert.equal(t.runStore.docs.size, 0, "a Bia está na ficha");
+  assert.equal(t.host.lobbies.of("U1")!.pending, true);
+  await t.sendAs(bia, "rpg.lobby.prep", { what: null });
+  t.clock.advance(LOBBY.countdownMs - 1);
+  await t.tick();
+  assert.equal(t.runStore.docs.size, 0, "ainda contando");
+  t.clock.advance(1);
+  await t.tick();
+  assert.equal(t.runStore.docs.size, 1);
+  assert.equal(t.host.lobbies.of("U1")!.state, "running");
+  // Quem não é líder não pede a largada; o líder desiste de uma pendente.
+  const notLeader = await t.sendAs(bia, "rpg.lobby.start");
+  assert.deepEqual(bia.errors(notLeader), [
+    { code: "rpg_invalid", reason: "not_leader" },
+  ]);
+});
+
+test("Mercador na corrida: vende da mochila e compra poção e munição; item novo e as outras ações, depois", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "mago" });
+  edit(t, "U1", (h) => ({ ...h, gold: 50_000 }));
+  await t.send("rpg.open");
+  await t.send("rpg.shop.buy", {
+    npc: "mercador-1",
+    buy: { kind: "item", base: { slot: "colar" } },
+  });
+  const bought = t.s.hero()!.hero.bag.at(-1)!;
+  assert.ok(bought, "o colar está na mochila");
+  await t.send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
+  await t.send("rpg.lobby.start");
+  t.clock.advance(LOBBY.countdownMs);
+  await t.tick();
+  assert.ok(t.s.hero()!.run, "na corrida");
+  const pots = t.s.hero()!.hero.potions.hp.pequena;
+  const buy = await t.send("rpg.shop.buy", {
+    npc: "mercador-1",
+    buy: { kind: "pocao", type: "hp", size: "pequena", count: 3 },
+  });
+  assert.deepEqual(t.s.errors(buy), []);
+  assert.equal(t.s.hero()!.hero.potions.hp.pequena, pots + 3);
+  const ammo = await t.send("rpg.shop.buy", {
+    npc: "mercador-1",
+    buy: { kind: "municao", grade: "comum", packs: 1 },
+  });
+  assert.deepEqual(t.s.errors(ammo), []);
+  const sell = await t.send("rpg.shop.sell", {
+    npc: "mercador-1",
+    uid: bought.uid,
+  });
+  assert.deepEqual(t.s.errors(sell), []);
+  assert.ok(!t.s.hero()!.hero.bag.some((x) => x.uid === bought.uid));
+  const item = await t.send("rpg.shop.buy", {
+    npc: "mercador-1",
+    buy: { kind: "item", base: { slot: "colar" } },
+  });
+  assert.deepEqual(t.s.errors(item), [
+    { code: "rpg_invalid", reason: "in_run_item" },
+  ]);
+  const smith = await t.send("rpg.bank", { npc: "banqueiro-1", gold: 100 });
+  assert.deepEqual(t.s.errors(smith), [
+    { code: "rpg_invalid", reason: "in_run" },
+  ]);
+  // A corrida fecha bem por cima das compras e da venda.
+  const doc = [...t.runStore.docs.values()][0]!;
+  t.clock.advance(doc.seconds * 1000 + 1000);
+  await t.svc.tickRuns();
+  await t.svc.idle("U1");
+  assert.equal(t.runStore.docs.get(doc._id)!.status, "settled");
+  assert.equal(t.s.hero()!.run, null);
 });

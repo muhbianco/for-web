@@ -27,6 +27,7 @@ export {
 export { type GameWireEvent, type Interaction, SpaceView, type SpaceUiState, type SpaceViewOptions } from "./view.ts";
 export { applyFrames, RUN_FEED_MAX, type RunState, runStateFrom } from "./runState.ts";
 export { avatarGearOf } from "./hero.ts";
+export { STATUS_COLOR, sortStatuses, statusGood, type StatusTone, statusTone } from "./status.ts";
 export { decodeMap, World } from "./world.ts";
 export { characterSheet, DIRS, FRAMES, palette, PALETTES, SPRITE } from "./render/sprites.ts";
 export { spriteFor, thumbnail } from "./render/atlas.ts";

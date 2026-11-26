@@ -57,7 +57,7 @@ import {
   zonesOf,
 } from "@muchat/space-core";
 import { TRAIN_REACH_TILES as REACH } from "@muchat/space-core/game/ot";
-import type { RpgLobbyMember, RpgLoopStop, RpgRunEnd } from "@muchat/space-core/game/ot/balance";
+import type { RpgLobbyMember, RpgLoopStop, RpgPrepKind, RpgRunEnd } from "@muchat/space-core/game/ot/balance";
 
 import { type Lobby, type LobbyResult, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
 import type { Log } from "../log.ts";
@@ -251,8 +251,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
   readonly lobbies = new LobbyHub();
   /** Called when someone enters a room (walked in, joined inside it): a dungeon run there shows (stage O5). */
   onRoomEntered: ((userId: string, room: string) => void) | null = null;
-  /** The loop of a dungeon group is due: start the next run for its leader (24/11/2026). */
-  onLobbyDue: ((leader: string, lobbyId: string) => void) | null = null;
+  /**
+   * A dungeon group's start is due (the countdown ended, nobody preparing): the game service starts
+   * the run for its leader; `auto`: the loop asked for it (26/11/2026).
+   */
+  onLobbyDue: ((leader: string, lobbyId: string, auto: boolean) => void) | null = null;
 
   get layoutFingerprint(): string {
     return this.map.fingerprint;
@@ -548,7 +551,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
   }
 
   lobbyLeave(userId: string): void {
-    const out = this.lobbies.leave(userId);
+    const out = this.lobbies.leave(userId, this.now());
     if (!out) return;
     this.broadcastLobby(out.lobby, !out.ended, out.ended ? { ended: out.ended } : {}, undefined, [userId]);
   }
@@ -570,6 +573,27 @@ export class SpaceRuntime implements MediaHost, TvHost {
     const res = this.lobbies.setLoop(userId, on, this.now());
     if (res.ok) this.broadcastLobby(res.lobby, true, {}, userId);
     return res;
+  }
+
+  /** The leader asks for the start: it waits for whoever is preparing, then counts 3 s. */
+  lobbyRequestStart(userId: string): LobbyResult {
+    const res = this.lobbies.requestStart(userId, this.now());
+    if (res.ok) this.broadcastLobby(res.lobby, true, {}, userId);
+    return res;
+  }
+
+  /** The leader gives up the pending start. */
+  lobbyCancelStart(userId: string): LobbyResult {
+    const res = this.lobbies.cancelStart(userId, this.now());
+    if (res.ok) this.broadcastLobby(res.lobby, true, {}, userId);
+    return res;
+  }
+
+  /** The person opened (or closed) the hero sheet or an NPC: holds their group's start. */
+  lobbyPrep(userId: string, what: RpgPrepKind | null): Lobby | null {
+    const lobby = this.lobbies.setPrep(userId, what, this.now());
+    if (lobby) this.broadcastLobby(lobby, true, {}, userId);
+    return lobby ?? this.lobbies.of(userId) ?? null;
   }
 
   /** The group's run was saved: everyone sees it running. */
@@ -1662,7 +1686,10 @@ export class SpaceRuntime implements MediaHost, TvHost {
     a.disconnectedAt = this.now();
     a.dirty = true;
     this.presenceDirty = true;
-    // The dungeon group stays (24/11/2026): it goes only when the reconnect grace ends.
+    // The dungeon group stays (24/11/2026): it goes only when the reconnect grace ends. A sheet
+    // or NPC they had open does not hold the group's start any more (the app says so again).
+    const held = this.lobbies.setPrep(a.userId, null, this.now());
+    if (held) this.broadcastLobby(held, true, {});
   }
 
   /**
@@ -1759,11 +1786,12 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.flushPresence();
     this.tv.tick();
     for (const lobby of this.lobbies.expire(now)) this.broadcastLobby(lobby, false, { ended: "expired" });
-    // The loop's next run is due: the leader starts it (the game service checks everyone).
-    for (const lobby of this.lobbies.due(now)) {
-      lobby.nextAt = null;
-      this.onLobbyDue?.(lobby.leader, lobby.id);
-    }
+    // The loop's next run is due: its start is asked for (it waits like the leader's).
+    for (const lobby of this.lobbies.loopDue(now)) this.broadcastLobby(lobby, true, {});
+    // A start held too long by someone preparing gives up (everyone sees who).
+    for (const lobby of this.lobbies.holdTimeouts(now)) this.broadcastLobby(lobby, true, {});
+    // The countdown ended: the game service reads the heroes and starts the run for the leader.
+    for (const lobby of this.lobbies.launchDue(now)) this.onLobbyDue?.(lobby.leader, lobby.id, lobby.pendingAuto);
     const dirty = [...this.avatars.values()].filter((a) => a.dirty);
     if (dirty.length === 0 && removed.length === 0) return;
     for (const viewerAvatar of this.avatars.values()) {

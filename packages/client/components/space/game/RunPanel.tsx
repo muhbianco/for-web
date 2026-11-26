@@ -1,4 +1,12 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+  onCleanup,
+} from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import type { RunState } from "@muchat/space-client";
@@ -19,6 +27,7 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 import { ItemTip } from "./ItemTip";
 import { CLASS_ICON, RunHud } from "./RunHud";
 import { RunScene } from "./RunScene";
+import { StatusIcons } from "./StatusIcons";
 import {
   kindName,
   mechanicHint,
@@ -28,7 +37,13 @@ import {
 } from "./gameText";
 import { type GameLink, Gold, Grip, ItemIcon, useCommands } from "./gameUi";
 import { BOSS_ARCHETYPES, bagMarks, gold, num } from "./heroModel";
-import { dungeonName, loopStopText, outcomeText } from "./partyUi";
+import {
+  dungeonName,
+  loopStopText,
+  outcomeText,
+  prepText,
+  startView,
+} from "./partyUi";
 import { feedLine, runCast } from "./runUi";
 import { useWide, useWindowDrag } from "./windowDrag";
 
@@ -52,12 +67,21 @@ export default function RunPanel(props: {
   link: GameLink;
   lobby: RpgLobbyView | null;
   paletteOf?: (userId: string) => number;
+  /** O relógio do servidor agora (a contagem da largada vem nele). */
+  serverNow?: () => number;
+  /** O medidor (janela à parte): aberto? e o botão que abre e fecha. */
+  meterOpen?: boolean;
+  onMeter?: () => void;
   onClose: () => void;
 }) {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
   const [sceneFailed, setSceneFailed] = createSignal(false);
   const [confirmLeave, setConfirmLeave] = createSignal(false);
+  // O resumo do fim (o loot) fecha sozinho e a tela fica (26/11/2026: fechar o resumo fechava a
+  // corrida inteira). Volta pelo botão "Resumo". Corrida nova: o resumo dela aparece de novo.
+  const [cardHidden, setCardHidden] = createSignal(false);
+  createEffect(on(() => props.state.run.id, () => setCardHidden(false)));
   let stayBtn: HTMLButtonElement | undefined;
   // Arrastável (pedido do dono, 25/11/2026): pelo título ou pela alça; presa à área do mapa.
   // No celular o painel ocupa a largura toda e não arrasta.
@@ -93,6 +117,64 @@ export default function RunPanel(props: {
     !!frame()?.e.some((e) => e.k === "descanso") ||
     (!!frame() && frame()!.x.length === 0);
   const myHero = () => (isMember() ? (props.hero?.hero ?? null) : null);
+  /** A largada da próxima (o loop ou o líder) esperando por cima desta corrida que acabou. */
+  const pendingHere = () =>
+    !!end() &&
+    !!props.lobby?.pending &&
+    props.lobby.members.some((m) => m.user_id === props.myId);
+  // A largada pediu: o resumo sai da frente (ele já ficou à vista enquanto o grupo via o loot).
+  createEffect(
+    on(pendingHere, (p, was) => {
+      if (p && !was) setCardHidden(true);
+    }),
+  );
+
+  /** O alvo do meu herói (o monstro em que bati por último nesta sala), fora da sala do chefe. */
+  const [target, setTarget] = createSignal<{ room: number; i: number } | null>(
+    null,
+  );
+  createEffect(
+    on(frame, (f) => {
+      if (!f) return;
+      const me = focus();
+      let hit: number | null = null;
+      for (const e of f.e)
+        if (
+          (e.k === "golpe" || (e.k === "magia" && !e.cura)) &&
+          e.a === me &&
+          e.b >= FOE_BASE
+        ) {
+          hit = e.b;
+          break;
+        }
+      const cur = target();
+      if (hit !== null) setTarget({ room: f.st, i: hit - FOE_BASE });
+      else if (cur && (cur.room !== f.st || (f.x[cur.i] ?? 0) <= 0))
+        setTarget(null);
+    }),
+  );
+  const targetView = () => {
+    const tg = target();
+    const f = frame();
+    if (!tg || !f || boss() || tg.room !== f.st) return null;
+    const hp = f.x[tg.i] ?? 0;
+    if (hp <= 0) return null;
+    const e = cast().enemyOf(tg.room, tg.i);
+    return {
+      name: cast().enemyName(tg.room, tg.i),
+      hp,
+      max: e?.hp ?? hp,
+      level: e?.level ?? 0,
+      statuses: f.u?.x[tg.i],
+    };
+  };
+  const bossIndex = () => {
+    if (room() < ROOMS - 1) return -1;
+    return (
+      cast().rooms[room()]?.findIndex((e) => BOSS_ARCHETYPES.has(e.archetype)) ??
+      -1
+    );
+  };
 
   // Avisos do meio: a sala nova e a mecânica, por TOAST_S segundos da corrida.
   const lastRoomAt = () => {
@@ -111,7 +193,8 @@ export default function RunPanel(props: {
   // O chefe: a vida e os buffs (só na última sala).
   const boss = () => {
     const f = frame();
-    if (!f || room() < ROOMS - 1) return null;
+    // Acabou: a barra do chefe (vazia) sai junto com a luta.
+    if (!f || end() || room() < ROOMS - 1) return null;
     const i =
       cast().rooms[room()]?.findIndex((e) =>
         BOSS_ARCHETYPES.has(e.archetype),
@@ -190,6 +273,16 @@ export default function RunPanel(props: {
             <small data-pots="">
               ♥ {st().potions[i()]?.hp ?? 0} · ✦ {st().potions[i()]?.mp ?? 0}
             </small>
+            <Show when={!end()}>
+              <StatusIcons
+                list={frame()?.u?.h[i()]}
+                members={run().members}
+                own={m.cls}
+                label={t`Efeitos em ${m.name}`}
+                size="sm"
+                max={7}
+              />
+            </Show>
           </Mate>
         </Show>
       )}
@@ -255,6 +348,15 @@ export default function RunPanel(props: {
                 </Levels>
               </div>
             </Portrait>
+            <Show when={!end()}>
+              <StatusIcons
+                list={frame()?.u?.h[focus()]}
+                members={run().members}
+                own={focusMember().cls}
+                label={t`Efeitos em ${focusMember().name}`}
+                max={10}
+              />
+            </Show>
             <Mates data-where="top">{mates()}</Mates>
           </Frames>
 
@@ -332,7 +434,46 @@ export default function RunPanel(props: {
                       <Buff data-kind="fase">▲ {t`Fase nova`}</Buff>
                     </Show>
                   </Buffs>
+                  <Centered>
+                    <StatusIcons
+                      list={frame()?.u?.x[bossIndex()]}
+                      members={run().members}
+                      own={null}
+                      label={t`Efeitos em ${b().name}`}
+                      max={10}
+                    />
+                  </Centered>
                 </BossBar>
+              )}
+            </Show>
+            <Show when={!end() && targetView()}>
+              {(tg) => (
+                <TargetBox aria-label={t`Seu alvo: ${tg().name}`}>
+                  <div>
+                    <strong>{tg().name}</strong>
+                    <small>{t`Nv ${tg().level}`}</small>
+                  </div>
+                  <Meter
+                    data-foe=""
+                    role="meter"
+                    aria-label={t`Vida de ${tg().name}`}
+                    aria-valuemin={0}
+                    aria-valuemax={tg().max}
+                    aria-valuenow={tg().hp}
+                  >
+                    <span style={{ width: `${pctOf(tg().hp, tg().max)}%` }} />
+                  </Meter>
+                  <Centered>
+                    <StatusIcons
+                      list={tg().statuses}
+                      members={run().members}
+                      own={null}
+                      label={t`Efeitos em ${tg().name}`}
+                      size="sm"
+                      max={8}
+                    />
+                  </Centered>
+                </TargetBox>
               )}
             </Show>
           </Title>
@@ -341,6 +482,28 @@ export default function RunPanel(props: {
             {/* Na confirmação de sair a alça sai da frente (o canto já fica cheio). */}
             <Show when={wide() && !confirmLeave()}>
               <Grip onKey={drag.onGripKey} />
+            </Show>
+            <Show when={end() && cardHidden()}>
+              <Pill
+                type="button"
+                title={t`Ver o resumo e o loot desta corrida`}
+                onClick={() => setCardHidden(false)}
+              >
+                <Symbol size={18}>inventory_2</Symbol>
+                <span>{t`Resumo`}</span>
+              </Pill>
+            </Show>
+            <Show when={props.onMeter && !confirmLeave()}>
+              <Pill
+                type="button"
+                data-round=""
+                aria-pressed={!!props.meterOpen}
+                aria-label={t`Medidor: dano, dano recebido e cura`}
+                title={t`Medidor: dano, dano recebido e cura`}
+                onClick={() => props.onMeter?.()}
+              >
+                <Symbol size={20}>bar_chart</Symbol>
+              </Pill>
             </Show>
             <Show when={isMember() && !end()}>
               <Show
@@ -472,21 +635,29 @@ export default function RunPanel(props: {
           </Show>
         </Center>
 
-        <Show when={end()}>
-          {(e) => (
-            <Outcome role="dialog" aria-label={outcomeText(e().outcome)}>
-              <EndCard
-                outcome={e().outcome}
-                members={e().members}
-                state={st()}
-                myId={props.myId}
-                hero={props.hero}
-                lobby={props.lobby}
-                link={props.link}
-                onClose={props.onClose}
-              />
-            </Outcome>
+        <Show when={pendingHere() && props.lobby}>
+          {(l) => (
+            <StartOverlay
+              lobby={l()}
+              myId={props.myId}
+              link={props.link}
+              serverNow={props.serverNow ?? Date.now}
+            />
           )}
+        </Show>
+        <Show when={end() && !cardHidden()}>
+          <Outcome role="dialog" aria-label={outcomeText(end()!.outcome)}>
+            <EndCard
+              outcome={end()!.outcome}
+              members={end()!.members}
+              state={st()}
+              myId={props.myId}
+              hero={props.hero}
+              lobby={props.lobby}
+              link={props.link}
+              onClose={() => setCardHidden(true)}
+            />
+          </Outcome>
         </Show>
       </Screen>
 
@@ -706,9 +877,166 @@ function EndCard(props: {
         {(msg) => <ErrorLine role="alert">{msg()}</ErrorLine>}
       </Show>
       <Pill type="button" data-primary="" onClick={props.onClose}>
-        {t`Fechar`}
+        {t`Fechar o resumo`}
       </Pill>
     </Card>
+  );
+}
+
+/**
+ * A largada esperando (26/11/2026), num quadro esmaecido no meio da tela da corrida: quem ainda
+ * está na ficha ou num NPC (a corrida não sai enquanto alguém se equipa), depois a contagem de
+ * 3 s. Quem lidera pode desistir. Serve à tela da corrida que acabou (o loop) e à largada sem
+ * corrida ainda (grupo novo).
+ */
+export function StartOverlay(props: {
+  lobby: RpgLobbyView;
+  myId: string | null;
+  link: GameLink;
+  serverNow: () => number;
+}) {
+  const { t } = useLingui();
+  const cmd = useCommands(() => props.link);
+  const [now, setNow] = createSignal(props.serverNow());
+  const timer = setInterval(() => setNow(props.serverNow()), 200);
+  onCleanup(() => clearInterval(timer));
+  const view = () => startView(props.lobby, now());
+  const mine = () => view()?.waiting.find((w) => w.name === myName());
+  const myName = () =>
+    props.lobby.members.find((m) => m.user_id === props.myId)?.name ?? "";
+  const leader = () => props.lobby.leader === props.myId;
+  return (
+    <Show when={view()}>
+      {(v) => (
+        <Dim role="status" aria-live="polite">
+          <Box>
+            <Show
+              when={v().waiting.length > 0}
+              fallback={
+                <>
+                  <small>{t`A corrida começa em`}</small>
+                  <Count data-zero={v().secs === 0 ? "" : undefined}>
+                    {v().secs && v().secs! > 0 ? v().secs : "⚔"}
+                  </Count>
+                  <small>{dungeonName(props.lobby.dungeon)}</small>
+                </>
+              }
+            >
+              <Symbol size={28}>hourglass_top</Symbol>
+              <strong>{t`Aguardando os heróis se equiparem`}</strong>
+              <em>{t`Ficar mais forte vale a espera: a corrida sai 3 s depois que todos fecharem.`}</em>
+              <ul>
+                <For each={v().waiting}>
+                  {(w) => (
+                    <li>
+                      <Symbol size={14}>edit</Symbol> {w.name} {prepText(w.what)}
+                    </li>
+                  )}
+                </For>
+              </ul>
+              <Show when={mine()}>
+                <small>{t`Você está com a janela aberta: feche quando terminar.`}</small>
+              </Show>
+            </Show>
+            <Show when={leader()}>
+              <Pill
+                type="button"
+                disabled={cmd.busy()}
+                onClick={() =>
+                  void cmd.run("rpg.lobby.start", { cancel: true })
+                }
+              >
+                {t`Cancelar largada`}
+              </Pill>
+            </Show>
+            <Show when={cmd.error()}>
+              {(msg) => <ErrorLine role="alert">{msg()}</ErrorLine>}
+            </Show>
+          </Box>
+        </Dim>
+      )}
+    </Show>
+  );
+}
+
+/**
+ * A largada de um grupo sem corrida ainda (o 1º começo, ou quem reabriu pelo quadro do grupo): a
+ * mesma janela da corrida, com o grupo em cima e o quadro da espera no meio.
+ */
+export function RunStage(props: {
+  lobby: RpgLobbyView;
+  myId: string | null;
+  link: GameLink;
+  serverNow: () => number;
+  onClose: () => void;
+}) {
+  const { t } = useLingui();
+  let panel: HTMLDivElement | undefined;
+  const wide = useWide(() => panel?.parentElement ?? undefined, 600);
+  const drag = useWindowDrag({
+    id: "rpg-run",
+    win: () => panel,
+    bounds: () => panel?.parentElement,
+    enabled: wide,
+  });
+  const dg = () => dungeonById(props.lobby.dungeon);
+  return (
+    <Panel
+      ref={panel}
+      style={drag.style()}
+      data-dragging={drag.dragging() ? "" : undefined}
+      data-covers-map=""
+      role="region"
+      aria-label={t`Largada: ${dungeonName(props.lobby.dungeon)}`}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") {
+          e.stopPropagation();
+          props.onClose();
+        }
+      }}
+    >
+      <Screen data-stage="">
+        <Top>
+          <Frames>
+            <Mates data-where="top">
+              <For each={props.lobby.members}>
+                {(m) => (
+                  <Mate title={`${m.name} · ${CLASSES[m.cls].titles[1]}`}>
+                    <span>
+                      <Symbol size={14}>{CLASS_ICON[m.cls]}</Symbol> {m.name}
+                    </span>
+                    <small>{t`Nv ${m.level}`}</small>
+                  </Mate>
+                )}
+              </For>
+            </Mates>
+          </Frames>
+          <Title data-title="" {...drag.handle} data-draggable={wide() ? "" : undefined}>
+            <strong>{dungeonName(props.lobby.dungeon)}</strong>
+            <small>{dg() ? kindName(dg()!.kind) : ""}</small>
+          </Title>
+          <Corner>
+            <Show when={wide()}>
+              <Grip onKey={drag.onGripKey} />
+            </Show>
+            <Pill
+              type="button"
+              data-round=""
+              aria-label={t`Fechar`}
+              onClick={props.onClose}
+            >
+              <Symbol size={20}>close</Symbol>
+            </Pill>
+          </Corner>
+        </Top>
+        <StartOverlay
+          lobby={props.lobby}
+          myId={props.myId}
+          link={props.link}
+          serverNow={props.serverNow}
+        />
+      </Screen>
+    </Panel>
   );
 }
 
@@ -756,6 +1084,12 @@ const Screen = styled("div", {
     background: "#0f1015",
     minHeight: "220px",
     "&[data-failed]": { paddingTop: "84px" },
+    // A largada sem corrida ainda: a altura da cena, para o quadro da espera caber.
+    "&[data-stage]": {
+      minHeight: "min(360px, calc(100dvh - 160px))",
+      background:
+        "radial-gradient(ellipse at 50% 40%, #1d1a15 0%, #0f1015 70%)",
+    },
   },
 });
 
@@ -1052,6 +1386,83 @@ const Buff = styled("span", {
       },
     },
     "&[data-kind=fase]": { color: "#ffcf8a" },
+  },
+});
+
+const Centered = styled("div", {
+  base: { display: "flex", justifyContent: "center" },
+});
+
+/** O alvo do meu herói (vida e efeitos), embaixo do nome da DG. */
+const TargetBox = styled("div", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px",
+    width: "min(200px, 46vw)",
+    marginTop: "4px",
+    padding: "4px 8px 5px",
+    borderRadius: "8px",
+    background: "rgba(14, 12, 10, 0.78)",
+    boxShadow: "0 0 0 1px rgba(196, 22, 31, 0.45)",
+    pointerEvents: "auto",
+    "& > div:first-child": {
+      display: "flex",
+      justifyContent: "space-between",
+      gap: "6px",
+      fontSize: "0.75rem",
+    },
+    "& small": { opacity: 0.8 },
+  },
+});
+
+/** O quadro esmaecido da largada: por cima da cena, embaixo da faixa de cima (os botões seguem). */
+const Dim = styled("div", {
+  base: {
+    position: "absolute",
+    inset: 0,
+    zIndex: 1,
+    display: "grid",
+    placeItems: "center",
+    padding: "16px",
+    background: "rgba(6, 6, 8, 0.66)",
+    backdropFilter: "grayscale(0.6)",
+  },
+});
+const Box = styled("div", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "6px",
+    maxWidth: "380px",
+    padding: "14px 18px",
+    borderRadius: "14px",
+    textAlign: "center",
+    background: "rgba(20, 18, 15, 0.94)",
+    boxShadow: "0 0 0 1px rgba(122, 100, 64, 0.7), 0 10px 30px rgba(0,0,0,0.6)",
+    "& > strong": { fontSize: "1rem" },
+    "& > em": { fontStyle: "normal", fontSize: "0.8rem", color: "#d8ceb9" },
+    "& > small": { fontSize: "0.78rem", color: "#c4b8a2" },
+    "& > ul": {
+      listStyle: "none",
+      margin: "2px 0",
+      padding: 0,
+      display: "flex",
+      flexDirection: "column",
+      gap: "2px",
+      color: "#ffd28a",
+      fontSize: "0.85rem",
+    },
+  },
+});
+const Count = styled("strong", {
+  base: {
+    fontSize: "3rem !important",
+    lineHeight: 1,
+    color: "#ffe7a8",
+    fontVariantNumeric: "tabular-nums",
+    textShadow: "0 2px 10px rgba(217, 180, 90, 0.45)",
   },
 });
 

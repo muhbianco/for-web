@@ -3,7 +3,7 @@ import test from "node:test";
 
 import type { RpgLobbyMember } from "@muchat/space-core/game/ot/balance";
 
-import { LOBBY, LobbyHub } from "./lobby.ts";
+import { LOBBY, LobbyHub, lobbyView } from "./lobby.ts";
 
 const m = (
   id: string,
@@ -132,8 +132,14 @@ test("loop: depois de cada vitória a próxima fica marcada; derrota, retirada e
   hub.runEnded("r1", "vitoria", 1000);
   const l = hub.atTv("tv1")[0]!;
   assert.equal(l.nextAt, 1000 + LOBBY.loopDelayMs);
-  assert.deepEqual(hub.due(1000 + LOBBY.loopDelayMs - 1), []);
-  assert.deepEqual(hub.due(1000 + LOBBY.loopDelayMs), [l]);
+  assert.deepEqual(hub.loopDue(1000 + LOBBY.loopDelayMs - 1), []);
+  // Venceu: a largada fica pedida e conta 3 s (26/11/2026).
+  assert.deepEqual(hub.loopDue(1000 + LOBBY.loopDelayMs), [l]);
+  assert.deepEqual([l.pending, l.pendingAuto, l.nextAt], [true, true, null]);
+  assert.equal(l.startAt, 1000 + LOBBY.loopDelayMs + LOBBY.countdownMs);
+  assert.deepEqual(hub.launchDue(l.startAt! - 1), []);
+  assert.deepEqual(hub.launchDue(l.startAt!), [l]);
+  assert.deepEqual(hub.launchDue(l.startAt! + 1000), [], "uma vez só");
   // Marcado, não expira; correndo, também não.
   assert.deepEqual(hub.expire(10 ** 9), []);
   hub.start("A", 20_000);
@@ -188,3 +194,97 @@ test("prazo: a sala some sozinha depois de 5 min; a TV removida acaba com a sala
   assert.equal(hub.of("B"), undefined);
   assert.deepEqual(hub.inRoom("R1"), []);
 });
+
+test("largada (26/11/2026): pedida, conta 3 s; quem está na ficha ou num NPC segura; fechar recomeça a contagem", () => {
+  const hub = new LobbyHub();
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
+  hub.join("tv1", undefined, m("B"));
+  hub.join("tv1", undefined, m("C"));
+  // A Bia já estava na ficha antes do pedido.
+  assert.equal(hub.setPrep("B", "heroi", 10)?.prep.get("B"), "heroi");
+  assert.equal(hub.setPrep("B", "heroi", 11), null, "o mesmo de novo não muda nada");
+  assert.deepEqual(hub.requestStart("B", 100), { ok: false, reason: "not_leader" });
+  const l = hub.of("A")!;
+  assert.equal(hub.requestStart("A", 100).ok, true);
+  assert.deepEqual([l.pending, l.pendingAuto, l.startAt, l.heldSince], [true, false, null, 100]);
+  assert.deepEqual(hub.launchDue(10 ** 6), [], "ninguém larga com a Bia na ficha");
+  assert.deepEqual(hub.expire(10 ** 7), [], "largada pendente não expira");
+  // O Caio abre o Ferreiro; a Bia fecha: ainda segura.
+  hub.setPrep("C", "ferreiro", 200);
+  hub.setPrep("B", null, 300);
+  assert.equal(l.startAt, null);
+  hub.setPrep("C", null, 400);
+  assert.deepEqual([l.startAt, l.heldSince], [400 + LOBBY.countdownMs, null]);
+  // Abriu de novo no meio da contagem: para; fechou: conta 3 s do zero.
+  hub.setPrep("B", "mestre", 1000);
+  assert.equal(l.startAt, null);
+  hub.setPrep("B", null, 2000);
+  assert.equal(l.startAt, 2000 + LOBBY.countdownMs);
+  assert.equal(hub.requestStart("A", 2500).ok, true, "pedir de novo não reinicia a contagem");
+  assert.equal(l.startAt, 2000 + LOBBY.countdownMs);
+  assert.deepEqual(hub.launchDue(2000 + LOBBY.countdownMs), [l]);
+  // Com a largada entregue, abrir a ficha não volta atrás (o serviço já está lendo os heróis).
+  hub.setPrep("B", "heroi", 5001);
+  assert.equal(l.launching, true);
+  assert.equal(hub.start("A", 5002).ok, true);
+  assert.deepEqual([l.state, l.pending, l.launching, l.startAt], ["running", false, false, null]);
+  // Durante a corrida a ficha aberta fica anotada e segura a próxima.
+  hub.running(l.id, "r1");
+  hub.setLoop("A", true, 5003);
+  hub.runEnded("r1", "vitoria", 9000);
+  assert.deepEqual(hub.loopDue(9000 + LOBBY.loopDelayMs), [l]);
+  assert.equal(l.startAt, null, "a Bia ainda está na ficha");
+  assert.deepEqual(
+    lobbyViewOf(hub, "A").prep,
+    [{ user_id: "B", what: "heroi" }],
+  );
+  hub.setPrep("B", null, 30_000);
+  assert.equal(lobbyViewOf(hub, "A").start_at, 30_000 + LOBBY.countdownMs);
+  assert.equal(lobbyViewOf(hub, "A").pending, true);
+});
+
+test("largada: o líder desiste (o loop desliga); desligar o loop na contagem desiste dela; o líder saindo também", () => {
+  const hub = new LobbyHub();
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
+  hub.join("tv1", undefined, m("B"));
+  const l = hub.of("A")!;
+  assert.deepEqual(hub.cancelStart("A", 1), { ok: false, reason: "no_start" });
+  hub.requestStart("A", 10);
+  assert.deepEqual(hub.cancelStart("B", 11), { ok: false, reason: "not_leader" });
+  assert.equal(hub.cancelStart("A", 12).ok, true);
+  assert.deepEqual([l.pending, l.startAt, l.expiresAt], [false, null, 12 + LOBBY.ttlMs]);
+  // Loop ligado e a largada do loop contando: desligar o loop desiste dela.
+  hub.start("A", 20);
+  hub.running(l.id, "r1");
+  hub.setLoop("A", true, 21);
+  hub.runEnded("r1", "vitoria", 100);
+  hub.loopDue(100 + LOBBY.loopDelayMs);
+  assert.equal(l.pending, true);
+  hub.setLoop("A", false, 100 + LOBBY.loopDelayMs + 1);
+  assert.deepEqual([l.pending, l.startAt, l.nextAt], [false, null, null]);
+  // O líder sai no meio da largada: ela desiste (o novo líder decide).
+  hub.requestStart("A", 50_000);
+  hub.leave("A", 50_001);
+  assert.deepEqual([l.leader, l.pending, l.stopped], ["B", false, "leader_left"]);
+});
+
+test("largada: quem esquece a ficha aberta não prende o grupo para sempre (desiste em 5 min e diz quem)", () => {
+  const hub = new LobbyHub();
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
+  hub.join("tv1", undefined, { ...m("B"), name: "Bia" });
+  const l = hub.of("A")!;
+  hub.setPrep("B", "banqueiro", 0);
+  hub.requestStart("A", 1000);
+  assert.deepEqual(hub.holdTimeouts(1000 + LOBBY.prepHoldMaxMs - 1), []);
+  assert.deepEqual(hub.holdTimeouts(1000 + LOBBY.prepHoldMaxMs), [l]);
+  assert.deepEqual([l.pending, l.stopped, l.stoppedDetail], [false, "prep", "Bia"]);
+  // Quem sai do grupo deixa de segurar.
+  hub.requestStart("A", 400_000);
+  assert.equal(l.startAt, null);
+  hub.leave("B", 400_100);
+  assert.equal(l.startAt, 400_100 + LOBBY.countdownMs);
+});
+
+function lobbyViewOf(hub: LobbyHub, user: string) {
+  return lobbyView(hub.of(user)!);
+}

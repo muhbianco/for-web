@@ -562,7 +562,20 @@ test("grupo na TV: ao lado e dentro da sala; quem está na sala vê; o grupo seg
   rt.lobbyLoop(BIA, true);
   rt.lobbyRunEnded("run-1", "vitoria", { [BIA]: 9 });
   assert.equal(l.members[0]!.level, 9, "o level de depois da corrida");
+  // 26/11/2026: a ficha aberta segura a largada do loop; cair da conexão solta (o app avisa de novo).
+  rt.lobbyPrep(BIA, "heroi");
   now += 13_000;
+  rt.tick();
+  assert.deepEqual(due, [], "a Bia está na ficha");
+  assert.equal(l.pending, true);
+  now += 60_000;
+  rt.tick();
+  assert.deepEqual(due, [], "segue esperando");
+  rt.leave(bia);
+  assert.equal(l.prep.size, 0, "desconectou: não segura mais");
+  rt.tick();
+  assert.deepEqual(due, [], "a contagem de 3 s começou agora");
+  now += 3_000;
   rt.tick();
   assert.deepEqual(due, [`${BIA}@${l.id}`]);
   rt.tick();
@@ -605,7 +618,7 @@ test("jogo idle de ponta a ponta no runtime real: jogador novo, grupo na TV, Ca�
   const runStore = new MemoryRunStore();
   const svc = new RpgService({ store, runStore, log: silentLog, now: () => now, autoTick: false });
   svc.setHosts(() => rt);
-  rt.onLobbyDue = (leader, lobbyId) => svc.loopDue(rt, leader, lobbyId);
+  rt.onLobbyDue = (leader, lobbyId, auto) => svc.launchDue(rt, leader, lobbyId, auto);
   const ana = enter(rt, ANA, "Ana");
   const tv = tvOfPub(rt);
   placeAt(rt, ANA, tv.beside, PUB);
@@ -629,6 +642,11 @@ test("jogo idle de ponta a ponta no runtime real: jogador novo, grupo na TV, Ca�
   assert.deepEqual(ana.errorsFor(create), []);
   const start = await send("rpg.lobby.start");
   assert.deepEqual(ana.errorsFor(start), []);
+  // A largada conta 3 s (26/11/2026) e sai pelo tique do runtime.
+  assert.equal(ana.last("rpg.run"), undefined);
+  now += 3_000;
+  rt.tick();
+  await svc.idle(ANA);
   const runEv = ana.last("rpg.run")!.d as { run: { id: string; ends_at: number; members: unknown[] } };
   assert.equal(runEv.run.members.length, 1);
   assert.ok(hero()?.run, "o herói está na corrida");

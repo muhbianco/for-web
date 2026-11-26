@@ -359,6 +359,12 @@ export function errorText(code?: string, reason?: string): string {
       return t`Você já está treinando no Dojô.`;
     case "in_run":
       return t`Seu herói está numa dungeon agora.`;
+    case "in_run_item":
+      return t`Durante a corrida o Mercador só vende poção e munição; equipamento, quando ela acabar.`;
+    case "run_starting":
+      return t`A corrida está largando agora; tente de novo num instante.`;
+    case "no_start":
+      return t`Não há largada para cancelar.`;
     case "not_near":
       return t`Chegue mais perto.`;
     case "no_hero":

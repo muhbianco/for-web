@@ -35,6 +35,7 @@ import {
   equipItem,
   evolveTier,
   heroRunFighter,
+  meterOf,
   skillCooldownMs,
   planTransfer,
   raiseAttributes,
@@ -147,6 +148,14 @@ export interface RpgHost {
   lobbyDisband(userId: string): LobbyResult;
   lobbyDungeon(userId: string, dungeon: string): LobbyResult;
   lobbyLoop(userId: string, on: boolean): LobbyResult;
+  /** O líder pede a largada (espera quem se prepara e conta 3 s; 26/11/2026). */
+  lobbyRequestStart(userId: string): LobbyResult;
+  lobbyCancelStart(userId: string): LobbyResult;
+  /** A ficha ou um NPC aberto (null: fechou); devolve o grupo da pessoa, se houver. */
+  lobbyPrep(
+    userId: string,
+    what: import("@muchat/space-core/game/ot/balance").RpgPrepKind | null,
+  ): Lobby | null;
   lobbyRunning(id: string, runId: string): void;
   lobbyAbort(id: string): void;
   lobbyRunEnded(
@@ -251,6 +260,12 @@ export class RpgService {
   private readonly runStore: RunStore;
   private readonly autoTick: boolean;
   private readonly active = new Map<string, ActiveRun>();
+  /**
+   * Quem está numa largada agora (entre ler os heróis e marcar a corrida): os comandos que mudam o
+   * herói esperam ela sair. Sem isso, um save que chegava nesse meio respondia "ok" e a corrida
+   * que acabava de sair lutava com o herói de antes (26/11/2026).
+   */
+  private readonly starting = new Set<string>();
   private ticker: ReturnType<typeof setInterval> | null = null;
   private hostOf: (serverId: string) => RpgHost | null = () => null;
 
@@ -443,10 +458,21 @@ export class RpgService {
         re: cmd.id,
         d: { code, ...(reason ? { reason } : {}) },
       });
-    /** Uma ação do herói fora da corrida, gravada e respondida com o estado. */
-    const act = async (fn: (d: RpgHeroDoc) => RpgOutcome, log?: string) => {
+    /**
+     * Uma ação do herói, gravada e respondida com o estado: fora da corrida, ou também durante
+     * ela (`duringRun`: o Mercador, 26/11/2026). Nunca no meio de uma largada.
+     */
+    const act = async (
+      fn: (d: RpgHeroDoc) => RpgOutcome,
+      log?: string,
+      duringRun = false,
+    ) => {
+      if (this.starting.has(userId))
+        return fail("rpg_invalid", "run_starting");
       const out = await this.mutate(userId, null, (d) =>
-        inRun(d, this.now()) ? { ok: false, reason: "in_run" } : fn(d),
+        !duringRun && inRun(d, this.now())
+          ? { ok: false, reason: "in_run" }
+          : fn(d),
       );
       if (!out) return fail("rpg_invalid", "no_hero");
       if ("reason" in out) return fail("rpg_invalid", out.reason);
@@ -595,21 +621,37 @@ export class RpgService {
         if (!near(cmd.d.npc, "mercador")) return;
         const b = cmd.d.buy;
         const roll = drawn();
-        return act((d) =>
-          apply(
-            d,
-            b.kind === "pocao"
-              ? buyPotions(d.hero, b.type, b.size, b.count)
-              : b.kind === "municao"
-                ? buyAmmo(d.hero, b.grade, b.packs)
-                : buyCommonItem(d.hero, b.base, randomUUID, roll()),
-          ),
+        // Na corrida o Mercador vende só consumível (poção e munição: valem a partir da próxima,
+        // porque a corrida já saiu calculada); item novo, só depois (26/11/2026).
+        if (b.kind === "item")
+          return act(
+            (d) =>
+              inRun(d, this.now())
+                ? { ok: false, reason: "in_run_item" }
+                : apply(d, buyCommonItem(d.hero, b.base, randomUUID, roll())),
+            undefined,
+            true,
+          );
+        return act(
+          (d) =>
+            apply(
+              d,
+              b.kind === "pocao"
+                ? buyPotions(d.hero, b.type, b.size, b.count)
+                : buyAmmo(d.hero, b.grade, b.packs),
+            ),
+          undefined,
+          true,
         );
       }
       case "rpg.shop.sell": {
         if (!near(cmd.d.npc, "mercador")) return;
-        return act((d) =>
-          apply(d, sellItem(d.hero, cmd.d.uid, cmd.d.confirm ?? false)),
+        // Vender da mochila vale na corrida: abre espaço para o loot que vem no fim. O que está
+        // equipado não sai (a corrida usa a cópia do herói da largada).
+        return act(
+          (d) => apply(d, sellItem(d.hero, cmd.d.uid, cmd.d.confirm ?? false)),
+          undefined,
+          true,
         );
       }
       case "rpg.smith": {
@@ -752,20 +794,48 @@ export class RpgService {
         });
       }
       case "rpg.lobby.start": {
-        const started = await this.startRun(host, userId);
-        if (!started.ok) return fail(started.code, started.reason);
-        const res = started.res;
+        // A largada fica pedida (26/11/2026): espera quem está na ficha ou num NPC, conta 3 s e
+        // sai pelo tique do runtime (`launchDue`). O que dá para conferir já, confere aqui.
+        if (cmd.d?.cancel) {
+          const res = host.lobbyCancelStart(userId);
+          if (!res.ok) return fail("rpg_invalid", res.reason);
+          return session.send({
+            v: 1,
+            t: "rpg.lobby",
+            re: cmd.id,
+            d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
+          });
+        }
+        const peek = host.lobbyOf(userId);
+        if (peek && peek.leader === userId) {
+          const dg = dungeonById(peek.dungeon);
+          if (!dg) return fail("rpg_invalid", "unknown_dungeon");
+          if (
+            peek.members.length < dg.party.min ||
+            peek.members.length > dg.party.max
+          )
+            return fail("rpg_invalid", "party_size");
+          if (peek.members.some((m) => m.level < dg.minLevel))
+            return fail("rpg_invalid", "level");
+        }
+        const res = host.lobbyRequestStart(userId);
+        if (!res.ok) return fail("rpg_invalid", res.reason);
         return session.send({
           v: 1,
           t: "rpg.lobby",
           re: cmd.id,
-          d: {
-            tv: res.lobby.tv,
-            id: res.lobby.id,
-            lobby: lobbyView(res.lobby),
-            ended: "started",
-            started: { dungeon: res.lobby.dungeon, members: res.lobby.members },
-          },
+          d: { tv: res.lobby.tv, id: res.lobby.id, lobby: lobbyView(res.lobby) },
+        });
+      }
+      case "rpg.lobby.prep": {
+        const lobby = host.lobbyPrep(userId, cmd.d.what);
+        return session.send({
+          v: 1,
+          t: "rpg.lobby",
+          re: cmd.id,
+          d: lobby
+            ? { tv: lobby.tv, id: lobby.id, lobby: lobbyView(lobby) }
+            : { tv: "", lobby: null, none: true },
         });
       }
       case "rpg.run.leave":
@@ -855,18 +925,29 @@ export class RpgService {
     return null;
   }
 
-  /** O loop de um grupo venceu: na fila do líder, como se ele apertasse "Começar". */
-  loopDue(host: RpgHost, leader: string, lobbyId: string): void {
+  /**
+   * A contagem da largada acabou (pedida pelo líder ou pelo loop): na fila do líder, lê e confere
+   * todos e solta a corrida. Se não der, a largada desiste e todos veem o motivo.
+   */
+  launchDue(
+    host: RpgHost,
+    leader: string,
+    lobbyId: string,
+    auto = true,
+  ): void {
     this.enqueue(
       leader,
       async () => {
         const lobby = host.lobbyOf(leader);
-        if (!lobby || lobby.id !== lobbyId || lobby.leader !== leader) return;
+        if (!lobby || lobby.id !== lobbyId || lobby.leader !== leader) {
+          if (lobby?.id === lobbyId) host.lobbyLoopFailed(lobbyId, "leader_left");
+          return;
+        }
         if (!lobby.members.some((m) => host.isPresent(m.user_id))) {
           host.lobbyLoopFailed(lobbyId, "offline");
           return;
         }
-        const started = await this.startRun(host, leader, true);
+        const started = await this.startRun(host, leader, auto);
         if (!started.ok) {
           host.lobbyLoopFailed(
             lobbyId,
@@ -911,8 +992,36 @@ export class RpgService {
       members.length > dungeon.party.max
     )
       return { ok: false, code: "rpg_invalid", reason: "party_size" };
+    // Ninguém do grupo muda o herói daqui até a marca da corrida; o comando que já estava na fila
+    // de alguém termina antes da leitura (lida na fila de cada um).
+    const mine = members
+      .map((m) => m.user_id)
+      .filter((id) => !this.starting.has(id));
+    for (const id of mine) this.starting.add(id);
+    try {
+      return await this.startRunLocked(host, userId, auto, peek, members);
+    } finally {
+      for (const id of mine) this.starting.delete(id);
+    }
+  }
+
+  private async startRunLocked(
+    host: RpgHost,
+    userId: string,
+    auto: boolean,
+    peek: Lobby,
+    members: Lobby["members"],
+  ): Promise<
+    | { ok: true; res: Extract<LobbyResult, { ok: true }> }
+    | { ok: false; code: string; reason?: string }
+  > {
+    const dungeon = dungeonById(peek.dungeon)!;
     const docs = await Promise.all(
-      members.map((m) => this.load(m.user_id, true)),
+      members.map((m) =>
+        m.user_id === userId
+          ? this.load(m.user_id, true)
+          : this.inQueue(m.user_id, () => this.load(m.user_id, true)),
+      ),
     );
     const now = this.now();
     for (const d of docs) {
@@ -1165,6 +1274,9 @@ export class RpgService {
         frame: sec > 0 ? (frames[sec - 1] ?? null) : null,
         feed,
         ...(end ? { end } : {}),
+        ...(run.frames
+          ? { meter: meterOf(frames, run.doc.members.length, sec) }
+          : {}),
       },
     };
   }

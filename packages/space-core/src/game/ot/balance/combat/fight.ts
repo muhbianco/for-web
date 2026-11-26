@@ -12,6 +12,7 @@ import type {
   FightEvent,
   FightFrame,
   FightResult,
+  FrameStatus,
   KillEvent,
   MechanicEvent,
   SkillDef,
@@ -45,6 +46,9 @@ interface Timed {
   stat: BuffStat | DebuffStat;
   value: number;
   until: number;
+  /** A skill que pôs e o herói (só a tela da corrida lê). */
+  src?: string;
+  by?: number;
 }
 
 interface Dot {
@@ -81,6 +85,8 @@ interface Hero {
   mpPots: number | null;
   shield: number;
   shieldUntil: number;
+  /** A skill do escudo atual (só a tela lê). */
+  shieldSrc?: string;
   /** O que acontece quando o escudo atual quebra (Reflexo Sagrado, Espinhos de Luz). */
   shieldBreak: {
     pct: number;
@@ -93,6 +99,7 @@ interface Hero {
     until: number;
     spent: number;
     refund: number;
+    src?: string;
   } | null;
   buffs: Map<string, Timed>;
   /** Efeitos negativos no herói (Maldição, Drenar Mana), removíveis por purificação. */
@@ -323,13 +330,114 @@ export function fight(
     rec.acc.clear();
     e.push(...rec.events);
     rec.events = [];
+    const u = statusesAt(second);
     rec.frames.push({
       s: second,
       h: heroes.map((h) => Math.max(0, Math.round(h.hp))),
       m: heroes.map((h) => Math.max(0, Math.round(h.mp))),
       x: enemies.map((x) => Math.max(0, Math.round(x.hp))),
       e,
+      ...(u ? { u } : {}),
     });
+  };
+  /** Os efeitos ativos no fim do segundo (só lê o estado; nada da luta muda). */
+  const statusesAt = (now: number): FightFrame["u"] | null => {
+    const left = (until: number) => Math.max(1, Math.ceil(until - now - 1e-9));
+    const srcOf = (key: string) => key.split(":")[0]!;
+    let any = false;
+    const push = (out: FrameStatus[], st: FrameStatus) => {
+      out.push(st);
+      any = true;
+    };
+    const h = heroes.map((q) => {
+      const out: FrameStatus[] = [];
+      if (!q.alive) return out;
+      for (const [key, b] of q.buffs)
+        if (b.until > now)
+          push(out, {
+            s: b.src ?? srcOf(key),
+            k: "buff",
+            st: b.stat,
+            t: left(b.until),
+          });
+      for (const [key, b] of partyBuffs)
+        if (b.until > now)
+          push(out, {
+            s: b.src ?? srcOf(key),
+            k: "buff",
+            st: b.stat,
+            t: left(b.until),
+            ...(b.by !== undefined ? { a: b.by } : {}),
+          });
+      const hots = new Map<string, FrameStatus>();
+      for (const x of q.hots) {
+        if (x.until <= now) continue;
+        const by = who(x.src);
+        const id = x.key + "|" + by;
+        const cur = hots.get(id);
+        if (cur) {
+          cur.n = (cur.n ?? 1) + 1;
+          cur.t = Math.max(cur.t, left(x.until));
+        } else
+          hots.set(id, { s: srcOf(x.key), k: "hot", t: left(x.until), a: by });
+      }
+      for (const st of hots.values()) push(out, st);
+      for (const [key, d] of q.debuffs)
+        if (d.until > now) push(out, { s: key, k: "debuff", t: left(d.until) });
+      if (q.shield > 0 && q.shieldUntil > now)
+        push(out, {
+          s: q.shieldSrc ?? "escudo",
+          k: "escudo",
+          t: left(q.shieldUntil),
+          v: Math.round(q.shield),
+        });
+      if (q.manaShield && q.manaShield.until > now)
+        push(out, {
+          s: q.manaShield.src ?? "escudo-de-mana",
+          k: "mana",
+          t: left(q.manaShield.until),
+        });
+      return out;
+    });
+    const dots = new Map<number, Map<string, FrameStatus>>();
+    for (const q of heroes)
+      for (const d of q.dots) {
+        if (d.until <= now) continue;
+        const per = dots.get(d.enemy) ?? new Map<string, FrameStatus>();
+        dots.set(d.enemy, per);
+        const id = d.key + "|" + q.i;
+        const cur = per.get(id);
+        if (cur) {
+          cur.n = (cur.n ?? 1) + 1;
+          cur.t = Math.max(cur.t, left(d.until));
+        } else
+          per.set(id, { s: srcOf(d.key), k: "dot", t: left(d.until), a: q.i });
+      }
+    const x = enemies.map((e) => {
+      const out: FrameStatus[] = [];
+      if (!e.alive) return out;
+      for (const [key, b] of e.debuffs)
+        if (b.until > now)
+          push(out, {
+            s: b.src ?? srcOf(key),
+            k: "debuff",
+            st: b.stat,
+            t: left(b.until),
+            ...(b.by !== undefined ? { a: b.by } : {}),
+          });
+      for (const st of dots.get(e.i)?.values() ?? []) push(out, st);
+      if (e.stunnedUntil > now)
+        push(out, { s: "atordoado", k: "atordoado", t: left(e.stunnedUntil) });
+      if (e.forced && e.forcedUntil > now)
+        push(out, {
+          s: "provocar",
+          k: "provocado",
+          t: left(e.forcedUntil),
+          a: who(e.forced),
+        });
+      return out;
+    });
+    return any ? { h, x } : null;
   };
 
   const recordKills = () => {
@@ -1155,6 +1263,7 @@ export function fight(
             if (hook.on === "sobracura" && over > 0 && q.alive) {
               q.shield = Math.max(q.shield, over * hook.shieldPct);
               q.shieldUntil = Math.max(q.shieldUntil, dur(8000));
+              q.shieldSrc = s.id;
             }
         }
         return;
@@ -1199,6 +1308,7 @@ export function fight(
         for (const tt of targets) {
           tt.shield = amountFor(tt);
           tt.shieldUntil = dur(eff.durationMs);
+          tt.shieldSrc = s.id;
           tt.shieldBreak =
             breakHook && breakHook.on === "escudoQuebra"
               ? {
@@ -1223,6 +1333,7 @@ export function fight(
                 other.shieldUntil,
                 dur(eff.durationMs),
               );
+              other.shieldSrc = s.id;
             }
           }
         return;
@@ -1234,6 +1345,7 @@ export function fight(
           until: dur(eff.durationMs),
           spent: 0,
           refund: ret && ret.on === "manaVolta" ? ret.pct : 0,
+          src: s.id,
         };
         return;
       }
@@ -1243,6 +1355,8 @@ export function fight(
           stat: eff.stat,
           value: eff.value,
           until: dur(eff.durationMs),
+          src: s.id,
+          by: who(h),
         });
         if (eff.stat === "hpMaxPct")
           for (const q of eff.target === "grupo" ? aliveHeroes() : [h])
@@ -1261,6 +1375,8 @@ export function fight(
             stat: eff.stat,
             value,
             until: dur(eff.durationMs),
+            src: s.id,
+            by: who(h),
           });
         }
         return;
