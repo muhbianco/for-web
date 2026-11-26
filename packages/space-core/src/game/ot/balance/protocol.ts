@@ -15,7 +15,7 @@ import {
   OFFHAND_IDS,
   STATS,
 } from "./content.ts";
-import type { HeroV5, OwnedItem } from "./hero.ts";
+import { type HeroV5, type OwnedItem, BAG_SLOTS } from "./hero.ts";
 import type { Material } from "./items/generate.ts";
 import type { RunMeter } from "./run/meter.ts";
 import type { RunFrame, RunOutcome } from "./run/simulate.ts";
@@ -126,6 +126,14 @@ export const RpgMasterCmd = cmd(
     .strict(),
 );
 
+/**
+ * Mestre: trocar de classe (26/11/2026). Job e Proficiência voltam ao 1; o nível fica (`changeClass`).
+ */
+export const RpgMasterClassCmd = cmd(
+  "rpg.master.class",
+  z.object({ npc, cls: z.enum(CLASS_IDS) }).strict(),
+);
+
 // ------------------------------------------------------------ equipamento
 
 export const RpgEquipCmd = cmd("rpg.equip", z.object({ uid: ref }).strict());
@@ -205,6 +213,17 @@ export const RpgShopSellCmd = cmd(
   "rpg.shop.sell",
   z.object({ npc, uid: ref, confirm: z.boolean().optional() }).strict(),
 );
+/** Vende vários itens da mochila numa gravação só (tudo ou nada); com +7, só com `confirm`. */
+export const RpgShopSellManyCmd = cmd(
+  "rpg.shop.sell.many",
+  z
+    .object({
+      npc,
+      uids: z.array(ref).min(1).max(BAG_SLOTS),
+      confirm: z.boolean().optional(),
+    })
+    .strict(),
+);
 /** Ferreiro: refinar (com a Pedra de Proteção opcional), reforjar ou desmontar. */
 export const RpgSmithCmd = cmd(
   "rpg.smith",
@@ -216,6 +235,11 @@ export const RpgSmithCmd = cmd(
       protect: z.boolean().optional(),
     })
     .strict(),
+);
+/** Ferreiro: desmonta vários itens da mochila numa gravação só (tudo ou nada). */
+export const RpgSmithDismantleManyCmd = cmd(
+  "rpg.smith.dismantle.many",
+  z.object({ npc, uids: z.array(ref).min(1).max(BAG_SLOTS) }).strict(),
 );
 /** Banqueiro: ouro no cofre (positivo deposita, negativo saca). */
 export const RpgBankCmd = cmd(
@@ -305,6 +329,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgSkillSlotsCmd,
   RpgSkillAiCmd,
   RpgMasterCmd,
+  RpgMasterClassCmd,
   RpgEquipCmd,
   RpgUnequipCmd,
   RpgAutoEquipCmd,
@@ -313,7 +338,9 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgBeltCmd,
   RpgShopBuyCmd,
   RpgShopSellCmd,
+  RpgShopSellManyCmd,
   RpgSmithCmd,
+  RpgSmithDismantleManyCmd,
   RpgBankCmd,
   RpgVaultCmd,
   RpgVaultExpandCmd,

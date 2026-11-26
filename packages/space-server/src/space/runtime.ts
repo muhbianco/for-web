@@ -617,6 +617,16 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.broadcastLobby(lobby, true, {});
   }
 
+  /** The hero changed class at the Mestre (26/11/2026): the group shows the new class. */
+  lobbyHero(userId: string, cls: RpgLobbyMember["cls"], level: number): void {
+    const lobby = this.lobbies.of(userId);
+    const m = lobby?.members.find((x) => x.user_id === userId);
+    if (!lobby || !m) return;
+    m.cls = cls;
+    m.level = level;
+    this.broadcastLobby(lobby, true, {});
+  }
+
   /** The loop could not start the next run: it stops, and everyone sees why. */
   lobbyLoopFailed(id: string, why: RpgLoopStop, detail?: string): void {
     const lobby = this.lobbies.loopFailed(id, why, detail);

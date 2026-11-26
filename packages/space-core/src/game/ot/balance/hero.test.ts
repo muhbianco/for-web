@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import { Rng } from "../../rng.ts";
+import { resetAllocation } from "./attributes.ts";
 import { fight, randomSource } from "./combat/fight.ts";
 import { CLASS_IDS, CLASSES } from "./content.ts";
 import { cannotEquip } from "./equipment.ts";
@@ -17,9 +18,11 @@ import {
   buyAmmo,
   buyCommonItem,
   buyPotions,
+  changeClass,
   createHero,
   discardItem,
   dismantleItem,
+  dismantleItems,
   equipItem,
   evolveTier,
   heroRunFighter,
@@ -28,6 +31,7 @@ import {
   respecAttributes,
   respecSkills,
   sellItem,
+  sellItems,
   setBelt,
   startDojo,
   stopDojo,
@@ -37,6 +41,8 @@ import {
   vaultTake,
 } from "./hero.ts";
 import { generateItem, materialOf } from "./items/generate.ts";
+import { buyBackPrice } from "./npcs/merchant.ts";
+import { freshHeroSkills } from "./skills/tree.ts";
 
 // O herói v5 (Fase 8): criação e cada ação do jogador.
 
@@ -351,4 +357,105 @@ test("o herói salvo passa na conferência; documento torto volta com o motivo (
     }),
     /forma: bag/,
   );
+});
+
+test("Mestre: trocar de classe zera job e Proficiência; nível, XP, ouro e itens ficam; o que não veste vai para a mochila", () => {
+  const g: HeroV5 = {
+    ...createHero("guerreiro", id),
+    level: 40,
+    xp: 12_345,
+    job: 25,
+    jobXp: 999,
+    proficiency: 300,
+    proficiencyXp: 50,
+    gold: 777,
+    attrs: { FOR: 60, AGI: 1, VIT: 40, INT: 1, DES: 20, SOR: 1 },
+    attrResets: 1,
+  };
+  const before = Object.values(g.equipment).filter(Boolean) as OwnedItem[];
+  const r = ok(changeClass(g, "mago"));
+  const h = r.hero;
+  assert.equal(h.cls, "mago");
+  assert.deepEqual([h.level, h.xp, h.gold], [40, 12_345, 777]);
+  assert.deepEqual(
+    [h.job, h.jobXp, h.proficiency, h.proficiencyXp],
+    [1, 0, 1, 0],
+  );
+  // Os pontos de atributo voltam livres sem gastar a redistribuição.
+  assert.deepEqual(h.attrs, resetAllocation(B));
+  assert.equal(h.attrResets, 1);
+  ok(raiseAttributes(h, { INT: 10 }));
+  assert.deepEqual(h.skills, freshHeroSkills("mago"));
+  // Nada se perde: o que a classe nova não veste está na mochila.
+  const worn = Object.values(h.equipment).filter(Boolean) as OwnedItem[];
+  for (const it of worn) assert.equal(cannotEquip(balanceHero(h), it, B), null);
+  const mine = new Set([...worn, ...h.bag].map((x) => x.uid));
+  for (const it of before) assert.ok(mine.has(it.uid), it.slot);
+  assert.equal(mine.size, before.length);
+  assert.ok(r.unequipped > 0);
+  assert.equal(r.unequipped, before.length - worn.length);
+
+  assert.deepEqual(changeClass(h, "mago"), {
+    ok: false,
+    error: "mesma-classe",
+  });
+  assert.deepEqual(changeClass(ok(startDojo(h, 0)).hero, "guerreiro"), {
+    ok: false,
+    error: "treinando",
+  });
+  const full: HeroV5 = {
+    ...g,
+    bag: Array.from({ length: BAG_SLOTS }, () => own({ slot: "anel" })),
+  };
+  assert.deepEqual(changeClass(full, "mago"), {
+    ok: false,
+    error: "mochila-cheia",
+  });
+});
+
+test("venda e desmanche em lote: a soma dos itens, numa gravação só, tudo ou nada", () => {
+  const a = own({ slot: "anel" }, 50);
+  const b = own({ slot: "colar" }, 50);
+  const c = { ...own({ slot: "elmo", weight: "media" }, 50), refine: 7 };
+  const h: HeroV5 = {
+    ...createHero("guerreiro", id),
+    level: 50,
+    gold: 10,
+    bag: [a, b, c],
+  };
+  const s = ok(sellItems(h, [a.uid, b.uid], false));
+  assert.equal(s.gold, buyBackPrice(a) + buyBackPrice(b));
+  assert.equal(s.hero.gold, 10 + s.gold);
+  assert.deepEqual(
+    s.hero.bag.map((x) => x.uid),
+    [c.uid],
+  );
+  // O +7 pede a confirmação; sem ela, nada sai (nem os outros).
+  assert.deepEqual(sellItems(h, [a.uid, c.uid], false), {
+    ok: false,
+    error: "confirmacao",
+  });
+  assert.equal(ok(sellItems(h, [a.uid, b.uid, c.uid], true)).hero.bag.length, 0);
+  assert.deepEqual(sellItems(h, [a.uid, "nao-tem"], false), {
+    ok: false,
+    error: "item-nao-encontrado",
+  });
+  for (const bad of [[], [a.uid, a.uid]])
+    assert.deepEqual(sellItems(h, bad, false), {
+      ok: false,
+      error: "lista-invalida",
+    });
+
+  const d = ok(dismantleItems(h, [a.uid, b.uid, c.uid]));
+  const one = [a, b, c].reduce((x, it) => ok(dismantleItem(x, it.uid)).hero, h);
+  assert.deepEqual(
+    [d.hero.ores, d.hero.essence, d.hero.bag],
+    [one.ores, one.essence, []],
+  );
+  // O vestido não desmonta.
+  const worn = Object.values(h.equipment).find(Boolean)!;
+  assert.deepEqual(dismantleItems(h, [a.uid, worn.uid]), {
+    ok: false,
+    error: "item-nao-encontrado",
+  });
 });

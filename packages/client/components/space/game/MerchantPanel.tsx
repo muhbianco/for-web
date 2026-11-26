@@ -382,19 +382,16 @@ function Sell(props: {
     setSel(
       sel().includes(uid) ? sel().filter((x) => x !== uid) : [...sel(), uid],
     );
+  // Um comando para a lista inteira (tudo ou nada): item por item, uma mochila cheia passava do
+  // limite de comandos por segundo e a venda parava no meio.
   const sell = async () => {
     const list = chosen();
     const g = total();
-    const r = await cmd.runAll(
-      list.map((x) => [
-        "rpg.shop.sell",
-        {
-          npc: props.npc,
-          uid: x.uid,
-          ...(sellNeedsConfirm(x) ? { confirm: true } : {}),
-        },
-      ]),
-    );
+    const r = await cmd.run("rpg.shop.sell.many", {
+      npc: props.npc,
+      uids: list.map((x) => x.uid),
+      ...(risky().length > 0 ? { confirm: true } : {}),
+    });
     setSel([]);
     if (r?.ok) props.onDone(list.length, g);
   };
@@ -414,6 +411,16 @@ function Sell(props: {
         hint
       />
       <Row>
+        <Show when={h().bag.length > 0 && sel().length < h().bag.length}>
+          <Btn
+            type="button"
+            data-size="sm"
+            data-tone="quiet"
+            onClick={() => setSel(h().bag.map((x) => x.uid))}
+          >
+            {t`Selecionar tudo`}
+          </Btn>
+        </Show>
         <Btn
           type="button"
           data-size="sm"

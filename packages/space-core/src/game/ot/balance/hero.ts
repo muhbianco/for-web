@@ -1,4 +1,4 @@
-import { resetAttributes, raiseStats } from "./attributes.ts";
+import { resetAllocation, resetAttributes, raiseStats } from "./attributes.ts";
 import type { Condition, FighterInput } from "./combat/types.ts";
 import {
   type AmmoGrade,
@@ -266,6 +266,61 @@ export function respecSkills(h: HeroV5, B: Balance = gameBalance) {
   );
 }
 
+/** A ordem de vestir na troca de classe: a arma antes da mão secundária (o escudo confere com ela). */
+const WEAR_ORDER: GearSlot[] = [
+  "arma",
+  "secundaria",
+  ...ARMOR_SLOTS,
+  "colar",
+  "anel",
+];
+
+/**
+ * Mestre: trocar de classe (26/11/2026, pedido do dono). O preço é o job e a Proficiência, que voltam
+ * ao 1; as skills da classe nova começam no T1 (os pontos saem do job). Nível, XP, ouro, itens,
+ * poções, munição e minério ficam. Os atributos voltam a 1 com os pontos livres, sem gastar a
+ * redistribuição (a build de uma classe não serve na outra, e o preço é só o que o dono definiu). O
+ * que a classe nova não veste vai para a mochila; com o "escolher o melhor" ligado, ela veste o que
+ * servir da mochila.
+ */
+export function changeClass(
+  h: HeroV5,
+  cls: ClassId,
+  B: Balance = gameBalance,
+) {
+  if (!CLASSES[cls]) return fail("classe-desconhecida" as const);
+  if (cls === h.cls) return fail("mesma-classe" as const);
+  if (h.dojo) return fail("treinando" as const);
+  const base: HeroV5 = {
+    ...h,
+    cls,
+    job: 1,
+    jobXp: 0,
+    proficiency: 1,
+    proficiencyXp: 0,
+    attrs: resetAllocation(B),
+    skills: freshHeroSkills(cls),
+    equipment: {} as OwnedEquipment,
+  };
+  const worn: Record<string, OwnedItem> = {};
+  const bag = [...h.bag];
+  let off = 0;
+  for (const slot of WEAR_ORDER) {
+    const it = (h.equipment as Record<string, OwnedItem | undefined>)[slot];
+    if (!it) continue;
+    const probe = { ...base, equipment: worn as OwnedEquipment };
+    if (cannotEquip(balanceHero(probe), it, B)) {
+      bag.push(it);
+      off++;
+    } else worn[slot] = it;
+  }
+  if (bag.length > BAG_SLOTS) return fail("mochila-cheia" as const);
+  const next: HeroV5 = { ...base, equipment: worn as OwnedEquipment, bag };
+  if (!next.autoEquip || off === 0) return done(next, { unequipped: off });
+  const auto = autoEquipBag(next, B);
+  return done(auto.ok ? auto.hero : next, { unequipped: off });
+}
+
 // ------------------------------------------------------------ equipamento e mochila
 
 const takeFromBag = (h: HeroV5, uid: string) => {
@@ -430,6 +485,37 @@ export function sellItem(
   return done({ ...h, bag: got.bag, gold: h.gold + gold }, { gold });
 }
 
+/** Tudo ou nada: uma lista sem repetição, cada uid aplicado sobre o resultado do anterior. */
+function eachItem<E extends string, X extends object>(
+  h: HeroV5,
+  uids: string[],
+  one: (h: HeroV5, uid: string) => HeroResult<E, X>,
+): { ok: true; hero: HeroV5; each: X[] } | { ok: false; error: E | "lista-invalida" } {
+  if (uids.length === 0 || new Set(uids).size !== uids.length)
+    return fail("lista-invalida" as const);
+  let cur = h;
+  const each: X[] = [];
+  for (const uid of uids) {
+    const r = one(cur, uid);
+    if (!r.ok) return r;
+    cur = r.hero;
+    each.push(r);
+  }
+  return { ok: true, hero: cur, each };
+}
+
+/** Vender vários de uma vez (a venda em lote numa gravação só): o +7 só com `confirmed`. */
+export function sellItems(
+  h: HeroV5,
+  uids: string[],
+  confirmed: boolean,
+  B: Balance = gameBalance,
+) {
+  const r = eachItem(h, uids, (x, uid) => sellItem(x, uid, confirmed, B));
+  if (!r.ok) return r;
+  return done(r.hero, { gold: r.each.reduce((a, x) => a + x.gold, 0) });
+}
+
 // ------------------------------------------------------------ Ferreiro
 
 const replaceItem = (h: HeroV5, uid: string, item: OwnedItem): HeroV5 => {
@@ -510,6 +596,12 @@ export function dismantleItem(h: HeroV5, uid: string) {
     },
     essence: h.essence + d.essence,
   });
+}
+
+/** Desmontar vários de uma vez, só da mochila (o vestido não desmonta). */
+export function dismantleItems(h: HeroV5, uids: string[]) {
+  const r = eachItem(h, uids, (x, uid) => dismantleItem(x, uid));
+  return r.ok ? done(r.hero) : r;
 }
 
 // ------------------------------------------------------------ Banqueiro (o cofre do próprio herói)

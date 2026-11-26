@@ -30,7 +30,7 @@ import {
   Tabs,
   useCommands,
 } from "./gameUi";
-import { equippedIn, findItem, gold, pct } from "./heroModel";
+import { bagMarks, findItem, gold, pct } from "./heroModel";
 
 type Tab = "refinar" | "reforjar" | "desmontar";
 
@@ -47,7 +47,8 @@ type Outcome =
  * O Ferreiro (§9.6, §10, D3): refinar mostra a chance, o que acontece se falhar (perde o custo, ou
  * cai 1 nível do +8 em diante), o custo com o que você tem, e a Pedra de Proteção só quando ela
  * serve (P48: só é gasta se a falha derrubaria). O resultado aparece na hora, com o antes e o
- * depois. Reforjar e desmontar não voltam atrás: confirmação, e o +7 pede duas.
+ * depois. Reforjar e desmontar não voltam atrás: confirmação, e o +7 pede duas. Desmontar é em lote,
+ * como a venda no Mercador: marca vários (ou tudo) e vê o minério e a Essência antes (26/11/2026).
  */
 export function SmithPanel(props: {
   link: GameLink;
@@ -61,6 +62,17 @@ export function SmithPanel(props: {
   const [sel, setSel] = createSignal<string | null>(null);
   const [protect, setProtect] = createSignal(false);
   const [outcome, setOutcome] = createSignal<Outcome>(null);
+  const [many, setMany] = createSignal<string[]>([]);
+  const [broke, setBroke] = createSignal<string | null>(null);
+  const breaking = () => tab() === "desmontar";
+  const marks = createMemo(() => (breaking() ? bagMarks(h()) : {}));
+  const chosen = () => h().bag.filter((x) => many().includes(x.uid));
+  const toggleMany = (uid: string) => {
+    setBroke(null);
+    setMany(
+      many().includes(uid) ? many().filter((x) => x !== uid) : [...many(), uid],
+    );
+  };
 
   const worn = () =>
     (Object.values(h().equipment).filter(Boolean) as OwnedItem[]).filter((x) =>
@@ -122,6 +134,7 @@ export function SmithPanel(props: {
           setTab(v);
           setOutcome(null);
           setSel(null);
+          setMany([]);
         }}
         items={[
           { id: "refinar", label: t`Refinar` },
@@ -143,14 +156,56 @@ export function SmithPanel(props: {
       <ItemGrid
         label={t`Mochila`}
         items={bag()}
-        selected={sel() ? [sel()!] : []}
-        onToggle={pick}
+        selected={breaking() ? many() : sel() ? [sel()!] : []}
+        onToggle={breaking() ? toggleMany : pick}
+        mark={breaking() ? (uid) => marks()[uid]?.mark : undefined}
         note={(it) => `+${it.refine}`}
         empty={<Muted>{t`Nada na mochila serve aqui.`}</Muted>}
         hero={h()}
         price={buyBackPrice}
         hint
       />
+      <Show when={breaking() && h().bag.length > 0}>
+        <Row>
+          <Show when={many().length < h().bag.length}>
+            <Btn
+              type="button"
+              data-size="sm"
+              data-tone="quiet"
+              onClick={() => setMany(h().bag.map((x) => x.uid))}
+            >
+              {t`Selecionar tudo`}
+            </Btn>
+          </Show>
+          <Btn
+            type="button"
+            data-size="sm"
+            data-tone="quiet"
+            onClick={() =>
+              setMany(
+                h()
+                  .bag.filter(
+                    (x) => marks()[x.uid]?.mark === "blocked" && x.refine < 7,
+                  )
+                  .map((x) => x.uid),
+              )
+            }
+          >
+            {t`Marcar o que não dá para vestir`}
+          </Btn>
+          <Show when={many().length > 0}>
+            <Btn
+              type="button"
+              data-size="sm"
+              data-tone="quiet"
+              onClick={() => setMany([])}
+            >
+              {t`Limpar`}
+            </Btn>
+          </Show>
+        </Row>
+        <Muted>{t`O que está vestido não desmonta: tire antes na ficha.`}</Muted>
+      </Show>
       <Show when={tab() === "refinar"}>
         <Muted>{t`Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam.`}</Muted>
       </Show>
@@ -159,34 +214,14 @@ export function SmithPanel(props: {
       <Show when={outcome()} keyed>
         {(o) => <Result outcome={o} item={item()} />}
       </Show>
-      <Notice error={cmd.error()} />
+      <Notice error={cmd.error()} ok={breaking() ? broke() : null} />
 
       <Show when={item()}>
         {(it) => (
           <Show
             when={tab() === "refinar"}
             fallback={
-              <Show
-                when={tab() === "reforjar"}
-                fallback={
-                  <DismantleBox
-                    item={it()}
-                    worn={
-                      !!equippedIn(h(), it().slot as never) &&
-                      equippedIn(h(), it().slot as never)!.uid === it().uid
-                    }
-                    busy={cmd.busy()}
-                    onConfirm={async () => {
-                      const r = await cmd.run("rpg.smith", {
-                        npc: props.npc,
-                        action: "desmontar",
-                        uid: it().uid,
-                      });
-                      if (r?.ok) setSel(null);
-                    }}
-                  />
-                }
-              >
+              <Show when={tab() === "reforjar"}>
                 <ReforgeBox
                   item={it()}
                   gold={h().gold}
@@ -217,6 +252,34 @@ export function SmithPanel(props: {
             />
           </Show>
         )}
+      </Show>
+      <Show when={breaking() && chosen().length > 0}>
+        <DismantleBox
+          items={chosen()}
+          ups={chosen().filter((x) => marks()[x.uid]?.mark === "up").length}
+          busy={cmd.busy()}
+          onConfirm={async () => {
+            const list = chosen();
+            const sum = dismantleTotals(list);
+            setBroke(null);
+            const r = await cmd.run("rpg.smith.dismantle.many", {
+              npc: props.npc,
+              uids: list.map((x) => x.uid),
+            });
+            if (!r?.ok) return;
+            setMany([]);
+            const n = list.length;
+            const ores = sum.ores
+              .map(([m, c]) => t`${c} minério de ${m}`)
+              .join(", ");
+            const essence = sum.essence;
+            setBroke(
+              essence > 0
+                ? t`Desmontou ${n} itens: ${ores} e ${essence} Essência.`
+                : t`Desmontou ${n} itens: ${ores}.`,
+            );
+          }}
+        />
       </Show>
       <Show when={item()}>
         {(it) => <ItemCard hero={h()} item={it()} compare={false} />}
@@ -372,28 +435,54 @@ function ReforgeBox(props: {
   );
 }
 
+/** O que a lista vira: minério por material (na ordem em que aparece) e a Essência somada. */
+function dismantleTotals(items: OwnedItem[]) {
+  const ores = new Map<string, number>();
+  let essence = 0;
+  for (const it of items) {
+    const d = dismantle(it);
+    ores.set(d.ore.material, (ores.get(d.ore.material) ?? 0) + d.ore.count);
+    essence += d.essence;
+  }
+  return { ores: [...ores], essence };
+}
+
 function DismantleBox(props: {
-  item: OwnedItem;
-  worn: boolean;
+  items: OwnedItem[];
+  ups: number;
   busy: boolean;
   onConfirm: () => void;
 }) {
   const { t } = useLingui();
-  const d = () => dismantle(props.item);
+  const sum = () => dismantleTotals(props.items);
+  const risky = () => props.items.filter((x) => x.refine >= 7).length;
+  const n = () => props.items.length;
+  const ores = () =>
+    sum()
+      .ores.map(([m, c]) => t`${c} minério de ${m}`)
+      .join(", ");
   return (
     <Panel>
-      <strong>{t`Desmontar`}</strong>
+      <strong>{t`Desmontar ${n()} itens`}</strong>
       <Muted>
-        {t`Vira ${d().ore.count} minério de ${d().ore.material}`}
-        <Show when={d().essence > 0}> {t`e ${d().essence} Essência`}</Show>.
+        {t`Vira ${ores()}`}
+        <Show when={sum().essence > 0}> {t`e ${sum().essence} Essência`}</Show>.
       </Muted>
+      <Show when={props.ups > 0}>
+        <Muted role="note">
+          ⚠ {t`${props.ups} deles é melhor que o que você veste.`}
+        </Muted>
+      </Show>
+      <Show when={risky() > 0}>
+        <Muted role="note">⚠ {t`${risky()} item é +7 ou mais.`}</Muted>
+      </Show>
       <Confirm
         tone="danger"
-        steps={props.item.refine >= 7 ? 2 : 1}
-        disabled={props.busy || props.worn}
-        label={t`Desmontar`}
-        confirm={t`O item some para sempre. Toque de novo`}
-        confirm2={t`É +${props.item.refine}: toque mais uma vez`}
+        steps={risky() > 0 ? 2 : 1}
+        disabled={props.busy}
+        label={t`Desmontar ${n()} itens`}
+        confirm={t`Os itens somem para sempre. Toque de novo`}
+        confirm2={t`Tem item +7: toque mais uma vez`}
         onConfirm={props.onConfirm}
       />
     </Panel>

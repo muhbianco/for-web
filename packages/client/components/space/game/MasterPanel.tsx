@@ -1,18 +1,28 @@
-import { For, Show, createMemo } from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import {
+  type ClassId,
   type RpgHeroState,
   balance as B,
   CLASSES,
+  CLASS_IDS,
+  FAMILIES,
   attributePanel,
   balanceHero,
+  changeClass,
   pointsSpent,
   skillPointsSpent,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
-import { derivedName, roleName } from "./gameText";
+import {
+  classBlurb,
+  derivedName,
+  errorText,
+  roleName,
+  weightName,
+} from "./gameText";
 import { GAME_DOWN, GAME_UP } from "./gameTheme";
 import {
   type GameLink,
@@ -259,7 +269,137 @@ export function MasterPanel(props: {
         </Cards>
         <Muted>{t`Depois da 1ª, cada redistribuição custa 5.000 de ouro.`}</Muted>
       </Section>
+
+      <ClassChange link={props.link} npc={props.npc} state={props.state} />
     </Wrap>
+  );
+}
+
+/**
+ * Trocar de classe (26/11/2026, pedido do dono): o preço é o job e a Proficiência, que voltam ao 1.
+ * O nível, o XP, o ouro e os itens ficam; os atributos voltam para distribuir de novo, sem gastar a
+ * redistribuição. A prévia sai da mesma função do servidor (`changeClass`): o que vai para a
+ * mochila e por que não dá agora (treinando, mochila sem espaço).
+ */
+function ClassChange(props: {
+  link: GameLink;
+  npc: string;
+  state: RpgHeroState;
+}) {
+  const { t } = useLingui();
+  const cmd = useCommands(() => props.link);
+  const h = () => props.state.hero;
+  const others = () => CLASS_IDS.filter((c) => c !== h().cls);
+  const [pick, setPick] = createSignal<ClassId | null>(null);
+  const [ok, setOk] = createSignal<string | null>(null);
+  const target = () => {
+    const p = pick();
+    return p && p !== h().cls ? p : null;
+  };
+  const preview = createMemo(() => {
+    const cls = target();
+    return cls ? changeClass(h(), cls) : null;
+  });
+  const blocked = () => {
+    if (props.state.run) return errorText("in_run");
+    const p = preview();
+    return p && !p.ok ? errorText(p.error) : null;
+  };
+  const swap = async () => {
+    const cls = target();
+    if (!cls) return;
+    setOk(null);
+    const r = await cmd.run("rpg.master.class", { npc: props.npc, cls });
+    if (r?.ok) {
+      setPick(null);
+      setOk(
+        t`Agora você é ${CLASSES[cls].titles[1]} (começa como ${CLASSES[cls].titles[0]}). Distribua os atributos na ficha e confira o equipamento.`,
+      );
+    }
+  };
+  return (
+    <Section aria-label={t`Trocar de classe`}>
+      <h3>{t`Trocar de classe`}</h3>
+      <Notice error={cmd.error()} ok={ok()} />
+      <Panel>
+        <Muted>
+          {t`O preço é o job e a Proficiência: os dois voltam ao 1, e as habilidades da classe nova começam no tier 1. Ficam o nível, a experiência, o ouro, os itens, as poções, a munição e o minério. Os atributos voltam para você distribuir de novo, sem gastar a redistribuição.`}
+        </Muted>
+        <label>
+          <Muted>{t`Classe nova`} </Muted>
+          <Select
+            value={target() ?? ""}
+            onChange={(e) =>
+              setPick((e.currentTarget.value || null) as ClassId | null)
+            }
+          >
+            <option value="">{t`Escolha…`}</option>
+            <For each={others()}>
+              {(c) => (
+                <option value={c}>
+                  {CLASSES[c].titles[1]} · {roleName(CLASSES[c].role)}
+                </option>
+              )}
+            </For>
+          </Select>
+        </label>
+        <Show when={target()}>
+          {(cls) => {
+            const c = () => CLASSES[cls()];
+            const moved = () => {
+              const p = preview();
+              return p?.ok ? p.unequipped : 0;
+            };
+            return (
+              <>
+                <Muted>{classBlurb(cls())}</Muted>
+                <Facts>
+                  <span>
+                    {t`Armas`}:{" "}
+                    {c()
+                      .weapons.map((w) => FAMILIES[w].name)
+                      .join(", ")}
+                  </span>
+                  <span>
+                    {t`Armadura`}: {weightName(c().armor)}
+                  </span>
+                  <span>
+                    {t`Traço`}: {c().trait.name}
+                  </span>
+                </Facts>
+                <Checks>
+                  <li>
+                    {t`Job ${h().job} → 1 · Proficiência ${num(h().proficiency)} → 1`}
+                  </li>
+                  <li data-ok="">
+                    {t`Nível ${h().level}, ouro e itens ficam`}
+                  </li>
+                  <Show when={moved() > 0}>
+                    <li>
+                      {t`Vão para a mochila (a classe nova não veste): ${moved()} do que você usa agora.`}
+                    </li>
+                  </Show>
+                </Checks>
+                <Show when={blocked()}>
+                  {(why) => <Muted role="note">⚠ {why()}</Muted>}
+                </Show>
+                <div>
+                  <Confirm
+                    tone="danger"
+                    steps={2}
+                    disabled={cmd.busy() || !!blocked()}
+                    label={t`Trocar para ${c().titles[1]}`}
+                    confirm={t`Job e Proficiência voltam ao 1. Toque de novo`}
+                    confirm2={t`Não dá para desfazer: toque mais uma vez`}
+                    onConfirm={swap}
+                  />
+                </div>
+              </>
+            );
+          }}
+        </Show>
+      </Panel>
+    </Section>
   );
 }
 
@@ -305,3 +445,22 @@ const Cards = styled("div", {
   },
 });
 const Free = styled("strong", { base: { color: "#7ee08a" } });
+const Facts = styled("div", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    fontSize: "0.92em",
+  },
+});
+const Select = styled("select", {
+  base: {
+    minHeight: "36px",
+    borderRadius: "8px",
+    background: "var(--md-sys-color-surface)",
+    color: "inherit",
+    border: "1px solid var(--md-sys-color-outline)",
+    font: "inherit",
+    "@media (pointer: coarse)": { minHeight: "44px" },
+  },
+});

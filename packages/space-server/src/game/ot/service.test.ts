@@ -149,6 +149,10 @@ class FakeHost implements RpgHost {
   isPresent() {
     return true;
   }
+  lobbyHero(u: string, cls: Parameters<LobbyHub["join"]>[2]["cls"], level: number) {
+    const m = this.lobbies.of(u)?.members.find((x) => x.user_id === u);
+    if (m) Object.assign(m, { cls, level });
+  }
   lobbyOf(u: string) {
     return this.lobbies.of(u);
   }
@@ -569,6 +573,13 @@ test("Mercador na corrida: vende da mochila e compra poção e munição; item n
   assert.deepEqual(t.s.errors(smith), [
     { code: "rpg_invalid", reason: "in_run" },
   ]);
+  const swap = await t.send("rpg.master.class", {
+    npc: "mestre-1",
+    cls: t.s.hero()!.hero.cls === "padre" ? "mago" : "padre",
+  });
+  assert.deepEqual(t.s.errors(swap), [
+    { code: "rpg_invalid", reason: "in_run" },
+  ]);
   // A corrida fecha bem por cima das compras e da venda.
   const doc = [...t.runStore.docs.values()][0]!;
   t.clock.advance(doc.seconds * 1000 + 1000);
@@ -576,4 +587,80 @@ test("Mercador na corrida: vende da mochila e compra poção e munição; item n
   await t.svc.idle("U1");
   assert.equal(t.runStore.docs.get(doc._id)!.status, "settled");
   assert.equal(t.s.hero()!.run, null);
+});
+
+test("Mestre: troca de classe ao lado do NPC; job e Proficiência zeram, o nível fica e o grupo mostra a classe nova", async () => {
+  const t = setup();
+  const { s, send } = t;
+  await send("rpg.class", { cls: "guerreiro" });
+  edit(t, "U1", (h) => ({ ...h, level: 30, job: 12, proficiency: 200 }));
+  await send("rpg.open");
+  await send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
+  const far = await send("rpg.master.class", {
+    npc: "mestre-longe",
+    cls: "mago",
+  });
+  assert.deepEqual(s.errors(far), [{ code: "not_allowed", reason: "too_far" }]);
+  const c = await send("rpg.master.class", { npc: "mestre-1", cls: "mago" });
+  assert.deepEqual(s.errors(c), []);
+  const h = s.hero()!.hero;
+  assert.deepEqual(
+    [h.cls, h.level, h.job, h.proficiency],
+    ["mago", 30, 1, 1],
+  );
+  assert.equal(t.host.lobbyOf("U1")!.members[0]!.cls, "mago");
+  assert.equal(t.store.docs.get("U1")!.hero.cls, "mago");
+  const same = await send("rpg.master.class", { npc: "mestre-1", cls: "mago" });
+  assert.deepEqual(s.errors(same), [
+    { code: "rpg_invalid", reason: "mesma-classe" },
+  ]);
+});
+
+test("Mercador e Ferreiro em lote: um comando para a lista inteira, tudo ou nada", async () => {
+  const t = setup();
+  const { s, send } = t;
+  await send("rpg.class", { cls: "guerreiro" });
+  edit(t, "U1", (h) => ({ ...h, gold: 1_000_000 }));
+  await send("rpg.open");
+  for (let i = 0; i < 3; i++)
+    await send("rpg.shop.buy", {
+      npc: "mercador-1",
+      buy: { kind: "item", base: { slot: "anel" } },
+    });
+  edit(t, "U1", (h) => ({ ...h, gold: 0 }));
+  t.clock.advance(5_000);
+  await send("rpg.open");
+  const bag = s.hero()!.hero.bag.map((x) => x.uid);
+  assert.equal(bag.length, 3);
+  const bad = await send("rpg.shop.sell.many", {
+    npc: "mercador-1",
+    uids: [bag[0], "nao-tem"],
+  });
+  assert.deepEqual(s.errors(bad), [
+    { code: "rpg_invalid", reason: "item-nao-encontrado" },
+  ]);
+  assert.equal(s.hero()!.hero.bag.length, 3);
+  const sold = await send("rpg.shop.sell.many", {
+    npc: "mercador-1",
+    uids: bag.slice(0, 2),
+  });
+  assert.deepEqual(s.errors(sold), []);
+  assert.deepEqual(
+    s.hero()!.hero.bag.map((x) => x.uid),
+    [bag[2]],
+  );
+  assert.ok(s.hero()!.hero.gold > 0);
+  t.clock.advance(5_000); // o balde de comandos (4/s) enche de novo
+  const far = await send("rpg.smith.dismantle.many", {
+    npc: "ferreiro-longe",
+    uids: [bag[2]],
+  });
+  assert.deepEqual(s.errors(far), [{ code: "not_allowed", reason: "too_far" }]);
+  const d = await send("rpg.smith.dismantle.many", {
+    npc: "ferreiro-1",
+    uids: [bag[2]],
+  });
+  assert.deepEqual(s.errors(d), []);
+  assert.equal(s.hero()!.hero.bag.length, 0);
+  assert.ok(Object.values(s.hero()!.hero.ores).some((n) => (n ?? 0) > 0));
 });

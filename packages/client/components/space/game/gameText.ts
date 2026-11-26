@@ -357,6 +357,12 @@ export function errorText(code?: string, reason?: string): string {
     case "ja-treinando":
     case "training":
       return t`Você já está treinando no Dojô.`;
+    case "treinando":
+      return t`Pare o treino no Dojô antes de trocar de classe.`;
+    case "mesma-classe":
+      return t`Você já é dessa classe.`;
+    case "lista-invalida":
+      return t`Seleção inválida: marque os itens de novo.`;
     case "in_run":
       return t`Seu herói está numa dungeon agora.`;
     case "in_run_item":

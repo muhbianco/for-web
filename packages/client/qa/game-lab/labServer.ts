@@ -17,9 +17,11 @@ import {
   buyAmmo,
   buyCommonItem,
   buyPotions,
+  changeClass,
   createHero,
   discardItem,
   dismantleItem,
+  dismantleItems,
   dungeonById,
   equipItem,
   evolveTier,
@@ -34,6 +36,7 @@ import {
   runLoot,
   runRewards,
   sellItem,
+  sellItems,
   setBelt,
   setSkillAi,
   setSkillSlots,
@@ -226,6 +229,8 @@ export class LabServer implements TvLink {
               ? respecAttributes(h)
               : respecSkills(h),
         );
+      case "rpg.master.class":
+        return this.apply(re, changeClass(h, d.cls as ClassId));
       case "rpg.equip":
         return this.apply(re, equipItem(h, String(d.uid)));
       case "rpg.unequip":
@@ -270,6 +275,13 @@ export class LabServer implements TvLink {
       }
       case "rpg.shop.sell":
         return this.apply(re, sellItem(h, String(d.uid), d.confirm === true));
+      case "rpg.shop.sell.many":
+        return this.apply(
+          re,
+          sellItems(h, d.uids as string[], d.confirm === true),
+        );
+      case "rpg.smith.dismantle.many":
+        return this.apply(re, dismantleItems(h, d.uids as string[]));
       case "rpg.smith":
         return this.apply(
           re,

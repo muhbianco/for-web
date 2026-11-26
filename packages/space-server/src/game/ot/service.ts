@@ -30,7 +30,9 @@ import {
   buyCommonItem,
   buyPotions,
   discardItem,
+  changeClass,
   dismantleItem,
+  dismantleItems,
   dungeonById,
   equipItem,
   evolveTier,
@@ -47,6 +49,7 @@ import {
   runLoot,
   runRewards,
   sellItem,
+  sellItems,
   setBelt,
   setSkillAi,
   setSkillSlots,
@@ -169,6 +172,8 @@ export interface RpgHost {
     detail?: string,
   ): void;
   isPresent(userId: string): boolean;
+  /** O herói trocou de classe no Mestre: o grupo em que ele está mostra a classe nova. */
+  lobbyHero(userId: string, cls: RpgLobbyMember["cls"], level: number): void;
   lobbyOf(userId: string): Lobby | undefined;
   allLobbies(): Lobby[];
   sendRun(
@@ -598,6 +603,26 @@ export class RpgService {
           "rpg master",
         );
       }
+      case "rpg.master.class": {
+        if (!near(cmd.d.npc, "mestre")) return;
+        const from = (await this.load(userId))?.hero.cls;
+        await act(
+          (d) => apply(d, changeClass(d.hero, cmd.d.cls)),
+          "rpg class changed",
+        );
+        const doc = await this.load(userId);
+        if (doc && doc.hero.cls === cmd.d.cls && from !== cmd.d.cls) {
+          this.log.info("rpg class change", {
+            server: host.serverId,
+            user: userId,
+            from,
+            to: cmd.d.cls,
+            level: doc.hero.level,
+          });
+          host.lobbyHero(userId, doc.hero.cls, doc.hero.level);
+        }
+        return;
+      }
       case "rpg.equip":
         return act((d) => apply(d, equipItem(d.hero, cmd.d.uid)));
       case "rpg.unequip":
@@ -652,6 +677,21 @@ export class RpgService {
           (d) => apply(d, sellItem(d.hero, cmd.d.uid, cmd.d.confirm ?? false)),
           undefined,
           true,
+        );
+      }
+      case "rpg.shop.sell.many": {
+        if (!near(cmd.d.npc, "mercador")) return;
+        return act(
+          (d) => apply(d, sellItems(d.hero, cmd.d.uids, cmd.d.confirm ?? false)),
+          undefined,
+          true,
+        );
+      }
+      case "rpg.smith.dismantle.many": {
+        if (!near(cmd.d.npc, "ferreiro")) return;
+        return act(
+          (d) => apply(d, dismantleItems(d.hero, cmd.d.uids)),
+          "rpg smith",
         );
       }
       case "rpg.smith": {

@@ -13,6 +13,10 @@ msgstr ""
 "Language-Team: \n"
 "Plural-Forms: \n"
 
+#: components/space/game/gameText.ts
+msgid "Seleção inválida: marque os itens de novo."
+msgstr ""
+
 #. js-lingui-explicit-id
 #: components/i18n/dayjs.tsx
 msgid "[Yesterday at] LT"
@@ -343,8 +347,10 @@ msgstr ""
 msgid "{0} de ouro"
 msgstr ""
 
+#. placeholder {0}: props.ups
 #. placeholder {0}: ups()
 #: components/space/game/MerchantPanel.tsx
+#: components/space/game/SmithPanel.tsx
 msgid "{0} deles é melhor que o que você veste."
 msgstr ""
 
@@ -400,8 +406,10 @@ msgstr ""
 msgid "{0} is typing…"
 msgstr ""
 
+#. placeholder {0}: risky()
 #. placeholder {0}: risky().length
 #: components/space/game/MerchantPanel.tsx
+#: components/space/game/SmithPanel.tsx
 msgid "{0} item é +7 ou mais."
 msgstr ""
 
@@ -740,6 +748,10 @@ msgstr ""
 
 #: components/space/game/skillText.ts
 msgid "{c} de chance de não gastar mana."
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "{c} minério de {m}"
 msgstr ""
 
 #: components/space/game/RunHud.tsx
@@ -1797,6 +1809,12 @@ msgstr ""
 msgid "Agora"
 msgstr ""
 
+#. placeholder {0}: CLASSES[cls].titles[1]
+#. placeholder {1}: CLASSES[cls].titles[0]
+#: components/space/game/MasterPanel.tsx
+msgid "Agora você é {0} (começa como {1}). Distribua os atributos na ficha e confira o equipamento."
+msgstr ""
+
 #. placeholder {0}: leaderName()
 #: components/space/game/RunPanel.tsx
 #~ msgid "Aguardando {0} começar a próxima."
@@ -2090,6 +2108,7 @@ msgstr ""
 
 #: components/space/game/ClassPicker.tsx
 #: components/space/game/gameText.ts
+#: components/space/game/MasterPanel.tsx
 msgid "Armadura"
 msgstr ""
 
@@ -2107,6 +2126,7 @@ msgid "Armadura pesada demais para a sua classe."
 msgstr ""
 
 #: components/space/game/ClassPicker.tsx
+#: components/space/game/MasterPanel.tsx
 msgid "Armas"
 msgstr ""
 
@@ -3057,6 +3077,10 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Classe agora: {0} ({1}ª)."
 #~ msgstr ""
+
+#: components/space/game/MasterPanel.tsx
+msgid "Classe nova"
+msgstr ""
 
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Clear status"
@@ -4372,6 +4396,19 @@ msgstr ""
 msgid "Desmontar"
 msgstr ""
 
+#. placeholder {0}: n()
+#: components/space/game/SmithPanel.tsx
+msgid "Desmontar {0} itens"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Desmontou {n} itens: {ores} e {essence} Essência."
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Desmontou {n} itens: {ores}."
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Destreza: ATQ à distância, precisão, golpe mínimo e recarga."
 msgstr ""
@@ -4584,7 +4621,7 @@ msgstr ""
 msgid "Duration"
 msgstr ""
 
-#. placeholder {0}: d().essence
+#. placeholder {0}: sum().essence
 #: components/space/game/SmithPanel.tsx
 msgid "e {0} Essência"
 msgstr ""
@@ -5045,6 +5082,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Escolha uma opção antes de seguir."
 #~ msgstr ""
+
+#: components/space/game/MasterPanel.tsx
+msgid "Escolha…"
+msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Escolher a dungeon"
@@ -6313,10 +6354,20 @@ msgstr ""
 msgid "Job {0} (você tem {1})"
 msgstr ""
 
+#. placeholder {0}: h().job
+#. placeholder {1}: num(h().proficiency)
+#: components/space/game/MasterPanel.tsx
+msgid "Job {0} → 1 · Proficiência {1} → 1"
+msgstr ""
+
 #. placeholder {0}: b().job
 #. placeholder {1}: Math.floor(b().jobXp.frac * 100)
 #: components/space/game/RunHud.tsx
 msgid "Job {0}: {1}% para o próximo"
+msgstr ""
+
+#: components/space/game/MasterPanel.tsx
+msgid "Job e Proficiência voltam ao 1. Toque de novo"
 msgstr ""
 
 #: components/space/game/PartyDock.tsx
@@ -6589,6 +6640,7 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/MerchantPanel.tsx
+#: components/space/game/SmithPanel.tsx
 msgid "Limpar"
 msgstr ""
 
@@ -6910,6 +6962,7 @@ msgid "Marcar 1 ponto em {0}"
 msgstr ""
 
 #: components/space/game/MerchantPanel.tsx
+#: components/space/game/SmithPanel.tsx
 msgid "Marcar o que não dá para vestir"
 msgstr ""
 
@@ -7563,6 +7616,10 @@ msgstr ""
 msgid "Não dá para chegar nessa sala daqui."
 msgstr ""
 
+#: components/space/game/MasterPanel.tsx
+msgid "Não dá para desfazer: toque mais uma vez"
+msgstr ""
+
 #: components/space/game/GearPanel.tsx
 msgid "não dá para vestir"
 msgstr ""
@@ -7737,6 +7794,11 @@ msgstr ""
 #. placeholder {1}: ev().milestone!.have
 #: components/space/game/MasterPanel.tsx
 msgid "Nível {0} (você tem {1})"
+msgstr ""
+
+#. placeholder {0}: h().level
+#: components/space/game/MasterPanel.tsx
+msgid "Nível {0}, ouro e itens ficam"
 msgstr ""
 
 #. placeholder {0}: b().level
@@ -8067,8 +8129,8 @@ msgid "O item já está no +10."
 msgstr ""
 
 #: components/space/game/SmithPanel.tsx
-msgid "O item some para sempre. Toque de novo"
-msgstr ""
+#~ msgid "O item some para sempre. Toque de novo"
+#~ msgstr ""
 
 #. placeholder {0}: num(MASTERY_PCT)
 #: components/space/game/NpcDialog.tsx
@@ -8147,6 +8209,14 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui — o VIP entra sozinho, sem precisar reabrir o app."
+msgstr ""
+
+#: components/space/game/MasterPanel.tsx
+msgid "O preço é o job e a Proficiência: os dois voltam ao 1, e as habilidades da classe nova começam no tier 1. Ficam o nível, a experiência, o ouro, os itens, as poções, a munição e o minério. Os atributos voltam para você distribuir de novo, sem gastar a redistribuição."
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "O que está vestido não desmonta: tire antes na ficha."
 msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
@@ -8310,6 +8380,10 @@ msgstr "Abriha ang mga setting"
 
 #: components/space/game/GearPanel.tsx
 msgid "Ordem"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Os itens somem para sempre. Toque de novo"
 msgstr ""
 
 #: components/space/game/runUi.ts
@@ -8503,6 +8577,10 @@ msgstr ""
 
 #: components/app/interface/settings/server/bans/ListBans.tsx
 msgid "Pardon User"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Pare o treino no Dojô antes de trocar de classe."
 msgstr ""
 
 #: components/ui/components/design/LoadingScreen.tsx
@@ -10035,6 +10113,11 @@ msgstr ""
 msgid "Selecionado"
 msgstr ""
 
+#: components/space/game/MerchantPanel.tsx
+#: components/space/game/SmithPanel.tsx
+msgid "Selecionar tudo"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Select audio input"
 msgstr ""
@@ -10854,6 +10937,7 @@ msgid "Tem item +7: confirme mais uma vez"
 msgstr ""
 
 #: components/space/game/MerchantPanel.tsx
+#: components/space/game/SmithPanel.tsx
 msgid "Tem item +7: toque mais uma vez"
 msgstr ""
 
@@ -11223,14 +11307,19 @@ msgid "Tonal Spot"
 msgstr ""
 
 #: components/space/game/ClassPicker.tsx
-msgid "Toque de novo: a classe não muda depois"
+msgid "Toque de novo para começar"
 msgstr ""
+
+#: components/space/game/ClassPicker.tsx
+#~ msgid "Toque de novo: a classe não muda depois"
+#~ msgstr ""
 
 #: components/space/game/ItemCard.tsx
 msgid "Toque e segure um item para ver os detalhes."
 msgstr ""
 
 #: components/space/game/ClassPicker.tsx
+#: components/space/game/MasterPanel.tsx
 msgid "Traço"
 msgstr ""
 
@@ -11333,12 +11422,21 @@ msgstr ""
 msgid "Trocar a dungeon do grupo"
 msgstr ""
 
+#: components/space/game/MasterPanel.tsx
+msgid "Trocar de classe"
+msgstr ""
+
 #: components/space/game/GearPanel.tsx
 msgid "Trocar mesmo assim"
 msgstr ""
 
 #: components/space/game/SmithPanel.tsx
 msgid "Trocar os afixos de agora? Toque de novo"
+msgstr ""
+
+#. placeholder {0}: c().titles[1]
+#: components/space/game/MasterPanel.tsx
+msgid "Trocar para {0}"
 msgstr ""
 
 #: components/space/SmartTv.tsx
@@ -11643,6 +11741,11 @@ msgstr ""
 msgid "Valor inválido."
 msgstr ""
 
+#. placeholder {0}: moved()
+#: components/space/game/MasterPanel.tsx
+msgid "Vão para a mochila (a classe nova não veste): {0} do que você usa agora."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Varinha"
 #~ msgstr ""
@@ -11897,11 +12000,16 @@ msgstr "Nagtan-aw og daan nga mga mensahe"
 #~ msgid "Vigor"
 #~ msgstr ""
 
+#. placeholder {0}: ores()
+#: components/space/game/SmithPanel.tsx
+msgid "Vira {0}"
+msgstr ""
+
 #. placeholder {0}: d().ore.count
 #. placeholder {1}: d().ore.material
 #: components/space/game/SmithPanel.tsx
-msgid "Vira {0} minério de {1}"
-msgstr ""
+#~ msgid "Vira {0} minério de {1}"
+#~ msgstr ""
 
 #: components/space/game/heroUi.ts
 #~ msgid "vira {name} ({mana} de mana)"
@@ -11980,6 +12088,10 @@ msgstr ""
 #. placeholder {0}: CLASSES[h().cls].titles[3]
 #: components/space/game/MasterPanel.tsx
 msgid "Você está no último tier: {0}."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Você já é dessa classe."
 msgstr ""
 
 #: components/space/game/gameText.ts

@@ -47,7 +47,7 @@ function kitText(h: ReturnType<typeof createHero>): string {
 /**
  * O jogador novo (D34, wipe geral; §15.7): o aviso de que o jogo recomeçou e as 7 classes agrupadas
  * pelo papel no grupo (a decisão que importa: tanque, suporte ou dano). Escolher mostra o detalhe;
- * começar pede um 2º toque, porque a classe não muda depois.
+ * começar pede um 2º toque. Trocar depois é no Mestre, ao preço do job e da Proficiência.
  */
 export function ClassPicker(props: { link: GameLink; onDone?: () => void }) {
   const { t } = useLingui();
@@ -132,7 +132,7 @@ export function ClassPicker(props: { link: GameLink; onDone?: () => void }) {
                   tone="primary"
                   disabled={cmd.busy()}
                   label={t`Começar como ${c().titles[1]}`}
-                  confirm={t`Toque de novo: a classe não muda depois`}
+                  confirm={t`Toque de novo para começar`}
                   onConfirm={start}
                 />
                 <Btn
