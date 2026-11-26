@@ -1043,12 +1043,66 @@ export function fight(
           ),
         };
       case "perdiAggro":
-        return {
-          ok: enemies.some(
-            (e) => e.alive && e.target !== null && e.target !== h,
-          ),
-        };
+        return { ok: looseFoes(h).length > 0 };
     }
+  };
+
+  /**
+   * Os monstros soltos para o tanque `h`: vivos e mirando um herói vivo que não é ele nem outro
+   * tanque (o que está com outro tanque já está seguro; dois tanques não roubam um do outro).
+   */
+  const looseFoes = (h: Hero): Enemy[] =>
+    enemies.filter(
+      (e) =>
+        e.alive &&
+        e.target !== null &&
+        e.target.alive &&
+        e.target !== h &&
+        e.target.input.role !== "tanque",
+    );
+  const tauntScope = (s: SkillDef): "alvo" | "sala" | null => {
+    for (const eff of s.effects) if (eff.type === "provocar") return eff.scope;
+    return null;
+  };
+  /**
+   * A provocação só sai quando algum monstro escapou do tanque (26/11/2026, pedido do dono: "o
+   * guerreiro só provoca de novo quando não estiver com o aggro dos bichos"). Vale para a skill que
+   * só provoca (o Grito de Guerra): a de sala espera 2 soltos, ou 1 sem provocação de alvo pronta.
+   * O golpe que também é o dano do tanque (Golpe Provocador, Golpe Sagrado) segue na recarga e vai
+   * no monstro solto quando houver (`tauntFoe`): segurado, o tanque sozinho nunca o soltava (o
+   * paladino empacava no L40) e perdia dano em grupo. Sozinho não há a quem provocar: nada muda.
+   */
+  const tauntAllowed = (h: Hero, s: SkillDef): boolean => {
+    const scope = tauntScope(s);
+    if (!scope) return true;
+    if (!heroes.some((q) => q !== h && q.alive)) return true;
+    if (s.effects.some((e) => e.type === "dano")) return true;
+    // A que também protege o tanque (o Grito dá −10% de dano recebido) sai como defesa quando ele
+    // segura 2+ monstros e já perdeu 30% da vida: a provocação de quebra não encurta a que está no ar.
+    if (
+      s.effects.some((e) => e.type === "buff" && e.target === "proprio") &&
+      ratio(h) < cfg.threat.tauntDefendBelow &&
+      enemies.filter((e) => e.alive && e.target === h).length >= 2
+    )
+      return true;
+    const loose = looseFoes(h).length;
+    if (loose === 0) return false;
+    if (scope === "alvo" || loose >= 2) return true;
+    return !h.input.skills.some(
+      (q) =>
+        q !== s &&
+        tauntScope(q) === "alvo" &&
+        (h.cds.get(q.id) ?? 0) <= t &&
+        q.manaPct * h.ch.manaBase * intCut(h) <= h.mp,
+    );
+  };
+  /** O monstro da provocação de alvo: o solto que bate no aliado com menos vida. */
+  const tauntFoe = (h: Hero, s: SkillDef): Enemy | null => {
+    if (tauntScope(s) !== "alvo") return null;
+    let best: Enemy | null = null;
+    for (const e of looseFoes(h))
+      if (!best || ratio(e.target!) < ratio(best.target!)) best = e;
+    return best;
   };
 
   const anyCondition = (h: Hero, s: SkillDef): { ok: boolean; ally?: Hero } => {
@@ -1493,8 +1547,12 @@ export function fight(
       case "provocar": {
         const targets = eff.scope === "sala" ? aliveEnemies() : e ? [e] : [];
         for (const x of targets) {
+          // Não soma nem encurta: a do mesmo tanque vale até a que acabar por último.
+          x.forcedUntil =
+            x.forced === h
+              ? Math.max(x.forcedUntil, dur(eff.durationMs))
+              : dur(eff.durationMs);
           x.forced = h;
-          x.forcedUntil = dur(eff.durationMs);
           const top = Math.max(...heroes.map((q) => q.threat[x.i]!));
           h.threat[x.i] = Math.max(h.threat[x.i]!, top * cfg.threat.tauntTop);
         }
@@ -1559,7 +1617,7 @@ export function fight(
   };
 
   const resolveSkill = (h: Hero, s: SkillDef, ally: Hero | undefined) => {
-    const e = focus();
+    const e = tauntFoe(h, s) ?? focus();
     const ctx: Ctx = { landed: true };
     for (const eff of s.effects) applyEffect(h, s, eff, e, ally, ctx);
     for (const hook of s.hooks ?? []) {
@@ -1948,6 +2006,7 @@ export function fight(
         if (cost > h.mp) continue;
         const cond = anyCondition(h, s);
         if (!cond.ok) continue;
+        if (!tauntAllowed(h, s)) continue;
         if (burstHeld(h, s)) continue;
         const target = pickAlly(h, s, cond.ally);
         if (!target.ok) continue;

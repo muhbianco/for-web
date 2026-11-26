@@ -16,6 +16,8 @@
 // Rodar (no space-core), depois de mexer em fórmula, skill ou config:
 //   node scripts/gen-monsters.ts && node scripts/gen-edge.ts --write
 // Sem --write, só mostra os pontos. Com --fresh, calcula os monstros na hora (sem a tabela gerada).
+// Com --only masmorra,regiao, só esses tipos são recalculados; os outros ficam como estão gravados
+// (D47: as Caçadas 40–90 não se regeram sem rever a jornada do mago solo).
 import { writeFileSync } from "node:fs";
 
 import { randomSource } from "../src/game/ot/balance/combat/fight.ts";
@@ -41,6 +43,9 @@ import { Rng } from "../src/game/rng.ts";
 
 const WRITE = process.argv.includes("--write");
 const FRESH = process.argv.includes("--fresh");
+const onlyArg = process.argv.indexOf("--only");
+const ONLY =
+  onlyArg >= 0 ? new Set(process.argv[onlyArg + 1]!.split(",")) : null;
 const M = createMonsters(B, FRESH ? null : undefined);
 const NO_TIMER = 1e9;
 
@@ -97,6 +102,10 @@ const out: Record<string, DungeonEdge> = {};
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const short = (c: ClassId[]) => c.map((x) => x.slice(0, 3)).join("+");
 for (const d of DUNGEONS) {
+  if (ONLY && !ONLY.has(d.kind)) {
+    if (DUNGEON_EDGE[d.id]) out[d.id] = DUNGEON_EDGE[d.id]!;
+    continue;
+  }
   if (d.kind === "cacada" && d.level <= B.cfg.limit.entryHuntsUpTo) {
     delete DUNGEON_EDGE[d.id];
     console.log(`${d.id.padEnd(14)} zona de entrada, fora do aperto`);

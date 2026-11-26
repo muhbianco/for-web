@@ -151,6 +151,8 @@ export const BALANCE = {
     healShare: 0.5,
     /** "Segurar explosão": skill com multiplicador ≥ 300% espera se a ameaça passar de 80% da do tanque. */
     burstGuard: 0.8,
+    /** A provocação que também protege o tanque sai como defesa abaixo desta vida, com 2+ monstros nele. */
+    tauntDefendBelow: 0.7,
     burstMultiplierFrom: 3,
   },
 

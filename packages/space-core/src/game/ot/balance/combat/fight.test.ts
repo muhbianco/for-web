@@ -530,3 +530,23 @@ test("D46: mana crítica passa na frente da poção de vida (se a vida não esti
   // Quem desligou a poção de mana não bebe mana nunca.
   assert.equal(first(0.45, 0.05, { hp: 0.5, mp: 0 }), "vida");
 });
+
+test("provocação (26/11/2026): em grupo, o Grito de Guerra não sai com os monstros no tanque; sozinho, sai como antes", () => {
+  const grito = compileSkill(skillOf("guerreiro", "grito-de-guerra")!, {
+    potency: 1,
+    efficiency: 0,
+    mechanics: {},
+  });
+  const warrior = () => bare("guerreiro", [grito]);
+  const weak = () => hitter(5);
+  // O padre sem skill não puxa nada: os dois monstros ficam no guerreiro, vida cheia.
+  const group = run([warrior(), bare("padre")], [weak(), weak()]);
+  assert.equal(group.heroes[0]!.casts["grito-de-guerra"] ?? 0, 0, "gritou segurando os dois");
+  // Sozinho não há a quem provocar: o Grito sai pelos outros efeitos (a defesa), como antes.
+  const solo = run([warrior()], [weak(), weak()]);
+  assert.ok((solo.heroes[0]!.casts["grito-de-guerra"] ?? 0) >= 1, "sozinho não gritou");
+  // Apanhando de dois com a vida abaixo de 70%, sai como defesa mesmo segurando os dois.
+  const hard = () => hitter(E.dungeonBoss(L, 4).autoRaw / 3);
+  const pressed = run([warrior(), bare("padre")], [hard(), hard()]);
+  assert.ok((pressed.heroes[0]!.casts["grito-de-guerra"] ?? 0) >= 1, "não se defendeu");
+});
