@@ -52,7 +52,9 @@ export default function NpcDialog(props: {
               <Muted role="note">
                 {props.request.npc === "mercador"
                   ? t`Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada.`
-                  : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
+                  : props.request.npc === "ferreiro"
+                    ? t`Seu herói está numa dungeon. Dá para desmontar da mochila (abre espaço para o loot); refinar e reforjar, só quando a corrida acabar.`
+                    : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
               </Muted>
             </Show>
             <Show when={!s().run && props.request.npc !== "mercador" && props.inGroup}>

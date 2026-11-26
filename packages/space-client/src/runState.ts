@@ -43,6 +43,29 @@ export interface RunState {
   meterFromStart: boolean;
 }
 
+/**
+ * A corrida que chegou abre sozinha na tela? (`me` está nela e ela não acabou; quem chama confere.)
+ * A primeira de um grupo, sim; a seguinte do laço (`auto`), só para quem estava com a anterior aberta
+ * no resumo — sendo membro dela OU assistindo ao mesmo grupo (a mesma TV da mesma sala). Sem isso,
+ * quem entrava no grupo de uma dupla com a corrida rolando e a abria para ver ficava preso no
+ * resumo dela quando começava a corrida com ele (26/11/2026). Quem fechou a tela segue fechado.
+ */
+export function followsNextRun(o: {
+  run: { auto?: boolean; room: string; tv: string };
+  stageOpen: boolean;
+  open: {
+    ended: boolean;
+    room: string;
+    tv: string;
+    member: boolean;
+  } | null;
+}): boolean {
+  if (!o.run.auto || o.stageOpen) return true;
+  const open = o.open;
+  if (!open || !open.ended) return false;
+  return open.member || (open.room === o.run.room && open.tv === o.run.tv);
+}
+
 /** Quanto do registro o app guarda. */
 export const RUN_FEED_MAX = 40;
 

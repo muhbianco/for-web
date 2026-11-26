@@ -589,6 +589,49 @@ test("Mercador na corrida: vende da mochila e compra poção e munição; item n
   assert.equal(t.s.hero()!.run, null);
 });
 
+test("Ferreiro na corrida: desmonta da mochila (um e em lote); refinar e reforjar, depois (26/11/2026)", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "mago" });
+  edit(t, "U1", (h) => ({ ...h, gold: 50_000 }));
+  await t.send("rpg.open");
+  for (let i = 0; i < 3; i++)
+    await t.send("rpg.shop.buy", {
+      npc: "mercador-1",
+      buy: { kind: "item", base: { slot: "colar" } },
+    });
+  const [a, b, c] = t.s.hero()!.hero.bag.slice(-3);
+  assert.ok(a && b && c, "três colares na mochila");
+  await t.send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
+  await t.send("rpg.lobby.start");
+  t.clock.advance(LOBBY.countdownMs);
+  await t.tick();
+  assert.ok(t.s.hero()!.run, "na corrida");
+  const one = await t.send("rpg.smith", {
+    npc: "ferreiro-1",
+    action: "desmontar",
+    uid: a!.uid,
+  });
+  assert.deepEqual(t.s.errors(one), []);
+  const many = await t.send("rpg.smith.dismantle.many", {
+    npc: "ferreiro-1",
+    uids: [b!.uid],
+  });
+  assert.deepEqual(t.s.errors(many), []);
+  const bag = t.s.hero()!.hero.bag;
+  assert.ok(!bag.some((x) => x.uid === a!.uid || x.uid === b!.uid), "desmontou os dois");
+  for (const action of ["refinar", "reforjar"] as const) {
+    const r = await t.send("rpg.smith", { npc: "ferreiro-1", action, uid: c!.uid });
+    assert.deepEqual(t.s.errors(r), [{ code: "rpg_invalid", reason: "in_run" }], action);
+  }
+  // A corrida fecha bem por cima do desmonte.
+  const doc = [...t.runStore.docs.values()][0]!;
+  t.clock.advance(doc.seconds * 1000 + 1000);
+  await t.svc.tickRuns();
+  await t.svc.idle("U1");
+  assert.equal(t.runStore.docs.get(doc._id)!.status, "settled");
+  assert.equal(t.s.hero()!.run, null);
+});
+
 test("Mestre: troca de classe ao lado do NPC; job e Proficiência zeram, o nível fica e o grupo mostra a classe nova", async () => {
   const t = setup();
   const { s, send } = t;

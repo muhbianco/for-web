@@ -191,7 +191,17 @@ export class LabServer implements TvLink {
       "rpg.lobby.loop",
       "rpg.run.watch",
     ];
-    if (inRun && !free.includes(t)) return this.refuse(re, "in_run", "in_run");
+    // O que o servidor libera na corrida (26/11/2026): vender e comprar consumível no Mercador,
+    // desmontar no Ferreiro.
+    const duringRun =
+      t === "rpg.shop.sell" ||
+      t === "rpg.shop.sell.many" ||
+      (t === "rpg.shop.buy" &&
+        (d.buy as { kind?: string } | undefined)?.kind !== "item") ||
+      t === "rpg.smith.dismantle.many" ||
+      (t === "rpg.smith" && d.action === "desmontar");
+    if (inRun && !free.includes(t) && !duringRun)
+      return this.refuse(re, "in_run", "in_run");
     const rng = this.rng;
     switch (t) {
       case "rpg.dojo.start": {

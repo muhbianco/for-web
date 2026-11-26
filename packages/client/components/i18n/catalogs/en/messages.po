@@ -9547,6 +9547,10 @@ msgstr "Refinar"
 msgid "Refinar ({0})"
 msgstr "Refinar ({0})"
 
+#: components/space/game/SmithPanel.tsx
+msgid "Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora."
+msgstr "Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora."
+
 #. placeholder {0}: money(cost())
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Refinar por {0}"
@@ -10460,6 +10464,10 @@ msgstr "Seu herói está numa dungeon: dá para olhar tudo, mas as trocas ficam 
 #: components/space/game/NpcDialog.tsx
 msgid "Seu herói está numa dungeon: volte quando a corrida acabar."
 msgstr "Seu herói está numa dungeon: volte quando a corrida acabar."
+
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói está numa dungeon. Dá para desmontar da mochila (abre espaço para o loot); refinar e reforjar, só quando a corrida acabar."
+msgstr "Seu herói está numa dungeon. Dá para desmontar da mochila (abre espaço para o loot); refinar e reforjar, só quando a corrida acabar."
 
 #: components/space/game/NpcDialog.tsx
 msgid "Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada."

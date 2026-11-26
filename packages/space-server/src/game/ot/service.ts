@@ -693,11 +693,14 @@ export class RpgService {
         return act(
           (d) => apply(d, dismantleItems(d.hero, cmd.d.uids)),
           "rpg smith",
+          true,
         );
       }
       case "rpg.smith": {
         if (!near(cmd.d.npc, "ferreiro")) return;
         const roll = drawn();
+        // Desmontar vale na corrida, como vender no Mercador: o que está vestido não desmonta e a
+        // corrida usa a cópia do herói da largada. Refinar e reforjar, só depois (26/11/2026).
         return act(
           (d) =>
             apply(
@@ -709,6 +712,7 @@ export class RpgService {
                   : dismantleItem(d.hero, cmd.d.uid),
             ),
           "rpg smith",
+          cmd.d.action === "desmontar",
         );
       }
       case "rpg.bank": {

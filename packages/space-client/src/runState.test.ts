@@ -10,7 +10,38 @@ import {
   simulateRun,
 } from "@muchat/space-core/game/ot/balance";
 
-import { applyFrames, runStateFrom } from "./runState.ts";
+import { applyFrames, followsNextRun, runStateFrom } from "./runState.ts";
+
+test("a corrida nova abre sozinha: a primeira sempre; a do laço, para quem estava no resumo do mesmo grupo (26/11/2026)", () => {
+  const run = { auto: true, room: "r1", tv: "tv1" };
+  const open = (
+    o: Partial<{ ended: boolean; room: string; tv: string; member: boolean }>,
+  ) => ({ ended: true, room: "r1", tv: "tv1", member: false, ...o });
+  // A primeira do grupo (não é do laço) ou com a largada aberta: abre.
+  assert.equal(
+    followsNextRun({ run: { ...run, auto: false }, stageOpen: false, open: null }),
+    true,
+  );
+  assert.equal(followsNextRun({ run, stageOpen: true, open: null }), true);
+  // Quem fechou a tela segue fechado.
+  assert.equal(followsNextRun({ run, stageOpen: false, open: null }), false);
+  // Membro da anterior, no resumo: abre.
+  assert.equal(
+    followsNextRun({ run, stageOpen: false, open: open({ member: true }) }),
+    true,
+  );
+  // O caso do dono: assistia à corrida da dupla (não era membro), no mesmo grupo: abre.
+  assert.equal(followsNextRun({ run, stageOpen: false, open: open({}) }), true);
+  // Assistindo a outro grupo (outra TV), ou a uma corrida que ainda não acabou: não troca.
+  assert.equal(
+    followsNextRun({ run, stageOpen: false, open: open({ tv: "tv2" }) }),
+    false,
+  );
+  assert.equal(
+    followsNextRun({ run, stageOpen: false, open: open({ ended: false }) }),
+    false,
+  );
+});
 
 let n = 0;
 const id = () => `i${n++}`;

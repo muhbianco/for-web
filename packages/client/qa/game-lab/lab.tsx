@@ -45,6 +45,7 @@ import {
   mage45,
   newUid,
   stateOf,
+  stuffBag,
 } from "./scenarios";
 
 // Preguiçoso como no app. O markdown do app tem um ciclo de import que só fecha entrando pelo
@@ -156,6 +157,23 @@ const SCENARIOS: Scenario[] = [
     screen: "npc",
     npc: "ferreiro",
     build: () => world(stateOf(mage45())),
+  },
+  {
+    id: "ferreiro-corrida",
+    label: "Ferreiro (na corrida)",
+    screen: "npc",
+    npc: "ferreiro",
+    // O herói numa dungeon: só o desmonte vale (26/11/2026).
+    build: () =>
+      world(
+        stateOf(stuffBag(mage45(), 8), {
+          run: {
+            id: "lab-run",
+            dungeon: "masmorra-40",
+            ends_at: Date.now() + 10 * 60_000,
+          },
+        }),
+      ),
   },
   {
     id: "banqueiro",

@@ -42,7 +42,12 @@ import type {
   RunMeter,
 } from "@muchat/space-core/game/ot/balance";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
-import { type RunState, applyFrames, runStateFrom } from "./runState.ts";
+import {
+  type RunState,
+  applyFrames,
+  followsNextRun,
+  runStateFrom,
+} from "./runState.ts";
 import { type EditorState, Editor } from "./editor.ts";
 import { myHeroOf } from "./hero.ts";
 import { type Prompt, nearestInteractive } from "./interact.ts";
@@ -710,11 +715,20 @@ export class SpaceView {
         const openNow = this.state.runOpen
           ? this.state.runs[this.state.runOpen.id]
           : null;
-        // Whoever watches our group's start (the stage) follows it into the run.
-        const follow =
-          !run.auto ||
-          !!this.state.stageOpen ||
-          (!!openNow?.end && openNow.run.members.some((m) => m.user_id === me));
+        // Whoever watches our group's start (the stage) follows it into the run; so does whoever had
+        // the group's last run open, as a member or watching it (followsNextRun).
+        const follow = followsNextRun({
+          run,
+          stageOpen: !!this.state.stageOpen,
+          open: openNow
+            ? {
+                ended: !!openNow.end,
+                room: openNow.run.room,
+                tv: openNow.run.tv,
+                member: openNow.run.members.some((m) => m.user_id === me),
+              }
+            : null,
+        });
         this.patch({
           runs,
           ...(mine && this.state.stageOpen ? { stageOpen: null } : {}),

@@ -58,7 +58,11 @@ export function SmithPanel(props: {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
   const h = () => props.state.hero;
-  const [tab, setTab] = createSignal<Tab>("refinar");
+  // Na corrida só o desmonte vale (o servidor recusa refinar e reforjar): abre nele (26/11/2026).
+  const inRun = () => !!props.state.run;
+  const [tab, setTab] = createSignal<Tab>(
+    props.state.run ? "desmontar" : "refinar",
+  );
   const [sel, setSel] = createSignal<string | null>(null);
   const [protect, setProtect] = createSignal(false);
   const [outcome, setOutcome] = createSignal<Outcome>(null);
@@ -216,7 +220,12 @@ export function SmithPanel(props: {
       </Show>
       <Notice error={cmd.error()} ok={breaking() ? broke() : null} />
 
-      <Show when={item()}>
+      <Show when={inRun() && !breaking()}>
+        <Muted role="note">
+          {t`Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora.`}
+        </Muted>
+      </Show>
+      <Show when={inRun() && !breaking() ? undefined : item()}>
         {(it) => (
           <Show
             when={tab() === "refinar"}
