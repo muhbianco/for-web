@@ -163,6 +163,15 @@ test("modo aleatório: mesma semente dá a mesma luta, e a amostra segue os inva
  */
 const SPEC = { source: "spec", referenceAi: "gabarito" } as const;
 const SPEC_LEVELS = [40, 70, 100, 150, 200, 300, 400, 500];
+// D42 (25/11/2026): o druida virou suporte de batalha (dano mágico em área, dano que cura, buff de
+// poder no grupo): com ele o chefe cai antes (70–79 s), ele bate 47–55% do mago e conta como meio
+// DPS, então o "sem DPS" do spec leva dois padres.
+const hasDruid = (c: ClassId[]) => c.includes("druida");
+const MUST_LOSE_SPEC: [string, ClassId[]][] = MUST_LOSE.map(([label, c]) =>
+  label === "sem DPS"
+    ? [label, ["guerreiro", "padre", "paladino", "padre"]]
+    : [label, c],
+);
 
 test("skills do spec — §14.1: T/H/D/D vence em 75–100 s sem mortes; trios vencem sem mortes", () => {
   for (const L of SPEC_LEVELS) {
@@ -170,7 +179,7 @@ test("skills do spec — §14.1: T/H/D/D vence em 75–100 s sem mortes; trios v
       const r = E.dungeonFight(comp, L, SPEC);
       assert.ok(r.win && r.deaths === 0, `${name(comp)} L${L}`);
       assert.ok(
-        r.seconds >= 75 && r.seconds <= 100,
+        r.seconds >= (hasDruid(comp) ? 65 : 75) && r.seconds <= 100,
         `${name(comp)} L${L}: ${r.seconds} s`,
       );
     }
@@ -186,7 +195,7 @@ test("skills do spec — §14.1: T/H/D/D vence em 75–100 s sem mortes; trios v
 
 test("skills do spec — §14.1: sem tanque, sem suporte, sem DPS e só DPS perdem", () => {
   for (const L of SPEC_LEVELS)
-    for (const [label, comp] of MUST_LOSE)
+    for (const [label, comp] of MUST_LOSE_SPEC)
       assert.ok(!E.dungeonFight(comp, L, SPEC).win, `${label} L${L}`);
 });
 
@@ -214,8 +223,15 @@ test("skills do spec — §14.3: DPS a ±20%, tanques 20–45% e suportes 15–4
     assert.ok(Math.max(...dps) / Math.min(...dps) <= 1.25, `L${L}`);
     for (const c of ["guerreiro", "paladino"] as const)
       assert.ok(v[c] / v.mago >= 0.2 && v[c] / v.mago <= 0.45, `L${L} ${c}`);
-    for (const c of ["padre", "druida"] as const)
-      assert.ok(v[c] / v.mago >= 0.15 && v[c] / v.mago <= 0.4, `L${L} ${c}`);
+    assert.ok(
+      v.padre / v.mago >= 0.15 && v.padre / v.mago <= 0.4,
+      `L${L} padre`,
+    );
+    // D42: o druida de batalha fica entre o suporte e o DPS.
+    assert.ok(
+      v.druida / v.mago >= 0.4 && v.druida / v.mago <= 0.6,
+      `L${L} druida`,
+    );
   }
 });
 

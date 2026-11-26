@@ -13,9 +13,13 @@ import { referenceSkills } from "./encounters.ts";
  * isso seja engessado").
  */
 
-/** Masmorra e Região (5): tanque + cura + 3 de dano; tanque + 2 curas + 2; 2 tanques + cura + 2. */
+/**
+ * Masmorra e Região (5): tanque + cura + 3 de dano (com o padre e, desde a D42, com o druida de
+ * batalha como cura única); tanque + 2 curas + 2; 2 tanques + cura + 2.
+ */
 export const LIMIT_GROUP_PARTIES: readonly (readonly ClassId[])[] = [
   ["guerreiro", "padre", "mago", "cacador", "assassino"],
+  ["guerreiro", "druida", "mago", "cacador", "assassino"],
   ["guerreiro", "padre", "druida", "mago", "cacador"],
   ["guerreiro", "paladino", "padre", "mago", "cacador"],
 ];

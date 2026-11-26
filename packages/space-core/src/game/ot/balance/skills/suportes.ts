@@ -5,12 +5,10 @@ import {
   PRECISA_CURA,
   SEMPRE,
   SO_EM_CHEFE,
-  aliadoMp,
   duracao,
   efeito,
   fixo,
   gancho,
-  inimigos,
   mag,
   mech,
   potencia,
@@ -312,6 +310,8 @@ export const DRUIDA: SkillContent[] = [
         targets: "alvo",
       },
     ],
+    // D42, druida de batalha: 10% do dano direto cura o aliado com menos HP.
+    hooks: [{ on: "danoCura", pct: 0.1, target: "menorHp" }],
     mechanics: [
       mech(
         "espinhos-venenosos",
@@ -363,26 +363,34 @@ export const DRUIDA: SkillContent[] = [
     ],
   },
   {
+    // D42, druida de batalha: o buff em área do grupo (+12% de ATQ e MATQ) e a mana de antes.
     id: "cancao-da-floresta",
-    name: "Canção da Floresta",
+    name: "Canção de Guerra",
     cls: "druida",
     tier: 2,
     target: "grupo",
-    cooldownMs: s(40),
+    cooldownMs: s(30),
     manaPct: 0.06,
-    ai: [aliadoMp(0.4)],
+    ai: [SO_EM_CHEFE],
     effects: [
+      {
+        type: "buff",
+        target: "grupo",
+        stat: "poder",
+        value: 0.12,
+        durationMs: s(12),
+      },
       {
         type: "buff",
         target: "grupo",
         stat: "regenManaPct",
         value: 0.02,
-        durationMs: s(10),
+        durationMs: s(12),
       },
     ],
     mechanics: [
-      mech("coro", "Coro", 3, "+0,2%/s (máx. +1%/s).", [
-        valor(0, "value", 0.002),
+      mech("coro", "Coro", 3, "+0,2%/s de mana (máx. +1%/s).", [
+        valor(1, "value", 0.002),
       ]),
       mech(
         "harmonia",
@@ -396,7 +404,7 @@ export const DRUIDA: SkillContent[] = [
               target: "grupo",
               stat: "regenVidaPct",
               value: 0,
-              durationMs: s(10),
+              durationMs: s(12),
             },
             ["value"],
             0.004,
@@ -406,15 +414,19 @@ export const DRUIDA: SkillContent[] = [
     ],
   },
   {
+    // D42, druida de batalha: dano mágico em área (2× MATQ) que cura o aliado com menos HP, e a
+    // lentidão de antes.
     id: "raizes",
-    name: "Raízes",
+    name: "Fúria das Raízes",
     cls: "druida",
     tier: 2,
     target: "sala inteira",
-    cooldownMs: s(25),
+    cooldownMs: s(10),
     manaPct: 0.08,
-    ai: [inimigos(3), SO_EM_CHEFE],
+    ai: [SEMPRE],
+    hooks: [{ on: "danoCura", pct: 0.1, target: "menorHp" }],
     effects: [
+      { type: "dano", parts: [mag(2)], targets: "area" },
       {
         type: "debuff",
         stat: "velocidade",
@@ -438,8 +450,8 @@ export const DRUIDA: SkillContent[] = [
           ),
         ],
       ),
-      mech("terra-viva", "Terra Viva", 4, "+1 s (máx. +5 s).", [
-        duracao([0], 1000),
+      mech("terra-viva", "Terra Viva", 4, "+1 s de lentidão (máx. +5 s).", [
+        duracao([1], 1000),
       ]),
     ],
   },

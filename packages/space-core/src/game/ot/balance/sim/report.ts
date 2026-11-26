@@ -119,7 +119,8 @@ export function balanceReport(
   }
   // Quem ficou de fora da calibração: medido, não cobrado.
   const others: [string, Comp, string][] = [
-    ["druida de cura única", ["guerreiro", "druida", "mago", "cacador", "assassino"], " (P84: o druida segura como 2ª cura, não sozinho)"],
+    ["2 tanques, padre e druida (sem DPS puro)", ["guerreiro", "padre", "druida", "paladino"], " (D42: o druida de batalha conta como meio DPS)"],
+    ["paladino com o druida", ["paladino", "druida", "mago", "cacador", "assassino"], " (D42: o druida de batalha é cura única com o guerreiro; com o paladino de tanque, ainda não)"],
     ["paladino de tanque", ["paladino", "padre", "mago", "cacador", "assassino"], ""],
     ["grupo de 4", ["guerreiro", "padre", "mago", "cacador"], " (D41: a PT completa é de 5; com 4 a falta aparece)"],
     ["trio", ["guerreiro", "padre", "mago"], " (a sala da Masmorra não encolhe abaixo de 3)"],
@@ -133,7 +134,8 @@ export function balanceReport(
     ["sem tanque", ["druida", "mago", "cacador", "assassino"]],
     ["sem suporte", ["guerreiro", "mago", "cacador", "assassino"]],
     ["sem suporte", ["paladino", "mago", "cacador", "assassino"]],
-    ["sem DPS", ["guerreiro", "padre", "druida", "paladino"]],
+    // D42: o druida de batalha bate (metade do mago): o "sem DPS" leva dois padres.
+    ["sem DPS", ["guerreiro", "padre", "paladino", "padre"]],
     ["só DPS", ["mago", "cacador", "assassino", "mago"]],
   ];
   for (const [what, c] of mustLose) {
@@ -180,7 +182,7 @@ export function balanceReport(
   const scenarios: [string, Comp, boolean][] = [
     ...LIMIT_GROUP_PARTIES.map((c) => ["grupo de 5", [...c], true] as [string, Comp, boolean]),
     ["sem tanque", ["padre", "mago", "cacador", "assassino"], false],
-    ["sem DPS", ["guerreiro", "padre", "druida", "paladino"], false],
+    ["sem DPS", ["guerreiro", "padre", "paladino", "padre"], false],
   ];
   // D41: "vence 9 em 10" (decisão do dono) no grupo de calibração; o gerador confere com 20 corridas,
   // aqui são `n`: até 5 p.p. abaixo fica aceito pelo sorteio.

@@ -203,7 +203,8 @@ test("D41: os grupos de 5 da calibração vencem toda Masmorra e Região no limi
       assert.equal(run(c).outcome, "vitoria", `${c.join("+")} ${d.id}`);
     if (![40, 70, 110, 160, 310, 490].includes(d.level)) continue;
     assert.notEqual(
-      run(["guerreiro", "padre", "druida", "paladino", "padre"]).outcome,
+      // D42: o druida de batalha bate; o grupo sem DPS leva só tanques e padres.
+      run(["guerreiro", "padre", "paladino", "padre", "paladino"]).outcome,
       "vitoria",
       `${d.id} sem DPS`,
     );

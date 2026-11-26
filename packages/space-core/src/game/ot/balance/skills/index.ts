@@ -40,7 +40,8 @@ export const REFERENCE_KITS: Record<ClassId, string[]> = {
     "imposicao-de-maos",
   ],
   padre: ["curar", "escudo-sagrado", "santuario", "bencao"],
-  druida: ["florescer", "pele-de-carvalho", "espinhos", "rejuvenescer"],
+  // D42, druida de batalha: cura contínua, dano que cura, dano em área e o buff do grupo.
+  druida: ["rejuvenescer", "espinhos", "raizes", "cancao-da-floresta"],
   mago: ["meteoro", "raio-em-cadeia", "seta-arcana", "escudo-de-mana"],
   cacador: [
     "marca-do-cacador",
