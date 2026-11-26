@@ -251,12 +251,12 @@ if (process.argv.includes("--druid")) {
   // D44 em vigor; varia o custo do druida e se a Canção vale para ele.
   const base = { costScale: 1.3, perRank: 0.01, perUp: 0.02, cutPerInt: 0.003, regenPct: 0.004, cancao: 0.02 };
   console.log(`build ${BUILD}`);
-  console.log("Canção no druida	druida×	vitórias	druida	druida barra	mago	mago+dru	caçador+dru	assassino+dru	guerreiro+dru");
+  console.log("Canção no druida	druida×	vitórias	druida	druida % ouro	druida barra	druida s/ poção	mago	mago+dru	caçador+dru	assassino+dru	guerreiro+dru");
   for (const selfless of [true])
-    for (const dc of [1.1, 1.15, 1.2, 1.25]) {
+    for (const dc of [1, 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 2]) {
       const e = evaluate({ ...base, selfless, classCost: { assassino: 0.86, cacador: 0.89, druida: dc } });
       const v = (k: string) => n1(avg(e.byCls.get(k)?.potMP ?? []));
-      console.log([selfless ? "não" : "sim", dc, `${e.wins}/${e.total}`, v("druida"), pct(avg(e.byCls.get("druida")?.barred ?? [])), v("mago"), v("mago+dru"), v("cacador+dru"), v("assassino+dru"), v("guerreiro+dru")].join("	"));
+      console.log([selfless ? "não" : "sim", dc, `${e.wins}/${e.total}`, v("druida"), pct(avg(e.byCls.get("druida")?.share ?? [])), pct(avg(e.byCls.get("druida")?.barred ?? [])), pct(avg(e.byCls.get("druida")?.lostNoPot ?? [])), v("mago"), v("mago+dru"), v("cacador+dru"), v("assassino+dru"), v("guerreiro+dru")].join("	"));
     }
   process.exit(0);
 }
