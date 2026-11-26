@@ -17,6 +17,7 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { sizeName } from "./gameText";
 import { heroBars, num, potionOf } from "./heroModel";
+import { skillSlotState } from "./skillSlot";
 import { skillIcon } from "./skillText";
 import { SkillTip, runSkillInfo } from "./SkillTip";
 
@@ -436,15 +437,31 @@ function SkillBar(props: {
           };
           const frac = () => (s.cd_ms > 0 ? left() / s.cd_ms : 0);
           const secs = () => Math.ceil(left() / 1000);
-          const noMana = () => props.mana < s.mana;
-          const state = () =>
-            props.dead
-              ? t`${name}: o herói caiu`
-              : left() > 0
-                ? t`${name}: recarga, ${secs()} s`
-                : noMana()
-                  ? t`${name}: sem mana (${s.mana})`
-                  : t`${name}: pronta`;
+          // A mana do quadro é a do fim do segundo, já sem o custo do que saiu nele.
+          const slot = () =>
+            skillSlotState({
+              dead: props.dead,
+              nowS: props.nowS,
+              castAt: at(),
+              cooldownLeftMs: left(),
+              mana: props.mana,
+              cost: s.mana,
+            });
+          const noMana = () => slot() === "semMana";
+          const state = () => {
+            switch (slot()) {
+              case "caiu":
+                return t`${name}: o herói caiu`;
+              case "saiu":
+                return t`${name}: saiu agora`;
+              case "recarga":
+                return t`${name}: recarga, ${secs()} s`;
+              case "semMana":
+                return t`${name}: sem mana (${s.mana})`;
+              default:
+                return t`${name}: pronta`;
+            }
+          };
           return (
             <SkillTip info={() => runSkillInfo(props.member, s, props.hero)}>
               {(bind) => (
@@ -454,10 +471,8 @@ function SkillBar(props: {
                   aria-label={state()}
                   data-cd={left() > 0 ? "" : undefined}
                   data-nomana={noMana() ? "" : undefined}
-                  data-ready={
-                    !props.dead && left() <= 0 && !noMana() ? "" : undefined
-                  }
-                  data-cast={at() === props.nowS ? "" : undefined}
+                  data-ready={slot() === "pronta" ? "" : undefined}
+                  data-cast={slot() === "saiu" ? "" : undefined}
                 >
                   <Symbol size={24}>{skillIcon(props.member.cls, s.id)}</Symbol>
                   <Prio aria-hidden="true">{i() + 1}</Prio>

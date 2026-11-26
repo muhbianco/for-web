@@ -159,6 +159,13 @@ export const BALANCE = {
     /** Recarga global de 1 s, compartilhada entre vida e mana (o gabarito; mantida pelo dono em 25/11/2026, D27). */
     cooldownMs: 1000,
     /**
+     * D46: mana crítica primeiro. Abaixo desta mana a poção de mana passa na frente da de vida, se a
+     * vida estiver acima de `hpAbove` (a vida segue antes na regra normal). Sem isso o herói que
+     * apanha muito vive da poção de vida e a de mana nunca tem a vez (o caçador do Pandemonio, que
+     * passou 30 s com a mana abaixo de 40% e a vida abaixo de 50%).
+     */
+    manaCritical: { mpBelow: 0.15, hpAbove: 0.35 },
+    /**
      * D35: 3 tamanhos no cinto, com a mesma cura por segundo: pequena 1× (recarga 1 s), média 2× (2 s) e
      * grande 3× (3 s); o preço segue o mesmo fator. O herói equipa um tamanho de vida e um de mana.
      */

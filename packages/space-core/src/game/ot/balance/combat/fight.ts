@@ -1829,7 +1829,13 @@ export function fight(
       const hasMp = h.mpPots === null ? h.pots > 0 : h.mpPots > 0;
       if (h.potCd <= 0 && (hasHp || hasMp)) {
         const at = h.input.potionAt ?? { hp: 0.5, mp: 0.3 };
-        if (ratio(h) < at.hp && hasHp) {
+        // D46: mana crítica passa na frente (só para quem bebe mana; a vida não pode estar crítica).
+        const crit = cfg.potions.manaCritical;
+        const manaFirst =
+          hasMp &&
+          h.mp / ch.mp < Math.min(crit.mpBelow, at.mp) &&
+          ratio(h) >= crit.hpAbove;
+        if (!manaFirst && ratio(h) < at.hp && hasHp) {
           const before = h.hp;
           source = "pocao";
           heal(h, h.input.potions.hp, null);

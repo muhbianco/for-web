@@ -492,3 +492,41 @@ test("cura inteligente: a de grupo só sai quando rende no grupo", () => {
   const all = healFight(party(), [0.5, 0.4, 0.4, 0.6]);
   assert.equal(all.heroes[3]!.casts["florescer"], 1);
 });
+
+test("D46: mana crítica passa na frente da poção de vida (se a vida não estiver crítica)", () => {
+  const first = (hpPct: number, mpPct: number, at = { hp: 0.5, mp: 0.4 }) => {
+    const f: FighterInput = {
+      ...withSkills("cacador", []),
+      potions: { hp: 10, mp: 10, stock: 0, hpStock: 5, mpStock: 5 },
+      potionAt: at,
+    };
+    const r = fight([f], pack(1), {
+      maxSeconds: 1,
+      mode: "esperado",
+      record: true,
+      carry: [
+        {
+          hp: hpPct * f.stats.hp,
+          mp: mpPct * f.stats.mp,
+          alive: true,
+          pots: 10,
+          hpPots: 5,
+          mpPots: 5,
+          cooldowns: {},
+          revived: false,
+          cheatedDeath: false,
+        },
+      ],
+    });
+    const p = r.frames!.flatMap((x) => x.e).find((e) => e.k === "pocao");
+    return p ? (p.k === "pocao" && p.mana ? "mana" : "vida") : "nenhuma";
+  };
+  // Vida abaixo da linha (50%) mas acima da crítica (35%), mana crítica: a de mana sai antes.
+  assert.equal(first(0.45, 0.1), "mana");
+  // Mana baixa mas não crítica (20%): a vida segue antes, como sempre.
+  assert.equal(first(0.45, 0.2), "vida");
+  // Vida crítica: vida antes, mesmo com a mana zerada.
+  assert.equal(first(0.3, 0.05), "vida");
+  // Quem desligou a poção de mana não bebe mana nunca.
+  assert.equal(first(0.45, 0.05, { hp: 0.5, mp: 0 }), "vida");
+});
