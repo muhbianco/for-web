@@ -119,8 +119,8 @@ export function balanceReport(
   }
   // Quem ficou de fora da calibração: medido, não cobrado.
   const others: [string, Comp, string][] = [
-    ["2 tanques, padre e druida (sem DPS puro)", ["guerreiro", "padre", "druida", "paladino"], " (D42: o druida de batalha conta como meio DPS)"],
-    ["paladino com o druida", ["paladino", "druida", "mago", "cacador", "assassino"], " (D42: o druida de batalha é cura única com o guerreiro; com o paladino de tanque, ainda não)"],
+    ["2 tanques, padre e druida (sem DPS puro)", ["guerreiro", "padre", "druida", "paladino"], " (D42: o druida soma dano, mas não faz o papel do DPS)"],
+    ["paladino com o druida", ["paladino", "druida", "mago", "cacador", "assassino"], " (D42: o druida rende como o padre também com o paladino de tanque)"],
     ["paladino de tanque", ["paladino", "padre", "mago", "cacador", "assassino"], ""],
     ["grupo de 4", ["guerreiro", "padre", "mago", "cacador"], " (D41: a PT completa é de 5; com 4 a falta aparece)"],
     ["trio", ["guerreiro", "padre", "mago"], " (a sala da Masmorra não encolhe abaixo de 3)"],

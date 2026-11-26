@@ -310,8 +310,8 @@ export const DRUIDA: SkillContent[] = [
         targets: "alvo",
       },
     ],
-    // D42, druida de batalha: 10% do dano direto cura o aliado com menos HP.
-    hooks: [{ on: "danoCura", pct: 0.1, target: "menorHp" }],
+    // D42, druida de batalha: 40% do dano direto cura o aliado com menos HP (a cura dele vem do dano).
+    hooks: [{ on: "danoCura", pct: 0.4, target: "menorHp" }],
     mechanics: [
       mech(
         "espinhos-venenosos",
@@ -363,7 +363,7 @@ export const DRUIDA: SkillContent[] = [
     ],
   },
   {
-    // D42, druida de batalha: o buff em área do grupo (+12% de ATQ e MATQ) e a mana de antes.
+    // D42, druida de batalha: o buff em área do grupo (+4% de ATQ e MATQ) e a mana de antes.
     id: "cancao-da-floresta",
     name: "Canção de Guerra",
     cls: "druida",
@@ -377,7 +377,7 @@ export const DRUIDA: SkillContent[] = [
         type: "buff",
         target: "grupo",
         stat: "poder",
-        value: 0.12,
+        value: 0.04,
         durationMs: s(12),
       },
       {
@@ -414,8 +414,8 @@ export const DRUIDA: SkillContent[] = [
     ],
   },
   {
-    // D42, druida de batalha: dano mágico em área (2× MATQ) que cura o aliado com menos HP, e a
-    // lentidão de antes.
+    // D42, druida de batalha: dano mágico em área (0,8× MATQ) que cura o aliado com menos HP, e a
+    // lentidão de antes. Dano baixo de propósito: o druida cura batendo, não faz o papel do DPS.
     id: "raizes",
     name: "Fúria das Raízes",
     cls: "druida",
@@ -424,9 +424,9 @@ export const DRUIDA: SkillContent[] = [
     cooldownMs: s(10),
     manaPct: 0.08,
     ai: [SEMPRE],
-    hooks: [{ on: "danoCura", pct: 0.1, target: "menorHp" }],
+    hooks: [{ on: "danoCura", pct: 0.4, target: "menorHp" }],
     effects: [
-      { type: "dano", parts: [mag(2)], targets: "area" },
+      { type: "dano", parts: [mag(0.8)], targets: "area" },
       {
         type: "debuff",
         stat: "velocidade",

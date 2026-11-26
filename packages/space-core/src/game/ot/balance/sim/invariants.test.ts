@@ -164,8 +164,8 @@ test("modo aleatório: mesma semente dá a mesma luta, e a amostra segue os inva
 const SPEC = { source: "spec", referenceAi: "gabarito" } as const;
 const SPEC_LEVELS = [40, 70, 100, 150, 200, 300, 400, 500];
 // D42 (25/11/2026): o druida virou suporte de batalha (dano mágico em área, dano que cura, buff de
-// poder no grupo): com ele o chefe cai antes (70–79 s), ele bate 47–55% do mago e conta como meio
-// DPS, então o "sem DPS" do spec leva dois padres.
+// poder no grupo): com ele o chefe cai um pouco antes, ele bate 36–44% do mago (o padre 18–30%) e
+// soma dano, então o "sem DPS" do spec leva dois padres.
 const hasDruid = (c: ClassId[]) => c.includes("druida");
 const MUST_LOSE_SPEC: [string, ClassId[]][] = MUST_LOSE.map(([label, c]) =>
   label === "sem DPS"
@@ -227,9 +227,9 @@ test("skills do spec — §14.3: DPS a ±20%, tanques 20–45% e suportes 15–4
       v.padre / v.mago >= 0.15 && v.padre / v.mago <= 0.4,
       `L${L} padre`,
     );
-    // D42: o druida de batalha fica entre o suporte e o DPS.
+    // D42: o druida de batalha bate mais que o padre, mas longe do DPS (não faz o papel dele).
     assert.ok(
-      v.druida / v.mago >= 0.4 && v.druida / v.mago <= 0.6,
+      v.druida / v.mago >= 0.3 && v.druida / v.mago <= 0.5,
       `L${L} druida`,
     );
   }
