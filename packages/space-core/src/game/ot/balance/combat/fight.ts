@@ -37,6 +37,21 @@ import { FOE_BASE } from "./types.ts";
 
 export const TICK_SECONDS = 0.1;
 
+/**
+ * O custo de mana de uma skill compilada para quem a solta (D44): a INT barateia
+ * (cfg.mana.costCutPerInt). A ficha, a tela da corrida e o motor usam esta conta.
+ */
+export function skillManaCostFor(
+  s: Pick<SkillDef, "manaPct">,
+  stats: Pick<HeroStats, "manaBase" | "attrs">,
+  B: Balance = gameBalance,
+): number {
+  return (
+    (s.manaPct * stats.manaBase) /
+    (1 + B.cfg.mana.costCutPerInt * stats.attrs.INT)
+  );
+}
+
 /** Fonte de números em [0, 1) a partir do RNG com semente do jogo (game/rng.ts). */
 export function randomSource(rng: { u32(): number }): { next(): number } {
   return { next: () => rng.u32() / 4294967296 };
@@ -277,7 +292,7 @@ export function fight(
   let source = "auto";
   let foeSource = "golpe";
   const who = (h: Hero) => heroes.indexOf(h);
-  /** A INT barateia a skill (cfg.mana.costCutPerInt; 0 = como era). */
+  /** A INT barateia a skill (cfg.mana.costCutPerInt; D44). */
   const intCut = (h: Hero) =>
     1 / (1 + B.cfg.mana.costCutPerInt * h.ch.attrs.INT);
   const emit = (ev: FightEvent) => {

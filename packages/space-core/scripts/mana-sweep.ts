@@ -51,6 +51,8 @@ interface Params {
   cutPerInt: number;
   regenPct: number;
   cancao: number;
+  /** Ajuste por classe (assassino, caçador). */
+  classCost?: Record<string, number>;
 }
 
 function balanceOf(p: Params): Balance {
@@ -60,6 +62,7 @@ function balanceOf(p: Params): Balance {
   (cfg.mana as Record<string, number>).costPerMechanicUp = p.perUp;
   (cfg.mana as Record<string, number>).costCutPerInt = p.cutPerInt;
   (cfg.regen as Record<string, number>).mpPctPerSecond = p.regenPct;
+  cfg.mana.classCost = { ...(p.classCost ?? {}) };
   return createBalance(cfg);
 }
 
@@ -235,10 +238,36 @@ function report(p: Params, detail: boolean) {
   }
 }
 
+if (process.argv.includes("--tune")) {
+  const base = { costScale: 1.3, perRank: 0.01, perUp: 0.02, cutPerInt: 0.003, regenPct: 0.004 };
+  console.log("assassino×	caçador×	Canção	vitórias	assassino	assassino+dru	caçador	caçador+dru	guerreiro	guerreiro+dru");
+  for (const cancao of [0.01, 0.0125])
+    for (const a of [0.82, 0.86, 0.9])
+      for (const c of [0.85, 0.9]) {
+        const e = evaluate({ ...base, cancao, classCost: { assassino: a, cacador: c } });
+        const v = (k: string) => n1(avg(e.byCls.get(k)?.potMP ?? []));
+        console.log([a, c, cancao, `${e.wins}/${e.total}`, v("assassino"), v("assassino+dru"), v("cacador"), v("cacador+dru"), v("guerreiro"), v("guerreiro+dru")].join("	"));
+      }
+  process.exit(0);
+}
+
 const only = arg("--only");
 if (only) {
-  const [costScale, perRank, perUp, cutPerInt, regenPct, cancao] = only.split(",").map(Number);
-  report({ costScale: costScale!, perRank: perRank!, perUp: perUp!, cutPerInt: cutPerInt!, regenPct: regenPct!, cancao: cancao! }, true);
+  const [costScale, perRank, perUp, cutPerInt, regenPct, cancao, assa, caca] = only
+    .split(",")
+    .map(Number);
+  report(
+    {
+      costScale: costScale!,
+      perRank: perRank!,
+      perUp: perUp!,
+      cutPerInt: cutPerInt!,
+      regenPct: regenPct!,
+      cancao: cancao!,
+      classCost: { assassino: assa ?? 1, cacador: caca ?? 1 },
+    },
+    true,
+  );
 } else {
   const base: Params = { costScale: 1, perRank: 0, perUp: 0, cutPerInt: 0, regenPct: 0.004, cancao: 0.02 };
   report(base, true);

@@ -117,15 +117,23 @@ export const BALANCE = {
   },
 
   /**
-   * O custo de mana das skills (26/11/2026, em estudo: os valores daqui deixam o jogo como era).
-   * Custo = conteúdo × escala × (1 + por rank × (Potência − 1)) × (1 + por up × ups de Mecânica)
-   * × (1 − Eficiência) ÷ (1 + corte por INT × INT). A skill melhorada gasta mais; a INT barateia.
+   * O peso da mana (D44, 26/11/2026; estudo em scripts/mana-sweep.ts). Custo da skill = conteúdo ×
+   * escala × classe × (1 + por rank × (Potência − 1)) × (1 + por up × ups de adereço) × (1 −
+   * Eficiência) ÷ (1 + corte por INT × INT): a skill melhorada gasta mais e a INT barateia (além de
+   * dar mana e regeneração). Quem não é de INT paga em poção ou anda com o druida. Medido nos grupos
+   * de calibração (Masmorras 90–490): poções de mana por corrida ~ guerreiro 9, paladino 3, caçador
+   * 17 (9 com druida), assassino 20 (16 com druida), mago 2, padre 19; nenhuma skill barrada com
+   * poção; o teto é a recarga de 1 s que a poção de mana divide com a de vida (~45 por corrida).
    */
   mana: {
-    costScale: 1,
-    costPerPotencyRank: 0,
-    costPerMechanicUp: 0,
-    costCutPerInt: 0,
+    costScale: 1.3,
+    costPerPotencyRank: 0.01,
+    costPerMechanicUp: 0.02,
+    costCutPerInt: 0.003,
+    /** Ajuste por classe (× no custo de todas as skills dela; sem a classe, 1). */
+    classCost: { assassino: 0.86, cacador: 0.89 } as Partial<
+      Record<string, number>
+    >,
   },
 
   /** §5: ameaça. */

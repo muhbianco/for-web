@@ -384,7 +384,8 @@ export const DRUIDA: SkillContent[] = [
         type: "buff",
         target: "grupo",
         stat: "regenManaPct",
-        value: 0.02,
+        // D44: 2% → 1,25%/s (com 2% o druida zerava a mana do grupo inteiro).
+        value: 0.0125,
         durationMs: s(12),
       },
     ],

@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import type { Effect } from "../combat/types.ts";
+import { skillManaCostFor } from "../combat/fight.ts";
+import { balance } from "../formulas.ts";
 import { compileLoadout, compileSkill, skillCooldownMs } from "./compile.ts";
 import { skillOf } from "./index.ts";
 import { freshHeroSkills } from "./tree.ts";
@@ -41,9 +43,46 @@ test("Eficiência: −4% de mana e −3% de recarga por up", () => {
     efficiency: 5,
     mechanics: {},
   });
-  near(s.manaPct, 0.2 * 0.8);
+  // D44: o custo passa pela escala do peso da mana (1,3) antes da Eficiência.
+  near(s.manaPct, 0.2 * balance.cfg.mana.costScale * 0.8);
   near(s.ownCooldownCut!, 0.15);
   assert.equal(s.baseCooldownMs, 60_000);
+});
+
+test("D44: Potência e adereços encarecem a skill, a INT barateia, a classe ajusta", () => {
+  const m = balance.cfg.mana;
+  const crua = compileSkill(skillOf("mago", "meteoro")!, {
+    potency: 1,
+    efficiency: 0,
+    mechanics: {},
+  });
+  near(crua.manaPct, 0.2 * m.costScale);
+  const forte = compileSkill(skillOf("mago", "meteoro")!, {
+    potency: 11,
+    efficiency: 0,
+    mechanics: { [skillOf("mago", "meteoro")!.mechanics[0]!.id]: 5 },
+  });
+  near(
+    forte.manaPct,
+    crua.manaPct * (1 + 10 * m.costPerPotencyRank) * (1 + 5 * m.costPerMechanicUp),
+  );
+  // A INT corta o custo na hora de soltar (a ficha e a corrida usam a mesma conta).
+  const stats = { manaBase: 1000, attrs: { INT: 100 } } as never;
+  const semInt = { manaBase: 1000, attrs: { INT: 1 } } as never;
+  near(skillManaCostFor(crua, stats), (crua.manaPct * 1000) / (1 + 100 * m.costCutPerInt));
+  assert.ok(skillManaCostFor(crua, stats) < skillManaCostFor(crua, semInt));
+  // Assassino e caçador com o ajuste da classe.
+  const lamina = compileSkill(skillOf("assassino", "lamina-envenenada")!, {
+    potency: 1,
+    efficiency: 0,
+    mechanics: {},
+  });
+  near(
+    lamina.manaPct,
+    skillOf("assassino", "lamina-envenenada")!.manaPct *
+      m.costScale *
+      (m.classCost.assassino ?? 1),
+  );
 });
 
 test("adereços: duração, recarga fixa, efeito novo, gancho e o extra do 5/5", () => {

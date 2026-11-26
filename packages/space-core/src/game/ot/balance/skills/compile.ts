@@ -172,6 +172,7 @@ export function compileSkill(
     manaPct:
       content.manaPct *
       B.cfg.mana.costScale *
+      (B.cfg.mana.classCost[content.cls] ?? 1) *
       (1 + B.cfg.mana.costPerPotencyRank * (rank - 1)) *
       (1 + B.cfg.mana.costPerMechanicUp * mechanicUps(build)) *
       (1 - sk.efficiencyManaPerUp * eff),

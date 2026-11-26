@@ -38,6 +38,7 @@ import {
   evolveTier,
   heroRunFighter,
   meterOf,
+  skillManaCostFor,
   skillCooldownMs,
   planTransfer,
   raiseAttributes,
@@ -1276,7 +1277,7 @@ export class RpgService {
           equipment: m.hero.equipment,
           skills: f.skills.map((s) => ({
             id: s.id,
-            mana: Math.round(s.manaPct * f.stats.manaBase),
+            mana: Math.round(skillManaCostFor(s, f.stats)),
             cd_ms: Math.round(skillCooldownMs(s, f.stats.cooldownCut)),
           })),
           supplies: m.hero.supplies,

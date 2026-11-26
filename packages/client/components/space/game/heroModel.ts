@@ -24,6 +24,7 @@ import {
   cannotEquip,
   CLASSES,
   compileSkill,
+  skillManaCostFor,
   createMonsters,
   createReference,
   dungeonById,
@@ -423,7 +424,7 @@ export function skillNumbers(
   const base = (def.baseCooldownMs ?? def.cooldownMs) / 1000;
   return {
     main: mainNumber(def, d),
-    mana: def.manaPct * d.manaBase,
+    mana: skillManaCostFor(def, d, B),
     cooldownS: Math.max(
       B.cfg.cooldown.floorOfBase * base,
       (def.cooldownMs / 1000) *
