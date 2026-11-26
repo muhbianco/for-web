@@ -903,6 +903,10 @@ msgstr ""
 msgid "{name}: recarga, {0} s"
 msgstr ""
 
+#: components/space/game/RunHud.tsx
+msgid "{name}: saiu agora"
+msgstr ""
+
 #. placeholder {0}: s.mana
 #: components/space/game/RunHud.tsx
 msgid "{name}: sem mana ({0})"
