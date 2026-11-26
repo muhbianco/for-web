@@ -426,6 +426,61 @@ test("herói torto no banco: o comando falha e nada é regravado", async () => {
   assert.equal(t.store.docs.get("U1")!.hero.attrs.INT, 9999);
 });
 
+test("D51: herói acima do que o job dá desce ao ser lido, perde a skill, recebe os pontos e grava uma vez", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "guerreiro" });
+  // O caso do dono: nível 48, job 27, no T3 (o nível 40 abria o T3) e com 25 pontos gastos.
+  edit(t, "U1", (h) => ({
+    ...h,
+    level: 48,
+    job: 27,
+    skills: {
+      tier: 3,
+      builds: {
+        "golpe-provocador": { potency: 10, efficiency: 5, mechanics: {} },
+        "grito-de-guerra": { potency: 5, efficiency: 5, mechanics: {} },
+        "muralha-de-ferro": { potency: 1, efficiency: 0, mechanics: {} },
+        redemoinho: { potency: 3, efficiency: 0, mechanics: {} },
+        "ultima-resistencia": { potency: 1, efficiency: 0, mechanics: {} },
+      },
+      slots: [
+        "golpe-provocador",
+        "grito-de-guerra",
+        "muralha-de-ferro",
+        "ultima-resistencia",
+      ],
+      ai: { "ultima-resistencia": [{ kind: "sempre" }] },
+      resets: 0,
+    },
+  }));
+  const writes = t.store.writes;
+  const fresh = setup({ store: t.store, runStore: t.runStore });
+  await fresh.send("rpg.open");
+  const h = fresh.s.hero()!.hero;
+  assert.equal(h.skills.tier, 2);
+  assert.deepEqual(Object.keys(h.skills.builds).sort(), [
+    "golpe-provocador",
+    "grito-de-guerra",
+    "muralha-de-ferro",
+  ]);
+  for (const b of Object.values(h.skills.builds))
+    assert.deepEqual(b, { potency: 1, efficiency: 0, mechanics: {} });
+  assert.deepEqual(h.skills.slots, [
+    "golpe-provocador",
+    "grito-de-guerra",
+    "muralha-de-ferro",
+  ]);
+  assert.deepEqual(h.skills.ai, {});
+  assert.equal(h.skills.resets, 0);
+  assert.equal(t.store.writes, writes + 1);
+  assert.equal(t.store.docs.get("U1")!.hero.skills.tier, 2);
+  // Já dentro das regras: ler de novo não grava nada.
+  const again = setup({ store: t.store, runStore: t.runStore });
+  await again.send("rpg.open");
+  assert.equal(again.s.hero()!.hero.skills.tier, 2);
+  assert.equal(t.store.writes, writes + 1);
+});
+
 test("taxa do operador: só a de XP vale na engine nova", () => {
   assert.deepEqual(ratesFromEnv("exp=2,skill=5,loot=3"), { exp: 2 });
   assert.deepEqual(ratesFromEnv(undefined), { exp: 1 });

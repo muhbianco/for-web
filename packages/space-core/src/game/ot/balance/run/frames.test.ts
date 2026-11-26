@@ -148,7 +148,16 @@ test("medidor: dano, dano recebido e cura de cada herói somam os eventos; quadr
   const f = r.frames!;
   const m = meterOf(f, 4);
   assert.equal(m.s, f.at(-1)!.s);
-  // O dano do medidor é o que tirou de vida (sem o excesso do golpe que mata), até o total do herói.
+  // O dano do medidor é o que tirou de vida (sem o excesso do golpe que mata), até o total do herói;
+  // cada evento sai arredondado, então a soma pode passar meio ponto por evento.
+  const events = [0, 1, 2, 3].map(
+    (i) =>
+      f
+        .flatMap((fr) => fr.e)
+        .filter(
+          (e) => (e.k === "golpe" || (e.k === "magia" && !e.cura)) && e.a === i,
+        ).length,
+  );
   r.rooms
     .reduce(
       (acc, room) => acc.map((v, i) => v + room.heroes[i]!.damage),
@@ -156,7 +165,7 @@ test("medidor: dano, dano recebido e cura de cada herói somam os eventos; quadr
     )
     .forEach((total, i) =>
       assert.ok(
-        m.dmg[i]! <= total + 5 && m.dmg[i]! >= total * 0.85,
+        m.dmg[i]! <= total + 0.5 * events[i]! && m.dmg[i]! >= total * 0.85,
         `${i}: ${m.dmg[i]} × ${total}`,
       ),
     );

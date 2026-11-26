@@ -18,6 +18,10 @@
 // Sem --write, só mostra os pontos. Com --fresh, calcula os monstros na hora (sem a tabela gerada).
 // Com --only masmorra,regiao, só esses tipos são recalculados; os outros ficam como estão gravados
 // (D47: as Caçadas 40–90 não se regeram sem rever a jornada do mago solo).
+// D51 (26/11/2026): nas Caçadas 40–90 o golpe solo (`hit`) é o de antes da D51, e nas 51–90 foi
+// gravado a 90% dele (com o T3 no job 40, o mago fica no T2 até o L72 e empacava no L51); a dupla e o
+// trio (`party`) são os regerados. Um gen-edge que regere essas Caçadas tem de refazer isso e conferir
+// `node scripts/balance-journey.ts solo dojo 100`.
 import { writeFileSync } from "node:fs";
 
 import { randomSource } from "../src/game/ot/balance/combat/fight.ts";

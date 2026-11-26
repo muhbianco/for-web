@@ -54,7 +54,7 @@ function fighter(cls: ClassId, L: number): FighterInput {
   const RL = createReference(B, "limite");
   const R0 = createReference(B);
   const h = RL.referenceBalanceHero(cls, L, {});
-  const hs = referenceSkills(cls, B.tierFor(L, h.job), h.job, false, B, "gabarito");
+  const hs = referenceSkills(cls, B.tierFor(h.job), h.job, false, B, "gabarito");
   for (const u of mine) {
     const b = hs.builds[u.skill];
     if (b) b.mechanics = { ...b.mechanics, [u.mech]: u.n };

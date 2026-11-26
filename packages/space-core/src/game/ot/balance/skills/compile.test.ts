@@ -43,10 +43,10 @@ test("Eficiência: −4% de mana e −3% de recarga por up", () => {
     efficiency: 5,
     mechanics: {},
   });
-  // D44: o custo passa pela escala do peso da mana (1,3) antes da Eficiência.
-  near(s.manaPct, 0.2 * balance.cfg.mana.costScale * 0.8);
+  // D44: o custo passa pela escala do peso da mana (1,3) antes da Eficiência. D52: 30 s e 10% de mana.
+  near(s.manaPct, 0.1 * balance.cfg.mana.costScale * 0.8);
   near(s.ownCooldownCut!, 0.15);
-  assert.equal(s.baseCooldownMs, 60_000);
+  assert.equal(s.baseCooldownMs, 30_000);
 });
 
 test("D44: Potência e adereços encarecem a skill, a INT barateia, a classe ajusta", () => {
@@ -56,7 +56,7 @@ test("D44: Potência e adereços encarecem a skill, a INT barateia, a classe aju
     efficiency: 0,
     mechanics: {},
   });
-  near(crua.manaPct, 0.2 * m.costScale);
+  near(crua.manaPct, 0.1 * m.costScale);
   const forte = compileSkill(skillOf("mago", "meteoro")!, {
     potency: 11,
     efficiency: 0,
@@ -127,7 +127,8 @@ test("adereços: duração, recarga fixa, efeito novo, gancho e o extra do 5/5",
   });
   const cura = ultima.effects[0]!;
   assert.ok(cura.type === "cura");
-  near(cura.pctMaxHp!, 0.45);
+  // D52: 8,5% + 5 × 1,3% (a recarga caiu de 90 s para 30 s, e a cura na mesma proporção).
+  near(cura.pctMaxHp!, 0.15);
   assert.ok(ultima.hooks?.some((h) => h.on === "recusaMorte"));
   const ultima4 = compileSkill(skillOf("guerreiro", "ultima-resistencia")!, {
     potency: 1,

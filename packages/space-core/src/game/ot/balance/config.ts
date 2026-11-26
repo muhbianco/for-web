@@ -251,8 +251,12 @@ export const BALANCE = {
     healEmergencyWithPotionBelow: 0,
   },
 
-  /** §6: marcos de tier. T2 no job 20; T3 no nível 40; T4 no nível 70. */
-  tiers: { t2Job: 20, t3Level: 40, t4Level: 70 },
+  /**
+   * §6: marcos de tier, todos pelo job (D51, 26/11/2026, pedido do dono: "habilidade é sempre job que
+   * predomina"). T2 no job 20 (3ª skill), T3 no 40 (4ª e 5ª), T4 no 70 (6ª). Antes, T3 e T4 olhavam o
+   * nível do herói (40 e 70).
+   */
+  tiers: { t2Job: 20, t3Job: 40, t4Job: 70 },
 
   /**
    * Redistribuir atributos ou skills no Mestre: a 1ª de cada é grátis e as próximas custam um valor fixo

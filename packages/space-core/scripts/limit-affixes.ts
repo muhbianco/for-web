@@ -48,7 +48,7 @@ for (const L of LEVELS) {
       if (it) (it as ItemInstance).affixes = [];
     const hs = referenceSkills(
       cls,
-      B.tierFor(L, hero.job),
+      B.tierFor(hero.job),
       hero.job,
       false,
       B,

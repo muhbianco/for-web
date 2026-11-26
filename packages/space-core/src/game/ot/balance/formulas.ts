@@ -626,12 +626,12 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
     return s / 3600;
   }
 
-  /** Tier pelo marco: T2 no job 20; T3 no nível 40 (já T2); T4 no nível 70 (já T3). */
-  function tierFor(level: number, job: number): Tier {
+  /** Tier pelo marco do job (D51): T2 no job 20, T3 no 40, T4 no 70. O nível do herói não conta. */
+  function tierFor(job: number): Tier {
     const t = cfg.tiers;
     if (job < t.t2Job) return 1;
-    if (level < t.t3Level) return 2;
-    if (level < t.t4Level) return 3;
+    if (job < t.t3Job) return 2;
+    if (job < t.t4Job) return 3;
     return 4;
   }
 

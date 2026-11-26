@@ -1340,7 +1340,13 @@ msgstr ""
 
 #. placeholder {0}: r.content.tier
 #: components/space/game/SkillsPanel.tsx
-msgid "🔒 abre no T{0}"
+#~ msgid "🔒 abre no T{0}"
+#~ msgstr ""
+
+#. placeholder {0}: r.content.tier
+#. placeholder {1}: tierJob(r.content.tier)
+#: components/space/game/SkillsPanel.tsx
+msgid "🔒 abre no T{0} (job {1})"
 msgstr ""
 
 #. placeholder {0}: i().content.tier
@@ -3310,8 +3316,16 @@ msgstr ""
 #. placeholder {2}: c().titles[2]
 #. placeholder {3}: c().titles[3]
 #: components/space/game/ClassPicker.tsx
-msgid "Começa como {0}; evolui para {1} (job 20), {2} (nível 40) e {3} (nível 70)."
+msgid "Começa como {0}; evolui para {1} (job 20), {2} (job 40) e {3} (job 70)."
 msgstr ""
+
+#. placeholder {0}: c().titles[0]
+#. placeholder {1}: c().titles[1]
+#. placeholder {2}: c().titles[2]
+#. placeholder {3}: c().titles[3]
+#: components/space/game/ClassPicker.tsx
+#~ msgid "Começa como {0}; evolui para {1} (job 20), {2} (nível 40) e {3} (nível 70)."
+#~ msgstr ""
 
 #. placeholder {0}: s.secs
 #: components/space/game/PartyDock.tsx
@@ -7856,8 +7870,8 @@ msgstr ""
 #. placeholder {0}: ev().milestone!.need
 #. placeholder {1}: ev().milestone!.have
 #: components/space/game/MasterPanel.tsx
-msgid "Nível {0} (você tem {1})"
-msgstr ""
+#~ msgid "Nível {0} (você tem {1})"
+#~ msgstr ""
 
 #. placeholder {0}: h().level
 #: components/space/game/MasterPanel.tsx

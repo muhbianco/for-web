@@ -192,21 +192,19 @@ export type EvolveError =
   | "pontos-nao-gastos";
 
 /**
- * Evolução no Mestre (§6): T2 no job 20; T3 no nível 40; T4 no nível 70. Além do marco, o herói tem de
+ * Evolução no Mestre (§6, D51): T2 no job 20; T3 no job 40; T4 no job 70. Além do marco, o herói tem de
  * ter gasto os pontos — todos os que cabem na árvore do tier (no T1 cabem 18 e o job 20 dá 19, então
  * "todos" é o que dá para gastar; P38). Grátis; aprende as skills novas.
  */
 export function evolve(
   cls: ClassId,
-  level: number,
   job: number,
   hs: HeroSkills,
   B: Balance = gameBalance,
 ): { ok: true; skills: HeroSkills } | { ok: false; error: EvolveError } {
   if (hs.tier >= 4) return { ok: false, error: "tier-maximo" };
   const next = (hs.tier + 1) as Tier;
-  if (B.tierFor(level, job) < next)
-    return { ok: false, error: "marco-nao-alcancado" };
+  if (B.tierFor(job) < next) return { ok: false, error: "marco-nao-alcancado" };
   const free = skillPoints(job, B) - skillPointsSpent(hs);
   if (Math.min(free, treeCapacity(cls, hs, B)) > 0)
     return { ok: false, error: "pontos-nao-gastos" };
@@ -219,6 +217,37 @@ export function evolve(
   };
   learnNewSkills(cls, out);
   return { ok: true, skills: out };
+}
+
+/**
+ * As skills dentro das regras de tier de agora (D51, 26/11/2026, pedido do dono: "adequa os heróis
+ * atuais nesse modelo; quem já tiver pego habilidade, reseta os pontos e tira habilidade"). O tier não
+ * passa do que o job dá, e só ficam as skills do tier. Quem estava acima desce, perde as skills que
+ * sobraram e recebe os pontos de volta: todas as skills voltam ao rank 1, sem gastar a redistribuição.
+ * Quem já está dentro das regras fica como está (`changed: false`).
+ */
+export function fitSkillsToJob(
+  cls: ClassId,
+  job: number,
+  hs: HeroSkills,
+  B: Balance = gameBalance,
+): { skills: HeroSkills; changed: boolean } {
+  const tier = Math.min(hs.tier, B.tierFor(job)) as Tier;
+  const allowed = learnableSkills(cls, tier).map((s) => s.id);
+  const above = Object.keys(hs.builds).some((id) => !allowed.includes(id));
+  if (tier === hs.tier && !above) return { skills: hs, changed: false };
+  const builds: Record<string, SkillBuild> = {};
+  for (const id of allowed) builds[id] = freshBuild();
+  const slots = hs.slots.filter((id) => allowed.includes(id));
+  for (const id of allowed)
+    if (slots.length < MAX_SLOTS && !slots.includes(id)) slots.push(id);
+  const ai: HeroSkills["ai"] = {};
+  for (const [id, c] of Object.entries(hs.ai))
+    if (allowed.includes(id)) ai[id] = c;
+  return {
+    skills: { tier, builds, slots, ai, resets: hs.resets },
+    changed: true,
+  };
 }
 
 /** Redistribuir as skills no Mestre: a 1ª é grátis; depois 5.000 de ouro fixos (D25). Os slots ficam. */

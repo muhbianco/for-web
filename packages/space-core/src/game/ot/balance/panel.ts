@@ -81,7 +81,7 @@ export function attributePanel(
   B: Balance = gameBalance,
 ): AttributePanel {
   const cls = CLASSES[hero.cls];
-  const tier = B.tierFor(hero.level, hero.job);
+  const tier = B.tierFor(hero.job);
   const d = heroDerived(hero, B);
   const gear = affixTotals(hero.equipment).attrs;
   const free = pointsFree(hero.level, hero.attrs, B);

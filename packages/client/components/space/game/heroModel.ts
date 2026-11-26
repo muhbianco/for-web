@@ -506,9 +506,9 @@ export function skillBudget(h: HeroV5, skills = h.skills) {
 export interface EvolveCheck {
   ok: boolean;
   next: Tier | null;
-  /** Os marcos: job 20 (T2), nível 40 (T3), nível 70 (T4). */
+  /** Os marcos, todos pelo job (D51): job 20 (T2), 40 (T3) e 70 (T4). */
   milestone: {
-    kind: "job" | "level";
+    kind: "job";
     need: number;
     have: number;
     ok: boolean;
@@ -520,8 +520,13 @@ export interface EvolveCheck {
   error: string | null;
 }
 
-export function evolveCheck(h: HeroV5): EvolveCheck {
+/** O job que abre o tier (D51): 1 no T1, 20 no T2, 40 no T3, 70 no T4. */
+export function tierJob(tier: Tier): number {
   const t = B.cfg.tiers;
+  return tier === 1 ? 1 : tier === 2 ? t.t2Job : tier === 3 ? t.t3Job : t.t4Job;
+}
+
+export function evolveCheck(h: HeroV5): EvolveCheck {
   const tier = h.skills.tier;
   if (tier >= 4)
     return {
@@ -534,17 +539,10 @@ export function evolveCheck(h: HeroV5): EvolveCheck {
       error: "tier-maximo",
     };
   const next = (tier + 1) as Tier;
-  const milestone =
-    next === 2
-      ? { kind: "job" as const, need: t.t2Job, have: h.job }
-      : {
-          kind: "level" as const,
-          need: next === 3 ? t.t3Level : t.t4Level,
-          have: h.level,
-        };
+  const milestone = { kind: "job" as const, need: tierJob(next), have: h.job };
   const free = skillPoints(h.job) - skillPointsSpent(h.skills);
   const pointsLeft = Math.max(0, Math.min(free, treeCapacity(h.cls, h.skills)));
-  const r = evolve(h.cls, h.level, h.job, h.skills);
+  const r = evolve(h.cls, h.job, h.skills);
   return {
     ok: r.ok,
     next,

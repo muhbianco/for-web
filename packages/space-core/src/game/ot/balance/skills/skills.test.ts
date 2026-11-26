@@ -14,11 +14,11 @@ import { freshBuild, totalAbsorbable } from "./tree.ts";
 
 // As 42 skills como conteúdo (spec §7 e §8): estrutura, adereços e o total absorvível.
 
-test("42 skills, 6 por classe: 2 no T1, 2 no T2, 1 no T3, 1 no T4, todas no schema", () => {
+test("42 skills, 6 por classe: 2 no T1, 1 no T2, 2 no T3, 1 no T4 (D51), todas no schema", () => {
   assert.equal(SKILLS.length, 42);
   for (const cls of CLASS_IDS) {
     const list = SKILLS_BY_CLASS[cls];
-    assert.deepEqual(list.map((s) => s.tier).sort(), [1, 1, 2, 2, 3, 4], cls);
+    assert.deepEqual(list.map((s) => s.tier).sort(), [1, 1, 2, 3, 3, 4], cls);
     assert.equal(new Set(list.map((s) => s.id)).size, 6, `${cls}: id repetido`);
     for (const s of list) {
       SkillSchema.parse(s);
@@ -27,7 +27,18 @@ test("42 skills, 6 por classe: 2 no T1, 2 no T2, 1 no T3, 1 no T4, todas no sche
   }
 });
 
-test("adereços: T1 com 3 (T2, T3, T4), T2 com 2 (T3, T4), T3 e T4 com 1 (T4)", () => {
+/** As skills que eram do T2 e passaram para o T3 (D51): ficam com os adereços de antes (T3 e T4). */
+const FROM_T2 = new Set([
+  "redemoinho",
+  "bencao-da-egide",
+  "bencao",
+  "cancao-da-floresta",
+  "nevasca",
+  "armadilha-de-gelo",
+  "fumaca",
+]);
+
+test("adereços: T1 com 3 (T2, T3, T4), T2 com 2 (T3, T4), T3 e T4 com 1 (T4); as que vieram do T2, 2 (T3, T4)", () => {
   const expected: Record<number, number[]> = {
     1: [2, 3, 4],
     2: [3, 4],
@@ -37,8 +48,16 @@ test("adereços: T1 com 3 (T2, T3, T4), T2 com 2 (T3, T4), T3 e T4 com 1 (T4)", 
   for (const s of SKILLS)
     assert.deepEqual(
       s.mechanics.map((m) => m.unlockTier),
-      expected[s.tier],
+      FROM_T2.has(s.id) ? [3, 4] : expected[s.tier],
       `${s.cls}/${s.id}`,
+    );
+});
+
+test("D52: nenhuma recarga passa de 30 s, fora a Ressurreição (60 s)", () => {
+  for (const s of SKILLS)
+    assert.ok(
+      s.cooldownMs <= (s.id === "ressurreicao" ? 60_000 : 30_000),
+      `${s.cls}/${s.id}: ${s.cooldownMs} ms`,
     );
 });
 

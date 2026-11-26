@@ -60,7 +60,7 @@ export function grow(
     proficiency: B.recommendedProficiency(level),
   };
   const keep = opts.keepSkill ?? 0;
-  const target = B.tierFor(level, job);
+  const target = B.tierFor(job);
   for (let guard = 0; guard < 600; guard++) {
     const ev = evolveTier(h);
     if (ev.ok) {
