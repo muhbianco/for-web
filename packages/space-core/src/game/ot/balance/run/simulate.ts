@@ -27,7 +27,7 @@ import { rewardsFor } from "./rewards.ts";
  * Versão das regras da corrida: a corrida gravada só tem os quadros refeitos pela semente se esta for a
  * mesma do início. Subir quando mudar fórmula, config ou motor (a v4 do jogo era a 15).
  */
-export const ENGINE_VERSION = 23;
+export const ENGINE_VERSION = 24;
 
 /** "travada" só se a trava técnica do simulador disparar (defeito; não é regra de jogo). */
 export type RunOutcome = "vitoria" | "derrota" | "travada";

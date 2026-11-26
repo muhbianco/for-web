@@ -386,8 +386,10 @@ export const PALADINO: SkillContent[] = [
     target: "sala inteira",
     cooldownMs: s(15),
     manaPct: 0.08,
-    threatMult: 2,
-    ai: [inimigos(3)],
+    // D50 (26/11/2026, pedido do dono: "o paladino não precisa do aggro do guerreiro; precisa manter a
+    // party viva"): sai sempre que houver inimigo (com 3+ saía ~2 vezes por corrida) e sem o ×2 de
+    // ameaça, que não mudava a sobrevivência. É a cura do paladino e, com a Terra Santa, a do grupo.
+    ai: [SEMPRE],
     // 200% ATQ sagrado em todos, distribuído ao longo de 6 s. Cada inimigo consagrado cura o paladino
     // em 2% do HP máx. por segundo enquanto queima (P63: a resposta do paladino à Invocação).
     effects: [

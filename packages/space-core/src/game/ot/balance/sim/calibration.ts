@@ -15,13 +15,17 @@ import { limitMechanics, referenceSkills } from "./encounters.ts";
 
 /**
  * Masmorra e Região (5): tanque + cura + 3 de dano (com o padre e, desde a D42, com o druida de
- * batalha como cura única); tanque + 2 curas + 2; 2 tanques + cura + 2.
+ * batalha como cura única); tanque + 2 curas + 2; 2 tanques + cura + 2; e, desde a D50, o paladino
+ * de tanque único (com padre e com druida): ele não segura como o guerreiro, mas mantém a party viva.
  */
 export const LIMIT_GROUP_PARTIES: readonly (readonly ClassId[])[] = [
   ["guerreiro", "padre", "mago", "cacador", "assassino"],
   ["guerreiro", "druida", "mago", "cacador", "assassino"],
   ["guerreiro", "padre", "druida", "mago", "cacador"],
   ["guerreiro", "paladino", "padre", "mago", "cacador"],
+  // D50: o paladino de tanque único (com padre e com druida) também tem de manter a party viva.
+  ["paladino", "padre", "mago", "cacador", "assassino"],
+  ["paladino", "druida", "mago", "cacador", "assassino"],
 ];
 
 /** Caçada sozinho: cada classe de dano (o tanque e o suporte caçam com folga, D41). */

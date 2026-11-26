@@ -33,11 +33,12 @@ export const REFERENCE_KITS: Record<ClassId, string[]> = {
     "muralha-de-ferro",
     "ultima-resistencia",
   ],
+  // D50: a Consagração (cura do paladino e, com a Terra Santa, do grupo) no lugar da Imposição.
   paladino: [
     "golpe-sagrado",
+    "consagracao",
     "escudo-da-fe",
     "bencao-da-egide",
-    "imposicao-de-maos",
   ],
   padre: ["curar", "escudo-sagrado", "santuario", "bencao"],
   // D42, druida de batalha: cura contínua, dano que cura, dano em área e o buff do grupo.
@@ -59,16 +60,10 @@ export const REFERENCE_KITS: Record<ClassId, string[]> = {
 
 /**
  * Do T4 em diante (L70, quando começa a Invocação do §12.3), o kit de chefe muda onde a classe precisa
- * responder aos lacaios: o paladino troca a Égide pela Consagração (P63). O guerreiro já tem o Grito.
+ * responder aos lacaios. O paladino trocava a Égide pela Consagração (P63); desde a D50 a Consagração
+ * já está no kit de todo tier (com a Bênção da Égide), então nenhuma classe muda mais no T4.
  */
-export const REFERENCE_KITS_T4: Partial<Record<ClassId, string[]>> = {
-  paladino: [
-    "golpe-sagrado",
-    "consagracao",
-    "escudo-da-fe",
-    "imposicao-de-maos",
-  ],
-};
+export const REFERENCE_KITS_T4: Partial<Record<ClassId, string[]>> = {};
 
 /** Kits solo (§8): tanques trocam uma defensiva por área; padre com Luz Sagrada; druida com Raízes. */
 export const REFERENCE_SOLO_KITS: Record<ClassId, string[]> = {

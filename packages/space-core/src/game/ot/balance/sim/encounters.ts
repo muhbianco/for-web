@@ -108,8 +108,8 @@ export function referenceSkills(
 
 /**
  * As melhorias de mecânica do perfil do limite (D49): o guerreiro do limite é o tanque montado, com
- * as de provocação no máximo (Desafio: +2 s e 20% da ameaça em área; Revide; Eco). As outras classes
- * seguem sem mecânicas. Só entram as já destravadas no tier do herói. Vale para o `limitFighter` (o
+ * as de provocação no máximo (Desafio: +2 s e 20% da ameaça em área; Revide; Eco); o paladino com a
+ * Terra Santa no máximo (D50). As outras classes seguem sem mecânicas. Só entram as já destravadas no tier do herói. Vale para o `limitFighter` (o
  * gerador do aperto e o relatório) e para o `limitEncounters` (os testes): o limite é um só.
  */
 export const LIMIT_MECHANICS: Partial<
@@ -119,6 +119,8 @@ export const LIMIT_MECHANICS: Partial<
     "golpe-provocador": { desafio: 5, revide: 5 },
     "grito-de-guerra": { eco: 5 },
   },
+  // D50: o paladino do limite cura o grupo com a Consagração.
+  paladino: { consagracao: { "terra-santa": 5 } },
 };
 
 export function limitMechanics(cls: ClassId, hs: HeroSkills): HeroSkills {
