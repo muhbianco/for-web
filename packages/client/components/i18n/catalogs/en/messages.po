@@ -926,6 +926,10 @@ msgstr "{names} · {d} · sala {0} de 4"
 #~ msgstr "{names} na {dungeon} · sala {n} de {of}"
 
 #: components/space/game/skillText.ts
+msgid "{p} da ameaça também nos outros monstros"
+msgstr "{p} da ameaça também nos outros monstros"
+
+#: components/space/game/skillText.ts
 msgid "{p} da cura que passar do máximo vira escudo no alvo."
 msgstr "{p} da cura que passar do máximo vira escudo no alvo."
 
@@ -1950,6 +1954,10 @@ msgstr "Always Ask for Screen Share Quality"
 #: components/space/game/RunMeter.tsx
 msgid "Ameaça"
 msgstr "Ameaça"
+
+#: components/space/game/StatusIcons.tsx
+msgid "ameaça em todos os monstros"
+msgstr "ameaça em todos os monstros"
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "American (MM/DD/YYYY)"

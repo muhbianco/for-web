@@ -68,7 +68,12 @@ export type BuffStat =
   | "curaRecebida"
   /** Regeneração de x da MP/HP máxima por segundo. */
   | "regenManaPct"
-  | "regenVidaPct";
+  | "regenVidaPct"
+  /**
+   * A ameaça que o herói gera no alvo vale x também em cada outro monstro vivo da luta (a Desafio do
+   * Golpe Provocador; D49): os monstros que o tanque não acerta deixam de fugir para a área e a cura.
+   */
+  | "ameacaArea";
 
 /** Atributos que um debuff mexe no inimigo. */
 export type DebuffStat =

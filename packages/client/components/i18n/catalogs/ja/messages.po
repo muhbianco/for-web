@@ -926,6 +926,10 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/skillText.ts
+msgid "{p} da ameaça também nos outros monstros"
+msgstr ""
+
+#: components/space/game/skillText.ts
 msgid "{p} da cura que passar do máximo vira escudo no alvo."
 msgstr ""
 
@@ -1949,6 +1953,10 @@ msgstr "常に画面共有の画質を確認する"
 
 #: components/space/game/RunMeter.tsx
 msgid "Ameaça"
+msgstr ""
+
+#: components/space/game/StatusIcons.tsx
+msgid "ameaça em todos os monstros"
 msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx

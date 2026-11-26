@@ -119,6 +119,8 @@ function buffText(stat: BuffStat, v: number): string {
       return t`recupera ${p} da mana máxima por segundo`;
     case "regenVidaPct":
       return t`recupera ${p} da vida máxima por segundo`;
+    case "ameacaArea":
+      return t`${p} da ameaça também nos outros monstros`;
   }
 }
 

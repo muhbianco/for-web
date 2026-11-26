@@ -550,6 +550,14 @@ export function fight(
   const buffOf = (h: Hero, stat: BuffStat): number =>
     sum(active(h.buffs, stat)) + sum(active(partyBuffs, stat));
   const maxHp = (h: Hero): number => h.ch.hp * (1 + buffOf(h, "hpMaxPct"));
+  /** Ameaça no alvo e, com o bônus de ameaça em área (D49), a fração dela nos outros monstros vivos. */
+  const gainThreat = (h: Hero, e: Enemy, v: number) => {
+    h.threat[e.i]! += v;
+    const area = buffOf(h, "ameacaArea");
+    if (area > 0)
+      for (const x of enemies)
+        if (x !== e && x.alive) h.threat[x.i]! += v * area;
+  };
   const ratio = (h: Hero): number => h.hp / maxHp(h);
 
   /** Chance: rola no aleatório; no esperado, acumula e dispara a cada 1 inteiro. */
@@ -675,7 +683,7 @@ export function fight(
     if (e.hp <= 0) e.alive = false;
     total += amount;
     h.damage += amount;
-    h.threat[e.i]! += amount * h.ch.threat;
+    gainThreat(h, e, amount * h.ch.threat);
     if (h.input.lifesteal) heal(h, amount * h.input.lifesteal, null);
     return amount;
   };
@@ -1290,7 +1298,7 @@ export function fight(
         const dealt = deal(h, x, d, { crit });
         dealtHere += dealt;
         if (s.threatMult)
-          h.threat[x.i]! += dealt * h.ch.threat * (s.threatMult - 1);
+          gainThreat(h, x, dealt * h.ch.threat * (s.threatMult - 1));
         if (landed) onHit(h, s, x);
       }
       if (dealtHere > 0) enemiesHit++;
@@ -1986,7 +1994,7 @@ export function fight(
           source = x.key.split(":")[0]!;
           const dealt = deal(h, e, x.perSec * DT, { dot: x.kind });
           if (x.threatMult)
-            h.threat[e.i]! += dealt * h.ch.threat * (x.threatMult - 1);
+            gainThreat(h, e, dealt * h.ch.threat * (x.threatMult - 1));
           if (x.selfHeal) heal(h, x.selfHeal * maxHp(h) * DT, null);
           if (x.tickStun && t >= x.nextPulse) {
             x.nextPulse += 1;

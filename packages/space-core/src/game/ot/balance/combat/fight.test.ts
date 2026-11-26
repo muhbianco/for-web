@@ -550,3 +550,19 @@ test("provocação (26/11/2026): em grupo, o Grito de Guerra não sai com os mon
   const pressed = run([warrior(), bare("padre")], [hard(), hard()]);
   assert.ok((pressed.heroes[0]!.casts["grito-de-guerra"] ?? 0) >= 1, "não se defendeu");
 });
+
+test("D49: a Desafio leva a ameaça do guerreiro aos monstros que ele não acerta (4% por up)", () => {
+  const golpe = (desafio: number) =>
+    compileSkill(skillOf("guerreiro", "golpe-provocador")!, {
+      potency: 1,
+      efficiency: 0,
+      mechanics: desafio ? { desafio } : {},
+    });
+  const threat = (desafio: number) =>
+    run([bare("guerreiro", [golpe(desafio)])], [hitter(5), hitter(5)], 20).heroes[0]!.threat;
+  // Sem a Desafio, o monstro que ele não acerta fica sem ameaça nenhuma dele.
+  assert.equal(threat(0)[1], 0);
+  // Com 5 ups, 20% do que ele gera no alvo vale no outro (a provocação do alvo não entra na conta).
+  const [a, b] = threat(5);
+  assert.ok(b! > 0 && b! <= 0.2 * a! + 1e-9, `alvo ${a}, outro ${b}`);
+});

@@ -107,6 +107,8 @@ function statText(stat: string | undefined): string | null {
       return t`recupera mana`;
     case "regenVidaPct":
       return t`recupera vida`;
+    case "ameacaArea":
+      return t`ameaça em todos os monstros`;
     case "danoCausado":
       return t`causa menos dano`;
     case "danoRecebido":

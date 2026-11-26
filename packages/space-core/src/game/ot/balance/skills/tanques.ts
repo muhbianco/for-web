@@ -20,6 +20,15 @@ import {
 } from "./dsl.ts";
 import type { SkillContent } from "./schema.ts";
 
+/**
+ * A ameaça em área de cada up da Desafio (D49, pedido do dono: "com os ups do guerreiro ele chega a
+ * ~90% do aggro, aceitando alguma fuga"): a fração da ameaça que ele gera no alvo que vale também nos
+ * outros monstros. Multiplicar a ameaça não adiantava (+100% levou de 82% a 83%): quem foge é o
+ * monstro que ele não acerta. Vale 10 s a cada Golpe Provocador (recarga 8 s): sempre ligada.
+ */
+const DESAFIO_AMEACA = 0.04;
+const pctText = (v: number) => `${Math.round(v * 100)}%`;
+
 /** §8.1 Guerreiro e §8.2 Paladino. */
 
 export const GUERREIRO: SkillContent[] = [
@@ -38,9 +47,26 @@ export const GUERREIRO: SkillContent[] = [
       { type: "provocar", durationMs: s(4), scope: "alvo" },
     ],
     mechanics: [
-      mech("desafio", "Desafio", 2, "+0,4 s de provocação (máx. +2 s).", [
-        duracao([1], 400),
-      ]),
+      mech(
+        "desafio",
+        "Desafio",
+        2,
+        `+0,4 s de provocação; por 10 s, ${pctText(DESAFIO_AMEACA)} da ameaça no alvo vale também nos outros monstros (máx. +2 s e ${pctText(5 * DESAFIO_AMEACA)}).`,
+        [
+          duracao([1], 400),
+          efeito(
+            {
+              type: "buff",
+              target: "proprio",
+              stat: "ameacaArea",
+              value: 0,
+              durationMs: s(10),
+            },
+            ["value"],
+            DESAFIO_AMEACA,
+          ),
+        ],
+      ),
       mech(
         "quebra-guarda",
         "Quebra-Guarda",

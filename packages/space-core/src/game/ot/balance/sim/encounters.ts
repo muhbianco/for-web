@@ -24,6 +24,7 @@ import {
   REFERENCE_SOLO_KITS,
   SKILLS_BY_CLASS,
 } from "../skills/index.ts";
+import { skillOf } from "../skills/index.ts";
 import { type HeroSkills, learnableSkills, MAX_SLOTS } from "../skills/tree.ts";
 import { GABARITO_KITS } from "./kits.ts";
 
@@ -105,6 +106,33 @@ export function referenceSkills(
   return { tier, builds, slots: kit, ai: overrides, resets: 0 };
 }
 
+/**
+ * As melhorias de mecânica do perfil do limite (D49): o guerreiro do limite é o tanque montado, com
+ * as de provocação no máximo (Desafio: +2 s e 20% da ameaça em área; Revide; Eco). As outras classes
+ * seguem sem mecânicas. Só entram as já destravadas no tier do herói. Vale para o `limitFighter` (o
+ * gerador do aperto e o relatório) e para o `limitEncounters` (os testes): o limite é um só.
+ */
+export const LIMIT_MECHANICS: Partial<
+  Record<ClassId, Record<string, Record<string, number>>>
+> = {
+  guerreiro: {
+    "golpe-provocador": { desafio: 5, revide: 5 },
+    "grito-de-guerra": { eco: 5 },
+  },
+};
+
+export function limitMechanics(cls: ClassId, hs: HeroSkills): HeroSkills {
+  for (const [id, ups] of Object.entries(LIMIT_MECHANICS[cls] ?? {})) {
+    const b = hs.builds[id];
+    const def = skillOf(cls, id);
+    if (!b || !def) continue;
+    for (const [m, n] of Object.entries(ups))
+      if ((def.mechanics.find((x) => x.id === m)?.unlockTier ?? 9) <= hs.tier)
+        b.mechanics = { ...b.mechanics, [m]: n };
+  }
+  return hs;
+}
+
 export function createEncounters(
   B: Balance = gameBalance,
   profile: ReferenceProfile = "referencia",
@@ -156,6 +184,7 @@ export function createEncounters(
         level,
         o.proficiency ? { proficiency: o.proficiency(level) } : {},
       );
+      if (profile === "limite") limitMechanics(cls, hs);
       return heroFighter(hero, hs, { potions: common.potions }, B, R);
     }
     return {

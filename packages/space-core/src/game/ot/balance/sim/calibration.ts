@@ -4,7 +4,7 @@ import { heroFighter } from "../fighter.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
 import { type ReferenceOptions, createReference } from "../reference.ts";
 import { learnableSkills, MAX_SLOTS } from "../skills/tree.ts";
-import { referenceSkills } from "./encounters.ts";
+import { limitMechanics, referenceSkills } from "./encounters.ts";
 
 /**
  * Os grupos que calibram o aperto de cada DG (D41, scripts/gen-edge.ts) e que os testes cobram: no
@@ -104,6 +104,7 @@ export function limitFighter(
     B,
     "gabarito",
   );
+  limitMechanics(cls, hs);
   if (opts.step === "kit") {
     // O kit na ordem em que as skills se aprendem, com a IA padrão de cada uma.
     hs.slots = learnableSkills(cls, hs.tier)
