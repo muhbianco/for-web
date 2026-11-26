@@ -1,5 +1,6 @@
 import {
   type ClassId,
+  type DotKind,
   type EnemyInput,
   type Family,
   type FightEvent,
@@ -224,7 +225,17 @@ export type HitHow = "dano" | "cura" | "mana" | "bloqueio" | "erro" | "imune";
 export type Cue =
   | { k: "lunge"; at: number; who: number; to: number }
   | { k: "shot"; at: number; dur: number; from: number; to: number; shot: Shot; el: Element }
-  | { k: "hit"; at: number; who: number; v: number; el: Element | "cura" | "mana"; how: HitHow }
+  | {
+      k: "hit";
+      at: number;
+      who: number;
+      v: number;
+      el: Element | "cura" | "mana";
+      how: HitHow;
+      /** Crítico (número amarelo e maior) e tique de DoT (a cor do tipo); 26/11/2026. */
+      crit?: boolean;
+      dot?: DotKind;
+    }
   | { k: "burst"; at: number; who: number; el: Element }
   | { k: "slash"; at: number; who: number; el: Element }
   | { k: "die"; at: number; who: number }
@@ -299,8 +310,15 @@ export function planSecond(p: PlanInput): Plan {
     end = Math.max(end, c.at + dur);
   };
   const nextT = () => Math.round(start + j++ * step);
-  const hit = (who: number, at: number, v: number, el: Element | "cura" | "mana", how: HitHow) => {
-    push({ k: "hit", at, who, v, el, how }, 120);
+  const hit = (
+    who: number,
+    at: number,
+    v: number,
+    el: Element | "cura" | "mana",
+    how: HitHow,
+    tag: { crit?: boolean; dot?: DotKind } = {},
+  ) => {
+    push({ k: "hit", at, who, v, el, how, ...(tag.crit ? { crit: true } : {}), ...(tag.dot ? { dot: tag.dot } : {}) }, 120);
     if (how !== "cura" && how !== "mana") landed.set(who, at);
   };
 
@@ -322,17 +340,18 @@ export function planSecond(p: PlanInput): Plan {
           break;
         }
         const g = p.gears[e.a];
+        const crit = { crit: e.cr === true };
         if (g && (g.look === "arco" || g.look === "besta")) {
           push({ k: "shot", at: t, dur: SHOT_MS, from: e.a, to: e.b, shot: g.look === "besta" ? "virote" : "flecha", el: "fisico" }, SHOT_MS);
-          hit(e.b, t + SHOT_MS, e.v, "fisico", how);
+          hit(e.b, t + SHOT_MS, e.v, "fisico", how, crit);
         } else if (g && (g.look === "varinha" || g.look === "cajado")) {
           const el = MAGIC_OF_CLASS[p.classes[e.a]!] ?? g.element;
           push({ k: "shot", at: t, dur: SHOT_MS, from: e.a, to: e.b, shot: "orbe", el }, SHOT_MS);
-          hit(e.b, t + SHOT_MS, e.v, el, how);
+          hit(e.b, t + SHOT_MS, e.v, el, how, crit);
           if (how === "dano") push({ k: "burst", at: t + SHOT_MS, who: e.b, el }, 200);
         } else {
           push({ k: "lunge", at: t, who: e.a, to: e.b }, 140);
-          hit(e.b, t + MELEE_LAND, e.v, "fisico", how);
+          hit(e.b, t + MELEE_LAND, e.v, "fisico", how, crit);
         }
         break;
       }
@@ -352,19 +371,24 @@ export function planSecond(p: PlanInput): Plan {
           }
           const cls = p.classes[e.a];
           const el = skillElement(cls, e.s);
+          if (e.dt) {
+            hit(e.b, t + 60, e.v, el, "dano", { dot: e.dt });
+            break;
+          }
           const melee = !isRanged(p.gears[e.a]?.look ?? "punhos");
           // A skill errou o alvo (Precisão × Fuga): o golpe sai, sem o impacto.
           const missed = e.bl === "erro";
           const how: HitHow = missed ? "erro" : "dano";
+          const crit = { crit: e.cr === true };
           if (el === "fisico" && melee) {
             push({ k: "lunge", at: t, who: e.a, to: e.b }, 140);
             if (!missed) push({ k: "slash", at: t + MELEE_LAND, who: e.b, el }, 200);
-            hit(e.b, t + MELEE_LAND, e.v, el, how);
+            hit(e.b, t + MELEE_LAND, e.v, el, how, crit);
           } else {
             const shot: Shot = el === "fisico" ? (cls === "cacador" ? "flecha" : "lanca") : "orbe";
             push({ k: "shot", at: t, dur: SPELL_MS, from: e.a, to: e.b, shot, el }, SPELL_MS);
             if (!missed) push({ k: "burst", at: t + SPELL_MS, who: e.b, el }, 200);
-            hit(e.b, t + SPELL_MS, e.v, el, how);
+            hit(e.b, t + SPELL_MS, e.v, el, how, crit);
           }
           break;
         }
@@ -463,4 +487,33 @@ export function fitName(name: string, maxW: number, measure: (s: string) => numb
     if (measure(s) <= maxW) return s;
   }
   return "…";
+}
+
+/**
+ * A cor do número de dano (26/11/2026, pedido do dono): físico branco, crítico amarelo (e maior),
+ * mágico magenta, veneno verde, queimadura laranja. O que o dono não listou: sangramento
+ * vermelho-escuro, sagrado dourado-claro e o dano que o herói recebe em vermelho. Cura (+, verde) e
+ * mana (+, azul) seguem as do elemento.
+ */
+export const DAMAGE_COLOR = {
+  fisico: 0xffffff,
+  critico: 0xffd21f,
+  magico: 0xe05cff,
+  veneno: 0x8eff3c,
+  queimadura: 0xff8a1e,
+  sangramento: 0xd9343f,
+  sagrado: 0xffe9a3,
+  recebido: 0xff5c5c,
+} as const;
+
+export function damageColor(
+  c: { el: Element | "cura" | "mana"; crit?: boolean; dot?: DotKind },
+  onHero: boolean,
+): number {
+  if (onHero) return DAMAGE_COLOR.recebido;
+  if (c.dot === "veneno" || c.dot === "queimadura" || c.dot === "sangramento") return DAMAGE_COLOR[c.dot];
+  if (c.crit) return DAMAGE_COLOR.critico;
+  if (c.el === "fisico") return DAMAGE_COLOR.fisico;
+  if (c.el === "sagrado") return DAMAGE_COLOR.sagrado;
+  return DAMAGE_COLOR.magico;
 }

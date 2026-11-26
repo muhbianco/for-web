@@ -16,6 +16,8 @@ import { avatarGearOf } from "../hero.ts";
 import {
   type Cue,
   afterHit,
+  DAMAGE_COLOR,
+  damageColor,
   fitName,
   foeArt,
   frameStep,
@@ -260,4 +262,43 @@ test("errou e esquivou: o golpe sai sem o impacto, com o erro em quem foi atacad
   );
   // A skill que errou não tem o corte do impacto.
   assert.equal(p.cues.filter((c) => c.k === "slash").length, 0);
+});
+
+test("cores do número de dano: físico branco, crítico amarelo, mágico magenta, veneno verde, queimadura laranja (26/11/2026)", () => {
+  assert.equal(damageColor({ el: "fisico" }, false), DAMAGE_COLOR.fisico);
+  assert.equal(damageColor({ el: "fisico", crit: true }, false), DAMAGE_COLOR.critico);
+  for (const el of ["fogo", "gelo", "energia", "terra", "morte"] as const)
+    assert.equal(damageColor({ el }, false), DAMAGE_COLOR.magico, el);
+  assert.equal(damageColor({ el: "fisico", dot: "veneno" }, false), DAMAGE_COLOR.veneno);
+  assert.equal(damageColor({ el: "fogo", dot: "queimadura" }, false), DAMAGE_COLOR.queimadura);
+  assert.equal(damageColor({ el: "fisico", dot: "sangramento" }, false), DAMAGE_COLOR.sangramento);
+  assert.equal(damageColor({ el: "sagrado" }, false), DAMAGE_COLOR.sagrado);
+  // DoT sem tipo próprio (Nevasca, Espinhos) segue o elemento.
+  assert.equal(damageColor({ el: "gelo", dot: "dot" }, false), DAMAGE_COLOR.magico);
+  // O que o herói recebe é vermelho, qualquer que seja o tipo.
+  assert.equal(damageColor({ el: "fisico", crit: true }, true), DAMAGE_COLOR.recebido);
+  // As cores não se repetem.
+  assert.equal(new Set(Object.values(DAMAGE_COLOR)).size, Object.keys(DAMAGE_COLOR).length);
+});
+
+test("crítico e tique de DoT chegam ao número; o tique não anima um golpe novo (26/11/2026)", () => {
+  const p = planSecond({
+    events: [
+      { k: "golpe", a: 0, b: FOE_BASE, v: 80, cr: true },
+      { k: "magia", a: 0, b: FOE_BASE, v: 30, s: "lamina-envenenada", dt: "veneno" },
+    ] as unknown as { k: string }[],
+    gears: [heroGear("adaga", null)],
+    classes: ["assassino"],
+    foes: [{ magic: false }],
+  });
+  const hits = p.cues.filter((c): c is Extract<Cue, { k: "hit" }> => c.k === "hit");
+  assert.deepEqual(
+    hits.map((h) => [h.v, h.crit ?? false, h.dot ?? null]),
+    [
+      [80, true, null],
+      [30, false, "veneno"],
+    ],
+  );
+  // Um golpe só (o do ataque básico): o veneno não avança de novo no monstro.
+  assert.equal(p.cues.filter((c) => c.k === "lunge").length, 1);
 });

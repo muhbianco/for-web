@@ -4,6 +4,7 @@ import type {
   BuffStat,
   Condition,
   DebuffStat,
+  DotKind,
   Effect,
   Element,
   EnemyInput,
@@ -68,8 +69,16 @@ interface Timed {
   selfless?: boolean;
 }
 
+/** O que a tela precisa saber de um dano (só gravação: não muda a luta). */
+interface HitTag {
+  crit?: boolean;
+  dot?: DotKind;
+}
+
 interface Dot {
   key: string;
+  /** Para a tela: a cor do número do tique. */
+  kind: DotKind;
   perSec: number;
   until: number;
   enemy: number;
@@ -285,6 +294,8 @@ export function fight(
             v: number;
             cura: boolean;
             blocked: boolean;
+            crit: boolean;
+            dot: DotKind | null;
           }
         >(),
         cataclysm: new Map<number, number>(),
@@ -307,14 +318,17 @@ export function fight(
     v: number,
     cura: boolean,
     blocked = false,
+    tag: HitTag = {},
   ) => {
     if (!rec || !(v > 0)) return;
-    const key = `${a}|${b}|${s}|${cura ? 1 : 0}`;
+    const crit = tag.crit ?? false;
+    const dot = tag.dot ?? null;
+    const key = `${a}|${b}|${s}|${cura ? 1 : 0}|${crit ? "c" : ""}|${dot ?? ""}`;
     const x = rec.acc.get(key);
     if (x) {
       x.v += v;
       x.blocked ||= blocked;
-    } else rec.acc.set(key, { a, b, s, v, cura, blocked });
+    } else rec.acc.set(key, { a, b, s, v, cura, blocked, crit, dot });
   };
   const announce = (e: Enemy, s: MechanicEvent, b?: Hero) =>
     emit({
@@ -336,6 +350,7 @@ export function fight(
           b: x.b,
           v,
           ...(x.blocked ? { bl: "bloqueio" as const } : {}),
+          ...(x.crit ? { cr: true as const } : {}),
         });
       else
         e.push({
@@ -345,6 +360,8 @@ export function fight(
           v,
           s: x.s,
           ...(x.cura ? { cura: true as const } : {}),
+          ...(x.crit ? { cr: true as const } : {}),
+          ...(x.dot ? { dt: x.dot } : {}),
         });
     }
     rec.acc.clear();
@@ -570,7 +587,7 @@ export function fight(
     mult: number,
     element: Element,
     o: HitOpts = {},
-  ): { value: number; landed: boolean } => {
+  ): { value: number; landed: boolean; crit?: boolean } => {
     const ch = h.ch;
     const arch = e.input.archetype;
     const m = e.input.level;
@@ -601,12 +618,18 @@ export function fight(
       return { value: base * mult * expMult * landed * red, landed: true };
     }
     if (rnd() < miss) return { value: 0, landed: false };
-    const r = rnd() < c ? critMult : roll();
-    return { value: base * mult * r * red, landed: true };
+    const crit = rnd() < c;
+    const r = crit ? critMult : roll();
+    return { value: base * mult * r * red, landed: true, crit };
   };
 
   /** Passos 6 a 10 do lado do inimigo: bônus %, Marca, diferença de nível; ameaça e roubo de vida. */
-  const deal = (h: Hero, e: Enemy, amount: number): number => {
+  const deal = (
+    h: Hero,
+    e: Enemy,
+    amount: number,
+    tag: HitTag = {},
+  ): number => {
     let mult = 1;
     for (const b of active(partyBuffs, "dano")) mult *= 1 + b.value;
     for (const b of active(e.debuffs, "danoRecebido")) mult *= 1 + b.value;
@@ -617,6 +640,8 @@ export function fight(
       source,
       Math.min(amount, Math.max(0, e.hp)),
       false,
+      false,
+      tag,
     );
     e.hp -= amount;
     if (e.hp <= 0) e.alive = false;
@@ -1137,6 +1162,7 @@ export function fight(
           below?.on === "criticoAbaixo" && x.hp / x.input.hp < below.pct;
         let d = 0;
         let landed = false;
+        let crit = false;
         for (const p of eff.parts) {
           const n =
             p.element === "fisico"
@@ -1157,6 +1183,7 @@ export function fight(
           });
           d += r.value * n;
           landed ||= r.landed;
+          crit ||= r.crit ?? false;
         }
         if (
           eff.vsFamilies &&
@@ -1178,7 +1205,7 @@ export function fight(
           });
           continue;
         }
-        const dealt = deal(h, x, d);
+        const dealt = deal(h, x, d, { crit });
         dealtHere += dealt;
         if (s.threatMult)
           h.threat[x.i]! += dealt * h.ch.threat * (s.threatMult - 1);
@@ -1265,6 +1292,7 @@ export function fight(
           }
           h.dots.push({
             key,
+            kind: eff.poison ? "veneno" : (eff.kind ?? "dot"),
             perSec: per,
             until: dur(eff.durationMs),
             enemy: x.i,
@@ -1853,7 +1881,7 @@ export function fight(
             // Errou (Precisão × Fuga): a tela mostra; antes o golpe sumia (26/11/2026).
             if (!r.landed)
               emit({ k: "golpe", a: who(h), b: FOE_BASE + e.i, v: 0, bl: "erro" });
-            h.autoDamage += deal(h, e, r.value);
+            h.autoDamage += deal(h, e, r.value, { crit: r.crit ?? false });
           }
           h.auto += 1 / ch.attacksPerSecond;
         }
@@ -1864,7 +1892,7 @@ export function fight(
         const e = enemies[x.enemy];
         if (e && e.alive) {
           source = x.key.split(":")[0]!;
-          const dealt = deal(h, e, x.perSec * DT);
+          const dealt = deal(h, e, x.perSec * DT, { dot: x.kind });
           if (x.threatMult)
             h.threat[e.i]! += dealt * h.ch.threat * (x.threatMult - 1);
           if (x.selfHeal) heal(h, x.selfHeal * maxHp(h) * DT, null);

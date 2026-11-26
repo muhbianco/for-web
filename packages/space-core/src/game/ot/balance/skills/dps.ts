@@ -89,6 +89,7 @@ export const MAGO: SkillContent[] = [
               coefPerSec: 0,
               durationMs: s(4),
               targets: "area",
+              kind: "queimadura",
             },
             ["coefPerSec"],
             0.04,
@@ -290,6 +291,7 @@ export const CACADOR: SkillContent[] = [
               coefPerSec: 0,
               durationMs: s(4),
               targets: "area",
+              kind: "sangramento",
             },
             ["coefPerSec"],
             0.05,
@@ -562,31 +564,34 @@ export const ASSASSINO: SkillContent[] = [
     ],
   },
   {
+    // Era a Fumaça (−20% de Precisão na sala): medida em 26/11/2026, tirava ~1% do dano recebido
+    // (ataque mágico e mecânica ignoram a esquiva). O dono pediu veneno em área no lugar. O id e os
+    // das mecânicas ficam: quem já tem a skill nos slots e pontos nela não perde nada.
     id: "fumaca",
-    name: "Fumaça",
+    name: "Nuvem Tóxica",
     cls: "assassino",
     tier: 2,
     target: "sala inteira",
-    cooldownMs: s(30),
+    cooldownMs: s(20),
     manaPct: 0.08,
-    ai: [inimigos(3), SO_EM_CHEFE],
+    ai: [inimigos(2), SO_EM_CHEFE],
     effects: [
       {
-        type: "debuff",
-        stat: "precisao",
-        value: 0.2,
-        bossValue: 0.2,
+        type: "dot",
+        element: "fisico",
+        coefPerSec: 0.2,
         durationMs: s(8),
         targets: "area",
-        group: "fumaca",
+        poison: true,
       },
     ],
     mechanics: [
-      mech("fumaca-densa", "Fumaça Densa", 3, "−2% a mais (máx. −10%).", [
-        valor(0, "value", 0.02),
-        valor(0, "bossValue", 0.02),
+      mech("fumaca-densa", "Nuvem Densa", 3, "+6% no veneno (máx. +30%).", [
+        potencia([0], 0.06),
       ]),
-      mech("cortina", "Cortina", 4, "+1 s (máx. +5 s).", [duracao([0], 1000)]),
+      mech("cortina", "Névoa Persistente", 4, "+1 s (máx. +5 s).", [
+        duracao([0], 1000),
+      ]),
     ],
   },
   {

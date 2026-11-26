@@ -210,3 +210,29 @@ test("o erro do herói aparece nos quadros (ataque básico e skill), sem mudar a
     0,
   );
 });
+
+test("crítico e tique de DoT ficam marcados nos quadros, sem mudar a soma do dano (26/11/2026)", () => {
+  const d = dungeonById("masmorra-70")!;
+  const fs = party(["guerreiro", "padre", "mago", "assassino"], 70);
+  const r = simulateRun(d, fs, {
+    mode: "aleatorio",
+    random: randomSource(new Rng(5)),
+    record: true,
+  });
+  const evs = r.frames!.flatMap((x) => x.e);
+  const mine = evs.filter(
+    (e) => (e.k === "golpe" || e.k === "magia") && e.a === 3 && e.b >= FOE_BASE,
+  );
+  assert.ok(mine.some((e) => "cr" in e && e.cr), "o assassino critou");
+  assert.ok(
+    mine.some((e) => e.k === "magia" && e.dt === "veneno"),
+    "o veneno da Lâmina aparece como tique de veneno",
+  );
+  // Gravar continua sem mudar a corrida.
+  const plain = simulateRun(d, fs, {
+    mode: "aleatorio",
+    random: randomSource(new Rng(5)),
+  });
+  assert.equal(plain.outcome, r.outcome);
+  assert.equal(plain.seconds, r.seconds);
+});

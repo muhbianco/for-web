@@ -110,6 +110,8 @@ export type Effect =
       coefPerSec: number;
       durationMs: number;
       targets?: EnemyScope;
+      /** O tipo do DoT para a cor do número (o veneno sai do `poison`). */
+      kind?: "queimadura" | "sangramento";
       /** Veneno: o traço do assassino soma +20%. */
       poison?: boolean;
       /** Quantas aplicações acumulam no mesmo alvo (padrão: renova). */
@@ -431,12 +433,23 @@ export type MechanicEvent =
  * Um evento da luta para a tela da corrida (Fase 8). Dano e cura vêm somados por segundo, por autor,
  * alvo e origem ("auto" = ataque básico; senão o id da skill ou da mecânica).
  */
+/** O tipo de um DoT na tela: veneno, queimadura, sangramento, ou "dot" (a cor vem do elemento). */
+export type DotKind = "veneno" | "queimadura" | "sangramento" | "dot";
+
 export type FightEvent =
   /**
    * Ataque básico (herói ou monstro); `bl`: "erro" quando não acertou (o herói esquivou do monstro,
    * ou o herói errou o monstro, 26/11/2026) ou "bloqueio" quando o herói bloqueou.
    */
-  | { k: "golpe"; a: number; b: number; v: number; bl?: "erro" | "bloqueio" }
+  | {
+      k: "golpe";
+      a: number;
+      b: number;
+      v: number;
+      bl?: "erro" | "bloqueio";
+      /** Crítico (o número sai amarelo; 26/11/2026). */
+      cr?: true;
+    }
   /** Skill de herói ou mecânica de monstro; `cura` quando curou; `bl: "erro"` quando a skill errou. */
   | {
       k: "magia";
@@ -446,6 +459,9 @@ export type FightEvent =
       s: string;
       cura?: true;
       bl?: "erro";
+      cr?: true;
+      /** Tique de DoT e o tipo dele (a cor do número e sem o golpe animado; 26/11/2026). */
+      dt?: DotKind;
     }
   /** O herói soltou a skill (aparece mesmo quando ela não dá dano nem cura). */
   | { k: "lanca"; a: number; s: string }

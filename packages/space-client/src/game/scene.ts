@@ -30,6 +30,7 @@ import {
   SCENE_W,
   type Spot,
   TILE,
+  damageColor,
 } from "./script.ts";
 
 /**
@@ -52,6 +53,7 @@ export const MISS_WORDS = { missed: "errou", dodged: "esquivou", blocked: "bloq.
 const MISS_COLOR = 0xc9c3b8;
 const DODGE_COLOR = 0x9fd8ff;
 const BLOCK_COLOR = 0xb9c6d6;
+
 const FLOAT_MS = 700;
 const WALK_OUT_MS = 750;
 /** Um herói sai um pouco depois do outro. */
@@ -597,7 +599,8 @@ export class DungeonScene {
         b.hp = afterHit(b.hp, b.max, c);
         const head = { x: b.pos.x, y: b.pos.y - b.size };
         const up = c.how === "cura" || c.how === "mana";
-        if (c.how === "dano" || up) this.floater(up ? `+${c.v}` : String(c.v), ELEMENT_COLOR[c.el], head, now);
+        if (up) this.floater(`+${c.v}`, ELEMENT_COLOR[c.el], head, now);
+        else if (c.how === "dano") this.floater(String(c.v), damageColor(c, b.hero), head, now, !!c.crit && !b.hero);
         // Não acertou: em cima de quem foi atacado. Herói = esquivou do monstro; monstro = o herói
         // errou (antes só a fumacinha, e o erro do herói nem chegava aqui; 26/11/2026).
         else if (c.how === "erro") this.floater(b.hero ? MISS_WORDS.dodged : MISS_WORDS.missed, b.hero ? DODGE_COLOR : MISS_COLOR, head, now);
@@ -723,7 +726,7 @@ export class DungeonScene {
     return s;
   }
 
-  private floater(text: string, color: number, at: Spot, now: number) {
+  private floater(text: string, color: number, at: Spot, now: number, big = false) {
     if (this.floaters.length >= FLOATER_MAX) this.releaseFloater(this.floaters.shift()!);
     const t =
       this.floaterPool.pop() ??
@@ -733,6 +736,7 @@ export class DungeonScene {
     if (t.style.fill !== color) t.style.fill = color;
     t.alpha = 1;
     t.visible = true;
+    t.scale.set(big ? 1.3 : 1);
     this.ui.addChild(t);
     // Vários números no mesmo alvo não se empilham no mesmo ponto.
     const near = this.floaters.filter((f) => Math.abs(f.x - at.x) < 2 && now - f.t0 < 300).length;
