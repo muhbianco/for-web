@@ -38,11 +38,14 @@ import {
 import {
   type SkillRow,
   type SpendTarget,
+  derivedOf,
   num,
   skillBudget,
   skillRows,
   stageSpend,
 } from "./heroModel";
+import { skillLines } from "./skillText";
+import { SkillTip, heroSkillInfo } from "./SkillTip";
 
 /**
  * Habilidades (spec §7): os 4 slots em ordem de prioridade, cada um com a IA que decide quando a
@@ -186,12 +189,17 @@ export function SkillsPanel(props: {
                   >
                     {(x) => (
                       <>
-                        <SlotName
-                          type="button"
-                          onClick={() => setSel(x().content.id)}
-                        >
-                          {x().content.name}
-                        </SlotName>
+                        <SkillTip info={() => heroSkillInfo(props.hero, x())}>
+                          {(bind) => (
+                            <SlotName
+                              {...bind}
+                              type="button"
+                              onClick={() => setSel(x().content.id)}
+                            >
+                              {x().content.name}
+                            </SlotName>
+                          )}
+                        </SkillTip>
                         <AiLine>
                           <For each={aiOf(props.hero, x())}>
                             {(c) => <Chip>{conditionText(c)}</Chip>}
@@ -252,24 +260,29 @@ export function SkillsPanel(props: {
           <List>
             <For each={rows()}>
               {(r) => (
-                <SkillBtn
-                  type="button"
-                  aria-pressed={sel() === r.content.id}
-                  data-locked={r.learned ? undefined : ""}
-                  onClick={() => setSel(r.content.id)}
-                >
-                  <span>
-                    <strong>{r.content.name}</strong>
-                    <Show when={r.slot >= 0}>
-                      <Badge>{r.slot + 1}º</Badge>
-                    </Show>
-                  </span>
-                  <small>
-                    {r.learned
-                      ? t`T${r.content.tier} · Potência ${r.build.potency} · Eficiência ${r.build.efficiency}`
-                      : t`🔒 abre no T${r.content.tier}`}
-                  </small>
-                </SkillBtn>
+                <SkillTip info={() => heroSkillInfo(props.hero, r)}>
+                  {(bind) => (
+                    <SkillBtn
+                      {...bind}
+                      type="button"
+                      aria-pressed={sel() === r.content.id}
+                      data-locked={r.learned ? undefined : ""}
+                      onClick={() => setSel(r.content.id)}
+                    >
+                      <span>
+                        <strong>{r.content.name}</strong>
+                        <Show when={r.slot >= 0}>
+                          <Badge>{r.slot + 1}º</Badge>
+                        </Show>
+                      </span>
+                      <small>
+                        {r.learned
+                          ? t`T${r.content.tier} · Potência ${r.build.potency} · Eficiência ${r.build.efficiency}`
+                          : t`🔒 abre no T${r.content.tier}`}
+                      </small>
+                    </SkillBtn>
+                  )}
+                </SkillTip>
               )}
             </For>
           </List>
@@ -361,6 +374,11 @@ function Detail(props: {
       <Show when={!props.row.learned}>
         <Muted>{t`Abre no T${s().tier}: evolua no Mestre da evolução.`}</Muted>
       </Show>
+      <Does aria-label={t`O que faz`}>
+        <For each={skillLines(n().def, derivedOf(props.hero))}>
+          {(l) => <li>{l}</li>}
+        </For>
+      </Does>
       <Nums>
         <Show
           when={n().main.kind !== "apoio"}
@@ -798,6 +816,17 @@ const SkillBtn = styled("button", {
       background: "var(--md-sys-color-primary-container)",
     },
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
+  },
+});
+const Does = styled("ul", {
+  base: {
+    margin: 0,
+    paddingInlineStart: "18px",
+    display: "flex",
+    flexDirection: "column",
+    gap: "3px",
+    fontSize: "0.9em",
+    "& li::marker": { color: "var(--md-sys-color-primary)" },
   },
 });
 const Nums = styled("div", {

@@ -45,29 +45,27 @@ export interface TipBind {
 }
 
 /**
- * O detalhe de um item ao parar em cima dele (pedido do dono, 25/11/2026: "parou o mouse em cima
- * do item, o tooltip abre"). O conteúdo é o próprio `ItemCard` em modo compacto: a mesma verdade
- * do detalhe (raridade, nível, lugar, base, afixos, refino, ▲/▼ contra o vestido, "se vestir"),
- * mais o que o Mercador paga.
+ * O detalhe ao parar em cima de algo do jogo (item: pedido do dono em 25/11/2026, "parou o mouse em
+ * cima do item, o tooltip abre"; skill: no mesmo dia, "não dá pra saber o que elas fazem"). Quem usa
+ * diz o conteúdo; o jeito de abrir, fechar e se pôr na tela é um só.
  *
  * Abre: mouse parado em cima (atraso curto), foco pelo teclado (Tab), toque longo no celular (o
  * toque curto segue selecionando, e o clique que viria depois do toque longo é engolido). Fecha:
  * mouse sai, foco sai, Esc, rolagem, mudança de tamanho, o próximo toque em qualquer lugar.
- * Fica ao lado do item (nunca em cima), sempre inteiro na tela, e não pega clique (pointer-events:
- * none). Com "reduzir movimento", aparece sem o esmaecer.
+ * Fica ao lado do que está embaixo (nunca em cima), sempre inteiro na tela, e não pega clique
+ * (pointer-events: none). Com "reduzir movimento", aparece sem o esmaecer.
  */
-export function ItemTip(props: {
-  /** Sem item (um lugar vazio do boneco): o detalhe nunca abre. */
-  item: (ItemInstance & { uid?: string }) | null | undefined;
-  /** O herói de quem olha (compara com o que ele veste); null: item de outra pessoa. */
-  hero: HeroV5 | null;
-  /** Quanto o Mercador paga (só onde vender faz sentido). */
-  price?: number;
-  compare?: boolean;
+export function HoverTip(props: {
+  /** Falso: o detalhe nunca abre (um lugar vazio do boneco). */
+  enabled: boolean;
+  /** O que o detalhe mostra (só é montado com o detalhe aberto). */
+  content: () => JSX.Element;
+  /** Largura da caixa (padrão: 300px, menos no celular). */
+  width?: number;
   children: (bind: TipBind) => JSX.Element;
 }) {
   const id = ++seq;
-  const domId = `item-tip-${id}`;
+  const domId = `game-tip-${id}`;
   let anchor: HTMLElement | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
   let press: { x: number; y: number } | null = null;
@@ -80,7 +78,7 @@ export function ItemTip(props: {
     press = null;
   };
   const show = (el: HTMLElement, touch: boolean) => {
-    if (!props.item) return;
+    if (!props.enabled) return;
     anchor = el;
     setByTouch(touch);
     setActive(id);
@@ -193,18 +191,8 @@ export function ItemTip(props: {
       {props.children(bind)}
       <Show when={open()}>
         <Portal>
-          <TipBox anchor={() => anchor} id={domId}>
-            <Show when={props.item}>
-              {(it) => (
-                <ItemCard
-                  hero={props.hero}
-                  item={it()}
-                  compare={props.compare}
-                  price={props.price}
-                  compact
-                />
-              )}
-            </Show>
+          <TipBox anchor={() => anchor} id={domId} width={props.width}>
+            {props.content()}
           </TipBox>
         </Portal>
       </Show>
@@ -212,10 +200,48 @@ export function ItemTip(props: {
   );
 }
 
+/**
+ * O detalhe de um item: o próprio `ItemCard` em modo compacto, a mesma verdade do detalhe
+ * (raridade, nível, lugar, base, afixos, refino, ▲/▼ contra o vestido, "se vestir"), mais o que o
+ * Mercador paga.
+ */
+export function ItemTip(props: {
+  /** Sem item (um lugar vazio do boneco): o detalhe nunca abre. */
+  item: (ItemInstance & { uid?: string }) | null | undefined;
+  /** O herói de quem olha (compara com o que ele veste); null: item de outra pessoa. */
+  hero: HeroV5 | null;
+  /** Quanto o Mercador paga (só onde vender faz sentido). */
+  price?: number;
+  compare?: boolean;
+  children: (bind: TipBind) => JSX.Element;
+}) {
+  return (
+    <HoverTip
+      enabled={!!props.item}
+      content={() => (
+        <Show when={props.item}>
+          {(it) => (
+            <ItemCard
+              hero={props.hero}
+              item={it()}
+              compare={props.compare}
+              price={props.price}
+              compact
+            />
+          )}
+        </Show>
+      )}
+    >
+      {props.children}
+    </HoverTip>
+  );
+}
+
 /** A caixa do detalhe: mede o próprio tamanho e se põe ao lado do item (tipMath). */
 function TipBox(props: {
   anchor: () => HTMLElement | undefined;
   id: string;
+  width?: number;
   children: JSX.Element;
 }) {
   let box: HTMLDivElement | undefined;
@@ -250,6 +276,9 @@ function TipBox(props: {
         ...gameChip,
         "box-shadow":
           "0 0 0 1px rgba(122, 100, 64, 0.6), 0 12px 32px rgba(0, 0, 0, 0.65)",
+        width: props.width
+          ? `min(${props.width}px, calc(100vw - 16px))`
+          : undefined,
         left: `${pos()?.left ?? 0}px`,
         top: `${pos()?.top ?? 0}px`,
         "max-height": pos() ? `${pos()!.maxHeight}px` : undefined,
