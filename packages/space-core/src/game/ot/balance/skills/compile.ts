@@ -169,13 +169,25 @@ export function compileSkill(
     cooldownMs: Math.max(0, content.cooldownMs - acc.flatCutMs),
     ownCooldownCut: ownCut,
     baseCooldownMs: content.cooldownMs,
-    manaPct: content.manaPct * (1 - sk.efficiencyManaPerUp * eff),
+    manaPct:
+      content.manaPct *
+      B.cfg.mana.costScale *
+      (1 + B.cfg.mana.costPerPotencyRank * (rank - 1)) *
+      (1 + B.cfg.mana.costPerMechanicUp * mechanicUps(build)) *
+      (1 - sk.efficiencyManaPerUp * eff),
     ...(content.threatMult ? { threatMult: content.threatMult } : {}),
     ...(content.castMs ? { castMs: content.castMs } : {}),
     condition: ai && ai.length > 0 ? ai : content.ai,
     effects: acc.effects,
     ...(acc.hooks.length > 0 ? { hooks: acc.hooks } : {}),
   };
+}
+
+/** Quantos ups de Mecânica (adereços) a skill tem, somados. */
+function mechanicUps(build: SkillBuild): number {
+  let n = 0;
+  for (const v of Object.values(build.mechanics)) n += v;
+  return n;
 }
 
 /** Os 4 slots do herói, na ordem de prioridade, prontos para a luta. */

@@ -116,6 +116,18 @@ export const BALANCE = {
     mpPerIntPerSecond: 0.05,
   },
 
+  /**
+   * O custo de mana das skills (26/11/2026, em estudo: os valores daqui deixam o jogo como era).
+   * Custo = conteúdo × escala × (1 + por rank × (Potência − 1)) × (1 + por up × ups de Mecânica)
+   * × (1 − Eficiência) ÷ (1 + corte por INT × INT). A skill melhorada gasta mais; a INT barateia.
+   */
+  mana: {
+    costScale: 1,
+    costPerPotencyRank: 0,
+    costPerMechanicUp: 0,
+    costCutPerInt: 0,
+  },
+
   /** §5: ameaça. */
   threat: {
     /** O monstro troca de alvo quando alguém passa de 110% da ameaça do alvo atual. */

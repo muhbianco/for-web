@@ -277,6 +277,9 @@ export function fight(
   let source = "auto";
   let foeSource = "golpe";
   const who = (h: Hero) => heroes.indexOf(h);
+  /** A INT barateia a skill (cfg.mana.costCutPerInt; 0 = como era). */
+  const intCut = (h: Hero) =>
+    1 / (1 + B.cfg.mana.costCutPerInt * h.ch.attrs.INT);
   const emit = (ev: FightEvent) => {
     if (rec) rec.events.push(ev);
   };
@@ -775,7 +778,7 @@ export function fight(
   const tryCheatDeath = (h: Hero): boolean => {
     for (const { s } of equippedHooks(h, "recusaMorte")) {
       if ((h.cds.get(s.id) ?? 0) > t) continue;
-      const cost = s.manaPct * h.ch.manaBase;
+      const cost = s.manaPct * h.ch.manaBase * intCut(h);
       if (cost > h.mp) continue;
       h.cheatedDeath = true;
       h.hp = 1;
@@ -1842,7 +1845,7 @@ export function fight(
       if (h.gcd > 0 || h.casting) continue;
       for (const s of h.input.skills) {
         if ((h.cds.get(s.id) ?? 0) > t) continue;
-        const cost = s.manaPct * ch.manaBase;
+        const cost = s.manaPct * ch.manaBase * intCut(h);
         if (cost > h.mp) continue;
         const cond = anyCondition(h, s);
         if (!cond.ok) continue;
