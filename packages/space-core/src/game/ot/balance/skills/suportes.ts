@@ -386,6 +386,8 @@ export const DRUIDA: SkillContent[] = [
         stat: "regenManaPct",
         // D44: 2% → 1,25%/s (com 2% o druida zerava a mana do grupo inteiro).
         value: 0.0125,
+        // D45: a mana vai para o grupo, não para o druida que canta.
+        excludeCaster: true,
         durationMs: s(12),
       },
     ],

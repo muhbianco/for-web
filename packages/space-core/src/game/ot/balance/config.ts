@@ -130,8 +130,13 @@ export const BALANCE = {
     costPerPotencyRank: 0.01,
     costPerMechanicUp: 0.02,
     costCutPerInt: 0.003,
-    /** Ajuste por classe (× no custo de todas as skills dela; sem a classe, 1). */
-    classCost: { assassino: 0.86, cacador: 0.89 } as Partial<
+    /**
+     * Ajuste por classe (× no custo de todas as skills dela; sem a classe, 1). D45: o druida dá
+     * mana ao grupo às custas da própria (a Canção não vale para ele) e gasta ×1,4 — ~14 poções
+     * de mana por corrida, contra ~2 do mago. Acima de ×1,4 o druida como cura única perde no
+     * limite as Masmorras do 110 ao 140 (a poção de mana toma a recarga da de vida).
+     */
+    classCost: { assassino: 0.86, cacador: 0.89, druida: 1.4 } as Partial<
       Record<string, number>
     >,
   },
