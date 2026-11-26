@@ -327,6 +327,16 @@ msgstr ""
 #~ msgid "{0} de experiência perdida"
 #~ msgstr ""
 
+#. placeholder {0}: pct(s().chance)
+#: components/space/game/DungeonDetail.tsx
+msgid "{0} de item em cada"
+msgstr ""
+
+#. placeholder {0}: pct(s().chance)
+#: components/space/game/DungeonDetail.tsx
+msgid "{0} de item em cada, para alguém do grupo"
+msgstr ""
+
 #. placeholder {0}: num(r().job_xp)
 #: components/space/game/RunPanel.tsx
 msgid "{0} de job"
@@ -461,6 +471,12 @@ msgstr ""
 msgid "{0} minério de {mat}"
 msgstr ""
 
+#. placeholder {0}: odds().ore.perHero
+#. placeholder {1}: odds().ore.material
+#: components/space/game/DungeonDetail.tsx
+msgid "{0} minérios de {1} (1 por sala vencida)"
+msgstr ""
+
 #. placeholder {0}: leaderName(l())
 #. placeholder {1}: name(l())
 #. placeholder {2}: l().members.length
@@ -560,10 +576,16 @@ msgstr ""
 
 #. placeholder {0}: row.def.party.min
 #. placeholder {1}: row.def.party.max
+#: components/space/game/DungeonPicker.tsx
+msgid "{0}–{1} heróis"
+msgstr ""
+
+#. placeholder {0}: row.def.party.min
+#. placeholder {1}: row.def.party.max
 #. placeholder {2}: row.def.minLevel
 #: components/space/game/TvMenu.tsx
-msgid "{0}–{1} heróis · entra do nível {2}"
-msgstr ""
+#~ msgid "{0}–{1} heróis · entra do nível {2}"
+#~ msgstr ""
 
 #. placeholder {0}: m.name
 #. placeholder {1}: CLASSES[m.cls].titles[1]
@@ -615,6 +637,12 @@ msgstr ""
 #: components/space/game/TvMenu.tsx
 #~ msgid "{0}/{1} · fecha em {2}"
 #~ msgstr ""
+
+#. placeholder {0}: g().done
+#. placeholder {1}: g().total
+#: components/space/game/DungeonPicker.tsx
+msgid "{0}/{1} concluídas"
+msgstr ""
 
 #. placeholder {0}: c.min
 #. placeholder {1}: Math.round(c.pct * 100)
@@ -1301,6 +1329,11 @@ msgstr ""
 msgid "−4% de mana e −3% de recarga por ponto."
 msgstr ""
 
+#. placeholder {0}: num1(odds().perHero.items)
+#: components/space/game/DungeonDetail.tsx
+msgid "≈ {0} itens por corrida para você. Chance de sair pelo menos um de cada raridade."
+msgstr ""
+
 #. placeholder {0}: duration(eta())
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "≈ {0} para o próximo nível"
@@ -1348,8 +1381,8 @@ msgstr ""
 
 #. placeholder {0}: row.def.minLevel
 #: components/space/game/TvMenu.tsx
-msgid "🔒 entra a partir do nível {0}"
-msgstr ""
+#~ msgid "🔒 entra a partir do nível {0}"
+#~ msgstr ""
 
 #. placeholder {0}: props.locked
 #: components/space/game/SkillsPanel.tsx
@@ -1364,13 +1397,33 @@ msgstr ""
 msgid "1 inimigo"
 msgstr ""
 
+#: components/space/game/DungeonDetail.tsx
+msgid "1 item"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "1 item {rarity} ou melhor para alguém do grupo"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "1 item {rarity} ou melhor para cada um"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "1 item para alguém do grupo"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "1 item para cada um"
+msgstr ""
+
 #: components/space/game/runUi.ts
 #~ msgid "1 moeda"
 #~ msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "1 ou 2 heróis. Três salas de monstros e um chefe menor: dá para ir sozinho."
-msgstr ""
+#~ msgid "1 ou 2 heróis. Três salas de monstros e um chefe menor: dá para ir sozinho."
+#~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 #~ msgid "1 partida rolando"
@@ -1401,12 +1454,12 @@ msgid "24 hours"
 msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "3 ou 4 heróis. O chefe da região em 3 fases, com todas as mecânicas. Dá um Épico garantido."
-msgstr ""
+#~ msgid "3 ou 4 heróis. O chefe da região em 3 fases, com todas as mecânicas. Dá um Épico garantido."
+#~ msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "3 ou 4 heróis. O chefe tem mecânicas: precisa de tanque, suporte e dano."
-msgstr ""
+#~ msgid "3 ou 4 heróis. O chefe tem mecânicas: precisa de tanque, suporte e dano."
+#~ msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "A 2ª classe recupera vida e mana mais depressa, como a promoção do OT, e abre a 2ª parte da árvore."
@@ -1549,6 +1602,11 @@ msgstr ""
 #~ msgid "A mochila não sai do corpo: é ela que guarda tudo. Para trocar, vista outra."
 #~ msgstr ""
 
+#. placeholder {0}: props.def.minLevel
+#: components/space/game/DungeonDetail.tsx
+msgid "A partir do nível {0}"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "A Potência chegou ao teto do seu tier. Evolua no Mestre."
 msgstr ""
@@ -1558,8 +1616,8 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "A primeira Masmorra é a do nível 40 (entra a partir do 35) e o primeiro Chefe de Região, o do 50. Até lá, Caçadas."
-msgstr ""
+#~ msgid "A primeira Masmorra é a do nível 40 (entra a partir do 35) e o primeiro Chefe de Região, o do 50. Até lá, Caçadas."
+#~ msgstr ""
 
 #: components/space/game/HeroSheet.tsx
 msgid "A Proficiência efetiva é limitada pelo nível (10 × nível + 250); o resto fica guardado."
@@ -1578,8 +1636,8 @@ msgid "A reprodução neste computador está engasgando"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "a sua"
-msgstr ""
+#~ msgid "a sua"
+#~ msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "A TV está desligada."
@@ -1844,6 +1902,10 @@ msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "Aguardando quem lidera começar a próxima."
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Ainda não concluída"
 msgstr ""
 
 #. placeholder {0}: d()?.minLevel
@@ -2670,6 +2732,10 @@ msgstr ""
 msgid "Caçada"
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "Caçada {level}"
+msgstr ""
+
 #: components/space/game/rpgUi.ts
 #~ msgid "Caçador"
 #~ msgstr ""
@@ -2910,6 +2976,14 @@ msgstr ""
 #. placeholder {0}: pct(chance())
 #: components/space/game/SmithPanel.tsx
 msgid "Chance {0}"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Chances por corrida"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Chances por corrida, para você"
 msgstr ""
 
 #: components/modal/modals/EditBotUsername.tsx
@@ -3437,6 +3511,19 @@ msgstr ""
 #~ msgid "comuns"
 #~ msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "Conclua a região antes"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Conclua antes: {list}"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+#: components/space/game/DungeonPicker.tsx
+msgid "Concluída"
+msgstr ""
+
 #. placeholder {0}: i + 1
 #: components/space/game/SkillsPanel.tsx
 msgid "Condição {0}"
@@ -3578,6 +3665,10 @@ msgstr ""
 
 #: components/space/game/GearPanel.tsx
 msgid "Consumíveis"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Conta de uma corrida vencida com o grupo todo vivo: quem cai antes de um abate não leva o item dele."
 msgstr ""
 
 #. placeholder {0}: props.discoverable instanceof Bot ? "bot" : "server"
@@ -3879,6 +3970,10 @@ msgstr ""
 msgid "Criar herói"
 msgstr ""
 
+#: components/space/game/TvMenu.tsx
+msgid "Criar um grupo nesta dungeon"
+msgstr ""
+
 #: components/space/game/GamePanel.tsx
 #~ msgid "Crie o seu herói"
 #~ msgstr ""
@@ -4101,8 +4196,26 @@ msgstr ""
 msgid "de {0} (1 por nível de job)"
 msgstr ""
 
+#. placeholder {0}: props.def.party.min
+#. placeholder {1}: props.def.party.max
+#: components/space/game/DungeonDetail.tsx
+msgid "De {0} a {1} heróis"
+msgstr ""
+
 #: components/space/game/StatusIcons.tsx
 msgid "de {by}"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "De {min} a {max} heróis. O chefe da região, em 3 fases. Abre quando as Caçadas e Masmorras da região estão concluídas. O chefe dá {item}."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "De {min} a {max} heróis. O chefe tem mecânicas: tanque, suporte e dano fazem falta. O chefe dá {item}."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "De {min} a {max} heróis. Três salas de monstros e um chefe menor: dá para ir sozinho. O chefe dá {item}."
 msgstr ""
 
 #. placeholder {0}: lvl()
@@ -4125,6 +4238,10 @@ msgstr ""
 #: components/space/game/LobbyChip.tsx
 #~ msgid "De novo"
 #~ msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "De onde vem"
+msgstr ""
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
@@ -4451,6 +4568,10 @@ msgstr ""
 #~ msgid "Detalhe"
 #~ msgstr ""
 
+#: components/space/game/DungeonDetail.tsx
+msgid "Detalhe da dungeon"
+msgstr ""
+
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Deu certo: +{to}!"
 #~ msgstr ""
@@ -4626,6 +4747,10 @@ msgstr ""
 #: components/space/game/TvMenu.tsx
 #~ msgid "Dungeon em grupo"
 #~ msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Dungeons"
+msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Dungeons em grupo"
@@ -4965,6 +5090,14 @@ msgstr "Vnesi svoje želeno uporabniško ime."
 msgid "Entra a partir do nível {0}"
 msgstr ""
 
+#: components/space/game/DungeonDetail.tsx
+msgid "Entra a partir do nível {level}"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Entrada"
+msgstr ""
+
 #: components/space/Onboarding.tsx
 msgid "Entrar no espaço"
 msgstr ""
@@ -5030,6 +5163,12 @@ msgstr ""
 #. placeholder {0}: price().ilvl
 #: components/space/game/MerchantPanel.tsx
 msgid "Equipamento Comum do nível {0} (o do seu tier de poção). Um bom tapa-buraco até cair coisa melhor."
+msgstr ""
+
+#. placeholder {0}: odds().materials.join(" e ")
+#. placeholder {1}: levelText()
+#: components/space/game/DungeonDetail.tsx
+msgid "Equipamento de {0}, nível {1}, para a sua classe:"
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -5118,8 +5257,8 @@ msgid "Escolha…"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Escolher a dungeon"
-msgstr ""
+#~ msgid "Escolher a dungeon"
+#~ msgstr ""
 
 #: components/space/game/GearPanel.tsx
 msgid "Escolher o melhor sozinho"
@@ -5972,6 +6111,7 @@ msgstr ""
 msgid "Group Name"
 msgstr "Ime skupine"
 
+#: components/space/game/DungeonDetail.tsx
 #: components/space/game/RunMeter.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Grupo"
@@ -6099,6 +6239,14 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Herói"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Heróis no grupo"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Heróis no grupo:"
 msgstr ""
 
 #: components/ui/components/features/voice/callCard/VoiceCallCardActiveRoom.tsx
@@ -6579,6 +6727,11 @@ msgstr "Zapusti strežnik"
 msgid "Lendário"
 msgstr ""
 
+#. placeholder {0}: legend().join(", ")
+#: components/space/game/DungeonDetail.tsx
+msgid "Lendário possível: {0}"
+msgstr ""
+
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Lento para a sua vocação"
 #~ msgstr ""
@@ -6593,6 +6746,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Leva para"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Levar o grupo para esta dungeon"
 msgstr ""
 
 #: components/space/game/gameText.ts
@@ -7030,6 +7187,10 @@ msgstr ""
 msgid "Masmorra"
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "Masmorra {level}"
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Masquerade"
 msgstr "Maškarada"
@@ -7346,6 +7507,18 @@ msgstr ""
 msgid "Monstros"
 msgstr ""
 
+#. placeholder {0}: lv()
+#. placeholder {1}: r().def.minLevel
+#. placeholder {2}: r().def.party.min
+#. placeholder {3}: r().def.party.max
+#: components/space/game/DungeonPicker.tsx
+msgid "Monstros {0} · entra no {1} · {2}–{3} heróis"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Monstros e itens"
+msgstr ""
+
 #: components/space/game/partyUi.ts
 msgid "montando"
 msgstr ""
@@ -7357,16 +7530,16 @@ msgid "montando · {0}/{1}"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Montar"
-msgstr ""
+#~ msgid "Montar"
+#~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 #~ msgid "Montar grupo"
 #~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Montar um grupo"
-msgstr ""
+#~ msgid "Montar um grupo"
+#~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 #~ msgid "Monte o grupo aqui; quem quiser ir junto vem até esta TV e entra. Até 4 pessoas; o grupo fecha em 5 min se ninguém começar."
@@ -7803,25 +7976,24 @@ msgstr ""
 #~ msgid "Ninguém perde XP ao cair. Quem caiu leva o que rendeu até cair; sem o bônus de fim e com as poções gastas."
 #~ msgstr ""
 
-#. placeholder {0}: g.region.from
-#. placeholder {1}: g.region.to
-#. placeholder {2}: g.region.material
-#: components/space/game/TvMenu.tsx
+#. placeholder {0}: g().region.from
+#. placeholder {1}: g().region.to
+#. placeholder {2}: g().region.material
+#: components/space/game/DungeonPicker.tsx
 msgid "níveis {0}–{1} · {2}"
 msgstr ""
 
-#. placeholder {0}: h().level
-#. placeholder {0}: props.item.ilvl
-#: components/space/game/GamePanel.tsx
-#~ msgid "nível {0}"
-#~ msgstr ""
+#. placeholder {0}: lv()
+#: components/space/game/DungeonDetail.tsx
+msgid "nível {0}"
+msgstr ""
 
 #. placeholder {0}: bars()!.level
+#. placeholder {0}: levelText()
 #. placeholder {0}: props.member.level
-#. placeholder {0}: row.def.level
+#: components/space/game/DungeonDetail.tsx
 #: components/space/game/HeroSheet.tsx
 #: components/space/game/RunHud.tsx
-#: components/space/game/TvMenu.tsx
 msgid "Nível {0}"
 msgstr ""
 
@@ -8079,6 +8251,15 @@ msgstr ""
 msgid "O chefe chamou lacaios."
 msgstr ""
 
+#. placeholder {0}: noRegion() .map((m) => m.name) .join(", ")
+#: components/space/game/TvMenu.tsx
+msgid "O Chefe de Região pede as Caçadas e Masmorras da região concluídas. Ainda sem: {0}."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "O Chefe de Região só abre para quem concluiu as Caçadas e Masmorras da região. Alguém do grupo ainda não concluiu."
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "O chefe ficou mais forte e mais rápido."
 msgstr ""
@@ -8266,6 +8447,10 @@ msgstr ""
 msgid "O preço é o job e a Proficiência: os dois voltam ao 1, e as habilidades da classe nova começam no tier 1. Ficam o nível, a experiência, o ouro, os itens, as poções, a munição e o minério. Os atributos voltam para você distribuir de novo, sem gastar a redistribuição."
 msgstr ""
 
+#: components/space/game/DungeonDetail.tsx
+msgid "O que cai"
+msgstr ""
+
 #: components/space/game/SmithPanel.tsx
 msgid "O que está vestido não desmonta: tire antes na ficha."
 msgstr ""
@@ -8291,6 +8476,10 @@ msgstr ""
 #: components/space/game/RunPanel.tsx
 #~ msgid "O servidor do jogo reiniciou no meio desta corrida e não consegue mostrar a luta. O resultado já está decidido e sai em {0}."
 #~ msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "O seu grupo já está aqui"
+msgstr ""
 
 #: components/space/game/rpgUi.ts
 #~ msgid "O tempo do grupo acabou. Monte de novo."
@@ -8692,6 +8881,11 @@ msgstr ""
 #: components/space/game/itemUi.ts
 #~ msgid "pede level {lv}"
 #~ msgstr ""
+
+#. placeholder {0}: pct(odds().protectionStone)
+#: components/space/game/DungeonDetail.tsx
+msgid "Pedra de Proteção: {0} no chefe"
+msgstr ""
 
 #: components/space/game/GearPanel.tsx
 msgid "Pedras de Proteção"
@@ -9438,10 +9632,24 @@ msgstr ""
 msgid "Recolher o grupo"
 msgstr ""
 
+#: components/space/game/DungeonDetail.tsx
+#: components/space/game/DungeonPicker.tsx
+msgid "Recomendada"
+msgstr ""
+
 #. placeholder {0}: num(prof().recommended)
 #. placeholder {1}: num(prof().stored)
 #: components/space/game/MasterPanel.tsx
 msgid "Recomendada: 10 × nível = {0}. Guardada: {1}."
+msgstr ""
+
+#: components/space/game/DungeonPicker.tsx
+msgid "Recomendadas para o seu nível"
+msgstr ""
+
+#. placeholder {0}: props.level
+#: components/space/game/DungeonPicker.tsx
+msgid "Recomendadas para o seu nível ({0})"
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -10008,9 +10216,9 @@ msgstr ""
 msgid "Sala vazia: a TV pausou"
 msgstr ""
 
-#: components/space/game/RunPanel.tsx
-#~ msgid "Salas"
-#~ msgstr ""
+#: components/space/game/DungeonDetail.tsx
+msgid "Salas"
+msgstr ""
 
 #. placeholder {0}: duration(bankNow(hero()!, now()))
 #. placeholder {1}: TRAINING.maxBankMs / 3_600_000
@@ -10431,6 +10639,7 @@ msgstr ""
 msgid "Seu computador não está dando conta"
 msgstr ""
 
+#: components/space/game/DungeonPicker.tsx
 #: components/space/game/TvMenu.tsx
 msgid "Seu grupo"
 msgstr ""
@@ -10636,6 +10845,10 @@ msgstr ""
 
 #: components/space/InteractionDialog.tsx
 msgid "Só páginas https podem ser mostradas aqui."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Só quem lidera o grupo troca a dungeon"
 msgstr ""
 
 #: components/space/game/rpgUi.ts
@@ -11254,8 +11467,12 @@ msgstr ""
 msgid "Timeout Members"
 msgstr "Pavziraj Člane"
 
-#: components/space/game/TvMenu.tsx
+#: components/space/game/DungeonPicker.tsx
 msgid "Tipo de dungeon"
+msgstr ""
+
+#: components/space/game/DungeonPicker.tsx
+msgid "Tipos de dungeon"
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -11324,8 +11541,12 @@ msgstr ""
 msgid "Tocar para todos"
 msgstr ""
 
-#: components/space/game/TvMenu.tsx
+#: components/space/game/DungeonPicker.tsx
 msgid "Todas"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Todas as dungeons"
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -11371,6 +11592,10 @@ msgstr ""
 
 #: components/space/game/ItemCard.tsx
 msgid "Toque e segure um item para ver os detalhes."
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Toque numa dungeon para ver o que cai e as chances."
 msgstr ""
 
 #: components/space/game/ClassPicker.tsx
@@ -11458,8 +11683,8 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/TvMenu.tsx
-msgid "Trocar"
-msgstr ""
+#~ msgid "Trocar"
+#~ msgstr ""
 
 #: components/space/game/itemUi.ts
 #~ msgid "Trocar 1 por 100 {name}"
@@ -11902,6 +12127,14 @@ msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Ver no mapa"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Ver o que cai"
+msgstr ""
+
+#: components/space/game/DungeonPicker.tsx
+msgid "Ver o que cai ›"
 msgstr ""
 
 #: components/space/game/GearPanel.tsx

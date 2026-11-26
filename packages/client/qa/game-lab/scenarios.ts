@@ -10,7 +10,9 @@ import {
   ARMOR_SLOTS,
   balance as B,
   CLASSES,
+  bossPrereqs,
   createHero,
+  dungeonById,
   evolveTier,
   generateItem,
   raiseAttributes,
@@ -170,6 +172,13 @@ export function stateOf(
   };
 }
 
+/** A região 1 até a Caçada 30 (o chefe ainda trancado: faltam a Caçada 40 e a Masmorra 40). */
+export const CLEARED_SOME = ["cacada-1", "cacada-10", "cacada-20", "cacada-30"];
+/** A região 1 inteira (o Rei Javali liberado). */
+export const CLEARED_REGION1 = bossPrereqs(dungeonById("regiao-1")!).map(
+  (d) => d.id,
+);
+
 /** O mago do nível 45 (T3), o herói principal das capturas. */
 export function mage45(): HeroV5 {
   let h = grow("mago", 45, 28, { keepSkill: 3, keepAttr: 12 });
@@ -216,7 +225,13 @@ export const PEOPLE = [
 
 export function lobbyOf(
   dungeon: string,
-  members: { id: string; name: string; cls: ClassId; level: number }[],
+  members: {
+    id: string;
+    name: string;
+    cls: ClassId;
+    level: number;
+    regions?: number[];
+  }[],
   extra: Partial<RpgLobbyView> = {},
 ): RpgLobbyView {
   return {
@@ -230,8 +245,9 @@ export function lobbyOf(
       name: m.name,
       cls: m.cls,
       level: m.level,
+      ...(m.regions ? { regions: m.regions } : {}),
     })),
-    max: dungeon.startsWith("cacada") ? 2 : 4,
+    max: dungeonById(dungeon)?.party.max ?? 4,
     expires_at: Date.now() + 600_000,
     state: "forming",
     run_id: null,

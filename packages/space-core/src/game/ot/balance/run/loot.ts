@@ -62,13 +62,18 @@ export function rollRarity(
   return entries[entries.length - 1]![0];
 }
 
+export type LootSlot = (typeof GEAR_SLOTS)[number];
+
+/** Os lugares que podem cair para a classe, todos com a mesma chance (sem mão secundária, sem ela). */
+export function lootSlots(cls: ClassId): LootSlot[] {
+  const c = CLASSES[cls];
+  return GEAR_SLOTS.filter((s) => s !== "secundaria" || c.offhands.length > 0);
+}
+
 /** Uma base que a classe usa: a arma e a mão secundária dela; a armadura no peso dela. */
 export function rollBase(cls: ClassId, rng: RandomSource): ItemBase {
   const c = CLASSES[cls];
-  const slots = GEAR_SLOTS.filter(
-    (s) => s !== "secundaria" || c.offhands.length > 0,
-  );
-  const slot = pick(slots, rng);
+  const slot = pick(lootSlots(cls), rng);
   if (slot === "arma") return { slot, family: pick(c.weapons, rng) };
   if (slot === "secundaria") return { slot, offhand: pick(c.offhands, rng) };
   if (slot === "colar" || slot === "anel") return { slot };
@@ -83,6 +88,12 @@ function wearable(cls: ClassId, l: LegendaryDef): boolean {
   return "weight" in b ? canWearWeight(cls, b.weight) : true;
 }
 
+/** Os lendários que podem cair para a classe: os dela que ela veste; sem nenhum, qualquer um que ela veste. */
+export function legendaryPool(cls: ClassId): LegendaryDef[] {
+  const own = LEGENDARIES.filter((l) => l.cls === cls && wearable(cls, l));
+  return own.length > 0 ? own : LEGENDARIES.filter((l) => wearable(cls, l));
+}
+
 /**
  * Um lendário para a classe: os dela primeiro, senão um que ela veste. Com só 8 lendários no conteúdo
  * (P49), pode não haver nenhum: aí sai um Épico.
@@ -95,9 +106,7 @@ export function rollItem(
   B: Balance = gameBalance,
 ): ItemInstance {
   if (rarity === "lendario") {
-    const own = LEGENDARIES.filter((l) => l.cls === cls && wearable(cls, l));
-    const any = LEGENDARIES.filter((l) => wearable(cls, l));
-    const pool = own.length > 0 ? own : any;
+    const pool = legendaryPool(cls);
     if (pool.length > 0) {
       const l = pick(pool, rng);
       return {

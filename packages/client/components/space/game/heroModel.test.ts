@@ -12,7 +12,6 @@ import {
   autoPlan,
   bagMarks,
   beltOptions,
-  dungeonGroups,
   evolveCheck,
   heroBars,
   pending,
@@ -117,14 +116,7 @@ test("evolution: the milestone and the points that still fit", () => {
   assert.equal(c.ok, false);
 });
 
-test("dungeons: Masmorras only from the 40 (D19) and one 'best' per kind", () => {
-  const g = dungeonGroups(41, "todas");
-  const r1 = g[0]!;
-  assert.ok(
-    r1.rows.every((r) => r.def.kind !== "masmorra" || r.def.level >= 40),
-  );
-  const best = g.flatMap((x) => x.rows).filter((r) => r.best);
-  assert.deepEqual(new Set(best.map((b) => b.def.kind)).size, best.length);
+test("dungeons: a run has the 4 rooms", () => {
   assert.equal(runRooms("cacada-1", 1).length, 4);
 });
 

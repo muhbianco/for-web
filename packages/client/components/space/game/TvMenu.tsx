@@ -1,10 +1,9 @@
-import { For, Show, createSignal, onCleanup } from "solid-js";
+import { For, Show, createMemo, createSignal, onCleanup } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import type { SpaceUiState } from "@muchat/space-client";
 import {
   type DungeonDef,
-  type DungeonKind,
   type RpgHeroState,
   type RpgLobbyView,
   CLASSES,
@@ -13,10 +12,23 @@ import {
 import { styled } from "styled-system/jsx";
 
 import { ClassPicker } from "./ClassPicker";
-import { kindBlurb, kindName, roleName } from "./gameText";
+import DungeonDetail from "./DungeonDetail";
+import {
+  KindFilter,
+  KindLegend,
+  Recommended,
+  RegionBlock,
+} from "./DungeonPicker";
+import {
+  type DungeonFilter,
+  dungeonCatalog,
+  dungeonRow,
+  membersWithoutRegion,
+  partySizeFor,
+} from "./dungeonUi";
+import { roleName } from "./gameText";
 import {
   type GameLink,
-  Badge,
   Btn,
   GameDialog,
   Muted,
@@ -26,7 +38,6 @@ import {
   Section,
   useCommands,
 } from "./gameUi";
-import { dungeonGroups } from "./heroModel";
 import {
   belowLevel,
   dungeonName,
@@ -44,13 +55,12 @@ export interface TvLink extends GameLink {
   watchTv(): void;
 }
 
-type Filter = DungeonKind | "todas";
-
 /**
  * A TV com o Idle Hunt (§12): o meu grupo primeiro (o que importa agora), com os papéis cobertos e
  * o que falta para começar; os grupos desta TV para entrar; as corridas do Espaço para assistir; e
- * o catálogo por região — a faixa do herói aberta, as outras fechadas, a "sua" DG de cada tipo
- * marcada e as trancadas visíveis com o nível que falta. Sem relógio em lugar nenhum (D21).
+ * a escolha de DG (26/11/2026): as recomendadas para o nível, a legenda dos tipos, o catálogo por
+ * região com "Concluída" e a trava do Chefe de Região, e o detalhe de cada DG com o que cai e a
+ * chance de cada raridade. Sem relógio em lugar nenhum (D21).
  */
 export default function TvMenu(props: {
   link: TvLink;
@@ -66,33 +76,66 @@ export default function TvMenu(props: {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
   const [app, setApp] = createSignal<"home" | "idle">("home");
-  const [filter, setFilter] = createSignal<Filter>("todas");
+  const [filter, setFilter] = createSignal<DungeonFilter>("todas");
   const [open, setOpen] = createSignal<number | null>(null);
   const [changing, setChanging] = createSignal(false);
+  /** A DG aberta no detalhe (o que cai e as chances). */
+  const [detail, setDetail] = createSignal<string | null>(null);
   props.link.requestBoard();
   const timer = setInterval(() => props.link.requestBoard(), 5000);
   onCleanup(() => clearInterval(timer));
 
   const level = () => props.hero?.hero.level ?? 1;
+  const cls = () => props.hero?.hero.cls ?? "guerreiro";
+  const cleared = () => props.hero?.cleared ?? [];
   const leader = () => props.mine?.leader === props.myId;
   const joinable = () => props.lobbies.filter((l) => l.id !== props.mine?.id);
   const runs = () => props.board?.runs ?? [];
   const where = (room: string) => props.roomTitle(room) ?? t`outra sala`;
-  const groups = () => dungeonGroups(level(), filter());
+  const groups = createMemo(() => dungeonCatalog(level(), cleared(), filter()));
   const isOpen = (index: number, current: boolean) =>
     open() === index || (open() === null && current);
+  /** As chances abrem no tamanho do meu grupo (sozinho, sem grupo). */
+  const partyOf = (d: DungeonDef) =>
+    partySizeFor(d, props.mine?.members.length);
+  const picking = () => !props.mine || (leader() && changing());
+  const shown = () => {
+    const id = detail();
+    return id ? (dungeonById(id) ?? null) : null;
+  };
 
   const choose = (d: DungeonDef) => {
     if (props.mine && leader()) {
-      void cmd
-        .run("rpg.lobby.dungeon", { dungeon: d.id })
-        .then((r) => r?.ok && setChanging(false));
+      void cmd.run("rpg.lobby.dungeon", { dungeon: d.id }).then((r) => {
+        if (!r?.ok) return;
+        setChanging(false);
+        setDetail(null);
+      });
       return;
     }
-    void cmd.run("rpg.lobby.create", {
-      tv: props.request.instance,
-      dungeon: d.id,
-    });
+    void cmd
+      .run("rpg.lobby.create", {
+        tv: props.request.instance,
+        dungeon: d.id,
+      })
+      .then((r) => r?.ok && setDetail(null));
+  };
+  /** O botão do detalhe: criar o grupo, levar o meu grupo para ela, ou nada (não sou o líder). */
+  const actionFor = (d: DungeonDef) => {
+    const row = dungeonRow(d, level(), cleared());
+    if (props.mine && !leader())
+      return {
+        label: t`Só quem lidera o grupo troca a dungeon`,
+        disabled: true,
+      };
+    if (props.mine?.dungeon === d.id)
+      return { label: t`O seu grupo já está aqui`, disabled: true };
+    return {
+      label: props.mine
+        ? t`Levar o grupo para esta dungeon`
+        : t`Criar um grupo nesta dungeon`,
+      disabled: row.lock !== null,
+    };
   };
   const watch = (id: string) => {
     if (props.link.knowsRun(id)) return props.link.watchRun(id);
@@ -138,218 +181,196 @@ export default function TvMenu(props: {
 
       <Show when={app() === "idle"}>
         <Show when={props.hero} fallback={<ClassPicker link={props.link} />}>
-          <Row>
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              onClick={() => setApp("home")}
-            >
-              ← {t`Apps`}
-            </Btn>
-            <Muted>{t`Seu herói: nível ${level()}`}</Muted>
-          </Row>
-          <Notice error={cmd.error()} />
-
-          <Show when={props.mine}>
-            {(l) => (
-              <MyGroup
-                lobby={l()}
-                myId={props.myId}
-                leader={leader()}
-                busy={cmd.busy()}
-                onStart={() =>
-                  void cmd
-                    .run("rpg.lobby.start", {})
-                    .then((r) => r?.ok && props.onClose())
-                }
-                onLoop={(on) => void cmd.run("rpg.lobby.loop", { on })}
-                onLeave={(disband) =>
-                  void cmd.run(
-                    "rpg.lobby.leave",
-                    disband ? { disband: true } : {},
-                  )
-                }
-                onChange={() => setChanging(!changing())}
-                changing={changing()}
-              />
-            )}
+          <Show when={shown()}>
+            {(d) => {
+              const row = () => dungeonRow(d(), level(), cleared());
+              return (
+                <>
+                  <Notice error={cmd.error()} />
+                  <DungeonDetail
+                    def={d()}
+                    cls={cls()}
+                    done={row().done}
+                    lock={row().lock}
+                    recommended={row().recommended}
+                    party={partyOf(d())}
+                    action={actionFor(d())}
+                    busy={cmd.busy()}
+                    onAction={() => choose(d())}
+                    onBack={() => setDetail(null)}
+                  />
+                </>
+              );
+            }}
           </Show>
+          <Show when={!shown()}>
+            <Row>
+              <Btn
+                type="button"
+                data-size="sm"
+                data-tone="quiet"
+                onClick={() => setApp("home")}
+              >
+                ← {t`Apps`}
+              </Btn>
+              <Muted>{t`Seu herói: nível ${level()}`}</Muted>
+            </Row>
+            <Notice error={cmd.error()} />
 
-          <Show when={!props.mine && joinable().length > 0}>
-            <Section aria-label={t`Grupos nesta TV`}>
-              <h3>{t`Grupos nesta TV`}</h3>
-              <For each={joinable()}>
-                {(l) => {
-                  const d = () => dungeonById(l.dungeon);
-                  const low = () => level() < (d()?.minLevel ?? 1);
-                  return (
-                    <Panel>
-                      <Row>
-                        <strong>{dungeonName(l.dungeon)}</strong>
+            <Show when={props.mine}>
+              {(l) => (
+                <MyGroup
+                  lobby={l()}
+                  myId={props.myId}
+                  leader={leader()}
+                  busy={cmd.busy()}
+                  onStart={() =>
+                    void cmd
+                      .run("rpg.lobby.start", {})
+                      .then((r) => r?.ok && props.onClose())
+                  }
+                  onLoop={(on) => void cmd.run("rpg.lobby.loop", { on })}
+                  onLeave={(disband) =>
+                    void cmd.run(
+                      "rpg.lobby.leave",
+                      disband ? { disband: true } : {},
+                    )
+                  }
+                  onChange={() => setChanging(!changing())}
+                  changing={changing()}
+                  onShow={() => setDetail(l().dungeon)}
+                />
+              )}
+            </Show>
+
+            <Show when={!props.mine && joinable().length > 0}>
+              <Section aria-label={t`Grupos nesta TV`}>
+                <h3>{t`Grupos nesta TV`}</h3>
+                <For each={joinable()}>
+                  {(l) => {
+                    const d = () => dungeonById(l.dungeon);
+                    const lock = () => {
+                      const def = d();
+                      return def
+                        ? dungeonRow(def, level(), cleared()).lock
+                        : null;
+                    };
+                    return (
+                      <Panel>
+                        <Row>
+                          <strong>{dungeonName(l.dungeon)}</strong>
+                          <Muted>
+                            {l.members.length}/{l.max} · {partyState(l)}
+                          </Muted>
+                        </Row>
                         <Muted>
-                          {l.members.length}/{l.max} · {partyState(l)}
+                          {l.members
+                            .map(
+                              (m) =>
+                                `${m.name} (${CLASSES[m.cls].titles[1]} ${m.level})`,
+                            )
+                            .join(", ")}
                         </Muted>
-                      </Row>
-                      <Muted>
-                        {l.members
-                          .map(
-                            (m) =>
-                              `${m.name} (${CLASSES[m.cls].titles[1]} ${m.level})`,
-                          )
-                          .join(", ")}
-                      </Muted>
+                        <Btn
+                          type="button"
+                          data-tone="primary"
+                          disabled={
+                            cmd.busy() || !!lock() || l.members.length >= l.max
+                          }
+                          onClick={() =>
+                            void cmd.run("rpg.lobby.join", {
+                              tv: props.request.instance,
+                              id: l.id,
+                            })
+                          }
+                        >
+                          {lock()?.why === "level"
+                            ? t`Entra a partir do nível ${d()?.minLevel}`
+                            : lock()?.why === "region"
+                              ? t`Conclua a região antes`
+                              : t`Entrar no grupo`}
+                        </Btn>
+                        <Show when={d()}>
+                          {(def) => (
+                            <Btn
+                              type="button"
+                              data-size="sm"
+                              data-tone="quiet"
+                              onClick={() => setDetail(def().id)}
+                            >
+                              {t`Ver o que cai`}
+                            </Btn>
+                          )}
+                        </Show>
+                      </Panel>
+                    );
+                  }}
+                </For>
+              </Section>
+            </Show>
+
+            <Show when={runs().length > 0}>
+              <Section aria-label={t`Corridas rolando`}>
+                <h3>{t`Corridas rolando`}</h3>
+                <For each={runs()}>
+                  {(r) => (
+                    <Line>
+                      <span>
+                        <strong>{dungeonName(r.dungeon)}</strong>{" "}
+                        <Muted>{where(r.room)}</Muted>
+                        <br />
+                        <Muted>{r.members.map((m) => m.name).join(", ")}</Muted>
+                      </span>
                       <Btn
                         type="button"
-                        data-tone="primary"
-                        disabled={
-                          cmd.busy() || low() || l.members.length >= l.max
-                        }
-                        onClick={() =>
-                          void cmd.run("rpg.lobby.join", {
-                            tv: props.request.instance,
-                            id: l.id,
-                          })
-                        }
+                        data-size="sm"
+                        disabled={cmd.busy()}
+                        onClick={() => watch(r.id)}
                       >
-                        {low()
-                          ? t`Entra a partir do nível ${d()?.minLevel}`
-                          : t`Entrar no grupo`}
+                        {t`Assistir`}
                       </Btn>
-                    </Panel>
-                  );
-                }}
-              </For>
-            </Section>
-          </Show>
-
-          <Show when={runs().length > 0}>
-            <Section aria-label={t`Corridas rolando`}>
-              <h3>{t`Corridas rolando`}</h3>
-              <For each={runs()}>
-                {(r) => (
-                  <Line>
-                    <span>
-                      <strong>{dungeonName(r.dungeon)}</strong>{" "}
-                      <Muted>{where(r.room)}</Muted>
-                      <br />
-                      <Muted>{r.members.map((m) => m.name).join(", ")}</Muted>
-                    </span>
-                    <Btn
-                      type="button"
-                      data-size="sm"
-                      disabled={cmd.busy()}
-                      onClick={() => watch(r.id)}
-                    >
-                      {t`Assistir`}
-                    </Btn>
-                  </Line>
-                )}
-              </For>
-            </Section>
-          </Show>
-
-          <Show when={!props.mine || (leader() && changing())}>
-            <Section aria-label={t`Escolher a dungeon`}>
-              <h3>
-                {props.mine ? t`Trocar a dungeon do grupo` : t`Montar um grupo`}
-              </h3>
-              <Chips role="radiogroup" aria-label={t`Tipo de dungeon`}>
-                <For
-                  each={["todas", "cacada", "masmorra", "regional"] as Filter[]}
-                >
-                  {(k) => (
-                    <Btn
-                      type="button"
-                      data-size="sm"
-                      role="radio"
-                      aria-checked={filter() === k}
-                      aria-pressed={filter() === k}
-                      onClick={() => setFilter(k)}
-                    >
-                      {k === "todas" ? t`Todas` : kindName(k)}
-                    </Btn>
+                    </Line>
                   )}
                 </For>
-              </Chips>
-              <Show when={filter() !== "todas"}>
-                <Muted>{kindBlurb(filter() as DungeonKind)}</Muted>
-              </Show>
-              <Show when={level() < 40 && filter() !== "cacada"}>
-                <Muted role="note">{t`A primeira Masmorra é a do nível 40 (entra a partir do 35) e o primeiro Chefe de Região, o do 50. Até lá, Caçadas.`}</Muted>
-              </Show>
-              <For each={groups()}>
-                {(g) => (
-                  <Region data-current={g.current ? "" : undefined}>
-                    <RegionHead
-                      type="button"
-                      aria-expanded={isOpen(g.region.index, g.current)}
-                      onClick={() =>
+              </Section>
+            </Show>
+
+            <Show when={picking()}>
+              <Recommended
+                level={level()}
+                cls={cls()}
+                cleared={cleared()}
+                party={partyOf}
+                onOpen={(d) => setDetail(d.id)}
+              />
+              <Section aria-label={t`Todas as dungeons`}>
+                <h3>
+                  {props.mine
+                    ? t`Trocar a dungeon do grupo`
+                    : t`Todas as dungeons`}
+                </h3>
+                <KindFilter value={filter()} onChange={setFilter} />
+                <KindLegend filter={filter()} />
+                <Muted>{t`Toque numa dungeon para ver o que cai e as chances.`}</Muted>
+                <For each={groups()}>
+                  {(g) => (
+                    <RegionBlock
+                      group={g}
+                      open={isOpen(g.region.index, g.current)}
+                      mineDungeon={props.mine?.dungeon ?? null}
+                      onToggle={() =>
                         setOpen(
                           isOpen(g.region.index, g.current)
                             ? -1
                             : g.region.index,
                         )
                       }
-                    >
-                      <span>
-                        <strong>{g.region.name}</strong>{" "}
-                        <Muted>
-                          {t`níveis ${g.region.from}–${g.region.to} · ${g.region.material}`}
-                        </Muted>
-                      </span>
-                      <span aria-hidden="true">
-                        {isOpen(g.region.index, g.current) ? "▾" : "▸"}
-                      </span>
-                    </RegionHead>
-                    <Show when={isOpen(g.region.index, g.current)}>
-                      <For each={g.rows}>
-                        {(row) => (
-                          <DgRow
-                            data-locked={row.locked ? "" : undefined}
-                            data-best={row.best ? "" : undefined}
-                          >
-                            <Kind data-kind={row.def.kind}>
-                              {kindName(row.def.kind)}
-                            </Kind>
-                            <span>
-                              <strong>
-                                {row.def.kind === "regional"
-                                  ? row.def.name
-                                  : t`Nível ${row.def.level}`}
-                              </strong>
-                              <Show when={row.best}>
-                                {" "}
-                                <Badge>{t`a sua`}</Badge>
-                              </Show>
-                              <br />
-                              <Muted>
-                                {row.locked
-                                  ? t`🔒 entra a partir do nível ${row.def.minLevel}`
-                                  : t`${row.def.party.min}–${row.def.party.max} heróis · entra do nível ${row.def.minLevel}`}
-                              </Muted>
-                            </span>
-                            <Btn
-                              type="button"
-                              data-size="sm"
-                              data-tone={row.best ? "primary" : undefined}
-                              disabled={
-                                cmd.busy() ||
-                                row.locked ||
-                                props.mine?.dungeon === row.def.id
-                              }
-                              onClick={() => choose(row.def)}
-                            >
-                              {props.mine ? t`Trocar` : t`Montar`}
-                            </Btn>
-                          </DgRow>
-                        )}
-                      </For>
-                    </Show>
-                  </Region>
-                )}
-              </For>
-            </Section>
+                      onOpen={(d) => setDetail(d.id)}
+                    />
+                  )}
+                </For>
+              </Section>
+            </Show>
           </Show>
         </Show>
       </Show>
@@ -367,11 +388,16 @@ function MyGroup(props: {
   onLoop: (on: boolean) => void;
   onLeave: (disband: boolean) => void;
   onChange: () => void;
+  onShow: () => void;
 }) {
   const { t } = useLingui();
   const d = () => dungeonById(props.lobby.dungeon);
   const r = () => roles(props.lobby.members.map((m) => m.cls));
   const low = () => belowLevel(props.lobby.members, d()?.minLevel ?? 1);
+  const noRegion = () => {
+    const def = d();
+    return def ? membersWithoutRegion(props.lobby.members, def) : [];
+  };
   const few = () => props.lobby.members.length < (d()?.party.min ?? 1);
   const needsRoles = () => d()?.kind !== "cacada";
   return (
@@ -384,6 +410,14 @@ function MyGroup(props: {
             {props.lobby.members.length}/{props.lobby.max} ·{" "}
             {partyState(props.lobby)}
           </Muted>
+          <Btn
+            type="button"
+            data-size="sm"
+            data-tone="quiet"
+            onClick={() => props.onShow()}
+          >
+            {t`Ver o que cai`}
+          </Btn>
         </Row>
         <Members>
           <For each={props.lobby.members}>
@@ -422,6 +456,14 @@ function MyGroup(props: {
               .join(", ")}.`}
           </Muted>
         </Show>
+        <Show when={noRegion().length > 0}>
+          <Muted role="note">
+            ⚠{" "}
+            {t`O Chefe de Região pede as Caçadas e Masmorras da região concluídas. Ainda sem: ${noRegion()
+              .map((m) => m.name)
+              .join(", ")}.`}
+          </Muted>
+        </Show>
         <Show when={few()}>
           <Muted role="note">{t`Esta dungeon pede pelo menos ${d()?.party.min} heróis.`}</Muted>
         </Show>
@@ -442,6 +484,7 @@ function MyGroup(props: {
                 props.busy ||
                 props.lobby.state === "running" ||
                 low().length > 0 ||
+                noRegion().length > 0 ||
                 few()
               }
               onClick={props.onStart}
@@ -530,68 +573,6 @@ const Line = styled("div", {
     padding: "8px 10px",
     borderRadius: "10px",
     background: "var(--md-sys-color-surface-container)",
-  },
-});
-const Chips = styled("div", {
-  base: { display: "flex", flexWrap: "wrap", gap: "6px" },
-});
-const Region = styled("div", {
-  base: {
-    borderRadius: "12px",
-    border: "1px solid var(--md-sys-color-outline-variant)",
-    overflow: "hidden",
-    "&[data-current]": { borderColor: "var(--md-sys-color-outline)" },
-  },
-});
-const RegionHead = styled("button", {
-  base: {
-    width: "100%",
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "8px",
-    minHeight: "48px",
-    padding: "8px 12px",
-    border: "none",
-    background: "var(--md-sys-color-surface-container)",
-    color: "inherit",
-    font: "inherit",
-    textAlign: "left",
-    cursor: "pointer",
-    "&:focus-visible": {
-      outline: "2px solid var(--md-sys-color-primary)",
-      outlineOffset: "-2px",
-    },
-  },
-});
-const DgRow = styled("div", {
-  base: {
-    display: "grid",
-    gridTemplateColumns: "6.5em 1fr auto",
-    alignItems: "center",
-    gap: "8px",
-    padding: "8px 12px",
-    borderTop: "1px solid var(--md-sys-color-outline-variant)",
-    "&[data-locked]": { opacity: 0.55 },
-    "&[data-best]": { background: "rgba(217,180,90,0.08)" },
-    "@container (max-width: 440px)": {
-      gridTemplateColumns: "1fr auto",
-      "& > :first-child": { gridColumn: "1 / -1" },
-    },
-  },
-});
-const Kind = styled("span", {
-  base: {
-    justifySelf: "start",
-    fontSize: "0.72rem",
-    fontWeight: 800,
-    letterSpacing: "0.04em",
-    padding: "2px 8px",
-    borderRadius: "6px",
-    border: "1px solid currentColor",
-    "&[data-kind=cacada]": { color: "#9fd18a" },
-    "&[data-kind=masmorra]": { color: "#9fc3ff" },
-    "&[data-kind=regional]": { color: "#ffb36b" },
   },
 });
 const Members = styled("ul", {

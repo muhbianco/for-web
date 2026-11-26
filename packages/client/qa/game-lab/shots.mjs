@@ -273,6 +273,33 @@ const SHOTS = [
     s: "corrida-chefe&speed=0",
     act: tipOn("ul[aria-label^='Habilidades'] > li", 2),
   },
+  // A escolha de DG na TV (26/11/2026): recomendadas, catálogo com "Concluída", detalhe com as chances.
+  {
+    name: "46-dg-catalogo-regiao",
+    s: "tv",
+    act: seq(first("[data-app=idle]"), scrollTo("[aria-expanded=true]")),
+  },
+  {
+    name: "47-dg-detalhe-masmorra",
+    s: "tv",
+    act: seq(first("[data-app=idle]"), first("button[data-kind=masmorra]")),
+  },
+  {
+    name: "48-dg-detalhe-de-onde-vem",
+    s: "tv",
+    act: seq(
+      first("[data-app=idle]"),
+      first("button[data-kind=masmorra]"),
+      first("[role=dialog] details > summary"),
+      scrollTo("[role=dialog] details"),
+    ),
+  },
+  {
+    name: "49-dg-chefe-trancado",
+    s: "tv",
+    act: seq(first("[data-app=idle]"), first("button[data-kind=regional]")),
+  },
+  { name: "50-dg-chefe-grupo", s: "tv-chefe", act: first("[data-app=idle]") },
 ];
 
 mkdirSync(OUT, { recursive: true });

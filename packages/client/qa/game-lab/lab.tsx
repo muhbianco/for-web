@@ -37,6 +37,8 @@ import TvMenu from "../../components/space/game/TvMenu";
 import { myLobby } from "../../components/space/game/partyUi";
 import { type LabWorld, LabServer } from "./labServer";
 import {
+  CLEARED_REGION1,
+  CLEARED_SOME,
   PEOPLE,
   boardRuns,
   grow,
@@ -196,19 +198,40 @@ const SCENARIOS: Scenario[] = [
     id: "tv",
     label: "TV (catálogo)",
     screen: "tv",
-    build: () => world(stateOf(mage45())),
+    build: () => world(stateOf(mage45(), { cleared: CLEARED_SOME })),
   },
   {
     id: "tv-grupo",
     label: "TV (meu grupo)",
     screen: "tv",
     build: () =>
-      world(stateOf(mage45()), {
+      world(stateOf(mage45(), { cleared: CLEARED_SOME }), {
         lobbies: {
           x: lobbyOf("masmorra-40", [
             { id: "u-ana", name: "Ana", cls: "mago", level: 45 },
             { id: "u-bia", name: "Bia", cls: "guerreiro", level: 44 },
             { id: "u-caio", name: "Caio", cls: "cacador", level: 33 },
+          ]),
+        },
+      }),
+  },
+  {
+    id: "tv-chefe",
+    label: "TV (chefe, região concluída)",
+    screen: "tv",
+    // A região 1 inteira concluída: o Rei Javali abre; Bia ainda não concluiu (o aviso no grupo).
+    build: () =>
+      world(stateOf(mage45(), { cleared: CLEARED_REGION1 }), {
+        lobbies: {
+          x: lobbyOf("regiao-1", [
+            { id: "u-ana", name: "Ana", cls: "mago", level: 45, regions: [1] },
+            {
+              id: "u-bia",
+              name: "Bia",
+              cls: "guerreiro",
+              level: 47,
+              regions: [],
+            },
           ]),
         },
       }),

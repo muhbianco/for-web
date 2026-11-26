@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  type DungeonDef,
   type RpgLobbyMember,
   type RpgLobbyView,
   type RpgLoopStop,
@@ -83,6 +84,14 @@ export type LobbyEnd = {
   ended: "started" | "cancelled" | "expired";
 };
 
+/**
+ * O Chefe de Região só para quem já concluiu as Caçadas e Masmorras da região (pedido do dono,
+ * 26/11/2026): cada um do grupo, pelas regiões que o serviço calculou do herói (`regions`).
+ */
+function bossLocked(d: DungeonDef, m: RpgLobbyMember): boolean {
+  return d.kind === "regional" && !(m.regions ?? []).includes(d.region.index);
+}
+
 /** Quantos cabem no grupo desta DG (o catálogo; 4 se a DG sumiu). */
 function maxOf(dungeon: string): number {
   return dungeonById(dungeon)?.party.max ?? 4;
@@ -135,6 +144,7 @@ export class LobbyHub {
     const d = dungeonById(dungeon);
     if (!d) return { ok: false, reason: "unknown_dungeon" };
     if (leader.level < d.minLevel) return { ok: false, reason: "level" };
+    if (bossLocked(d, leader)) return { ok: false, reason: "region" };
     if (this.memberOf.has(leader.user_id))
       return { ok: false, reason: "in_lobby" };
     const lobby: Lobby = {
@@ -188,6 +198,7 @@ export class LobbyHub {
       return { ok: false, reason: "full" };
     const d = dungeonById(lobby.dungeon);
     if (d && member.level < d.minLevel) return { ok: false, reason: "level" };
+    if (d && bossLocked(d, member)) return { ok: false, reason: "region" };
     lobby.members.push(member);
     this.memberOf.set(member.user_id, lobby.id);
     return { ok: true, lobby };
@@ -381,6 +392,8 @@ export class LobbyHub {
     if (!d) return { ok: false, reason: "unknown_dungeon" };
     if (lobby.members.some((m) => m.level < d.minLevel))
       return { ok: false, reason: "level" };
+    if (lobby.members.some((m) => bossLocked(d, m)))
+      return { ok: false, reason: "region" };
     if (lobby.members.length > d.party.max)
       return { ok: false, reason: "party_size" };
     lobby.dungeon = d.id;

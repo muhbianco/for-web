@@ -288,3 +288,35 @@ test("largada: quem esquece a ficha aberta não prende o grupo para sempre (desi
 function lobbyViewOf(hub: LobbyHub, user: string) {
   return lobbyView(hub.of(user)!);
 }
+
+test("Chefe de Região: só entra quem concluiu o resto da região, e a troca de DG cobra todos (26/11/2026)", () => {
+  const hub = new LobbyHub();
+  const done = (id: string): RpgLobbyMember => ({ ...m(id, 50), regions: [1] });
+  assert.deepEqual(hub.create("tv1", "R1", "regiao-1", m("A", 50), 0), {
+    ok: false,
+    reason: "region",
+  });
+  // A região 2 concluída não abre o chefe da 1.
+  assert.deepEqual(
+    hub.create("tv1", "R1", "regiao-1", { ...m("A", 50), regions: [2] }, 0),
+    { ok: false, reason: "region" },
+  );
+  const l = hub.create("tv1", "R1", "regiao-1", done("A"), 0);
+  assert.equal(l.ok, true);
+  assert.deepEqual(hub.join("tv1", undefined, m("B", 50)), {
+    ok: false,
+    reason: "region",
+  });
+  assert.equal(hub.join("tv1", undefined, done("C")).ok, true);
+  // Num grupo de outra DG, trocar para o chefe pede a região de todos.
+  assert.equal(hub.create("tv2", "R1", "masmorra-40", done("D"), 0).ok, true);
+  assert.equal(hub.join("tv2", undefined, m("E", 50)).ok, true);
+  assert.deepEqual(hub.setDungeon("D", "regiao-1"), {
+    ok: false,
+    reason: "region",
+  });
+  hub.leave("E");
+  assert.equal(hub.setDungeon("D", "regiao-1").ok, true);
+  // As outras DGs não olham a região.
+  assert.equal(hub.setDungeon("D", "cacada-40").ok, true);
+});

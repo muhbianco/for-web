@@ -610,10 +610,19 @@ export class SpaceRuntime implements MediaHost, TvHost {
   }
 
   /** A group's run closed: ready for the next (levels refreshed; the loop schedules it). */
-  lobbyRunEnded(runId: string, outcome: RpgRunEnd, levels: Record<string, number>): void {
+  lobbyRunEnded(
+    runId: string,
+    outcome: RpgRunEnd,
+    levels: Record<string, number>,
+    regions: Record<string, number[]> = {},
+  ): void {
     const lobby = this.lobbies.runEnded(runId, outcome, this.now());
     if (!lobby) return;
-    for (const m of lobby.members) if (levels[m.user_id] !== undefined) m.level = levels[m.user_id]!;
+    for (const m of lobby.members) {
+      if (levels[m.user_id] !== undefined) m.level = levels[m.user_id]!;
+      // The boss of a region opens once its other dungeons are cleared (26/11/2026).
+      if (regions[m.user_id] !== undefined) m.regions = regions[m.user_id];
+    }
     this.broadcastLobby(lobby, true, {});
   }
 
