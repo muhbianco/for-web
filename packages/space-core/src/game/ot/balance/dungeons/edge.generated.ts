@@ -16,11 +16,8 @@ export interface DungeonEdge {
  * lento na sala do chefe. DG sem entrada fica com os números do config.
  */
 export const DUNGEON_EDGE: Record<string, DungeonEdge> = {
-  "cacada-10": {hit: 1.169, party: {2: 1.305, 3: 2.275}},
-  "cacada-20": {hit: 1.15, party: {2: 1.259, 3: 2.48}},
-  "cacada-30": {hit: 0.941, party: {2: 1.008, 3: 2.576}},
-  "cacada-40": {hit: 0.977, party: {2: 1.14, 3: 3.336}},
-  "masmorra-40": {hit: 1.422, cataclysmAt: 96},
+  "cacada-40": {hit: 1.01, party: {2: 1.19, 3: 3.514}},
+  "masmorra-40": {hit: 1.449, cataclysmAt: 97},
   "regiao-1": {hit: 1.004, cataclysmAt: 99},
   "cacada-51": {hit: 1.081, party: {2: 1.008, 3: 2.971}},
   "cacada-60": {hit: 0.943, party: {2: 0.916, 3: 2.727}},

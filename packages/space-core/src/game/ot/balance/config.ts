@@ -519,7 +519,10 @@ export const BALANCE = {
      * inicial (Raro +4, hero.ts): a Épica quase só cai das Masmorras, que abrem no 40 (D19).
      */
     bands: [
-      { upTo: 39, rarity: "raro", refine: 4 },
+      // A faixa de entrada é o perfil de referência inteiro, com os afixos dele: com os afixos da
+      // classe, os monstros do começo ficavam fortes demais para o equipamento de quem está subindo (o
+      // mago solo empacava no L11 na jornada; antes do D41, no L30). Medido em 26/11/2026.
+      { upTo: 39, rarity: "raro", refine: 4, referenceAffixes: true },
       { upTo: 150, rarity: "epico", refine: 5 },
       { upTo: 300, rarity: "epico", refine: 7 },
       { upTo: 450, rarity: "lendario", refine: 8 },
@@ -611,11 +614,12 @@ export const BALANCE = {
     /** O gerador pede isto acima de `winTarget` nas suas corridas: com 40 o sorteio erra uns 3 p.p. */
     mcSafety: 0.03,
     /**
-     * DGs fora do aperto (ficam com os números do spec contra o perfil do limite). A 1ª Caçada é a
-     * entrada do jogador novo (D37: o kit inicial vence ela); com o aperto, o mago recém-criado (sem
-     * treino) perdia 59% delas (medido em 26/11/2026, logo depois do deploy do D41).
+     * A zona de entrada fica fora do aperto: as Caçadas até este nível usam os números do spec contra o
+     * perfil de referência, como antes do D41. Medido em 26/11/2026, logo depois do deploy: com o
+     * aperto, o mago recém-criado perdia 59% da 1ª Caçada (D37 pede que o kit inicial vença ela) e,
+     * na jornada solo, empacava no L11 (antes do D41, no L30); as Masmorras só abrem no 40 (D19).
      */
-    exempt: ["cacada-1"] as readonly string[],
+    entryHuntsUpTo: 39,
   },
 
   /** O perfil de referência que calibra o conteúdo (§9.4, §11.2). */

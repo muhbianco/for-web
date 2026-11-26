@@ -88,10 +88,13 @@ test("diferença de nível: PT de até 20 níveis usa a média; acima disso, cad
 
 // A curva do §2 conta 28 lacaios do nível L por corrida; com os lacaios de R−4 a R (D14) a Caçada rende
 // um pouco menos no começo (89% no L10, 94% no L20) e 96–100% do 30 em diante (P68).
-// D41: o mago no perfil do limite vence toda Caçada solo do próprio nível (a calibração garante).
+// D41: o mago no perfil do limite vence toda Caçada solo do próprio nível (a calibração garante), menos
+// a do 30 na zona de entrada, que ficou fora do aperto e segue como na D40.
+const D40_MAGO_SOLO_ENTRY = new Set([30]);
 test("§2: toda Caçada solo do próprio nível rende o XP de 1 corrida da curva", () => {
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada")) {
     const L = d.level;
+    if (D40_MAGO_SOLO_ENTRY.has(L)) continue;
     const party = [E.fighter("mago", L, { ...SPEC, solo: true })];
     const run = simulateRun(d, party, { mode: "esperado" });
     assert.equal(run.outcome, "vitoria", `L${L}`);

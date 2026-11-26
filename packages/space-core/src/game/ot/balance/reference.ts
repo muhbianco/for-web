@@ -125,7 +125,11 @@ export function createReference(
     items.push({ ...common, slot: "colar", affixes: [] });
     items.push({ ...common, slot: "anel", affixes: [] });
 
-    if (opts.gearAttrs !== false && profile === "limite") {
+    if (
+      opts.gearAttrs !== false &&
+      profile === "limite" &&
+      !(band && "referenceAffixes" in band && band.referenceAffixes)
+    ) {
       // D41: cada peça com os primeiros afixos do plano da classe que a raridade dá.
       const plan = cfg.limit.affixPlan[cls] ?? {};
       for (const it of items) {

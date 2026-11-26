@@ -97,9 +97,9 @@ const out: Record<string, DungeonEdge> = {};
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const short = (c: ClassId[]) => c.map((x) => x.slice(0, 3)).join("+");
 for (const d of DUNGEONS) {
-  if (B.cfg.limit.exempt.includes(d.id)) {
+  if (d.kind === "cacada" && d.level <= B.cfg.limit.entryHuntsUpTo) {
     delete DUNGEON_EDGE[d.id];
-    console.log(`${d.id.padEnd(14)} fora do aperto (limit.exempt)`);
+    console.log(`${d.id.padEnd(14)} zona de entrada, fora do aperto`);
     continue;
   }
   const parties = d.kind === "cacada" ? HUNT_PARTIES : GROUP_PARTIES;

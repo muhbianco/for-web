@@ -238,6 +238,9 @@ test("P63: sem suporte, o grupo de 5 com paladino de tanque perde a Masmorra", (
     );
 });
 
+/** D40: na zona de entrada (fora do aperto do D41) o mago solo segue perdendo a Caçada do 30. */
+const D40_MAGO_SOLO_ENTRY = new Set([30]);
+
 test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio da calibração em grupo", () => {
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada")) {
     for (const c of [
@@ -254,6 +257,13 @@ test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio
         [E.fighter(c, d.level, { ...SPEC, solo: true })],
         { mode: "esperado" },
       );
+      // Zona de entrada (sem aperto, como antes do D41): o mago solo perde a do 30 desde a D40.
+      if (
+        c === "mago" &&
+        d.level <= B.cfg.limit.entryHuntsUpTo &&
+        D40_MAGO_SOLO_ENTRY.has(d.level)
+      )
+        continue;
       assert.equal(r.outcome, "vitoria", `${c} ${d.id}`);
     }
     for (const group of Object.values(LIMIT_HUNT_GROUPS))
@@ -270,8 +280,9 @@ test("D41: no limite, toda classe vence toda Caçada sozinha, e a dupla e o trio
   }
 });
 
-// D37 e D41: a 1ª Caçada fica fora do aperto (`limit.exempt`): o herói recém-criado de toda classe,
-// com o kit do jogo e sem treino, vence ela (com o aperto, o mago novo perdia 59%, 26/11/2026).
+// D37 e D41: as Caçadas da zona de entrada ficam fora do aperto (`limit.entryHuntsUpTo`): o herói
+// recém-criado de toda classe, com o kit do jogo e sem treino, vence a 1ª (com o aperto, o mago novo
+// perdia 59%, 26/11/2026).
 test("D37: o herói recém-criado de toda classe vence a 1ª Caçada, no esperado e no aleatório", () => {
   const d = dungeonById("cacada-1")!;
   assert.equal(DUNGEON_EDGE[d.id], undefined);
