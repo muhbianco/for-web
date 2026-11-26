@@ -29,6 +29,7 @@ import HeroSheet from "../../components/space/game/HeroSheet";
 import LobbyChip from "../../components/space/game/LobbyChip";
 import NpcDialog from "../../components/space/game/NpcDialog";
 import RunChip from "../../components/space/game/RunChip";
+import RunMeter from "../../components/space/game/RunMeter";
 import RunPanel from "../../components/space/game/RunPanel";
 import TrainingChip from "../../components/space/game/TrainingChip";
 import TrainingDialog from "../../components/space/game/TrainingDialog";
@@ -300,6 +301,7 @@ function Lab() {
   const [screen, setScreen] = createSignal<Screen>("hero");
   const [npc, setNpc] = createSignal<NpcKind>("mercador");
   const [open, setOpen] = createSignal(true);
+  const [meter, setMeter] = createSignal(false);
   const server = new LabServer(w(), setW, params().speed);
   const load = () => {
     const { s, speed } = params();
@@ -429,7 +431,16 @@ function Lab() {
                 link={server}
                 lobby={mine()}
                 onClose={() => setOpen(false)}
+                meterOpen={meter()}
+                onMeter={() => setMeter(!meter())}
               />
+              <Show when={meter()}>
+                <RunMeter
+                  state={run()!}
+                  myId={server.me}
+                  onClose={() => setMeter(false)}
+                />
+              </Show>
             </Match>
           </Switch>
         </Show>

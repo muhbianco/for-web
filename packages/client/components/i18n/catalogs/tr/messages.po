@@ -7082,7 +7082,11 @@ msgid "Medidor da corrida"
 msgstr ""
 
 #: components/space/game/RunPanel.tsx
-msgid "Medidor: dano, dano recebido e cura"
+#~ msgid "Medidor: dano, dano recebido e cura"
+#~ msgstr ""
+
+#: components/space/game/RunPanel.tsx
+msgid "Medidor: dano, dano recebido, cura e ameaça"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx

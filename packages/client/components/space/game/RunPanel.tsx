@@ -510,8 +510,8 @@ export default function RunPanel(props: {
                 type="button"
                 data-round=""
                 aria-pressed={!!props.meterOpen}
-                aria-label={t`Medidor: dano, dano recebido e cura`}
-                title={t`Medidor: dano, dano recebido e cura`}
+                aria-label={t`Medidor: dano, dano recebido, cura e ameaça`}
+                title={t`Medidor: dano, dano recebido, cura e ameaça`}
                 onClick={() => props.onMeter?.()}
               >
                 <Symbol size={20}>bar_chart</Symbol>
