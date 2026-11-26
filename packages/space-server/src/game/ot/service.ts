@@ -38,6 +38,7 @@ import {
   dungeonById,
   equipItem,
   evolveTier,
+  fitHeroSkills,
   heroRunFighter,
   meterOf,
   normalizeCleared,
@@ -1618,7 +1619,8 @@ export class RpgService {
       });
       throw new Error(`rpg hero ${userId} invalid: ${checked.reason}`);
     }
-    let doc = checked.doc;
+    // Primeiro a regra de tier pelo job (D51), depois as DGs concluídas: cada um grava com CAS.
+    let doc = await this.fitSkills(checked.doc);
     if (doc.cleared === undefined) doc = await this.backfillCleared(doc);
     this.keep(doc);
     if (doc.outbox.length > 0) this.deliver(doc);
@@ -1658,6 +1660,31 @@ export class RpgService {
       saved,
     });
     return saved ? next : { ...doc, cleared };
+  }
+
+  /**
+   * D51 (26/11/2026): a regra de tier mudou para o job. O herói com tier ou skill acima do que o job dá
+   * desce, perde a skill e recebe os pontos de volta, e isso é gravado na hora (fica no log). Se outro
+   * processo gravou antes, segue com a versão adequada em memória: a próxima leitura refaz o mesmo.
+   */
+  private async fitSkills(doc: RpgHeroDoc): Promise<RpgHeroDoc> {
+    const fit = fitHeroSkills(doc.hero);
+    if (!fit.changed) return doc;
+    const next: RpgHeroDoc = {
+      ...doc,
+      hero: fit.hero,
+      rev: doc.rev + 1,
+      updated_at: this.now(),
+    };
+    const saved = await this.store.save(next, doc.rev);
+    this.log.info("rpg skills fit to job", {
+      user: doc._id,
+      job: doc.hero.job,
+      from: doc.hero.skills.tier,
+      to: fit.hero.skills.tier,
+      saved,
+    });
+    return saved ? next : { ...doc, hero: fit.hero };
   }
 
   private keep(doc: RpgHeroDoc) {

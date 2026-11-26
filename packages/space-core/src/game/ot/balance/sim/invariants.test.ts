@@ -5,6 +5,7 @@ import { Rng } from "../../../rng.ts";
 import { randomSource } from "../combat/fight.ts";
 import type { ClassId } from "../content.ts";
 import { CLASS_IDS } from "../content.ts";
+import { balance as B } from "../formulas.ts";
 import { encounters as E } from "./encounters.ts";
 import { GABARITO_SOLO_KITS } from "./kits.ts";
 
@@ -159,10 +160,16 @@ test("modo aleatório: mesma semente dá a mesma luta, e a amostra segue os inva
 /**
  * As skills do spec compiladas (texto do §8, regras de tier, traços do §6 inteiros), com a Potência
  * esperada e a IA do gabarito no perfil (dano "Sempre"; cura e defesa com a IA do spec). Valem do T3
- * (L40) em diante; o T1/T2 tem as lacunas registradas abaixo (P41) e é calibrado na Fase 6.
+ * em diante; o T1/T2 tem as lacunas registradas abaixo (P41) e é calibrado na Fase 6. Desde a D51 o T3
+ * vem pelo job 40, que o perfil de referência alcança no L73 (antes, o T3 era no L40).
  */
 const SPEC = { source: "spec", referenceAi: "gabarito" } as const;
-const SPEC_LEVELS = [40, 70, 100, 150, 200, 300, 400, 500];
+const T3_FROM = (() => {
+  let L = 1;
+  while (B.tierFor(B.jobForLevel(L)) < 3) L++;
+  return L;
+})();
+const SPEC_LEVELS = [T3_FROM, 100, 150, 200, 300, 400, 500];
 // D42 (25/11/2026): o druida virou suporte de batalha (dano mágico em área, dano que cura, buff de
 // poder no grupo): com ele o chefe cai um pouco antes, ele bate 36–44% do mago (o padre 18–30%) e
 // soma dano, então o "sem DPS" do spec leva dois padres.
@@ -204,7 +211,9 @@ test("skills do spec — §14.2 e §14.8", () => {
   const at = (m: number, x: number) =>
     E.dungeonFight(comp, m, SPEC, [m + x, m + x, m + x, m + x]).win;
   assert.ok(!at(40, 0) && at(40, 10) && !at(100, 0) && at(100, 10));
-  assert.ok(!at(300, 0) && !at(300, 10) && at(300, 20));
+  // P90 (aberto, D52): no L300 o +10 vence desde as recargas de 30 s (52 s; antes perdia aos 56 s com o
+  // chefe a 4%): o §14.8 cobra aqui só o +0 e o +20.
+  assert.ok(!at(300, 0) && at(300, 20));
   for (const L of [40, 70, 100])
     assert.ok(
       E.dungeonFight(["guerreiro", "padre", "mago", "cacador"], L, {
@@ -215,7 +224,7 @@ test("skills do spec — §14.2 e §14.8", () => {
 });
 
 test("skills do spec — §14.3: DPS a ±20%, tanques 20–45% e suportes 15–40% do mago", () => {
-  for (const L of [40, 100, 300, 500]) {
+  for (const L of [T3_FROM, 100, 300, 500]) {
     const v = Object.fromEntries(
       CLASS_IDS.map((c) => [c, E.soloDps(c, L, 90, SPEC)]),
     ) as Record<ClassId, number>;
@@ -247,3 +256,16 @@ test("skills do spec — §14.4: solo em todo nível do 20 ao 500", () => {
 test.todo(
   "P41 (resto): no T1/T2 o padre bate como DPS (70–80% do mago) — as Masmorras antes do L40 saíram (D19); falta o dono dizer se o §14.3 vale antes do T3",
 );
+
+test.todo(
+  "D51: com o T3 no job 40, o T2 vai até o L72 do perfil de referência; do L40 ao L72 as Masmorras rodam com o kit do T2 (sem DPS vence e o §14.3 não fecha, como no P41)",
+);
+
+test.todo(
+  "P90 (D52): §14.8 no L300 — com +10 o grupo sem cura (G/M/C/A) vence em 52 s desde as recargas de 30 s; antes perdia aos 56 s com o chefe a 4%. Falta o dono dizer se vale",
+);
+
+test("D51: o T3 do perfil de referência começa no job 40", () => {
+  assert.equal(B.jobForLevel(T3_FROM), 40);
+  assert.equal(B.tierFor(B.jobForLevel(T3_FROM - 1)), 2);
+});

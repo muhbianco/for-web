@@ -167,7 +167,7 @@ const ITEMS: DecorItem[] = [
   def({ id: "npc-mercador", name: "Mercador", category: "equipment", interaction: "npc", npc: "mercador", description: "Compra o loot e vende munição, mochilas, anéis e colares.", tags: ["npc", "loja", "jogo"] }),
   def({ id: "npc-banqueiro", name: "Banqueiro", category: "equipment", interaction: "npc", npc: "banqueiro", description: "Guarda as moedas sem peso, devolve quando você pede e transfere para outra pessoa.", tags: ["npc", "banco", "jogo"] }),
   def({ id: "npc-ferreiro", name: "Ferreiro", category: "equipment", interaction: "npc", npc: "ferreiro", description: "Refina a arma que o herói empunha (até +10): cada nível dá dano; acima do +4 pode falhar.", tags: ["npc", "refino", "arma", "jogo"] }),
-  def({ id: "npc-mestre", name: "Mestre de evolução", category: "equipment", interaction: "npc", npc: "mestre", description: "Evolui a classe do herói (level 20 e level 50) e redistribui atributos e habilidades.", tags: ["npc", "evolução", "classe", "jogo"] }),
+  def({ id: "npc-mestre", name: "Mestre de evolução", category: "equipment", interaction: "npc", npc: "mestre", description: "Evolui a classe do herói (job 20, 40 e 70) e redistribui atributos e habilidades.", tags: ["npc", "evolução", "classe", "jogo"] }),
 
   // ---- Especiais ------------------------------------------------------------
   def({ id: "portal-pad", name: "Portal", category: "special", layer: "rug", solid: false, interaction: "teleport", variants: NEON, description: "Leva para outro ambiente ao interagir." }),

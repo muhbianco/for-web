@@ -93,9 +93,7 @@ export function MasterPanel(props: {
               <Checks>
                 <li data-ok={ev().milestone?.ok ? "" : undefined}>
                   {ev().milestone?.ok ? "✓" : "✗"}{" "}
-                  {ev().milestone?.kind === "job"
-                    ? t`Job ${ev().milestone!.need} (você tem ${ev().milestone!.have})`
-                    : t`Nível ${ev().milestone!.need} (você tem ${ev().milestone!.have})`}
+                  {t`Job ${ev().milestone!.need} (você tem ${ev().milestone!.have})`}
                 </li>
                 <li data-ok={ev().pointsLeft === 0 ? "" : undefined}>
                   {ev().pointsLeft === 0 ? "✓" : "✗"}{" "}

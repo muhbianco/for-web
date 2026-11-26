@@ -109,7 +109,8 @@ test("§17: progressão, golpes dos monstros, poções e ouro por nível", () =>
     const [
       L,
       job,
-      tier,
+      ,
+      // O tier do gabarito era pelo nível (T3 no 40, T4 no 70); desde a D51 é só pelo job.
       n,
       k,
       xpNext,
@@ -129,7 +130,8 @@ test("§17: progressão, golpes dos monstros, poções e ouro por nível", () =>
     ] = row as number[];
     const at = `L${L}`;
     assert.equal(B.jobForLevel(L!), job, `${at} job`);
-    assert.equal(B.tierFor(L!, job!), tier, `${at} tier`);
+    const tierByJob = job! < 20 ? 1 : job! < 40 ? 2 : job! < 70 ? 3 : 4;
+    assert.equal(B.tierFor(job!), tierByJob, `${at} tier`);
     within(B.normalizer(L!), n!, `${at} N`);
     within(B.defenseK(L!), k!, `${at} K`);
     within(B.xpToNext(L!), xpNext!, `${at} XP para o próximo`);

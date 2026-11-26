@@ -103,7 +103,7 @@ export function ClassPicker(props: { link: GameLink; onDone?: () => void }) {
                 {c().titles[1]} · {roleName(c().role)}
               </strong>
               <Muted>
-                {t`Começa como ${c().titles[0]}; evolui para ${c().titles[1]} (job 20), ${c().titles[2]} (nível 40) e ${c().titles[3]} (nível 70).`}
+                {t`Começa como ${c().titles[0]}; evolui para ${c().titles[1]} (job 20), ${c().titles[2]} (job 40) e ${c().titles[3]} (job 70).`}
               </Muted>
               <Facts>
                 <span>

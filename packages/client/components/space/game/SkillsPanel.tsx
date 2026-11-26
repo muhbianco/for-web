@@ -43,6 +43,7 @@ import {
   skillBudget,
   skillRows,
   stageSpend,
+  tierJob,
 } from "./heroModel";
 import { skillLines } from "./skillText";
 import { SkillTip, heroSkillInfo } from "./SkillTip";
@@ -278,7 +279,7 @@ export function SkillsPanel(props: {
                       <small>
                         {r.learned
                           ? t`T${r.content.tier} · Potência ${r.build.potency} · Eficiência ${r.build.efficiency}`
-                          : t`🔒 abre no T${r.content.tier}`}
+                          : t`🔒 abre no T${r.content.tier} (job ${tierJob(r.content.tier)})`}
                       </small>
                     </SkillBtn>
                   )}

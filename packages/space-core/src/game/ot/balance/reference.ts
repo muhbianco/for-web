@@ -192,7 +192,7 @@ export function createReference(
   ): ReferenceHero {
     const hero = referenceBalanceHero(cls, level, opts);
     const stats = heroDerived(hero, B);
-    return { ...stats, cls, job: hero.job, tier: B.tierFor(level, hero.job) };
+    return { ...stats, cls, job: hero.job, tier: B.tierFor(hero.job) };
   }
 
   /** Reduções, crítico e evasão contra o chefe e erro contra o lacaio, todos no nível do herói. */

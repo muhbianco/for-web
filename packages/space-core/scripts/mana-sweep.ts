@@ -82,7 +82,7 @@ function playerFighter(
   const h = RL.referenceBalanceHero(cls, L);
   let hs: HeroSkills = referenceSkills(
     cls,
-    B.tierFor(L, h.job),
+    B.tierFor(h.job),
     h.job,
     false,
     B,

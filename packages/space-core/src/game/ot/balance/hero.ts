@@ -47,6 +47,7 @@ import {
   type HeroSkills,
   type SpendTarget,
   evolve,
+  fitSkillsToJob,
   freshHeroSkills,
   resetSkills,
   setSlots,
@@ -250,9 +251,23 @@ export function setSkillAi(
   return done({ ...h, skills: { ...h.skills, ai } });
 }
 
+/**
+ * O herói dentro das regras de tier de agora (D51): o servidor chama ao ler o herói do banco e grava
+ * se mudou. Ver `fitSkillsToJob`.
+ */
+export function fitHeroSkills(
+  h: HeroV5,
+  B: Balance = gameBalance,
+): { hero: HeroV5; changed: boolean } {
+  const r = fitSkillsToJob(h.cls, h.job, h.skills, B);
+  return r.changed
+    ? { hero: { ...h, skills: r.skills }, changed: true }
+    : { hero: h, changed: false };
+}
+
 /** Mestre: evoluir de tier (grátis, D11). */
 export function evolveTier(h: HeroV5, B: Balance = gameBalance) {
-  const r = evolve(h.cls, h.level, h.job, h.skills, B);
+  const r = evolve(h.cls, h.job, h.skills, B);
   return r.ok ? done({ ...h, skills: r.skills }) : fail(r.error);
 }
 

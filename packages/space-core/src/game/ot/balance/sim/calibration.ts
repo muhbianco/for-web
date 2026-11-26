@@ -102,7 +102,7 @@ export function limitFighter(
   const h = RL.referenceBalanceHero(cls, L, ref);
   const hs = referenceSkills(
     cls,
-    B.tierFor(L, h.job),
+    B.tierFor(h.job),
     h.job,
     opts.solo ?? false,
     B,

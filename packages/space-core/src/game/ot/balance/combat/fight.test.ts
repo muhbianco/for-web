@@ -221,7 +221,8 @@ test("conjuração: o Meteoro só cai depois de 2 s, e o mago não bate enquanto
   const early = run([mage], [hitter(0)], 1.9).damage;
   const late = run([mage], [hitter(0)], 2.5).damage;
   assert.equal(early, opening, "bateu enquanto conjurava");
-  assert.ok(late > 10 * early, "o meteoro não caiu");
+  // D52: o Meteoro dá 3× o MATQ (era 6×, com a recarga de 60 s para 30 s).
+  assert.ok(late > 4 * early, "o meteoro não caiu");
 });
 
 test("Ressurreição: revive o aliado caído uma vez por luta", () => {
