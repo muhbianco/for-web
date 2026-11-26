@@ -175,11 +175,17 @@ export const BALANCE = {
       grande: { mult: 3, cooldownMs: 3000 },
     },
     /**
-     * Níveis das faixas. O spec tinha 1, 20, 50, 100 e daí a cada 50; o 10, o 35 e o 75 entraram
-     * (decisão do dono de 25/11/2026, P29): no fim das faixas largas o mago perdia o solo contra o
-     * chefe menor (L18–19, L44–49, L89–99), porque a poção ficava pequena perto do HP dele.
+     * Níveis das faixas: de 10 em 10 até o 100, depois a cada 50. O spec tinha 1, 20, 50, 100 e daí
+     * a cada 50; o 10, o 35 e o 75 entraram na P29 (25/11/2026) porque no fim das faixas largas o
+     * mago perdia o solo contra o chefe menor. Sem o descanso entre as salas (D40), o fim da faixa
+     * 20–34 voltou a matar o mago solo na Caçada 30 (P86: recebe ~23/s, a poção cura ~13/s; no L35
+     * a poção pula de 18 para 28 e ele vence). O dono escolheu as faixas de 10 em 10 (26/11/2026).
+     * O preço da poção, o da munição e o iL do Comum do Mercador seguem as mesmas faixas.
      */
-    tiers: [1, 10, 20, 35, 50, 75, 100, 150, 200, 250, 300, 350, 400, 450, 500],
+    tiers: [
+      1, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 150, 200, 250, 300, 350, 400,
+      450, 500,
+    ],
     /** Vida = 6% do HP do caçador de referência no nível do tier. */
     hpPctOfReference: 0.06,
     /** Mana = 4% da mana-base do mago no nível do tier. */

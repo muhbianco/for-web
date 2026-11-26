@@ -37,7 +37,8 @@ function pct(actual: number, expected: number, what: string) {
  * golpe chefe, pulso, poção de vida, poção de mana, ouro por lacaio. (*) dependem do combate.
  *
  * Poções do L10 e do L40 trocadas pelas faixas novas (10 e 35; decisão do dono de 25/11/2026, P29):
- * no spec eram 7/4 e 18/13.
+ * no spec eram 7/4 e 18/13. Com as faixas de 10 em 10 até o 100 (P86, 26/11/2026) mudam também as
+ * do L30 (18/13 → 24/18), do L40 (28/20 → 31/22) e do L70 (39/27 → 56/37).
  */
 const PROGRESSION: ReadonlyArray<readonly number[]> = [
   [1, 1, 1, 11.9, 56, 374, 0, 157, 111, 102, 9, 853, 15, 7555, 33, 29, 7, 4, 4],
@@ -51,11 +52,11 @@ const PROGRESSION: ReadonlyArray<readonly number[]> = [
   ],
   [
     30, 22, 2, 64.2, 230, 32367, 83, 990, 406, 1437, 40, 11976, 67, 106811, 284,
-    122, 18, 13, 43,
+    122, 24, 18, 43,
   ],
   [
     40, 26, 3, 73.9, 290, 58033, 133, 1330, 523, 1938, 52, 16154, 87, 142686,
-    387, 158, 28, 20, 59,
+    387, 158, 31, 22, 59,
   ],
   [
     50, 30, 3, 82.4, 350, 92345, 194, 1700, 653, 2512, 66, 20929, 110, 183426,
@@ -63,7 +64,7 @@ const PROGRESSION: ReadonlyArray<readonly number[]> = [
   ],
   [
     70, 38, 4, 96.9, 470, 188990, 348, 2496, 937, 3669, 96, 30574, 160, 272757,
-    744, 288, 39, 27, 109,
+    744, 288, 56, 37, 109,
   ],
   [
     100, 49, 4, 115.0, 650, 410440, 663, 3888, 1451, 5745, 150, 47874, 250,
