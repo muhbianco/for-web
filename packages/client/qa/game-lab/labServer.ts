@@ -66,6 +66,8 @@ export interface LabWorld {
   runs: Record<string, RunState>;
   runOpen: string | null;
   notice: string | null;
+  /** Só do laboratório: o kit fixo de cada pessoa (todas soltando sempre), para a vitrine de efeitos. */
+  kits?: Record<string, string[]>;
 }
 
 type Fail = { ok: false; error: string };
@@ -453,16 +455,36 @@ export class LabServer implements TvLink {
   ) {
     const me = this.hero()!;
     const d = dungeonById(lobby.dungeon)!;
+    // A vitrine fixa o kit (e a IA "sempre") de cada um, para todas as skills aparecerem.
+    const withKit = (h: HeroV5, uid: string): HeroV5 => {
+      const kit = this.world.kits?.[uid];
+      if (!kit) return h;
+      const builds = { ...h.skills.builds };
+      for (const id of kit)
+        builds[id] ??= { potency: 5, efficiency: 0, mechanics: {} };
+      return {
+        ...h,
+        skills: {
+          ...h.skills,
+          slots: kit,
+          builds,
+          ai: Object.fromEntries(kit.map((id) => [id, [{ kind: "sempre" }]])),
+        },
+      };
+    };
     const heroes = lobby.members.map((m) =>
-      m.user_id === this.me
-        ? me
-        : {
-            ...grow(m.cls, m.level, Math.max(1, Math.round(m.level * 0.62))),
-            potions: {
-              hp: { pequena: 100, media: 0, grande: 0 },
-              mp: { pequena: 100, media: 0, grande: 0 },
+      withKit(
+        m.user_id === this.me
+          ? me
+          : {
+              ...grow(m.cls, m.level, Math.max(1, Math.round(m.level * 0.62))),
+              potions: {
+                hp: { pequena: 100, media: 0, grande: 0 },
+                mp: { pequena: 100, media: 0, grande: 0 },
+              },
             },
-          },
+        m.user_id,
+      ),
     );
     const res: RunResult = simulateRun(
       d,

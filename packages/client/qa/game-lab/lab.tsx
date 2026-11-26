@@ -239,6 +239,33 @@ const SCENARIOS: Scenario[] = [
     run: { dungeon: "masmorra-40", seek: 4 },
   },
   {
+    id: "efeitos",
+    label: "Efeitos das skills (vitrine)",
+    screen: "run",
+    // Fase 1 dos efeitos (26/11/2026): Meteoro, Raio em Cadeia, Nevasca, Redemoinho, Consagração,
+    // Nuvem Tóxica, Chuva de Flechas e os escudos, cada herói com o kit fixo e tudo saindo sempre.
+    build: () =>
+      world(stateOf(grow("mago", 75, 46)), {
+        lobbies: {
+          x: lobbyOf("masmorra-70", [
+            { id: "u-ana", name: "Ana", cls: "mago", level: 75 },
+            { id: "u-bia", name: "Bia", cls: "guerreiro", level: 75 },
+            { id: "u-caio", name: "Caio", cls: "paladino", level: 75 },
+            { id: "u-duda", name: "Duda", cls: "assassino", level: 75 },
+            { id: "u-eva", name: "Eva", cls: "cacador", level: 75 },
+          ]),
+        },
+        kits: {
+          "u-ana": ["meteoro", "raio-em-cadeia", "nevasca", "escudo-de-mana"],
+          "u-bia": ["redemoinho", "golpe-provocador", "grito-de-guerra", "muralha-de-ferro"],
+          "u-caio": ["consagracao", "golpe-sagrado", "escudo-da-fe", "bencao-da-egide"],
+          "u-duda": ["fumaca", "lamina-envenenada", "sequencia-letal", "esquiva-sombria"],
+          "u-eva": ["chuva-de-flechas", "rajada-dupla", "marca-do-cacador", "tiro-perfurante"],
+        },
+      }),
+    run: { dungeon: "masmorra-70", seek: 3 },
+  },
+  {
     id: "corrida-chefe",
     label: "Corrida (chefe, Cataclismo)",
     screen: "run",

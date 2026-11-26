@@ -31,7 +31,13 @@ import {
   type Spot,
   TILE,
   damageColor,
+  BEAM_MS,
+  CAST_MS,
+  DROP_MS,
+  RAIN_MS,
+  SPIN_MS,
 } from "./script.ts";
+import { type LingerFx, castFx, lingersOf } from "./skillFx.ts";
 
 /**
  * A dungeon vista de cima na tela da aventura (docs/espaco/jogo/ot, etapa O10). Uma Application
@@ -113,7 +119,17 @@ interface Unit {
   loot: Sprite[];
 }
 
-type FxKind = "shot" | "burst" | "spark" | "puff" | "slash" | "pop";
+type FxKind = "shot" | "burst" | "spark" | "puff" | "slash" | "pop" | "spin" | "fall" | "beam" | "bloom" | "ring";
+
+/** Teto de efeitos de uma vez (os de skill param de nascer acima dele; celular e grupo de 5). */
+const FX_MAX = 140;
+
+/** Um efeito que dura (a nuvem, o círculo, o gelo, a bolha) preso a um herói ou monstro. */
+interface Linger {
+  s: Sprite;
+  ref: number;
+  fx: LingerFx;
+}
 interface Fx {
   s: Sprite;
   kind: FxKind;
@@ -145,6 +161,11 @@ export class DungeonScene {
   private readonly corpses = new Container();
   private readonly units = new Container();
   private readonly fxLayer = new Container();
+  /** Efeitos no chão (o círculo da Consagração), embaixo das unidades. */
+  private readonly groundFx = new Container();
+  /** Efeitos que duram por cima das unidades (nuvem, gelo, bolha). */
+  private readonly aura = new Container();
+  private lingers = new Map<string, Linger>();
   private readonly fade = new Graphics();
   private readonly ui = new Container();
   private readonly bars = new Graphics();
@@ -246,7 +267,7 @@ export class DungeonScene {
     this.units.sortableChildren = true;
     this.fade.rect(0, 0, SCENE_W, SCENE_H).fill({ color: 0x0b0b0f });
     this.fade.alpha = 0;
-    this.root.addChild(this.floor, this.corpses, this.units, this.fxLayer, this.fade);
+    this.root.addChild(this.floor, this.groundFx, this.corpses, this.units, this.aura, this.fxLayer, this.fade);
     this.ui.addChild(this.bars);
     this.app.stage.addChild(this.root, this.ui);
     if (typeof ResizeObserver !== "undefined") {
@@ -427,6 +448,7 @@ export class DungeonScene {
     if (!run) return;
     // Efeitos da sala que sai (inclusive o saco de loot surgindo) não sobrevivem aos monstros dela.
     this.clearFx();
+    this.clearLingers();
     for (const u of this.monsters) this.dropUnit(u);
     this.floor.texture = this.tex(`sala|${run.dungeon}|${st}`, () => roomCanvas(run.dungeon, st));
     const list = roomFoes(run.dungeon, run.members.length)[st] ?? [];
@@ -467,6 +489,7 @@ export class DungeonScene {
     this.clearFloaters();
     const delay = this.prepareRoom(frame.st, frame.x.length);
     this.frame = frame;
+    this.syncLingers();
     const plan = planSecond({ events: frame.e, gears: this.gears, classes: this.run!.members.map((m) => m.cls), foes: this.foes, delay });
     if (this.reduced) {
       // Tudo de uma vez, sem movimento: o estado do quadro e os números parados até o próximo.
@@ -508,6 +531,7 @@ export class DungeonScene {
     this.clearFx();
     if (reset ? this.shownSt !== frame.st : frame.st > this.shownSt) this.enterRoom(frame.st, frame.x.length, false);
     this.frame = frame;
+    this.syncLingers();
     if (reset) {
       // Chegou no meio: quem já caiu caiu antes, noutra sala ou nesta; fica fora da cena.
       frame.h.forEach((hp, i) => {
@@ -591,6 +615,47 @@ export class DungeonScene {
         const s = this.fxSprite(c.k === "burst" ? "estrela" : "corte", ELEMENT_COLOR[c.el]);
         const at = this.middle(b);
         this.fx.push({ s, kind: c.k, t0: now, dur: c.k === "burst" ? 220 : 160, from: at, to: at });
+        return;
+      }
+      case "spin": {
+        const a = this.unit(c.who);
+        if (!motion || !a || this.fx.length > FX_MAX) return;
+        const at = this.middle(a);
+        const s = this.fxSprite("giro", ELEMENT_COLOR[c.el]);
+        this.fx.push({ s, kind: "spin", t0: now, dur: SPIN_MS, from: at, to: at });
+        return;
+      }
+      case "rain": {
+        const b = this.unit(c.who);
+        if (!motion || !b || this.fx.length > FX_MAX) return;
+        const at = this.middle(b);
+        for (let i = 0; i < c.n; i++) {
+          const dx = (i - (c.n - 1) / 2) * 5;
+          const s = this.fxSprite(c.art, 0xffffff);
+          s.rotation = Math.PI / 2;
+          const dur = Math.max(160, RAIN_MS - i * 50);
+          this.fx.push({ s, kind: "fall", t0: now + i * 50, dur, from: { x: at.x + dx, y: at.y - 40 }, to: { x: at.x + dx, y: at.y + 2 } });
+        }
+        return;
+      }
+      case "drop": {
+        const b = this.unit(c.who);
+        if (!motion || !b || this.fx.length > FX_MAX) return;
+        const at = this.middle(b);
+        const s = this.fxSprite(c.art, 0xffffff);
+        this.fx.push({ s, kind: "fall", t0: now, dur: DROP_MS, from: { x: at.x + 14, y: at.y - 52 }, to: at });
+        return;
+      }
+      case "beam": {
+        const a = this.unit(c.from);
+        const b = this.unit(c.to);
+        if (!motion || !a || !b || this.fx.length > FX_MAX) return;
+        const s = this.fxSprite("raio", ELEMENT_COLOR[c.el]);
+        this.fx.push({ s, kind: "beam", t0: now, dur: BEAM_MS, from: this.middle(a), to: this.middle(b) });
+        return;
+      }
+      case "cast": {
+        if (motion && this.fx.length <= FX_MAX) this.castFx(c.who, c.s, now);
         return;
       }
       case "hit": {
@@ -713,7 +778,7 @@ export class DungeonScene {
 
   // ---- efeitos ----------------------------------------------------------------------
 
-  private fxSprite(k: FxArt, tint: number): Sprite {
+  private fxSprite(k: FxArt, tint: number, layer: Container = this.fxLayer): Sprite {
     const s = this.fxPool.pop() ?? new Sprite();
     s.texture = this.fxTex(k);
     s.anchor.set(0.5);
@@ -722,8 +787,124 @@ export class DungeonScene {
     s.scale.set(1);
     s.rotation = 0;
     s.visible = true;
-    this.fxLayer.addChild(s);
+    layer.addChild(s);
     return s;
+  }
+
+  /** A skill saiu (evento `lanca`): o efeito da receita nos alvos dela (fase 1, 26/11/2026). */
+  private castFx(who: number, skill: string, now: number) {
+    const fx = castFx(skill);
+    if (!fx || fx.on !== "lancamento") return;
+    const foes = this.monsters.filter((m) => m.alive && !m.gone);
+    const size = (u: Unit) => Math.max(0.8, u.size / 14);
+    switch (fx.kind) {
+      case "nuvem":
+        for (const m of foes) {
+          const s = this.fxSprite("nuvem", fx.color);
+          const at = { x: m.pos.x, y: m.pos.y - m.size * 0.35 };
+          this.fx.push({ s, kind: "bloom", t0: now, dur: CAST_MS, from: at, to: { x: size(m), y: 0 } });
+        }
+        return;
+      case "anel":
+        for (const m of foes) {
+          const s = this.fxSprite("anel", fx.color, this.groundFx);
+          this.fx.push({ s, kind: "ring", t0: now, dur: CAST_MS, from: { x: m.pos.x, y: m.pos.y - 1 }, to: { x: size(m), y: 0 } });
+        }
+        return;
+      case "flocos":
+        for (const m of foes)
+          for (let i = 0; i < 3; i++) {
+            const s = this.fxSprite("floco", fx.color);
+            const x = m.pos.x + (i - 1) * 6;
+            this.fx.push({ s, kind: "fall", t0: now + i * 70, dur: CAST_MS - i * 70, from: { x, y: m.pos.y - m.size - 18 }, to: { x, y: m.pos.y - m.size / 2 } });
+          }
+        return;
+      case "bolha": {
+        const heroes = this.heroes.filter((h) => h.alive && !h.gone);
+        const shielded = (h: Unit) =>
+          (this.frame?.u?.h[h.ref] ?? []).some((st) => (st.k === "escudo" || st.k === "mana") && st.s === skill);
+        const targets =
+          fx.alvo === "proprio"
+            ? heroes.filter((h) => h.ref === who)
+            : fx.alvo === "grupo"
+              ? heroes
+              : heroes.filter(shielded);
+        for (const h of targets) {
+          const s = this.fxSprite("bolha", fx.color);
+          this.fx.push({ s, kind: "bloom", t0: now, dur: CAST_MS, from: this.middle(h), to: { x: size(h) * 1.1, y: 0 } });
+        }
+        return;
+      }
+    }
+  }
+
+  /**
+   * Os efeitos que duram, pelo quadro: a nuvem da Nuvem Tóxica, o círculo da Consagração, o gelo da
+   * Nevasca e a bolha dos escudos aparecem e somem junto com o efeito do jogo.
+   */
+  private syncLingers() {
+    const u0 = this.frame?.u;
+    const want = new Map<string, { ref: number; fx: LingerFx }>();
+    if (u0) {
+      u0.h.forEach((list, i) => {
+        for (const fx of lingersOf(list)) want.set(`${i}|${fx.art}|${fx.color}`, { ref: i, fx });
+      });
+      u0.x.forEach((list, i) => {
+        for (const fx of lingersOf(list)) want.set(`${FOE_BASE + i}|${fx.art}|${fx.color}`, { ref: FOE_BASE + i, fx });
+      });
+    }
+    for (const [key, l] of this.lingers)
+      if (!want.has(key)) {
+        l.s.destroy();
+        this.lingers.delete(key);
+      }
+    for (const [key, w] of want) {
+      if (this.lingers.has(key)) continue;
+      const s = new Sprite(this.fxTex(w.fx.art));
+      s.anchor.set(0.5);
+      s.tint = w.fx.color;
+      (w.fx.layer === "chao" ? this.groundFx : this.aura).addChild(s);
+      this.lingers.set(key, { s, ref: w.ref, fx: w.fx });
+    }
+  }
+
+  private clearLingers() {
+    for (const l of this.lingers.values()) l.s.destroy();
+    this.lingers.clear();
+  }
+
+  /** Onde cada efeito que dura fica, acompanhando a unidade (e um leve pulsar com movimento). */
+  private drawLingers(now: number) {
+    for (const l of this.lingers.values()) {
+      const u = this.unit(l.ref);
+      const show = !!u && u.alive && !u.gone && !u.dying;
+      l.s.visible = show;
+      if (!show) continue;
+      const k = Math.max(0.8, u.size / 14);
+      const pulse = this.reduced ? 1 : 0.85 + 0.15 * Math.sin(now / 260 + l.ref);
+      switch (l.fx.art) {
+        case "glifo":
+          l.s.position.set(Math.round(u.pos.x), Math.round(u.pos.y - 1));
+          l.s.scale.set(k);
+          l.s.alpha = 0.75 * pulse;
+          break;
+        case "nuvem":
+          l.s.position.set(Math.round(u.pos.x), Math.round(u.pos.y - u.size * 0.35));
+          l.s.scale.set(k);
+          l.s.alpha = 0.7 * pulse;
+          break;
+        case "floco":
+          l.s.position.set(Math.round(u.pos.x + 5), Math.round(u.pos.y - u.size + 2));
+          l.s.scale.set(1);
+          l.s.alpha = 0.9 * pulse;
+          break;
+        case "bolha":
+          l.s.position.set(Math.round(u.pos.x), Math.round(u.pos.y - u.size / 2));
+          l.s.scale.set(k * 1.1);
+          l.s.alpha = 0.8 * pulse;
+          break;
+      }
+    }
   }
 
   private floater(text: string, color: number, at: Spot, now: number, big = false) {
@@ -761,7 +942,7 @@ export class DungeonScene {
         continue;
       }
       f.s.visible = false;
-      this.fxLayer.removeChild(f.s);
+      f.s.removeFromParent();
       this.fxPool.push(f.s);
     }
     this.fx = [];
@@ -843,7 +1024,7 @@ export class DungeonScene {
         if (f.kind === "pop") f.s.scale.set(1);
         else {
           f.s.visible = false;
-          this.fxLayer.removeChild(f.s);
+          f.s.removeFromParent();
           this.fxPool.push(f.s);
         }
         return false;
@@ -875,6 +1056,34 @@ export class DungeonScene {
         case "pop":
           f.s.scale.set(0.4 + 0.6 * easeOut(k));
           break;
+        case "spin":
+          f.s.position.set(f.from.x, f.from.y);
+          f.s.rotation = k * Math.PI * 3;
+          f.s.alpha = 1 - k * k;
+          break;
+        case "fall":
+          f.s.position.set(Math.round(lerp(f.from.x, f.to.x, k * k)), Math.round(lerp(f.from.y, f.to.y, k * k)));
+          f.s.alpha = k < 0.85 ? 1 : (1 - k) / 0.15;
+          break;
+        case "beam": {
+          const dx = f.to.x - f.from.x;
+          const dy = f.to.y - f.from.y;
+          f.s.position.set((f.from.x + f.to.x) / 2, (f.from.y + f.to.y) / 2);
+          f.s.rotation = Math.atan2(dy, dx);
+          f.s.scale.set(Math.max(1, Math.hypot(dx, dy) / 8), Math.floor(k * 8) % 2 ? 1 : -1);
+          f.s.alpha = 1 - k * 0.6;
+          break;
+        }
+        case "bloom":
+          f.s.position.set(f.from.x, f.from.y);
+          f.s.scale.set(f.to.x * (0.5 + 0.6 * easeOut(k)));
+          f.s.alpha = k < 0.3 ? k / 0.3 : 1 - (k - 0.3) / 0.7;
+          break;
+        case "ring":
+          f.s.position.set(f.from.x, f.from.y);
+          f.s.scale.set(f.to.x * (0.3 + 1.1 * easeOut(k)));
+          f.s.alpha = 1 - k;
+          break;
       }
       return true;
     });
@@ -893,6 +1102,7 @@ export class DungeonScene {
     const ox = this.root.position.x;
     const oy = this.root.position.y;
     this.bars.clear();
+    this.drawLingers(now);
     for (const u of this.all()) {
       const visible = !u.gone;
       u.sprite.visible = visible;
@@ -1024,6 +1234,7 @@ export class DungeonScene {
     for (const t of this.owned) t.destroy(true);
     this.owned.length = 0;
     this.textures.clear();
+    this.lingers.clear();
     this.heroes = [];
     this.monsters = [];
     this.host = null;

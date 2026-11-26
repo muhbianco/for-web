@@ -13,6 +13,7 @@ import {
 } from "@muchat/space-core/game/ot/balance";
 
 import { type Element, type HeroGear, isRanged } from "../render/heroArt.ts";
+import { castFx } from "./skillFx.ts";
 
 // A cara do herói pela arma e as cores dos elementos moram no heroArt (o mapa usa as mesmas).
 export { ELEMENT_COLOR, heroGear, type HeroGear, type HeroLook, isRanged } from "../render/heroArt.ts";
@@ -240,7 +241,18 @@ export type Cue =
   | { k: "slash"; at: number; who: number; el: Element }
   | { k: "die"; at: number; who: number }
   | { k: "fall"; at: number; who: number }
-  | { k: "loot"; at: number; on: number; coins: boolean };
+  | { k: "loot"; at: number; on: number; coins: boolean }
+  // Efeitos de skill (fase 1, 26/11/2026; receitas em skillFx.ts).
+  /** Lâminas girando em volta de quem soltou (Redemoinho). */
+  | { k: "spin"; at: number; who: number; el: Element }
+  /** Projéteis caindo do alto no alvo (Chuva de Flechas). */
+  | { k: "rain"; at: number; who: number; art: "flecha"; n: number }
+  /** Uma pedra caindo no alvo (Meteoro). */
+  | { k: "drop"; at: number; who: number; art: "meteoro" }
+  /** Raio de um ponto ao outro (Raio em Cadeia). */
+  | { k: "beam"; at: number; from: number; to: number; el: Element }
+  /** A skill saiu (evento `lanca`): a cena resolve os alvos pela receita (nuvem, anel, flocos, bolha). */
+  | { k: "cast"; at: number; who: number; s: string };
 
 export interface PlanInput {
   /** Os eventos do segundo, como vieram (tipos desconhecidos passam batido). */
@@ -262,6 +274,13 @@ export interface Plan {
 const MELEE_LAND = 90;
 const SHOT_MS = 190;
 const SPELL_MS = 210;
+/** Efeitos de skill (fase 1). */
+export const SPIN_MS = 360;
+export const RAIN_MS = 300;
+export const DROP_MS = 320;
+export const BEAM_MS = 200;
+export const CAST_MS = 420;
+const CHAIN_STEP = 70;
 /** Folga no fim da janela para o último tiro chegar e o corpo cair. */
 const TAIL = 330;
 const MAX_STEP = 160;
@@ -303,7 +322,7 @@ export function planSecond(p: PlanInput): Plan {
   const cues: Cue[] = [];
   const landed = new Map<number, number>();
   let j = 0;
-  let area = null as { key: string; t: number } | null;
+  let area = null as { key: string; t: number; n: number; last: number } | null;
   let end = start;
   const push = (c: Cue, dur = 0) => {
     cues.push(c);
@@ -362,6 +381,46 @@ export function planSecond(p: PlanInput): Plan {
           break;
         }
         if (e.a < FOE_BASE) {
+          const cls = p.classes[e.a];
+          const el = skillElement(cls, e.s);
+          const fx = castFx(e.s);
+          // Skill com receita de acerto (fase 1): os alvos de quem soltou saem juntos, um efeito só.
+          if (!e.dt && e.b >= FOE_BASE && fx?.on === "acerto") {
+            const missed = e.bl === "erro";
+            const how: HitHow = missed ? "erro" : "dano";
+            const crit = { crit: e.cr === true };
+            const key = `${e.a}|${e.s}`;
+            const first = area?.key !== key;
+            if (first) area = { key, t: nextT(), n: 0, last: e.a };
+            const g = area!;
+            switch (fx.kind) {
+              case "giro":
+                if (first) push({ k: "spin", at: g.t, who: e.a, el }, SPIN_MS);
+                if (!missed) push({ k: "slash", at: g.t + 120, who: e.b, el }, 200);
+                hit(e.b, g.t + 120, e.v, el, how, crit);
+                break;
+              case "chuva":
+                push({ k: "rain", at: g.t, who: e.b, art: fx.art, n: fx.n }, RAIN_MS);
+                hit(e.b, g.t + RAIN_MS, e.v, el, how, crit);
+                break;
+              case "queda":
+                push({ k: "drop", at: g.t, who: e.b, art: fx.art }, DROP_MS);
+                if (!missed) push({ k: "burst", at: g.t + DROP_MS, who: e.b, el }, 200);
+                hit(e.b, g.t + DROP_MS, e.v, el, how, crit);
+                break;
+              case "cadeia": {
+                const at = g.t + g.n * CHAIN_STEP;
+                // O raio é branco-azulado (o tom de gelo da paleta), não o fogo da magia do mago.
+                push({ k: "beam", at, from: g.last, to: e.b, el: "gelo" }, BEAM_MS);
+                if (!missed) push({ k: "burst", at: at + 60, who: e.b, el: "gelo" }, 200);
+                hit(e.b, at + 60, e.v, el, how, crit);
+                g.last = e.b;
+                break;
+              }
+            }
+            g.n++;
+            break;
+          }
           area = null;
           const t = nextT();
           // Skill num aliado sem cura (escudo, reforço): um brilho, sem dano.
@@ -369,8 +428,6 @@ export function planSecond(p: PlanInput): Plan {
             push({ k: "burst", at: t, who: e.b, el: "sagrado" }, 200);
             break;
           }
-          const cls = p.classes[e.a];
-          const el = skillElement(cls, e.s);
           if (e.dt) {
             hit(e.b, t + 60, e.v, el, "dano", { dot: e.dt });
             break;
@@ -396,7 +453,7 @@ export function planSecond(p: PlanInput): Plan {
         if (AREA.has(e.s)) {
           const el: Element = e.s === "cataclismo" ? "fogo" : "morte";
           const key = `${e.a}|${e.s}`;
-          if (area?.key !== key) area = { key, t: nextT() };
+          if (area?.key !== key) area = { key, t: nextT(), n: 0, last: e.a };
           push({ k: "burst", at: area.t + 120, who: e.b, el }, 200);
           hit(e.b, area.t + 120, e.v, el, "dano");
           break;
@@ -412,6 +469,12 @@ export function planSecond(p: PlanInput): Plan {
           push({ k: "burst", at: t + SPELL_MS, who: e.b, el: "morte" }, 200);
           hit(e.b, t + SPELL_MS, e.v, "morte", "dano");
         }
+        break;
+      }
+      case "lanca": {
+        const fx = castFx(e.s);
+        if (fx?.on === "lancamento" && e.a < FOE_BASE)
+          push({ k: "cast", at: Math.round(start + j * step), who: e.a, s: e.s }, CAST_MS);
         break;
       }
       case "pocao": {

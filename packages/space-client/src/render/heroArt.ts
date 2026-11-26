@@ -285,7 +285,40 @@ export function gearKey(gear: AvatarGear): string {
 
 // ---- efeitos ---------------------------------------------------------------------
 
-export type FxArt = "flecha" | "virote" | "orbe" | "lanca" | "estrela" | "faisca" | "fumaca" | "corte" | "saco" | "moedas" | "escudo";
+export type FxArt =
+  | "flecha"
+  | "virote"
+  | "orbe"
+  | "lanca"
+  | "estrela"
+  | "faisca"
+  | "fumaca"
+  | "corte"
+  | "saco"
+  | "moedas"
+  | "escudo"
+  // Efeitos de skill (fase 1, 26/11/2026).
+  | "nuvem"
+  | "anel"
+  | "glifo"
+  | "floco"
+  | "meteoro"
+  | "raio"
+  | "giro"
+  | "bolha";
+
+/** Os pixels de uma elipse (contorno ou cheia), centrada no canvas. */
+function ellipse(ctx: Ctx, w: number, h: number, color: string, fill: boolean) {
+  const cx = (w - 1) / 2;
+  const cy = (h - 1) / 2;
+  const rx = (w - 1) / 2;
+  const ry = (h - 1) / 2;
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const d = ((x - cx) / rx) ** 2 + ((y - cy) / ry) ** 2;
+      if (fill ? d <= 1 : d <= 1 && d >= 0.62) px(ctx, x, y, 1, 1, color);
+    }
+}
 
 /** Efeitos em branco (o tom do elemento entra pelo `tint`), menos fumaça, saco, moedas e escudo. */
 export function fxCanvas(k: FxArt): HTMLCanvasElement {
@@ -365,6 +398,95 @@ export function fxCanvas(k: FxArt): HTMLCanvasElement {
       px(ctx, 1, 3, 1, 1, "#b9823f");
       px(ctx, 5, 3, 1, 1, "#b9823f");
       outline(c);
+      return c;
+    }
+    case "nuvem": {
+      // Nuvem Tóxica: uma nuvem baixa que cobre o monstro (o verde vem do tint).
+      const { c, ctx } = artCanvas(18, 11);
+      ctx.globalAlpha = 0.55;
+      px(ctx, 2, 4, 14, 6, "#ffffff");
+      px(ctx, 0, 6, 18, 3, "#ffffff");
+      px(ctx, 4, 2, 5, 3, "#ffffff");
+      px(ctx, 9, 1, 5, 4, "#ffffff");
+      ctx.globalAlpha = 0.85;
+      px(ctx, 5, 3, 3, 2, "#ffffff");
+      px(ctx, 10, 2, 3, 2, "#ffffff");
+      px(ctx, 3, 6, 2, 2, "#ffffff");
+      px(ctx, 13, 6, 2, 2, "#ffffff");
+      ctx.globalAlpha = 1;
+      return c;
+    }
+    case "anel": {
+      // Onda no chão (o anel que abre).
+      const { c, ctx } = artCanvas(21, 9);
+      ellipse(ctx, 21, 9, "#ffffff", false);
+      return c;
+    }
+    case "glifo": {
+      // Círculo sagrado no chão (Consagração): cheio e fraco, com borda e uma cruz.
+      const { c, ctx } = artCanvas(21, 9);
+      ctx.globalAlpha = 0.3;
+      ellipse(ctx, 21, 9, "#ffffff", true);
+      ctx.globalAlpha = 0.9;
+      ellipse(ctx, 21, 9, "#ffffff", false);
+      px(ctx, 10, 2, 1, 5, "#ffffff");
+      px(ctx, 7, 4, 7, 1, "#ffffff");
+      ctx.globalAlpha = 1;
+      return c;
+    }
+    case "floco": {
+      const { c, ctx } = artCanvas(5, 5);
+      px(ctx, 2, 0, 1, 5, "#ffffff");
+      px(ctx, 0, 2, 5, 1, "#ffffff");
+      px(ctx, 1, 1, 1, 1, "#ffffff");
+      px(ctx, 3, 3, 1, 1, "#ffffff");
+      px(ctx, 3, 1, 1, 1, "#ffffff");
+      px(ctx, 1, 3, 1, 1, "#ffffff");
+      return c;
+    }
+    case "meteoro": {
+      // A pedra em brasa com o rastro de fogo para cima (cai de cima para baixo; cores próprias).
+      const { c, ctx } = artCanvas(9, 13);
+      px(ctx, 3, 0, 3, 3, "#ffd23c");
+      px(ctx, 2, 2, 5, 4, "#ff8a1e");
+      px(ctx, 1, 6, 7, 6, "#7a3a1a");
+      px(ctx, 0, 7, 9, 4, "#7a3a1a");
+      px(ctx, 2, 7, 3, 2, "#c2541f");
+      px(ctx, 5, 9, 2, 2, "#ff8a1e");
+      outline(c);
+      return c;
+    }
+    case "raio": {
+      // Um trecho de raio (esticado e girado de um alvo ao outro).
+      const { c, ctx } = artCanvas(8, 5);
+      px(ctx, 0, 2, 2, 1, "#ffffff");
+      px(ctx, 2, 1, 2, 1, "#ffffff");
+      px(ctx, 4, 3, 2, 1, "#ffffff");
+      px(ctx, 6, 2, 2, 1, "#ffffff");
+      px(ctx, 3, 2, 1, 1, "#ffffff");
+      px(ctx, 5, 2, 1, 1, "#ffffff");
+      return c;
+    }
+    case "giro": {
+      // As lâminas do Redemoinho: quatro arcos em volta de quem gira.
+      const { c, ctx } = artCanvas(19, 19);
+      const arcs: [number, number][] = [
+        [9, 0], [11, 1], [13, 2], [18, 9], [17, 11], [16, 13],
+        [9, 18], [7, 17], [5, 16], [0, 9], [1, 7], [2, 5],
+      ];
+      for (const [x, y] of arcs) px(ctx, x, y, 2, 1, "#ffffff");
+      return c;
+    }
+    case "bolha": {
+      // A bolha do escudo em volta do herói, com um brilho em cima.
+      const { c, ctx } = artCanvas(17, 17);
+      ctx.globalAlpha = 0.18;
+      ellipse(ctx, 17, 17, "#ffffff", true);
+      ctx.globalAlpha = 0.9;
+      ellipse(ctx, 17, 17, "#ffffff", false);
+      px(ctx, 4, 3, 3, 1, "#ffffff");
+      px(ctx, 3, 4, 1, 2, "#ffffff");
+      ctx.globalAlpha = 1;
       return c;
     }
     case "escudo": {
