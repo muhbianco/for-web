@@ -166,8 +166,14 @@ export default function RunPanel(props: {
       max: e?.hp ?? hp,
       level: e?.level ?? 0,
       statuses: f.u?.x[tg.i],
+      aim: aimOf(tg.i),
     };
   };
+  /** Quem o monstro mira agora (o nome do herói), pela ameaça do quadro (26/11/2026). */
+  function aimOf(i: number): string | null {
+    const g = frame()?.g?.[i];
+    return g && g.a >= 0 ? (run().members[g.a]?.name ?? null) : null;
+  }
   const bossIndex = () => {
     if (room() < ROOMS - 1) return -1;
     return (
@@ -407,6 +413,9 @@ export default function RunPanel(props: {
                 <BossBar>
                   <div>
                     <strong>{b().name}</strong>
+                    <Show when={aimOf(bossIndex())}>
+                      {(n) => <Aim>{t`mirando ${n()}`}</Aim>}
+                    </Show>
                     <small>{t`Nv ${b().level}`}</small>
                   </div>
                   <Meter
@@ -451,6 +460,9 @@ export default function RunPanel(props: {
                 <TargetBox aria-label={t`Seu alvo: ${tg().name}`}>
                   <div>
                     <strong>{tg().name}</strong>
+                    <Show when={tg().aim}>
+                      {(n) => <Aim>{t`mirando ${n()}`}</Aim>}
+                    </Show>
                     <small>{t`Nv ${tg().level}`}</small>
                   </div>
                   <Meter
@@ -1360,6 +1372,18 @@ const BossBar = styled("div", {
     "& > div": { display: "flex", justifyContent: "space-between", gap: "8px" },
     "& strong": { color: "#ffd2c8", fontSize: "0.85rem" },
     "& small": { fontSize: "0.7rem", opacity: 0.85 },
+  },
+});
+
+/** "mirando Fulano": quem o monstro bate agora (a ameaça do quadro; 26/11/2026). */
+const Aim = styled("span", {
+  base: {
+    fontSize: "0.7rem",
+    color: "#ffb4a6",
+    overflow: "hidden",
+    textOverflow: "ellipsis",
+    whiteSpace: "nowrap",
+    minWidth: 0,
   },
 });
 

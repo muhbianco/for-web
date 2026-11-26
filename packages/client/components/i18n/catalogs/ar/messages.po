@@ -1935,6 +1935,10 @@ msgstr "أنت بالفعل صديق مع هذا المستخدم."
 #~ msgid "Altar rachado: dar 15% da vida em troca de uma bênção?"
 #~ msgstr ""
 
+#: components/space/game/RunMeter.tsx
+msgid "alvo"
+msgstr ""
+
 #: components/space/game/RunPanel.tsx
 msgid "Alvo"
 msgstr ""
@@ -1942,6 +1946,10 @@ msgstr ""
 #: components/app/interface/settings/user/voice/ScreenShareOptions.tsx
 msgid "Always Ask for Screen Share Quality"
 msgstr "اطلب دائمًا جودة مشاركة الشاشة"
+
+#: components/space/game/RunMeter.tsx
+msgid "Ameaça"
+msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "American (MM/DD/YYYY)"
@@ -4056,6 +4064,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Dano mágico em todo o grupo."
+msgstr ""
+
+#: components/space/game/StatusIcons.tsx
+msgid "dano mágico por segundo"
 msgstr ""
 
 #: components/space/game/StatusIcons.tsx
@@ -7263,6 +7275,11 @@ msgstr ""
 msgid "Minimise to Tray"
 msgstr "تصغير البرنامج"
 
+#. placeholder {0}: n()
+#: components/space/game/RunPanel.tsx
+msgid "mirando {0}"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "صلاحية غير موجودة"
@@ -7709,6 +7726,10 @@ msgstr ""
 
 #: components/space/AudioCheck.tsx
 msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
+msgstr ""
+
+#: components/space/game/RunMeter.tsx
+msgid "Nenhum monstro na luta agora."
 msgstr ""
 
 #: components/space/game/labels.ts
@@ -8198,6 +8219,10 @@ msgstr ""
 
 #: components/space/AudioCheck.tsx
 msgid "O microfone foi bloqueado. Libere o acesso nas permissões do navegador (ícone ao lado do endereço), do aplicativo do PC ou do Android e teste de novo. Você também pode entrar só ouvindo."
+msgstr ""
+
+#: components/space/game/RunMeter.tsx
+msgid "O monstro troca de alvo quando alguém passa de {AGGRO_SWITCH_PCT}% da ameaça de quem ele está batendo."
 msgstr ""
 
 #: components/space/Onboarding.tsx
@@ -10162,6 +10187,10 @@ msgstr ""
 
 #: components/space/game/ItemCard.tsx
 msgid "Sem afixos (Comum)."
+msgstr ""
+
+#: components/space/game/RunMeter.tsx
+msgid "sem alvo"
 msgstr ""
 
 #: components/space/game/RunPanel.tsx

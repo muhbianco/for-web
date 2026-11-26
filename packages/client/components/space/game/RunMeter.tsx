@@ -8,13 +8,22 @@ import { styled } from "styled-system/jsx";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { CLASS_ICON } from "./RunHud";
+import { AGGRO_SWITCH_PCT, type AggroLevel, aggroFill, aggroViews } from "./aggro";
 import { gameFrame } from "./gameTheme";
 import { Grip, Tabs } from "./gameUi";
 import { num } from "./heroModel";
 import { dungeonName } from "./partyUi";
+import { runCast } from "./runUi";
 import { useWide, useWindowDrag } from "./windowDrag";
 
-type Tab = "dmg" | "taken" | "heal";
+type Tab = "dmg" | "taken" | "heal" | "threat";
+
+/** A cor da barra de ameaça pelo nível (o número em % vai junto: a cor nunca é o único sinal). */
+const AGGRO_COLOR: Record<AggroLevel, string> = {
+  seguro: "#6ee07a",
+  alerta: "#f3c04b",
+  perigo: "#ff5c5c",
+};
 
 /** As cores das classes nas barras do medidor (com o nome escrito: a cor nunca é o único sinal). */
 export const CLASS_COLOR: Record<ClassId, string> = {
@@ -39,7 +48,8 @@ function clock(s: number): string {
  * uma janela à parte, que o jogador abre se quiser e arrasta para onde não atrapalha. Uma métrica
  * por aba (dano causado, dano recebido, cura), cada herói com o total, o por segundo e a fatia do
  * grupo; clicar no herói abre de onde veio (skill a skill). Embaixo, o dano e a cura do grupo
- * por segundo e o tempo da corrida.
+ * por segundo e o tempo da corrida. A aba Ameaça (26/11/2026) mostra cada monstro vivo da sala, quem
+ * ele mira e quem está mais perto de puxar, com a barra até o ponto da troca de alvo.
  */
 export default function RunMeter(props: {
   state: RunState;
@@ -101,6 +111,13 @@ export default function RunMeter(props: {
       }));
   };
   const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
+  const cast = createMemo(() => runCast(props.state));
+  const threat = createMemo(() => {
+    const f = props.state.frame;
+    return f ? aggroViews(f.g, f.x) : [];
+  });
+  const heroName = (i: number) => props.state.run.members[i]?.name ?? "?";
+  const foeName = (i: number) => cast().enemyName(props.state.frame?.st ?? 0, i);
 
   return (
     <Win
@@ -139,8 +156,74 @@ export default function RunMeter(props: {
           { id: "dmg", label: t`Dano` },
           { id: "taken", label: t`Recebido` },
           { id: "heal", label: t`Cura` },
+          { id: "threat", label: t`Ameaça` },
         ]}
       />
+      <Show when={tab() === "threat"}>
+        <Show
+          when={threat().length > 0}
+          fallback={<Empty>{t`Nenhum monstro na luta agora.`}</Empty>}
+        >
+          <List role="list">
+            <For each={threat()}>
+              {(v) => (
+                <li>
+                  <Row
+                    type="button"
+                    aria-expanded={open() === v.i}
+                    onClick={() => setOpen(open() === v.i ? null : v.i)}
+                    style={{ "--c": AGGRO_COLOR[v.level] }}
+                  >
+                    <Fill
+                      style={{
+                        width: `${Math.round(aggroFill(v.rival?.pct ?? 0) * 100)}%`,
+                      }}
+                    />
+                    <span data-name="">{foeName(v.i)}</span>
+                    <span data-aim="">
+                      <Show
+                        when={v.target >= 0}
+                        fallback={<small>{t`sem alvo`}</small>}
+                      >
+                        <Symbol size={14}>
+                          {CLASS_ICON[props.state.run.members[v.target]!.cls]}
+                        </Symbol>
+                        {heroName(v.target)}
+                      </Show>
+                      <Show when={v.rival}>
+                        {(r) => (
+                          <small>
+                            · {heroName(r().i)} <b>{r().pct}%</b>
+                          </small>
+                        )}
+                      </Show>
+                    </span>
+                  </Row>
+                  <Show when={open() === v.i}>
+                    <Sources>
+                      <For each={v.all}>
+                        {(r) => (
+                          <li>
+                            <span>
+                              {heroName(r.i)}
+                              {r.i === v.target ? ` (${t`alvo`})` : ""}
+                            </span>
+                            <span>{r.pct}%</span>
+                          </li>
+                        )}
+                      </For>
+                    </Sources>
+                  </Show>
+                </li>
+              )}
+            </For>
+          </List>
+          <Empty>
+            {t`O monstro troca de alvo quando alguém passa de ${AGGRO_SWITCH_PCT}% da ameaça de quem ele está batendo.`}
+          </Empty>
+        </Show>
+      </Show>
+      <Show when={tab() !== "threat"}>
       <List role="list">
         <For each={rows()}>
           {(r) => (
@@ -183,6 +266,7 @@ export default function RunMeter(props: {
           )}
         </For>
       </List>
+      </Show>
       <Foot>
         <span>
           {t`Grupo`}: <strong>{num(sum(m().dmg) / secs())}</strong>{" "}
@@ -323,6 +407,9 @@ const Sources = styled("ul", {
     "& li": { display: "flex", justifyContent: "space-between", gap: "8px" },
     "& small": { color: "#c4b8a2" },
   },
+});
+const Empty = styled("p", {
+  base: { margin: "2px 4px", color: "#c4b8a2", fontSize: "0.92em" },
 });
 const Foot = styled("div", {
   base: {

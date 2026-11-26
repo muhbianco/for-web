@@ -13,6 +13,7 @@ import type {
   FightEvent,
   FightFrame,
   FightResult,
+  FrameAggro,
   FrameStatus,
   KillEvent,
   MechanicEvent,
@@ -375,8 +376,29 @@ export function fight(
       x: enemies.map((x) => Math.max(0, Math.round(x.hp))),
       e,
       ...(u ? { u } : {}),
+      g: aggroAt(),
     });
   };
+  /** Quem cada inimigo mira e a ameaça de cada herói em % da do alvo (só lê o estado). */
+  const aggroAt = (): (FrameAggro | null)[] =>
+    enemies.map((x) => {
+      if (!x.alive) return null;
+      const tg = x.target && x.target.alive ? x.target : null;
+      const base = tg
+        ? tg.threat[x.i]!
+        : Math.max(0, ...heroes.map((h) => (h.alive ? h.threat[x.i]! : 0)));
+      return {
+        a: tg ? who(tg) : -1,
+        // O alvo é 100% por definição (no começo da sala ele é escolhido com ameaça 0).
+        p: heroes.map((h) =>
+          h === tg
+            ? 100
+            : h.alive && base > 0
+              ? Math.round((100 * h.threat[x.i]!) / base)
+              : 0,
+        ),
+      };
+    });
   /** Os efeitos ativos no fim do segundo (só lê o estado; nada da luta muda). */
   const statusesAt = (now: number): FightFrame["u"] | null => {
     const left = (until: number) => Math.max(1, Math.ceil(until - now - 1e-9));
@@ -448,7 +470,13 @@ export function fight(
           cur.n = (cur.n ?? 1) + 1;
           cur.t = Math.max(cur.t, left(d.until));
         } else
-          per.set(id, { s: srcOf(d.key), k: "dot", t: left(d.until), a: q.i });
+          per.set(id, {
+            s: srcOf(d.key),
+            k: "dot",
+            t: left(d.until),
+            a: q.i,
+            dk: d.kind,
+          });
       }
     const x = enemies.map((e) => {
       const out: FrameStatus[] = [];

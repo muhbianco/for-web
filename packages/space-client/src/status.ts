@@ -17,6 +17,7 @@ export type StatusTone =
   | "mana"
   | "poison"
   | "burn"
+  | "magic"
   | "bleed"
   | "holy"
   | "debuff"
@@ -32,6 +33,8 @@ export const STATUS_COLOR: Record<StatusTone, number> = {
   mana: 0x6aa8ff,
   poison: 0x9be542,
   burn: 0xff8a3a,
+  /** DoT mágico sem tipo (Nevasca, Espinhos): o magenta do número de dano mágico. */
+  magic: 0xe05cff,
   bleed: 0xe0453c,
   holy: 0xfff0a0,
   debuff: 0xc27bff,
@@ -75,12 +78,16 @@ export function statusTone(
     case "debuff":
       return st.s === "maldicao" || st.s === "drenar" ? "curse" : "debuff";
     case "dot": {
+      // O tipo que o motor manda (o mesmo do número) decide; o elemento da skill só no DoT sem tipo.
+      if (st.dk === "veneno") return "poison";
+      if (st.dk === "queimadura") return "burn";
+      if (st.dk === "sangramento") return "bleed";
       const dot = author ? dotOf(skillOf(author, st.s)?.effects) : null;
-      if (!dot) return "poison";
+      if (!dot) return st.dk ? "magic" : "poison";
       if (dot.poison) return "poison";
       if (dot.element === "fisico") return "bleed";
       if (dot.element === "sagrado") return "holy";
-      return "burn";
+      return st.dk ? "magic" : "burn";
     }
   }
 }

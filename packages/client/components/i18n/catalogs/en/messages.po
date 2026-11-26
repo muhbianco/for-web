@@ -1935,6 +1935,10 @@ msgstr "Already friends with this user."
 #~ msgid "Altar rachado: dar 15% da vida em troca de uma bênção?"
 #~ msgstr "Altar rachado: dar 15% da vida em troca de uma bênção?"
 
+#: components/space/game/RunMeter.tsx
+msgid "alvo"
+msgstr "alvo"
+
 #: components/space/game/RunPanel.tsx
 msgid "Alvo"
 msgstr "Alvo"
@@ -1942,6 +1946,10 @@ msgstr "Alvo"
 #: components/app/interface/settings/user/voice/ScreenShareOptions.tsx
 msgid "Always Ask for Screen Share Quality"
 msgstr "Always Ask for Screen Share Quality"
+
+#: components/space/game/RunMeter.tsx
+msgid "Ameaça"
+msgstr "Ameaça"
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "American (MM/DD/YYYY)"
@@ -4057,6 +4065,10 @@ msgstr "Dano esperado"
 #: components/space/game/gameText.ts
 msgid "Dano mágico em todo o grupo."
 msgstr "Dano mágico em todo o grupo."
+
+#: components/space/game/StatusIcons.tsx
+msgid "dano mágico por segundo"
+msgstr "dano mágico por segundo"
 
 #: components/space/game/StatusIcons.tsx
 msgid "dano sagrado por segundo"
@@ -7263,6 +7275,11 @@ msgstr "Minha vida abaixo de {0}%"
 msgid "Minimise to Tray"
 msgstr "Minimise to Tray"
 
+#. placeholder {0}: n()
+#: components/space/game/RunPanel.tsx
+msgid "mirando {0}"
+msgstr "mirando {0}"
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardActions.tsx
 msgid "Missing permission"
 msgstr "Missing permission"
@@ -7710,6 +7727,10 @@ msgstr "Nenhum aviso por enquanto."
 #: components/space/AudioCheck.tsx
 msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
 msgstr "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
+
+#: components/space/game/RunMeter.tsx
+msgid "Nenhum monstro na luta agora."
+msgstr "Nenhum monstro na luta agora."
 
 #: components/space/game/labels.ts
 #~ msgid "Nenhuma expedição em andamento."
@@ -8199,6 +8220,10 @@ msgstr "O Mercador paga 10% do preço base; o refino não entra no preço."
 #: components/space/AudioCheck.tsx
 msgid "O microfone foi bloqueado. Libere o acesso nas permissões do navegador (ícone ao lado do endereço), do aplicativo do PC ou do Android e teste de novo. Você também pode entrar só ouvindo."
 msgstr "O microfone foi bloqueado. Libere o acesso nas permissões do navegador (ícone ao lado do endereço), do aplicativo do PC ou do Android e teste de novo. Você também pode entrar só ouvindo."
+
+#: components/space/game/RunMeter.tsx
+msgid "O monstro troca de alvo quando alguém passa de {AGGRO_SWITCH_PCT}% da ameaça de quem ele está batendo."
+msgstr "O monstro troca de alvo quando alguém passa de {AGGRO_SWITCH_PCT}% da ameaça de quem ele está batendo."
 
 #: components/space/Onboarding.tsx
 msgid "O Muchat virou um espaço"
@@ -10163,6 +10188,10 @@ msgstr "sem acesso à lista"
 #: components/space/game/ItemCard.tsx
 msgid "Sem afixos (Comum)."
 msgstr "Sem afixos (Comum)."
+
+#: components/space/game/RunMeter.tsx
+msgid "sem alvo"
+msgstr "sem alvo"
 
 #: components/space/game/RunPanel.tsx
 #~ msgid "Sem buffs. Se a luta demorar, o Cataclismo começa."

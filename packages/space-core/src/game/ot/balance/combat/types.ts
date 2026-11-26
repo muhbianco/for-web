@@ -498,6 +498,22 @@ export interface FrameStatus {
   a?: number;
   /** O que o escudo ainda segura. */
   v?: number;
+  /**
+   * No DoT: o tipo dele, o mesmo do número (`dt`). A marca pinta por ele e não pelo elemento da
+   * skill: a Nevasca e os Espinhos (DoT mágico) apareciam como queimadura e a Queimadura da
+   * Explosão de Fogo (que vem da mecânica) como veneno (26/11/2026).
+   */
+  dk?: DotKind;
+}
+
+/**
+ * A ameaça de um inimigo no fim do segundo (26/11/2026, só para a tela): `a` é o herói que ele
+ * mira (índice; −1: ninguém) e `p` a ameaça de cada herói em % da do alvo (100 = o alvo; quem passa
+ * de `cfg.threat.switchAt` × 100 puxa o monstro). Herói caído: 0.
+ */
+export interface FrameAggro {
+  a: number;
+  p: number[];
 }
 
 /** O estado no fim de um segundo da luta: vida e mana dos heróis, vida de cada inimigo. */
@@ -510,6 +526,8 @@ export interface FightFrame {
   e: FightEvent[];
   /** Os efeitos ativos de cada herói (`h`) e inimigo (`x`); sem nenhum, o campo não vem. */
   u?: { h: FrameStatus[][]; x: FrameStatus[][] };
+  /** A ameaça de cada inimigo (null: caído); só nas salas, não no descanso. */
+  g?: (FrameAggro | null)[];
 }
 
 /** Um inimigo abatido: quem estava de pé na hora divide o XP e o ouro (D4). */

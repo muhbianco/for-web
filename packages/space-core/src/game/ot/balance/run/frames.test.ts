@@ -236,3 +236,40 @@ test("crítico e tique de DoT ficam marcados nos quadros, sem mudar a soma do da
   assert.equal(plain.outcome, r.outcome);
   assert.equal(plain.seconds, r.seconds);
 });
+
+test("a marca do DoT traz o tipo do número e o quadro traz quem cada monstro mira, com a ameaça em % do alvo (26/11/2026)", () => {
+  const d = dungeonById("masmorra-110")!;
+  const r = simulateRun(
+    d,
+    party(["guerreiro", "druida", "assassino", "mago"], 110),
+    { mode: "aleatorio", random: randomSource(new Rng(11)), record: true },
+  );
+  const f = r.frames!;
+  // O tipo da marca é o mesmo do tique que sobe como número (a tela pinta os dois igual).
+  const tickKind = new Map<string, string>();
+  for (const x of f)
+    for (const e of x.e)
+      if (e.k === "magia" && e.dt) tickKind.set(`${e.a}|${e.s}`, e.dt);
+  const dots = f.flatMap((x) => x.u?.x.flat() ?? []).filter((s) => s.k === "dot");
+  assert.ok(dots.length > 0);
+  for (const s of dots) {
+    assert.ok(s.dk, `DoT ${s.s} sem tipo`);
+    const k = tickKind.get(`${s.a}|${s.s}`);
+    if (k) assert.equal(s.dk, k, s.s);
+  }
+  assert.ok(dots.some((s) => s.a === 2 && s.dk === "veneno"), "veneno do assassino");
+  // Ameaça: um por inimigo; o alvo tem 100%; quem passa de 110% já teria puxado.
+  let seen = 0;
+  for (const x of f) {
+    if (!x.g) continue;
+    assert.equal(x.g.length, x.x.length);
+    for (const g of x.g) {
+      if (!g) continue;
+      seen++;
+      assert.equal(g.p.length, x.h.length);
+      assert.ok(g.a >= -1 && g.a < x.h.length);
+      if (g.a >= 0 && x.h[g.a]! > 0) assert.equal(g.p[g.a], 100);
+    }
+  }
+  assert.ok(seen > 0, "a ameaça aparece nas salas");
+});

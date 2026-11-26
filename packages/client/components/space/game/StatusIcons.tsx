@@ -38,6 +38,7 @@ const ICON: Record<StatusTone, string> = {
   mana: "auto_awesome",
   poison: "science",
   burn: "local_fire_department",
+  magic: "cyclone",
   bleed: "water_drop",
   holy: "flare",
   debuff: "trending_down",
@@ -62,6 +63,8 @@ function toneText(tone: StatusTone): string {
       return t`veneno`;
     case "burn":
       return t`queimadura`;
+    case "magic":
+      return t`dano mágico por segundo`;
     case "bleed":
       return t`sangramento`;
     case "holy":
