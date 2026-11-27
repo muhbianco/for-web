@@ -17,6 +17,7 @@ import { styled } from "styled-system/jsx";
 import { renderChangelogMarkdown } from "@revolt/markdown";
 import { Button } from "@revolt/ui";
 
+import { ArsenalView } from "./game/ArsenalView";
 import { gameFrame } from "./game/gameTheme";
 import { Grip } from "./game/gameUi";
 import { useModalKeys } from "./game/modalKeys";
@@ -76,6 +77,9 @@ export default function NewsPanel(props: {
   };
   onMount(() => void load());
   const [selectedId, setSelectedId] = createSignal<string | null>(null);
+  // A nota com o link `#arsenal` abre o Arsenal (todos os itens do jogo) no lugar dos avisos (27/11/2026).
+  const [arsenal, setArsenal] = createSignal(false);
+  const hasArsenal = (n: NewsItem) => n.markdown.includes("#arsenal)");
   const items = () => {
     const s = news();
     return s.kind === "ready" ? s.wire.items : [];
@@ -114,6 +118,7 @@ export default function NewsPanel(props: {
       <Card
         style={{ ...gameFrame, ...drag.style() }}
         data-dragging={drag.dragging() ? "" : undefined}
+        data-wide={arsenal() ? "" : undefined}
         ref={card}
         role="dialog"
         aria-modal="true"
@@ -149,6 +154,11 @@ export default function NewsPanel(props: {
           <Match when={items().length === 0}>
             <p>{t`Nenhum aviso por enquanto.`}</p>
           </Match>
+          <Match when={arsenal()}>
+            <Scroll>
+              <ArsenalView onBack={() => setArsenal(false)} />
+            </Scroll>
+          </Match>
           <Match when={selected()}>
             {(note) => (
               <Body>
@@ -178,7 +188,25 @@ export default function NewsPanel(props: {
                 <Note aria-live="polite">
                   <h3>{note().title}</h3>
                   <Muted>{when(note().publishedAt)}</Muted>
-                  <Content>{renderChangelogMarkdown(note().markdown)}</Content>
+                  <Show when={hasArsenal(note())}>
+                    <div>
+                      <Button size="sm" onPress={() => setArsenal(true)}>
+                        {t`Abrir o Arsenal`}
+                      </Button>
+                    </div>
+                  </Show>
+                  <Content
+                    onClick={(e) => {
+                      // O link do Arsenal na nota abre o Arsenal aqui dentro, sem sair do Espaço.
+                      const a = (e.target as HTMLElement).closest("a");
+                      if (a?.getAttribute("href")?.endsWith("#arsenal")) {
+                        e.preventDefault();
+                        setArsenal(true);
+                      }
+                    }}
+                  >
+                    {renderChangelogMarkdown(note().markdown)}
+                  </Content>
                 </Note>
               </Body>
             )}
@@ -218,6 +246,8 @@ const Card = styled("div", {
     overflow: "hidden",
     "& h2": { margin: 0, fontSize: "1.15rem", outline: "none" },
     "& p": { margin: 0, lineHeight: 1.5 },
+    // O Arsenal (todos os itens) pede mais espaço que uma nota.
+    "&[data-wide]": { maxWidth: "1180px", height: "min(88vh, 940px)" },
   },
 });
 
@@ -325,6 +355,10 @@ const Fresh = styled("span", {
     fontSize: "0.75em",
     fontWeight: 600,
   },
+});
+
+const Scroll = styled("div", {
+  base: { flex: 1, minHeight: 0, overflowY: "auto", paddingInlineEnd: "6px" },
 });
 
 const Note = styled("article", {

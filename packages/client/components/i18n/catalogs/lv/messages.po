@@ -339,6 +339,13 @@ msgstr ""
 msgid "{0} de {1}"
 msgstr ""
 
+#. placeholder {0}: BASES.filter((b) => b.classes.includes(c())).length
+#. placeholder {1}: BASES.length
+#. placeholder {2}: title(c())
+#: components/space/game/ArsenalView.tsx
+msgid "{0} de {1} bases servem para {2}"
+msgstr ""
+
 #. placeholder {0}: inv().pack.length
 #. placeholder {1}: hero()?.pack_size ?? 0
 #: components/space/game/HeroSheet.tsx
@@ -760,6 +767,14 @@ msgstr ""
 #: components/space/game/runUi.ts
 #~ msgid "{a} se curou: +{0}"
 #~ msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "{aff} afixos"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "{aff} afixos + perk"
+msgstr ""
 
 #: components/space/game/ClassPicker.tsx
 msgid "{ammo} flechas"
@@ -1392,6 +1407,10 @@ msgstr ""
 msgid "⚠ {0}: {1}{target}"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "✓ pode usar · ★ é o lendário com nome da classe."
+msgstr ""
+
 #. placeholder {0}: r.content.tier
 #: components/space/game/SkillsPanel.tsx
 #~ msgid "🔒 abre no T{0}"
@@ -1416,6 +1435,10 @@ msgstr ""
 #. placeholder {0}: props.locked
 #: components/space/game/SkillsPanel.tsx
 msgid "🔒 T{0}"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "1 afixo"
 msgstr ""
 
 #: components/space/DecorPanel.tsx
@@ -1451,6 +1474,11 @@ msgstr ""
 msgid "1 item para cada um"
 msgstr ""
 
+#. placeholder {0}: f.scale
+#: components/space/game/ArsenalView.tsx
+msgid "1 mão · {kind} · {aps} ataques/s · escala {0}"
+msgstr ""
+
 #: components/space/game/runUi.ts
 #~ msgid "1 moeda"
 #~ msgstr ""
@@ -1481,6 +1509,11 @@ msgstr "1 cilvēks reaģēja"
 
 #: components/app/interface/settings/user/Language.tsx
 msgid "12 hours"
+msgstr ""
+
+#. placeholder {0}: f.scale
+#: components/space/game/ArsenalView.tsx
+msgid "2 mãos · {kind} · {aps} ataques/s · escala {0}"
 msgstr ""
 
 #: components/app/interface/settings/user/Language.tsx
@@ -1590,6 +1623,10 @@ msgstr ""
 #: components/space/game/TvMenu.tsx
 #~ msgid "A experiência não vai ser dividida: para dividir, todos precisam de nível {0} ou mais (2/3 do maior). Assim, cada um leva a experiência pelo dano que causa."
 #~ msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "A família define mãos, alcance, velocidade e o atributo que escala o dano."
+msgstr ""
 
 #. placeholder {0}: l.stopped_detail ?? "?"
 #: components/space/game/partyUi.ts
@@ -1788,6 +1825,10 @@ msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs das salas"
+msgstr ""
+
+#: components/space/NewsPanel.tsx
+msgid "Abrir o Arsenal"
 msgstr ""
 
 #: components/space/game/itemUi.ts
@@ -1994,6 +2035,7 @@ msgstr ""
 msgid "Aliado com mana abaixo de {0}%"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/MerchantPanel.tsx
 msgid "Aljava"
 msgstr ""
@@ -2251,6 +2293,11 @@ msgstr ""
 msgid "Armadura pesada demais para a sua classe."
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Armaduras"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/ClassPicker.tsx
 #: components/space/game/MasterPanel.tsx
 msgid "Armas"
@@ -2266,6 +2313,10 @@ msgstr ""
 
 #: components/space/game/gameUi.tsx
 msgid "Arraste para mover · duplo clique na barra volta ao lugar"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Arsenal"
 msgstr ""
 
 #: components/space/game/StatsPanel.tsx
@@ -2794,6 +2845,10 @@ msgstr ""
 msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Cada classe veste o peso dela ou um mais leve."
+msgstr ""
+
 #: components/space/game/skillText.ts
 msgid "Cada inimigo atingido cura você em {p} da vida máxima."
 msgstr ""
@@ -3206,9 +3261,9 @@ msgstr ""
 msgid "Cinto de poções"
 msgstr ""
 
-#: components/space/game/GamePanel.tsx
-#~ msgid "Classe"
-#~ msgstr ""
+#: components/space/game/ArsenalView.tsx
+msgid "Classe"
+msgstr ""
 
 #. placeholder {0}: className(h().vocation, tier())
 #. placeholder {1}: tier()
@@ -3319,6 +3374,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Colar"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Colar e anel"
 msgstr ""
 
 #: components/space/game/MerchantPanel.tsx
@@ -3876,6 +3935,10 @@ msgstr ""
 #~ msgid "Corpo"
 #~ msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "corpo a corpo"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Corpo a corpo de crítico alto e veneno; precisa de sorte."
 msgstr ""
@@ -4287,6 +4350,10 @@ msgstr ""
 
 #: components/space/game/DungeonDetail.tsx
 msgid "De onde vem"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "de qualquer classe"
 msgstr ""
 
 #: components/app/interface/settings/user/notifications/Sounds.tsx
@@ -4702,9 +4769,9 @@ msgstr ""
 msgid "Display users with this role separately in the member list"
 msgstr ""
 
-#: components/space/game/itemUi.ts
-#~ msgid "distância"
-#~ msgstr ""
+#: components/space/game/ArsenalView.tsx
+msgid "distância"
+msgstr ""
 
 #: components/space/game/rpgUi.ts
 #~ msgid "Distância"
@@ -5335,6 +5402,7 @@ msgstr ""
 msgid "escudo"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/MerchantPanel.tsx
 #: components/space/game/SkillsPanel.tsx
 #: components/space/game/StatusIcons.tsx
@@ -5363,6 +5431,10 @@ msgstr ""
 
 #: components/space/game/StatusIcons.tsx
 msgid "escudo de mana"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Escudo, focus e aljava."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -5922,6 +5994,7 @@ msgstr ""
 #~ msgid "Foco"
 #~ msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/MerchantPanel.tsx
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
@@ -6551,6 +6624,10 @@ msgstr ""
 #~ msgid "Isso não se veste."
 #~ msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Item"
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Item indisponível."
 #~ msgstr ""
@@ -6810,6 +6887,11 @@ msgstr "Pamest serveri"
 msgid "Lendário"
 msgstr ""
 
+#. placeholder {0}: title(l.cls)
+#: components/space/game/ArsenalView.tsx
+msgid "lendário do {0}"
+msgstr ""
+
 #. placeholder {0}: legend().join(", ")
 #: components/space/game/DungeonDetail.tsx
 #~ msgid "Lendário possível: {0}"
@@ -6818,6 +6900,10 @@ msgstr ""
 #. placeholder {0}: legend().join(", ")
 #: components/space/game/DungeonDetail.tsx
 msgid "Lendário: qualquer item do jogo, com o perk numa habilidade da sua classe (o que não servir, dá para passar a outro jogador pelo Banqueiro). Às vezes vem um com nome: {0}."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Lendários"
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
@@ -7109,6 +7195,10 @@ msgstr ""
 #~ msgid "Magias, curas e varinhas: INT + (INT/7)² até INT + (INT/5)². Cada ponto é +0,15%."
 #~ msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "mágica"
+msgstr ""
+
 #: components/space/game/skillText.ts
 msgid "mágico"
 msgstr ""
@@ -7210,6 +7300,7 @@ msgstr "Pārvaldīt Webhooks"
 msgid "Mandar para {0}? Não dá para desfazer"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/gameText.ts
 msgid "Mão secundária"
 msgstr ""
@@ -7282,6 +7373,10 @@ msgstr ""
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Masquerade"
 msgstr "Maskēties"
+
+#: components/space/game/ArsenalView.tsx
+msgid "Material"
+msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "MATQ"
@@ -7895,6 +7990,10 @@ msgstr ""
 #~ msgid "Não cabe: falta espaço na mochila ou capacidade."
 #~ msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Não combina com arma de 2 mãos."
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "Não consegui abrir o checkout. Tente de novo em instantes."
 msgstr ""
@@ -8186,6 +8285,12 @@ msgstr ""
 
 #: components/ui/components/features/messaging/composition/picker/GifPicker.tsx
 msgid "No GIFs found"
+msgstr ""
+
+#. placeholder {0}: itemName(comum())
+#. placeholder {1}: ilvl()
+#: components/space/game/ArsenalView.tsx
+msgid "No jogo: {0} · iL {1}"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
@@ -9090,6 +9195,11 @@ msgstr ""
 #~ msgid "Pesadelo"
 #~ msgstr ""
 
+#. placeholder {0}: weightName(x.weight)
+#: components/space/game/ArsenalView.tsx
+msgid "Peso {0}: quem veste esse peso ou mais pesado."
+msgstr ""
+
 #: components/space/game/itemUi.ts
 #~ msgid "Peso {w}"
 #~ msgstr ""
@@ -9503,6 +9613,10 @@ msgstr ""
 msgid "Quando a cura rende"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Quando cai um Lendário: {shared}% é a Coroa do Mentor; {named}% é um dos {namedCount} lendários com nome, de qualquer classe; o resto é qualquer item do jogo, inclusive os que a sua classe não usa (passe para outro jogador pelo Banqueiro). O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+msgstr ""
+
 #: components/space/game/skillText.ts
 msgid "Quando o escudo quebra, {p} do que ele absorveu vira dano sagrado em quem bateu."
 msgstr ""
@@ -9591,6 +9705,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Quem usa magia perde mana por alguns segundos."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Quem usa o quê"
 msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
@@ -9875,6 +9993,10 @@ msgstr ""
 
 #: components/space/game/SmithPanel.tsx
 msgid "Refinar, reforjar e rolar perk, só quando a corrida acabar. Desmontar da mochila vale agora."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Refino"
 msgstr ""
 
 #. placeholder {0}: lvl()
@@ -10529,6 +10651,10 @@ msgstr ""
 msgid "Select your language"
 msgstr "Izvēlies savu valodu"
 
+#: components/space/game/ArsenalView.tsx
+msgid "sem"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "sem acesso à lista"
 msgstr ""
@@ -10600,6 +10726,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Sempre"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Sempre com este perk, para qualquer classe."
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -10958,6 +11088,14 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Só armas se refinam."
 #~ msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Só com arma de distância. Não refina."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Só com arma mágica de 1 mão. Não refina."
+msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Só dá para se retirar num descanso."
@@ -11677,8 +11815,21 @@ msgstr ""
 msgid "Tocar para todos"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/DungeonPicker.tsx
 msgid "Todas"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Todas as bases de item do jogo nas 5 raridades, com os números do jogo, e quem pode usar cada uma."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Todas as classes usam."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Todas as classes. Não refina; 1 afixo a mais."
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
@@ -12195,6 +12346,11 @@ msgstr ""
 #~ msgid "velocidade +{0}%"
 #~ msgstr ""
 
+#. placeholder {0}: title(l.cls)
+#: components/space/game/ArsenalView.tsx
+msgid "Vem com este perk quando cai para {0}; para as outras classes, com um perk da classe de quem dropou."
+msgstr ""
+
 #. placeholder {0}: duration(pointsEta())
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Vem junto: ≈ {0} para o próximo ponto"
@@ -12631,6 +12787,10 @@ msgstr ""
 #: components/space/game/TvMenu.tsx
 #~ msgid "Voltar aos apps"
 #~ msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Voltar aos avisos"
+msgstr ""
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"

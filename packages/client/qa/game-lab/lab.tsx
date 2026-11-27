@@ -70,6 +70,13 @@ const NEWS: NewsWire = {
   url: "https://outline.example/novidades",
   items: [
     {
+      id: "n4",
+      title: "Arsenal: todos os itens do jogo",
+      publishedAt: "2026-11-27T13:30:00Z",
+      markdown:
+        "Todas as bases de item nas 5 raridades, os lendários e quem usa cada um.\n\n[Abrir o Arsenal](https://chat.muhbianco.com.br/#arsenal)",
+    },
+    {
       id: "n3",
       title: "Janelas do jogo arrastáveis",
       publishedAt: "2026-11-25T15:00:00Z",
