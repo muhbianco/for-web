@@ -262,7 +262,7 @@ export function simulateJourney(
     const levels = party.map(() => h.level);
     const rw = runRewards(d, levels, r, B).heroes[0]!;
     const loot = runLoot(
-      d.level,
+      d,
       party.map((p) => p.cls),
       r,
       rand,

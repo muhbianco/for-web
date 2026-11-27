@@ -618,7 +618,7 @@ export class LabServer implements TvLink {
       res,
     );
     const loot = runLoot(
-      d.level,
+      d,
       heroes.map((h) => h.cls),
       res,
       seeded(5),

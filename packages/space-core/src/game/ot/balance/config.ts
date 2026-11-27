@@ -343,6 +343,16 @@ export const BALANCE = {
     oresPerRoom: 1,
     /** A Pedra de Proteção cai do chefe de masmorra: 5% para cada herói vivo no abate. */
     protectionStoneChance: 0.05,
+    /**
+     * Caçada com 4 e 5 (27/11/2026, pedido do dono: "a caçada deve crescer a partir do 4º player"): a
+     * partir de `huntGroupFrom` heróis, o drop de lacaio, elite e chefe menor cresce na proporção do
+     * grupo sobre o trio (n ÷ `huntDropBase`) e cada item tem `huntLegendary[n]` de chance de sair
+     * Lendário (o resto da tabela encolhe junto). O XP e o ouro já crescem com a escala(n) do grupo; a
+     * vida e o golpe, pela escala(n) e pelo aperto de cada tamanho (`DungeonEdge.party`).
+     */
+    huntGroupFrom: 4,
+    huntDropBase: 3,
+    huntLegendary: { 4: 0.01, 5: 0.02 } as Record<number, number>,
   },
 
   /** §10: Mercador. */

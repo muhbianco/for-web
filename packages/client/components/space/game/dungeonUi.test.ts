@@ -79,12 +79,13 @@ test("catálogo: concluídas por região, filtro por tipo, a região do nível m
 });
 
 test("grupo: os tamanhos da DG e o de saída (o meu grupo dentro do que ela aceita)", () => {
-  assert.deepEqual(partySizes(dg("cacada-40")), [1, 2, 3]);
+  assert.deepEqual(partySizes(dg("cacada-40")), [1, 2, 3, 4, 5]);
   assert.deepEqual(partySizes(dg("masmorra-40")), [1, 2, 3, 4, 5]);
   assert.equal(partySizeFor(dg("cacada-40")), 1);
-  assert.equal(partySizeFor(dg("cacada-40"), 5), 3);
+  assert.equal(partySizeFor(dg("cacada-40"), 5), 5);
+  assert.equal(partySizeFor(dg("cacada-40"), 7), 5);
   assert.equal(partySizeFor(dg("masmorra-40"), 4), 4);
-  assert.deepEqual(kindParty("cacada"), { min: 1, max: 3 });
+  assert.deepEqual(kindParty("cacada"), { min: 1, max: 5 });
   assert.deepEqual(kindParty("regional"), { min: 1, max: 5 });
 });
 

@@ -1,10 +1,14 @@
 import type { ArchetypeKey } from "../combat/types.ts";
 import { type ClassId, type RarityId, RARITY_IDS } from "../content.ts";
-import { type DungeonDef, dungeonRooms } from "../dungeons/catalog.ts";
+import {
+  type DungeonDef,
+  dungeonRooms,
+  dungeonType,
+} from "../dungeons/catalog.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
 import { type Material, materialOf } from "../items/generate.ts";
 import { type Monsters, createMonsters } from "../monsters/generate.ts";
-import { type LootSlot, legendaryPool, lootSlots } from "./loot.ts";
+import { type LootSlot, legendaryPool, lootSlots, lootSource } from "./loot.ts";
 
 /**
  * As chances de drop de uma DG, em números para a tela (a TV): saem das mesmas peças que o sorteio
@@ -21,7 +25,7 @@ export interface LootSourceOdds {
   count: number;
   /** Nível do item que sai: o do monstro. */
   levels: { min: number; max: number };
-  /** Chance de item por criatura (1: sempre). */
+  /** Itens por criatura (1: sempre um; acima de 1, na Caçada de 4 e 5, a fração é a chance de mais um). */
   chance: number;
   /** Um item para cada herói vivo no abate; senão, um item só, para um vivo sorteado. */
   perPlayer: boolean;
@@ -107,8 +111,9 @@ export function dungeonLootOdds(
     }
   }
 
+  const type = dungeonType(d);
   const sources: LootSourceOdds[] = [...byArch].map(([archetype, s]) => {
-    const src = loot.sources[archetype];
+    const src = lootSource(archetype, type, n, B);
     return {
       archetype,
       count: s.count,
@@ -127,13 +132,16 @@ export function dungeonLootOdds(
   let items = 0;
   let stoneMiss = 1;
   for (const s of sources) {
-    // O item de uma fonte de grupo vai para um vivo sorteado: 1/n para cada um.
-    const mine = s.perPlayer ? s.chance : s.chance / n;
-    items += s.count * mine;
+    // O item de uma fonte de grupo vai para um vivo sorteado: 1/n para cada um. Acima de 1 item por
+    // abate (Caçada de 4 e 5), a parte inteira sai sempre e a fração por sorteio (`groupReceivers`).
+    const share = s.perPlayer ? 1 : 1 / n;
+    const whole = Math.floor(s.chance);
+    const frac = s.chance - whole;
+    items += s.count * s.chance * share;
     for (const r of RARITY_IDS) {
-      const p = mine * s.rarity[r];
-      expected[r] += s.count * p;
-      missAll[r] *= (1 - p) ** s.count;
+      const q = share * s.rarity[r];
+      expected[r] += s.count * s.chance * q;
+      missAll[r] *= ((1 - q) ** whole * (1 - frac * q)) ** s.count;
     }
     if (s.archetype === "chefe")
       stoneMiss *= (1 - loot.protectionStoneChance) ** s.count;

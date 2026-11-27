@@ -250,6 +250,24 @@ const SCENARIOS: Scenario[] = [
       }),
   },
   {
+    id: "tv-cacada-5",
+    label: "TV (Caçada com 5)",
+    screen: "tv",
+    // 27/11/2026: a Caçada abriu para 5; o drop do grupo cresce e o Lendário aparece com 4 e 5.
+    build: () =>
+      world(stateOf(mage45(), { cleared: CLEARED_SOME }), {
+        lobbies: {
+          x: lobbyOf("cacada-40", [
+            { id: "u-ana", name: "Ana", cls: "mago", level: 45 },
+            { id: "u-bia", name: "Bia", cls: "guerreiro", level: 44 },
+            { id: "u-caio", name: "Caio", cls: "cacador", level: 43 },
+            { id: "u-duda", name: "Duda", cls: "padre", level: 42 },
+            { id: "u-edu", name: "Edu", cls: "assassino", level: 41 },
+          ]),
+        },
+      }),
+  },
+  {
     id: "tv-chefe",
     label: "TV (chefe, região concluída)",
     screen: "tv",

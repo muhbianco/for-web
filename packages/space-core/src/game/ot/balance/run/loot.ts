@@ -1,11 +1,17 @@
+import type { ArchetypeKey } from "../combat/types.ts";
 import {
   type ClassId,
   type RarityId,
   ARMOR_SLOTS,
   CLASSES,
 } from "../content.ts";
+import { type DungeonDef, dungeonType } from "../dungeons/catalog.ts";
 import { type ItemInstance, canWearWeight } from "../equipment.ts";
-import { type Balance, balance as gameBalance } from "../formulas.ts";
+import {
+  type Balance,
+  type DungeonType,
+  balance as gameBalance,
+} from "../formulas.ts";
 import {
   type ItemBase,
   type Material,
@@ -119,12 +125,70 @@ export function rollItem(
   return generateItem(rollBase(cls, rng), ilvl, rarity, rng, B);
 }
 
-/** Os drops de uma lista de abates. `classes` na ordem dos heróis. */
+/** Uma fonte de drop para um grupo: itens por abate (passa de 1 na Caçada de 4 e 5), para quem, e a raridade. */
+export interface GroupLootSource {
+  /** Itens esperados por abate: a parte inteira sai sempre, a fração por sorteio. Com `perPlayer`, ≤ 1. */
+  chance: number;
+  perPlayer: boolean;
+  rarity: Partial<Record<RarityId, number>>;
+}
+
+/**
+ * A fonte de drop de um abate para um grupo de `members` heróis. Na Caçada com 4 ou 5 (27/11/2026,
+ * pedido do dono), o drop cresce na proporção do grupo sobre o trio e cada item tem a chance a mais
+ * de sair Lendário do config (`loot.huntLegendary`); no resto, a fonte do config como está.
+ */
+export function lootSource(
+  archetype: ArchetypeKey,
+  type: DungeonType | undefined,
+  members: number,
+  B: Balance = gameBalance,
+): GroupLootSource {
+  const loot = B.cfg.loot;
+  const src: GroupLootSource = loot.sources[archetype];
+  if (type !== "cacada" || members < loot.huntGroupFrom) return src;
+  const legendary = Math.min(1, loot.huntLegendary[members] ?? 0);
+  const weights = Object.entries(src.rarity) as [RarityId, number][];
+  const total = weights.reduce((a, [, w]) => a + w, 0);
+  const rarity: Partial<Record<RarityId, number>> = {};
+  for (const [id, w] of weights) rarity[id] = (w / total) * (1 - legendary);
+  if (legendary > 0) rarity.lendario = (rarity.lendario ?? 0) + legendary;
+  return {
+    chance: src.perPlayer
+      ? src.chance
+      : (src.chance * members) / loot.huntDropBase,
+    perPlayer: src.perPlayer,
+    rarity,
+  };
+}
+
+/**
+ * Quem leva os itens de uma fonte de grupo: um vivo sorteado por item. Até 1 item por abate, um
+ * sorteio só (o caminho de sempre, que a semente das corridas gravadas conhece); acima, a parte
+ * inteira sai sempre e a fração por sorteio.
+ */
+function groupReceivers(
+  chance: number,
+  alive: number[],
+  rng: RandomSource,
+): number[] {
+  if (chance <= 1) return rng.next() < chance ? [pick(alive, rng)] : [];
+  const whole = Math.floor(chance);
+  const out = Array.from({ length: whole }, () => pick(alive, rng));
+  if (rng.next() < chance - whole) out.push(pick(alive, rng));
+  return out;
+}
+
+/**
+ * Os drops de uma lista de abates. `classes` na ordem dos heróis (o grupo inteiro, vivos e caídos);
+ * `type` é o da DG (sem ele, as fontes do config sem o crescimento da Caçada de 4 e 5).
+ */
 export function lootFor(
   kills: RewardKill[],
   classes: ClassId[],
   rng: RandomSource,
   B: Balance = gameBalance,
+  type?: DungeonType,
 ): { items: LootDrop[]; protectionStones: number[] } {
   const loot = B.cfg.loot;
   const items: LootDrop[] = [];
@@ -133,12 +197,10 @@ export function lootFor(
     if (k.summoned) continue;
     const alive = k.alive.map((a, i) => (a ? i : -1)).filter((i) => i >= 0);
     if (alive.length === 0) continue;
-    const src = loot.sources[k.archetype];
+    const src = lootSource(k.archetype, type, classes.length, B);
     const receivers = src.perPlayer
       ? alive
-      : rng.next() < src.chance
-        ? [pick(alive, rng)]
-        : [];
+      : groupReceivers(src.chance, alive, rng);
     for (const i of receivers)
       items.push({
         hero: i,
@@ -159,15 +221,21 @@ export function lootFor(
 
 /** Os drops da corrida simulada: itens dos abates e minério das salas vencidas. */
 export function runLoot(
-  dungeonLevel: number,
+  d: DungeonDef,
   classes: ClassId[],
   run: RunResult,
   rng: RandomSource,
   B: Balance = gameBalance,
 ): RunLoot {
   const kills = run.rooms.flatMap((r) => r.kills);
-  const { items, protectionStones } = lootFor(kills, classes, rng, B);
-  const material = materialOf(dungeonLevel);
+  const { items, protectionStones } = lootFor(
+    kills,
+    classes,
+    rng,
+    B,
+    dungeonType(d),
+  );
+  const material = materialOf(d.level);
   const ores = classes.map(() => ({}) as Partial<Record<Material, number>>);
   for (const room of run.rooms) {
     if (!room.win) continue;

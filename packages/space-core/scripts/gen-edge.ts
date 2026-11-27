@@ -57,6 +57,13 @@ const FRESH = process.argv.includes("--fresh");
 const onlyArg = process.argv.indexOf("--only");
 const ONLY =
   onlyArg >= 0 ? new Set(process.argv[onlyArg + 1]!.split(",")) : null;
+/**
+ * Com --hunt-parties 4,5, só o golpe desses tamanhos de grupo nas Caçadas com aperto (27/11/2026: a
+ * Caçada abriu para 5); o resto de cada DG fica como está gravado (D47).
+ */
+const huntArg = process.argv.indexOf("--hunt-parties");
+const HUNT_SIZES =
+  huntArg >= 0 ? process.argv[huntArg + 1]!.split(",").map(Number) : null;
 const M = createMonsters(B, FRESH ? null : undefined);
 const NO_TIMER = 1e9;
 
@@ -120,13 +127,15 @@ function winRate(
  * de decisão), e a busca binária caía numa ilha de vitória acima de uma derrota (medido em 25/11/2026).
  */
 const STEP = 0.025;
+/** O teto da varredura: o grupo de 5 da Caçada passa de ×6 (27/11/2026; com 6, o golpe dele parava no teto). */
+const MAX_HIT = 12;
 function hitEdge(d: DungeonDef, comp: ClassId[], level = d.level): number {
   const timer = d.kind === "cacada" ? {} : { cataclysmAt: NO_TIMER };
   const wins = (k: number) =>
     runWith(d, comp, { hit: k, ...timer }, level).outcome === "vitoria";
   let k = 0.3;
   if (!wins(k)) return k;
-  while (k < 6 && wins(k + STEP)) k += STEP;
+  while (k < MAX_HIT && wins(k + STEP)) k += STEP;
   return k + STEP;
 }
 
@@ -135,7 +144,7 @@ const out: Record<string, DungeonEdge> = {};
 const r3 = (v: number) => Math.round(v * 1000) / 1000;
 const short = (c: ClassId[]) => c.map((x) => x.slice(0, 3)).join("+");
 for (const d of DUNGEONS) {
-  if (ONLY && !ONLY.has(d.kind)) {
+  if ((ONLY && !ONLY.has(d.kind)) || (HUNT_SIZES && d.kind !== "cacada")) {
     if (DUNGEON_EDGE[d.id]) out[d.id] = DUNGEON_EDGE[d.id]!;
     continue;
   }
@@ -152,7 +161,6 @@ for (const d of DUNGEONS) {
         : REGIAO_PARTIES;
   // Na Caçada o solo é medido no herói que farma (10 acima; D53); o grupo no próprio nível.
   const soloLevel = d.kind === "cacada" ? d.level + FARM_ABOVE : d.level;
-  const ks = parties.map((p) => hitEdge(d, p, soloLevel));
   const timerOff = d.kind === "cacada" ? {} : { cataclysmAt: NO_TIMER };
   /**
    * O golpe gravado: o ponto do mais frágil menos a margem, descendo até todos vencerem nele no modo
@@ -175,6 +183,30 @@ for (const d of DUNGEONS) {
     }
     return h;
   };
+  if (HUNT_SIZES && d.kind === "cacada") {
+    // Só os tamanhos pedidos, no Cataclismo gravado; o golpe solo, o tempo e os outros tamanhos ficam.
+    const stored = DUNGEON_EDGE[d.id]!;
+    const timer = stored.cataclysmAt ? { cataclysmAt: stored.cataclysmAt } : {};
+    const party: Record<number, number> = { ...stored.party };
+    const notes: string[] = [];
+    for (const n of HUNT_SIZES) {
+      const group = HUNT_GROUPS[n]!;
+      const each = group.map((p) => hitEdge(d, p));
+      party[n] = settle(group, Math.min(...each), timer);
+      notes.push(`${n}: ${group.map((p, i) => `${short(p)} ${each[i]!.toFixed(2)}`).join("  ")} → ${party[n]}`);
+    }
+    out[d.id] = { ...stored, party };
+    DUNGEON_EDGE[d.id] = out[d.id]!;
+    const fail = Object.values(HUNT_GROUPS)
+      .flat()
+      .filter((p) => runWith(d, p, out[d.id]!).outcome !== "vitoria")
+      .map(short);
+    console.log(
+      `${d.id.padEnd(14)} ${notes.join("  |  ")}  (2 ${party[2]}, 3 ${party[3]})${fail.length ? `  ✗ ${fail.join(" ")}` : ""}`,
+    );
+    continue;
+  }
+  const ks = parties.map((p) => hitEdge(d, p, soloLevel));
   let hit = settle(parties, Math.min(...ks), {}, soloLevel);
   let ownWin = NaN;
   if (d.kind === "cacada") {
@@ -274,7 +306,7 @@ export interface DungeonEdge {
   hit: number;
   /** Segundo do Cataclismo do chefe (Masmorra, Região e, desde a D53, Caçada); sem ele, o do config. */
   cataclysmAt?: number;
-  /** Caçada em dupla e em trio: o golpe de cada tamanho de grupo (sem a entrada, vale o \`hit\`). */
+  /** Caçada em grupo (2 a 5): o golpe de cada tamanho (sem a entrada, vale o \`hit\`). */
   party?: Record<number, number>;
 }
 

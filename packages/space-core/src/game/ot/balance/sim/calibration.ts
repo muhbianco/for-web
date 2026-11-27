@@ -72,6 +72,16 @@ export const LIMIT_HUNT_GROUPS: Readonly<
     ["guerreiro", "mago", "cacador"],
     ["padre", "mago", "assassino"],
   ],
+  // 27/11/2026 (pedido do dono): a Caçada abriu para 4 e 5 e cresce com eles; cada tamanho tem o seu
+  // golpe, calibrado como o do trio (um grupo com tanque e sem cura, outro com cura e sem tanque).
+  4: [
+    ["guerreiro", "mago", "cacador", "assassino"],
+    ["padre", "mago", "cacador", "assassino"],
+  ],
+  5: [
+    ["guerreiro", "druida", "mago", "cacador", "assassino"],
+    ["padre", "druida", "mago", "cacador", "assassino"],
+  ],
 };
 
 /**

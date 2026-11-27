@@ -93,7 +93,7 @@ test("§12.2 e D19: catálogo com 50 Caçadas, 37 Masmorras (só do 40) e 10 Che
   const m = dungeonById("masmorra-130")!;
   assert.equal(m.minLevel, 125);
   assert.deepEqual(m.party, { min: 1, max: 5 });
-  assert.deepEqual(dungeonById("cacada-130")!.party, { min: 1, max: 3 });
+  assert.deepEqual(dungeonById("cacada-130")!.party, { min: 1, max: 5 });
 });
 
 test("§12.1 e D14: salas 4 / 5 / 3 + elite / chefe; lacaios de R−4 a R; elite e chefe em R", () => {
@@ -235,7 +235,7 @@ test("D53: o chefe de Região (até o do 500) cai para os 4 no limite perfeito: 
 /** D40: na zona de entrada (fora do aperto do D41) o mago solo segue perdendo a Caçada do 30. */
 const D40_MAGO_SOLO_ENTRY = new Set([30]);
 
-test("D41/D53: no limite, toda classe vence sozinha a Caçada 10 níveis abaixo (a de entrada, a do nível), e a dupla e o trio a do próprio nível", () => {
+test("D41/D53: no limite, toda classe vence sozinha a Caçada 10 níveis abaixo (a de entrada, a do nível), e os grupos de 2 a 5 a do próprio nível", () => {
   for (const d of DUNGEONS.filter((x) => x.kind === "cacada")) {
     // D53: fora da zona de entrada, sozinho se farma 10 abaixo; quem tem de vencer é o herói 10 acima.
     const soloLevel =

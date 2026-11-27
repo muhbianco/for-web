@@ -1417,6 +1417,11 @@ msgstr ""
 msgid "1 item {rarity} ou melhor para cada um"
 msgstr ""
 
+#. placeholder {0}: pct(s().chance - Math.floor(s().chance))
+#: components/space/game/DungeonDetail.tsx
+msgid "1 item e {0} de mais um, para alguém do grupo"
+msgstr ""
+
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item para alguém do grupo"
 msgstr ""

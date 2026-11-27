@@ -173,9 +173,10 @@ function dungeon(
     level,
     region,
     minLevel: Math.max(1, level - 5),
-    // D41 (25/11/2026, pedido do dono): Caçada de 1 a 3, Masmorra e Região de 1 a 5 (a sala da
-    // Masmorra continua do tamanho de um trio para menos de 3, `partyScale.masmorraMin`).
-    party: kind === "cacada" ? { min: 1, max: 3 } : { min: 1, max: 5 },
+    // D41 (25/11/2026, pedido do dono): Masmorra e Região de 1 a 5 (a sala da Masmorra continua do
+    // tamanho de um trio para menos de 3, `partyScale.masmorraMin`); a Caçada era de 1 a 3 e abriu
+    // para 5 em 27/11/2026 (pedido do dono), crescendo com o 4º e o 5º (`loot.huntGroupFrom`).
+    party: { min: 1, max: 5 },
     aliases,
   };
 }

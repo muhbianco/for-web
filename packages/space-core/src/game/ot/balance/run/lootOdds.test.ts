@@ -4,7 +4,7 @@ import test from "node:test";
 import { Rng } from "../../../rng.ts";
 import { randomSource } from "../combat/fight.ts";
 import { type ClassId, RARITY_IDS } from "../content.ts";
-import { dungeonById, dungeonRooms } from "../dungeons/catalog.ts";
+import { dungeonById, dungeonRooms, dungeonType } from "../dungeons/catalog.ts";
 import { balance as B } from "../formulas.ts";
 import { createMonsters } from "../monsters/generate.ts";
 import { lootFor } from "./loot.ts";
@@ -36,7 +36,7 @@ function sample(id: string, classes: ClassId[], runs: number, seed: number) {
   let items = 0;
   let stones = 0;
   for (let i = 0; i < runs; i++) {
-    const out = lootFor(list, classes, rng, B);
+    const out = lootFor(list, classes, rng, B, dungeonType(dg(id)));
     const mine = out.items.filter((x) => x.hero === 0);
     items += mine.length;
     for (const r of new Set(mine.map((x) => x.item.rarity))) hit[r]!++;
@@ -61,6 +61,8 @@ function near(got: number, want: number, tol: number, what: string) {
 for (const [id, classes] of [
   ["cacada-40", ["mago"]],
   ["cacada-40", ["mago", "guerreiro", "padre"]],
+  ["cacada-40", ["mago", "guerreiro", "padre", "cacador"]],
+  ["cacada-130", ["mago", "guerreiro", "padre", "cacador", "druida"]],
   ["masmorra-40", ["mago", "guerreiro", "padre"]],
   ["regiao-1", ["cacador", "paladino"]],
 ] as [string, ClassId[]][]) {
@@ -141,4 +143,37 @@ test("mais gente no grupo divide o item dos lacaios, da elite e do chefe menor",
     1e-9,
     "lendário",
   );
+});
+
+test("Caçada de 4 e 5: o drop cresce na proporção do grupo sobre o trio e o Lendário entra com 1% e 2%", () => {
+  const at = (n: number) => dungeonLootOdds(dg("cacada-130"), n, "mago");
+  const trio = at(3);
+  // Por herói, o de 4 e o de 5 levam o mesmo número de itens que o trio (o drop cresce n ÷ 3).
+  near(at(4).perHero.items, trio.perHero.items, 1e-9, "itens com 4");
+  near(at(5).perHero.items, trio.perHero.items, 1e-9, "itens com 5");
+  assert.equal(trio.perHero.atLeastOne.lendario, 0);
+  const menor = (n: number) =>
+    at(n).sources.find((s) => s.archetype === "chefeMenor")!;
+  near(menor(4).chance, 4 / 3, 1e-12, "chefe menor com 4");
+  near(menor(5).chance, 5 / 3, 1e-12, "chefe menor com 5");
+  for (const [n, bonus] of [
+    [4, 0.01],
+    [5, 0.02],
+  ] as const)
+    for (const s of at(n).sources) {
+      near(s.rarity.lendario, bonus, 1e-12, `lendário ${s.archetype} com ${n}`);
+      const sum = RARITY_IDS.reduce((a, r) => a + s.rarity[r], 0);
+      assert.ok(Math.abs(sum - 1) < 1e-9, `${s.archetype} com ${n}`);
+    }
+  // A Masmorra e a Região não mudam com o 4º e o 5º.
+  for (const id of ["masmorra-130", "regiao-3"])
+    for (const n of [4, 5]) {
+      const base = dungeonLootOdds(dg(id), n, "mago");
+      for (const s of base.sources)
+        assert.equal(
+          s.chance,
+          B.cfg.loot.sources[s.archetype].chance,
+          `${id} ${s.archetype} com ${n}`,
+        );
+    }
 });

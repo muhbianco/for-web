@@ -1201,7 +1201,7 @@ export class RpgService {
     const levels = heroes.map((h) => h.level);
     const rewards = runRewards(dungeon, levels, result);
     const loot = runLoot(
-      dungeon.level,
+      dungeon,
       heroes.map((h) => h.cls),
       result,
       randomSource(new Rng((seed ^ 0x9e37_79b9) >>> 0)),

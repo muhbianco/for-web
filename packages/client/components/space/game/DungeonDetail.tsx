@@ -285,13 +285,15 @@ function SourceLine(props: { s: LootSourceOdds; party: number }) {
   const who = () =>
     s().perPlayer
       ? t`1 item para cada um`
-      : s().chance >= 1
-        ? props.party > 1
-          ? t`1 item para alguém do grupo`
-          : t`1 item`
-        : props.party > 1
-          ? t`${pct(s().chance)} de item em cada, para alguém do grupo`
-          : t`${pct(s().chance)} de item em cada`;
+      : s().chance > 1
+        ? t`1 item e ${pct(s().chance - Math.floor(s().chance))} de mais um, para alguém do grupo`
+        : s().chance >= 1
+          ? props.party > 1
+            ? t`1 item para alguém do grupo`
+            : t`1 item`
+          : props.party > 1
+            ? t`${pct(s().chance)} de item em cada, para alguém do grupo`
+            : t`${pct(s().chance)} de item em cada`;
   return (
     <Source>
       <strong>

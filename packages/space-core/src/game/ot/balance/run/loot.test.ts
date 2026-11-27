@@ -135,7 +135,7 @@ test("a corrida dá minério da região por sala vencida a cada vivo, e os itens
     E.fighter(c, 70, { source: "spec", referenceAi: "gabarito" }),
   );
   const run = simulateRun(d, party, { mode: "esperado" });
-  const loot = runLoot(70, [...classes], run, rng(6));
+  const loot = runLoot(d, [...classes], run, rng(6));
   const mat = materialOf(70);
   assert.deepEqual(
     loot.ores.map((o) => o[mat]),
@@ -144,4 +144,40 @@ test("a corrida dá minério da região por sala vencida a cada vivo, e os itens
   // O chefe dá 1 item para cada um dos 4.
   const fromBoss = loot.items.filter((x) => x.item.ilvl === 70).length;
   assert.ok(fromBoss >= 4);
+});
+
+test("Caçada de 4 e 5: mais itens por abate e a chance de Lendário; até o trio, o sorteio de sempre", () => {
+  const n = 30_000;
+  const five = ["guerreiro", "padre", "mago", "cacador", "assassino"] as const;
+  const all5 = [true, true, true, true, true];
+  const menor = lootFor(
+    Array.from({ length: n }, () => kill("chefeMenor", all5)),
+    [...five],
+    rng(11),
+    B,
+    "cacada",
+  );
+  assert.ok(Math.abs(menor.items.length / n - 5 / 3) < 0.02);
+  const legendary = menor.items.filter(
+    (d) => d.item.rarity === "lendario",
+  ).length;
+  assert.ok(Math.abs(legendary / menor.items.length - 0.02) < 0.004);
+  // Na Masmorra, o 5º não muda o chefe menor (a fonte não cresce) nem a raridade.
+  const masmorra = lootFor(
+    Array.from({ length: 2000 }, () => kill("elite", all5)),
+    [...five],
+    rng(11),
+    B,
+    "masmorra",
+  );
+  assert.ok(masmorra.items.every((d) => d.item.rarity !== "lendario"));
+  // Trio na Caçada: a mesma semente dá o mesmo drop com ou sem o tipo (as corridas gravadas não mudam).
+  const trio = ["guerreiro", "padre", "mago"] as const;
+  const kills3 = Array.from({ length: 500 }, (_, i) =>
+    kill(i % 7 === 0 ? "chefeMenor" : "lacaio", [true, true, true]),
+  );
+  assert.deepEqual(
+    lootFor(kills3, [...trio], rng(5), B, "cacada"),
+    lootFor(kills3, [...trio], rng(5), B),
+  );
 });
