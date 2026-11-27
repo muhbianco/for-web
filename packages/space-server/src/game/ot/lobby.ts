@@ -471,6 +471,104 @@ export class LobbyHub {
     return out;
   }
 
+  // ---------------------------------------------------------------- reinício (27/11/2026)
+  // O dono: "é importante que nenhum grupo se perca para seguir na DG pós-deploy". Todo deploy do
+  // for-web reinicia o processo e os grupos só existem aqui: no desligamento o runtime grava o
+  // `snapshot`; na subida, `restore` os traz de volta e `adopt` refaz, pela corrida gravada, o
+  // grupo de uma corrida em andamento que não veio no snapshot (o processo antigo não gravava).
+
+  /** Os grupos como dados simples, para gravar no desligamento (a preparação não vai: é da tela). */
+  snapshot(): SavedLobby[] {
+    return this.all().map(({ prep: _prep, ...rest }) => structuredClone(rest));
+  }
+
+  /**
+   * Traz de volta os grupos gravados no desligamento (dado do banco: confere a forma e pula o que
+   * não fecha). Grupo "rodando" cuja corrida não está mais em andamento (`activeRuns`) volta pronto
+   * para a próxima, com o loop marcado se estava ligado. Quem já está noutro grupo fica de fora.
+   */
+  restore(saved: readonly unknown[], activeRuns: ReadonlySet<string>, now: number): Lobby[] {
+    const out: Lobby[] = [];
+    for (const raw of saved) {
+      const s = savedLobby(raw);
+      if (!s || this.byId.has(s.id)) continue;
+      const members = s.members.filter((m) => !this.memberOf.has(m.user_id));
+      if (members.length === 0) continue;
+      const lobby: Lobby = {
+        ...s,
+        members,
+        leader: members.some((m) => m.user_id === s.leader) ? s.leader : members[0]!.user_id,
+        prep: new Map(),
+        launching: false,
+      };
+      if (lobby.state === "running" && (!lobby.runId || !activeRuns.has(lobby.runId))) {
+        lobby.state = lobby.runs > 0 || lobby.runId ? "ready" : "forming";
+        lobby.runId = null;
+        lobby.nextAt = lobby.loop ? now + LOBBY.loopDelayMs : null;
+      }
+      if (lobby.state === "running") lobby.expiresAt = NEVER;
+      // Quem volta precisa de tempo para reconectar antes de o grupo parado vencer.
+      else lobby.expiresAt = Math.max(lobby.expiresAt, now + LOBBY.ttlMs);
+      if (lobby.pending) {
+        lobby.heldSince = null;
+        lobby.startAt = Math.max(lobby.startAt ?? now, now + LOBBY.countdownMs);
+      }
+      this.byId.set(lobby.id, lobby);
+      for (const m of members) this.memberOf.set(m.user_id, lobby.id);
+      out.push(lobby);
+    }
+    return out;
+  }
+
+  /**
+   * O grupo de uma corrida em andamento que não voltou do snapshot: os membros dela, o primeiro
+   * como líder, o loop ligado se a corrida saiu do loop (`auto`). Null se a corrida já tem grupo,
+   * a DG sumiu ou todos já estão noutro grupo.
+   */
+  adopt(
+    run: {
+      id: string;
+      tv: string;
+      room: string;
+      dungeon: string;
+      members: RpgLobbyMember[];
+      auto: boolean;
+    },
+    now: number,
+  ): Lobby | null {
+    if (this.all().some((l) => l.runId === run.id)) return null;
+    if (!dungeonById(run.dungeon)) return null;
+    const members = run.members.filter((m) => !this.memberOf.has(m.user_id));
+    if (members.length === 0) return null;
+    const lobby: Lobby = {
+      id: randomUUID(),
+      tv: run.tv,
+      room: run.room,
+      dungeon: run.dungeon,
+      leader: members[0]!.user_id,
+      members,
+      createdAt: now,
+      expiresAt: NEVER,
+      state: "running",
+      runId: run.id,
+      runs: 0,
+      loop: run.auto,
+      nextAt: null,
+      last: null,
+      stopped: null,
+      stoppedDetail: null,
+      pending: false,
+      pendingAuto: false,
+      startAt: null,
+      heldSince: null,
+      launching: false,
+      prep: new Map(),
+    };
+    this.byId.set(lobby.id, lobby);
+    for (const m of members) this.memberOf.set(m.user_id, lobby.id);
+    return lobby;
+  }
+
   private stopLoop(lobby: Lobby, why: RpgLoopStop, detail?: string) {
     lobby.loop = false;
     lobby.nextAt = null;
@@ -518,6 +616,65 @@ export class LobbyHub {
       if (this.memberOf.get(m.user_id) === lobby.id)
         this.memberOf.delete(m.user_id);
   }
+}
+
+/** Um grupo gravado no desligamento: o grupo sem a preparação (que é da tela de cada um). */
+export type SavedLobby = Omit<Lobby, "prep">;
+
+const STATES = new Set(["forming", "running", "ready"]);
+const isStr = (v: unknown): v is string => typeof v === "string" && v.length > 0 && v.length <= 200;
+const isNum = (v: unknown): v is number => typeof v === "number" && Number.isFinite(v);
+const strOrNull = (v: unknown) => v === null || isStr(v);
+const numOrNull = (v: unknown) => v === null || isNum(v);
+
+/** O grupo lido do banco é entrada não confiável: só volta se a forma fechar. */
+export function savedLobby(raw: unknown): SavedLobby | null {
+  if (!raw || typeof raw !== "object") return null;
+  const v = raw as Record<string, unknown>;
+  if (!isStr(v.id) || !isStr(v.tv) || !isStr(v.room) || !isStr(v.dungeon) || !isStr(v.leader)) return null;
+  if (!STATES.has(v.state as string) || !strOrNull(v.runId)) return null;
+  if (!isNum(v.createdAt) || !isNum(v.expiresAt) || !isNum(v.runs)) return null;
+  if (typeof v.loop !== "boolean" || !numOrNull(v.nextAt)) return null;
+  if (!strOrNull(v.last) || !strOrNull(v.stopped) || !strOrNull(v.stoppedDetail)) return null;
+  if (typeof v.pending !== "boolean" || typeof v.pendingAuto !== "boolean") return null;
+  if (!numOrNull(v.startAt) || !numOrNull(v.heldSince)) return null;
+  if (!Array.isArray(v.members) || v.members.length === 0 || v.members.length > 10) return null;
+  const members: RpgLobbyMember[] = [];
+  for (const m of v.members) {
+    const x = m as Record<string, unknown>;
+    if (!x || !isStr(x.user_id) || !isStr(x.name) || !isStr(x.cls) || !isNum(x.level)) return null;
+    const regions = Array.isArray(x.regions) && x.regions.every(isNum) ? (x.regions as number[]) : undefined;
+    members.push({
+      user_id: x.user_id,
+      name: x.name,
+      cls: x.cls as RpgLobbyMember["cls"],
+      level: x.level,
+      ...(regions ? { regions } : {}),
+    });
+  }
+  return {
+    id: v.id,
+    tv: v.tv,
+    room: v.room,
+    dungeon: v.dungeon,
+    leader: v.leader,
+    members,
+    createdAt: v.createdAt,
+    expiresAt: v.expiresAt,
+    state: v.state as Lobby["state"],
+    runId: (v.runId as string | null) ?? null,
+    runs: v.runs,
+    loop: v.loop,
+    nextAt: (v.nextAt as number | null) ?? null,
+    last: (v.last as RpgRunEnd | null) ?? null,
+    stopped: (v.stopped as RpgLoopStop | null) ?? null,
+    stoppedDetail: (v.stoppedDetail as string | null) ?? null,
+    pending: v.pending,
+    pendingAuto: v.pendingAuto,
+    startAt: (v.startAt as number | null) ?? null,
+    heldSince: (v.heldSince as number | null) ?? null,
+    launching: false,
+  };
 }
 
 export function lobbyView(l: Lobby): RpgLobbyView {

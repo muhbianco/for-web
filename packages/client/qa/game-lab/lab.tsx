@@ -238,6 +238,22 @@ const SCENARIOS: Scenario[] = [
     build: () => world(stateOf(mage45())),
   },
   {
+    id: "banqueiro-cheio",
+    label: "Banqueiro (mochila cheia, cofre com 150)",
+    screen: "npc",
+    npc: "banqueiro",
+    // O cofre sem limite (27/11/2026): filtros, páginas e "cabem N" com a mochila cheia.
+    build: () => {
+      const h = stuffBag(mage45(), 39, 5);
+      return world(
+        stateOf({
+          ...h,
+          vault: { ...h.vault, items: stuffBag(h, 149, 77).bag },
+        }),
+      );
+    },
+  },
+  {
     id: "mestre",
     label: "Mestre da evolução",
     screen: "npc",

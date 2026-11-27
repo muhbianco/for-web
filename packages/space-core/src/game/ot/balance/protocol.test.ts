@@ -58,7 +58,7 @@ test("os comandos novos passam com os dados certos", () => {
     ["rpg.smith", { npc: "f", action: "refinar", uid: "i1", protect: true }],
     ["rpg.bank", { npc: "b", gold: -500 }],
     ["rpg.vault", { npc: "b", action: "guardar", uid: "i1" }],
-    ["rpg.vault.expand", { npc: "b" }],
+    ["rpg.vault.many", { npc: "b", action: "retirar", uids: ["i1", "i2"] }],
     [
       "rpg.bank.transfer",
       { npc: "b", to: "u2", gold: 100, uids: [], confirmations: 1 },

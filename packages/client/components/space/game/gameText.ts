@@ -341,8 +341,6 @@ export function errorText(code?: string, reason?: string): string {
       return t`Ouro insuficiente.`;
     case "mochila-cheia":
       return t`A mochila está cheia (40 espaços). Venda, guarde no cofre ou desmonte algo.`;
-    case "cofre-cheio":
-      return t`O cofre está cheio. Amplie no Banqueiro.`;
     case "sem-minerio":
       return t`Faltam minérios da região do item.`;
     case "sem-pedra":

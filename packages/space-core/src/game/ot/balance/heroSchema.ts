@@ -16,7 +16,6 @@ import { BAG_SLOTS, HERO_VERSION, type HeroV5, balanceHero } from "./hero.ts";
 import { MATERIALS } from "./items/generate.ts";
 import { LEGENDARIES } from "./items/legendary.ts";
 import { PERKS } from "./items/perks.ts";
-import { vaultSlots } from "./npcs/bank.ts";
 import { skillPoints, skillPointsSpent } from "./skills/tree.ts";
 
 /**
@@ -115,7 +114,9 @@ export const heroV5Schema = z.object({
   stones: count,
   vault: z.object({
     gold: count,
-    items: z.array(item).max(2000),
+    // Sem teto desde 27/11/2026 (o Banqueiro guarda tudo): um teto aqui tornaria o herói ilegível
+    // no dia em que o cofre passasse dele. O limite físico é o do documento no Mongo.
+    items: z.array(item),
     expansions: z.number().int().min(0).max(100),
   }),
   supplies: z.object({
@@ -140,8 +141,6 @@ export function checkHero(doc: unknown, B: Balance = gameBalance): HeroCheck {
     return { ok: false, reason: "atributos acima dos pontos do nível" };
   if (skillPointsSpent(h.skills) > skillPoints(h.job, B))
     return { ok: false, reason: "skills acima dos pontos do job" };
-  if (h.vault.items.length > vaultSlots(h.vault.expansions, B))
-    return { ok: false, reason: "cofre acima do espaço" };
   const uids = [
     ...Object.values(h.equipment).map((x) => x!.uid),
     ...h.bag.map((x) => x.uid),

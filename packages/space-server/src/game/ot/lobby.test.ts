@@ -320,3 +320,76 @@ test("Chefe de Região: só entra quem concluiu o resto da região, e a troca de
   // As outras DGs não olham a região.
   assert.equal(hub.setDungeon("D", "cacada-40").ok, true);
 });
+
+// 27/11/2026, o dono: "é importante que nenhum grupo se perca pra seguir na DG pós-deploy".
+test("reinício: o snapshot volta com o mesmo grupo, a corrida rodando e o loop; o fim marca a próxima", () => {
+  const hub = new LobbyHub();
+  hub.create("tv1", "R1", "masmorra-40", m("A"), 0);
+  hub.join("tv1", undefined, m("B"));
+  hub.join("tv1", undefined, m("C", 41, "padre"));
+  hub.setLoop("A", true, 10);
+  hub.start("A", 20);
+  const id = hub.of("A")!.id;
+  hub.running(id, "run-1");
+  const saved = JSON.parse(JSON.stringify(hub.snapshot()));
+
+  const next = new LobbyHub();
+  const back = next.restore(saved, new Set(["run-1"]), 5000);
+  assert.equal(back.length, 1);
+  const l = next.of("B")!;
+  assert.equal(l.id, id);
+  assert.deepEqual(l.members.map((x) => x.user_id), ["A", "B", "C"]);
+  assert.equal(l.state, "running");
+  assert.equal(l.runId, "run-1");
+  assert.equal(l.loop, true);
+  assert.equal(l.prep.size, 0);
+  // A corrida que voltou fecha em vitória: o loop marca a próxima, como antes do reinício.
+  const ended = next.runEnded("run-1", "vitoria", 9000)!;
+  assert.equal(ended.state, "ready");
+  assert.equal(ended.nextAt, 9000 + LOBBY.loopDelayMs);
+});
+
+test("reinício: grupo rodando cuja corrida não voltou fica pronto (loop marcado); lixo do banco não entra", () => {
+  const hub = new LobbyHub();
+  hub.create("tv1", "R1", "cacada-40", m("A"), 0);
+  hub.setLoop("A", true, 1);
+  hub.start("A", 2);
+  hub.running(hub.of("A")!.id, "run-x");
+  const next = new LobbyHub();
+  const [l] = next.restore(
+    [...hub.snapshot(), { id: "x" }, null, "lixo"],
+    new Set(),
+    7000,
+  );
+  assert.equal(next.all().length, 1);
+  assert.equal(l!.state, "ready");
+  assert.equal(l!.runId, null);
+  assert.equal(l!.nextAt, 7000 + LOBBY.loopDelayMs);
+  // Quem já está noutro grupo não entra de novo.
+  const again = next.restore(hub.snapshot(), new Set(), 8000);
+  assert.equal(again.length, 0);
+});
+
+test("reinício sem snapshot: a corrida em andamento refaz o grupo (o primeiro como líder, loop do auto)", () => {
+  const hub = new LobbyHub();
+  const run = {
+    id: "run-9",
+    tv: "tv2",
+    room: "R2",
+    dungeon: "masmorra-60",
+    members: [m("A", 60), m("B", 61, "padre"), m("C", 62, "mago")],
+    auto: true,
+  };
+  const l = hub.adopt(run, 1000)!;
+  assert.equal(l.state, "running");
+  assert.equal(l.leader, "A");
+  assert.equal(l.loop, true);
+  assert.equal(hub.of("C")!.id, l.id);
+  assert.equal(hub.adopt(run, 1001), null, "a mesma corrida não refaz outro grupo");
+  const ended = hub.runEnded("run-9", "vitoria", 5000)!;
+  assert.equal(ended.nextAt, 5000 + LOBBY.loopDelayMs);
+  // Corrida largada à mão (sem auto): o grupo volta sem o loop; DG que sumiu não refaz.
+  const h2 = new LobbyHub();
+  assert.equal(h2.adopt({ ...run, id: "r2", auto: false }, 0)!.loop, false);
+  assert.equal(h2.adopt({ ...run, id: "r3", dungeon: "nao-existe", members: [m("Z")] }, 0), null);
+});

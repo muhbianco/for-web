@@ -390,10 +390,7 @@ export const BALANCE = {
 
   /** §10: Banqueiro. */
   bank: {
-    vaultSlots: 60,
-    expansionSlots: 20,
-    /** +20 espaços custam 200 × ouroLacaio(L). */
-    expansionOfGold: 200,
+    // O cofre de itens não tem limite desde 27/11/2026 (sem espaços nem expansão).
     /** Transferência: 2% no ouro (mínimo 1); por item, 5 × ouroLacaio(iL). */
     goldFeePct: 0.02,
     goldFeeMin: 1,

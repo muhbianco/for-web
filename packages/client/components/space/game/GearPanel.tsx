@@ -214,7 +214,7 @@ export function GearPanel(props: {
             </BagHead>
             <Show when={h().bag.length >= BAG_SLOTS - 4}>
               <Muted role="note">
-                {t`Quase cheia: o que cair na dungeon e não couber fica para trás. Venda, guarde no cofre ou desmonte.`}
+                {t`Quase cheia: o que cair na dungeon e não couber vai para o cofre do Banqueiro.`}
               </Muted>
             </Show>
             <Grid role="list">

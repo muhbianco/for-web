@@ -36,7 +36,6 @@ import {
   reforgeCost,
   stoneMatters,
 } from "./items/smith.ts";
-import { vaultExpansionCost, vaultSlots } from "./npcs/bank.ts";
 import {
   ammoPackPrice,
   buyBackPrice,
@@ -699,11 +698,10 @@ export function bankGold(h: HeroV5, amount: number) {
   });
 }
 
-export function vaultPut(h: HeroV5, uid: string, B: Balance = gameBalance) {
+/** Guarda no cofre (sem limite desde 27/11/2026: o Banqueiro guarda tudo). */
+export function vaultPut(h: HeroV5, uid: string) {
   const got = takeFromBag(h, uid);
   if (!got) return fail("item-nao-encontrado" as const);
-  if (h.vault.items.length >= vaultSlots(h.vault.expansions, B))
-    return fail("cofre-cheio" as const);
   return done({
     ...h,
     bag: got.bag,
@@ -726,16 +724,32 @@ export function vaultTake(h: HeroV5, uid: string) {
   });
 }
 
-export function vaultExpand(h: HeroV5, B: Balance = gameBalance) {
-  const cost = vaultExpansionCost(h.level, B);
-  if (cost > h.gold) return fail("sem-ouro" as const);
+/**
+ * Vários itens de uma vez entre a mochila e o cofre, tudo ou nada, numa gravação só (item a item,
+ * uma mochila inteira passava do limite de comandos por segundo). Retirar pede espaço para todos.
+ */
+export function vaultMoveMany(
+  h: HeroV5,
+  action: "guardar" | "retirar",
+  uids: readonly string[],
+) {
+  const want = new Set(uids);
+  if (uids.length === 0 || want.size !== uids.length)
+    return fail("lista-invalida" as const);
+  const from = action === "guardar" ? h.bag : h.vault.items;
+  const moving = from.filter((x) => want.has(x.uid));
+  if (moving.length !== want.size) return fail("item-nao-encontrado" as const);
+  const rest = from.filter((x) => !want.has(x.uid));
+  if (action === "guardar")
+    return done(
+      { ...h, bag: rest, vault: { ...h.vault, items: [...h.vault.items, ...moving] } },
+      { moved: moving.length },
+    );
+  if (h.bag.length + moving.length > BAG_SLOTS)
+    return fail("mochila-cheia" as const);
   return done(
-    {
-      ...h,
-      gold: h.gold - cost,
-      vault: { ...h.vault, expansions: h.vault.expansions + 1 },
-    },
-    { cost },
+    { ...h, bag: [...h.bag, ...moving], vault: { ...h.vault, items: rest } },
+    { moved: moving.length },
   );
 }
 
@@ -800,13 +814,16 @@ export interface RunSpoils {
 
 /**
  * Fecha a corrida no herói: XP, job, ouro, minério, pedras; gasta poções e munição; os itens entram na
- * mochila até encher (o resto fica na dungeon e volta na lista `left`).
+ * mochila até encher e o resto vai para o cofre do Banqueiro, que não tem limite (27/11/2026, o dono
+ * perdeu um escudo lendário com a mochila cheia: "mão cheia, os itens começam a ir pro banqueiro").
+ * `toVault` são os que foram para o cofre; `left` fica vazio (nada mais se perde na dungeon).
  */
 export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
   const g = gainXp(h, s.xp, s.jobXp, B);
   const room = Math.max(0, BAG_SLOTS - h.bag.length);
   const kept = s.items.slice(0, room);
-  const left = s.items.slice(room);
+  const toVault = s.items.slice(room);
+  const left: OwnedItem[] = [];
   const ores = { ...h.ores };
   for (const [m, n] of Object.entries(s.ores))
     ores[m as Material] = (ores[m as Material] ?? 0) + (n ?? 0);
@@ -828,6 +845,10 @@ export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
       jobXp: g.hero.jobXp,
       gold: h.gold + s.gold,
       bag: [...h.bag, ...kept],
+      vault:
+        toVault.length > 0
+          ? { ...h.vault, items: [...h.vault.items, ...toVault] }
+          : h.vault,
       ores,
       stones: h.stones + s.stones,
       potions: {
@@ -842,6 +863,6 @@ export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
       },
       ammo,
     },
-    { left, levelsGained: g.levelsGained, jobsGained: g.jobsGained },
+    { left, toVault, levelsGained: g.levelsGained, jobsGained: g.jobsGained },
   );
 }

@@ -51,7 +51,7 @@ import {
   startDojo,
   stopDojo,
   unequipItem,
-  vaultExpand,
+  vaultMoveMany,
   vaultPut,
   vaultTake,
   withCleared,
@@ -336,8 +336,15 @@ export class LabServer implements TvLink {
             ? vaultPut(h, String(d.uid))
             : vaultTake(h, String(d.uid)),
         );
-      case "rpg.vault.expand":
-        return this.apply(re, vaultExpand(h));
+      case "rpg.vault.many":
+        return this.apply(
+          re,
+          vaultMoveMany(
+            h,
+            d.action === "retirar" ? "retirar" : "guardar",
+            (d.uids as string[]) ?? [],
+          ),
+        );
       case "rpg.bank.transfer": {
         const uids = (d.uids as string[]) ?? [];
         const items = h.bag.filter((x) => uids.includes(x.uid));
@@ -730,6 +737,7 @@ export class LabServer implements TvLink {
         mine.levels_gained = r.levelsGained;
         mine.jobs_gained = r.jobsGained;
         mine.left = r.left;
+        mine.to_vault = r.toVault;
       }
     }
     const cur = this.world.runs[view.id];

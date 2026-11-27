@@ -44,6 +44,7 @@ export default function NpcDialog(props: {
       title={props.request.title || role()}
       subtitle={props.request.title ? role() : undefined}
       onClose={props.onClose}
+      wide={props.request.npc === "banqueiro"}
     >
       <Show when={state()} fallback={<ClassPicker link={props.link} />}>
         {(s) => (

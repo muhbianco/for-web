@@ -68,7 +68,7 @@ import {
   simulateRun,
   spendSkillPoint,
   unequipItem,
-  vaultExpand,
+  vaultMoveMany,
   vaultPut,
   vaultTake,
   balance as gameBalance,
@@ -324,6 +324,41 @@ export class RpgService {
       if (run.doc.server !== host.serverId || run.doc.room !== room) continue;
       session.send(this.runSnapshot(run) as unknown as Record<string, unknown>);
     }
+  }
+
+  /**
+   * As corridas em andamento no banco como o grupo de cada uma (27/11/2026): na subida, o grupo que
+   * não voltou do snapshot é refeito por elas antes de `resumeRuns` (o fim da corrida acha o grupo
+   * e o loop segue).
+   */
+  async runningGroups(): Promise<
+    {
+      id: string;
+      server: string;
+      tv: string;
+      room: string;
+      dungeon: string;
+      members: RpgLobbyMember[];
+      auto: boolean;
+    }[]
+  > {
+    const docs = await this.runStore.running(RUNS_RESUME_LIMIT);
+    return docs.map((d) => ({
+      id: d._id,
+      server: d.server,
+      tv: d.tv,
+      room: d.room,
+      dungeon: d.dungeon,
+      members: d.members.map((m) => ({
+        user_id: m.userId,
+        name: m.name,
+        cls: m.hero.cls,
+        level: m.hero.level,
+        // Quem corria o Chefe de Região já tinha a região dele (a próxima do loop confere).
+        ...(regionOf(d.dungeon) !== null ? { regions: [regionOf(d.dungeon)!] } : {}),
+      })),
+      auto: d.auto === true,
+    }));
   }
 
   /** Corridas em andamento no banco (reinício, redeploy): voltam e fecham na hora certa. */
@@ -763,9 +798,11 @@ export class RpgService {
           ),
         );
       }
-      case "rpg.vault.expand": {
+      case "rpg.vault.many": {
         if (!near(cmd.d.npc, "banqueiro")) return;
-        return act((d) => apply(d, vaultExpand(d.hero)));
+        return act((d) =>
+          apply(d, vaultMoveMany(d.hero, cmd.d.action, cmd.d.uids)),
+        );
       }
       case "rpg.bank.transfer": {
         if (!near(cmd.d.npc, "banqueiro")) return;
@@ -1546,6 +1583,7 @@ export class RpgService {
                 stones: m.spoils.stones,
               },
               left: r.settled.left,
+              to_vault: r.settled.toVault,
               levels_gained: r.settled.levelsGained,
               jobs_gained: r.settled.jobsGained,
             };
@@ -1818,4 +1856,10 @@ export function ratesFromEnv(raw: string | undefined): RpgRates {
     if (k === "exp") out.exp = n;
   }
   return out;
+}
+
+/** A região de um Chefe de Região (null para Caçada e Masmorra). */
+function regionOf(dungeon: string): number | null {
+  const d = dungeonById(dungeon);
+  return d?.kind === "regional" ? d.region.index : null;
 }

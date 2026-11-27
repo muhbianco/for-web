@@ -272,9 +272,16 @@ export const RpgVaultCmd = cmd(
   "rpg.vault",
   z.object({ npc, action: z.enum(["guardar", "retirar"]), uid: ref }).strict(),
 );
-export const RpgVaultExpandCmd = cmd(
-  "rpg.vault.expand",
-  z.object({ npc }).strict(),
+/** Banqueiro: vários itens de uma vez (tudo ou nada; 27/11/2026, no lugar da ampliação do cofre). */
+export const RpgVaultManyCmd = cmd(
+  "rpg.vault.many",
+  z
+    .object({
+      npc,
+      action: z.enum(["guardar", "retirar"]),
+      uids: z.array(ref).min(1).max(BAG_SLOTS),
+    })
+    .strict(),
 );
 /**
  * Transferência para outro jogador (taxa de 2% no ouro, 5 × ouro do lacaio por item; item do +7 pede
@@ -373,7 +380,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgSmithPerkCmd,
   RpgBankCmd,
   RpgVaultCmd,
-  RpgVaultExpandCmd,
+  RpgVaultManyCmd,
   RpgTransferCmd,
   RpgLobbyCreateCmd,
   RpgLobbyJoinCmd,
@@ -572,8 +579,10 @@ export interface RpgRunMemberEnd {
     ores: Partial<Record<Material, number>>;
     stones: number;
   } | null;
-  /** Itens que não couberam na mochila (ficaram na dungeon). */
+  /** Itens perdidos na dungeon (vazio desde 27/11/2026: o que não cabe vai para o cofre). */
   left: OwnedItem[];
+  /** Itens que não couberam na mochila e foram para o cofre do Banqueiro (27/11/2026). */
+  to_vault?: OwnedItem[];
   potions_used: { hp: number; mp: number };
   ammo_used: number;
   levels_gained: number;

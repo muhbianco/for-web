@@ -8,8 +8,6 @@ import {
   goldTransferFee,
   itemTransferFee,
   planTransfer,
-  vaultExpansionCost,
-  vaultSlots,
 } from "./bank.ts";
 import {
   ammoPackPrice,
@@ -75,12 +73,6 @@ test("Mercador: compra por 10% do preço base, que sobe com a raridade; +7 pede 
   );
   assert.ok(!sellNeedsConfirm(item({ refine: 6 })));
   assert.ok(sellNeedsConfirm(item({ refine: 7 })));
-});
-
-test("Banqueiro: cofre de 60 + 20 por expansão; expansão a 200 × ouro do lacaio", () => {
-  assert.equal(vaultSlots(0), 60);
-  assert.equal(vaultSlots(2), 100);
-  assert.equal(vaultExpansionCost(100), 200 * 163);
 });
 
 test("Banqueiro: taxa de 2% no ouro (mínimo 1) e 5 × ouro do lacaio por item", () => {

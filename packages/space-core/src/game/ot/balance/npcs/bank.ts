@@ -2,26 +2,11 @@ import type { ItemInstance } from "../equipment.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
 
 /**
- * O Banqueiro (spec §10): cofre de ouro sem limite e de itens (60 espaços, +20 por expansão), e a
+ * O Banqueiro (spec §10): cofre de ouro e de itens, os dois sem limite (o de itens desde 27/11/2026:
+ * o que não cabe na mochila no fim da corrida vai para ele; antes eram 60 espaços, +20 por expansão), e a
  * transferência de ouro e itens para outro jogador, com taxa e log. Só as regras: quem guarda o saldo,
  * o cofre e o log é o servidor (virada da Fase 8).
  */
-
-export function vaultSlots(
-  expansions: number,
-  B: Balance = gameBalance,
-): number {
-  const b = B.cfg.bank;
-  return b.vaultSlots + b.expansionSlots * Math.max(0, Math.floor(expansions));
-}
-
-/** +20 espaços: 200 × ouroLacaio(L), pelo nível do herói. */
-export function vaultExpansionCost(
-  level: number,
-  B: Balance = gameBalance,
-): number {
-  return B.cfg.bank.expansionOfGold * B.lacaioGold(level);
-}
 
 export function goldTransferFee(
   amount: number,

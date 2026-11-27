@@ -6,6 +6,7 @@ import type { RuntimeRegistry } from "../ws/gateway.ts";
 import type { MediaHub } from "./roomMedia.ts";
 import { SpaceRuntime } from "./runtime.ts";
 import type { DecorStore } from "./decorStore.ts";
+import type { LobbyStore } from "../game/ot/lobbyStore.ts";
 import type { SpotStore } from "./spotStore.ts";
 import type { TvStore } from "./tv.ts";
 import type { AssignmentStore } from "./store.ts";
@@ -194,6 +195,59 @@ export class Registry implements RuntimeRegistry {
       }),
     ]);
     clearTimeout(timer);
+    return out;
+  }
+
+  /**
+   * O processo vai parar: cada espaço vivo grava os seus grupos de DG (27/11/2026, "nenhum grupo se
+   * perde no deploy"). Com prazo, como as posições; uma falha só custa os grupos daquele servidor.
+   */
+  async saveLobbies(store: LobbyStore, timeoutMs = 3_000): Promise<{ servers: number; lobbies: number; failed: number }> {
+    const out = { servers: 0, lobbies: 0, failed: 0 };
+    const now = this.now();
+    const jobs = [...this.live.values()].map(async (rt) => {
+      const lobbies = rt.lobbySnapshot();
+      if (lobbies.length === 0) return;
+      try {
+        await store.save(rt.serverId, lobbies, now);
+        out.servers++;
+        out.lobbies += lobbies.length;
+      } catch (err) {
+        out.failed++;
+        this.log.warn("dungeon groups not saved", { server: rt.serverId, err: String(err) });
+      }
+    });
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    await Promise.race([
+      Promise.allSettled(jobs),
+      new Promise((r) => {
+        timer = setTimeout(r, timeoutMs);
+      }),
+    ]);
+    clearTimeout(timer);
+    return out;
+  }
+
+  /**
+   * Na subida, antes de as corridas voltarem: os grupos gravados no desligamento e, para cada
+   * corrida em andamento sem grupo, o grupo refeito pela corrida (o processo de antes deste código
+   * não gravava). Abre o espaço do servidor para isso (o fim da corrida precisa achar o grupo).
+   */
+  async restoreLobbies(
+    store: LobbyStore,
+    runs: readonly (Parameters<SpaceRuntime["adoptRun"]>[0] & { server: string })[],
+    since: number,
+  ): Promise<{ restored: number; rebuilt: number }> {
+    const out = { restored: 0, rebuilt: 0 };
+    const active = new Set(runs.map((r) => r.id));
+    for (const s of await store.takeAll(since)) {
+      const rt = await this.get(s.serverId).catch(() => null);
+      if (rt) out.restored += rt.restoreLobbies(s.lobbies, active);
+    }
+    for (const run of runs) {
+      const rt = await this.get(run.server).catch(() => null);
+      if (rt?.adoptRun(run)) out.rebuilt++;
+    }
     return out;
   }
 

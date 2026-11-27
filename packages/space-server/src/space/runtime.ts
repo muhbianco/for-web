@@ -59,7 +59,7 @@ import {
 import { TRAIN_REACH_TILES as REACH } from "@muchat/space-core/game/ot";
 import type { RpgLobbyMember, RpgLoopStop, RpgPrepKind, RpgRunEnd } from "@muchat/space-core/game/ot/balance";
 
-import { type Lobby, type LobbyResult, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
+import { type Lobby, type LobbyResult, type SavedLobby, LobbyHub, lobbyView } from "../game/ot/lobby.ts";
 import type { Log } from "../log.ts";
 import type { LiveKitAdmin, ParticipantLite } from "../media/ports.ts";
 import type { StoatCache } from "../stoat/cache.ts";
@@ -73,6 +73,8 @@ import { MemoryTvStore, type TvCommand, TvHub, type TvHost, type TvStore } from 
 
 /** How long a disconnected avatar stays (as "reconnecting") before it leaves. */
 export const DISCONNECT_GRACE_MS = 60_000;
+/** Depois de um reinício, quanto um membro de grupo restaurado tem para reconectar (27/11/2026). */
+export const RESTORED_GRACE_MS = 3 * 60_000;
 
 export interface Viewer {
   user: StoatUser;
@@ -249,6 +251,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
   onAvatarJoined: ((userId: string) => void) | null = null;
   /** Idle game: the TVs' preparation rooms (docs/espaco/jogo/ot, stage O4). */
   readonly lobbies = new LobbyHub();
+  /**
+   * Quem voltou num grupo restaurado depois de um reinício (27/11/2026) e ainda não reconectou: até
+   * quando esperar. Sem avatar, a carência normal não chega a valer; vencido o prazo sem voltar, sai.
+   */
+  private readonly restoredGrace = new Map<string, number>();
   /** Called when someone enters a room (walked in, joined inside it): a dungeon run there shows (stage O5). */
   onRoomEntered: ((userId: string, room: string) => void) | null = null;
   /**
@@ -596,6 +603,35 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return lobby ?? this.lobbies.of(userId) ?? null;
   }
 
+  /** Os grupos para gravar no desligamento (27/11/2026: nenhum grupo se perde no deploy). */
+  lobbySnapshot(): SavedLobby[] {
+    return this.lobbies.snapshot();
+  }
+
+  /**
+   * Traz os grupos gravados no desligamento; quem voltou tem `RESTORED_GRACE_MS` para reconectar.
+   * `activeRuns`: as corridas que voltam a andar (grupo "rodando" sem a corrida fica pronto).
+   */
+  restoreLobbies(saved: readonly unknown[], activeRuns: ReadonlySet<string>): number {
+    const got = this.lobbies.restore(saved, activeRuns, this.now());
+    for (const l of got) this.graceRestored(l);
+    return got.length;
+  }
+
+  /** Refaz o grupo de uma corrida em andamento que não voltou do snapshot (o deploy que o criou). */
+  adoptRun(run: Parameters<LobbyHub["adopt"]>[0]): boolean {
+    const lobby = this.lobbies.adopt(run, this.now());
+    if (!lobby) return false;
+    this.graceRestored(lobby);
+    return true;
+  }
+
+  private graceRestored(lobby: Lobby): void {
+    const until = this.now() + RESTORED_GRACE_MS;
+    for (const m of lobby.members)
+      if (!this.avatars.get(m.user_id)?.session) this.restoredGrace.set(m.user_id, until);
+  }
+
   /** The group's run was saved: everyone sees it running. */
   lobbyRunning(id: string, runId: string): void {
     this.lobbies.running(id, runId);
@@ -642,10 +678,15 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (lobby) this.broadcastLobby(lobby, true, {});
   }
 
-  /** On the map now or within the reconnect grace (not gone for good). */
+  /**
+   * On the map now or within the reconnect grace (not gone for good). Desde 27/11/2026 também quem
+   * voltou num grupo restaurado depois de um reinício e ainda reconecta (`restoredGrace`): o loop
+   * não para por "offline" só porque o app de todos ainda está voltando.
+   */
   isPresent(userId: string): boolean {
     const a = this.avatars.get(userId);
-    return !!a && !a.evicted;
+    if (a) return !a.evicted;
+    return this.restoredGrace.has(userId);
   }
 
   /** The leader starts; `auto`: by the loop (the room is not told again on every run). */
@@ -1802,6 +1843,14 @@ export class SpaceRuntime implements MediaHost, TvHost {
       this.media?.sync(id, "refresh"); // no room any more: revoke
     }
     if (removed.length) this.presenceDirty = true;
+    // Grupo restaurado no reinício: quem não reconectou a tempo sai dele (como no fim da carência).
+    for (const [id, until] of this.restoredGrace) {
+      if (this.avatars.get(id)?.session) this.restoredGrace.delete(id);
+      else if (now >= until) {
+        this.restoredGrace.delete(id);
+        this.lobbyLeave(id);
+      }
+    }
     this.flushPresence();
     this.tv.tick();
     for (const lobby of this.lobbies.expire(now)) this.broadcastLobby(lobby, false, { ended: "expired" });

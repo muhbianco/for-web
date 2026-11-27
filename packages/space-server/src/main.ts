@@ -23,6 +23,7 @@ import { Registry } from "./space/registry.ts";
 import { MongoProfileStore } from "./space/profiles.ts";
 import { MongoDecorStore } from "./space/decorStore.ts";
 import { MongoSpotStore } from "./space/spotStore.ts";
+import { LOBBY_RESUME_TTL_MS, MongoLobbyStore } from "./game/ot/lobbyStore.ts";
 import { MongoAssignmentStore } from "./space/store.ts";
 import { MongoTvStore } from "./space/tv.ts";
 import { MemberCache, StoatApi } from "./stoat/api.ts";
@@ -126,6 +127,7 @@ async function main() {
   // exists only after media starts, hence the late binding.
   let onSnapshot: Parameters<typeof startMedia>[0] = () => undefined;
   const media = startMedia((rooms, failed) => onSnapshot(rooms, failed));
+  const lobbyStore = new MongoLobbyStore(mongo);
   const registry = new Registry({
     cache,
     store: new MongoAssignmentStore(mongo),
@@ -147,10 +149,6 @@ async function main() {
   });
   // Runs reach their rooms through the live runtime; the ones a restart cut come back from the store.
   rpg.setHosts((serverId) => registry.liveRuntime(serverId));
-  void rpg
-    .resumeRuns()
-    .then((n) => n > 0 && log.info("rpg runs resumed", { runs: n }))
-    .catch((err) => log.error("rpg runs resume failed", { err: String(err) }));
   onSnapshot = (rooms, failed) => {
     for (const rt of registry.all()) rt.observeLiveKit(rooms, failed);
   };
@@ -163,6 +161,21 @@ async function main() {
     log,
   });
   await structure.start();
+  // Os grupos de DG voltam antes das corridas (27/11/2026, o dono: "é importante que nenhum grupo
+  // se perca pra seguir na DG pós-deploy"): os gravados no desligamento e, para cada corrida em
+  // andamento sem grupo, o grupo refeito por ela. Precisa da estrutura (abre o espaço do servidor)
+  // e vem antes de `resumeRuns`: o fim de cada corrida acha o grupo e o loop marca a próxima.
+  try {
+    const runs = await rpg.runningGroups();
+    const groups = await registry.restoreLobbies(lobbyStore, runs, Date.now() - LOBBY_RESUME_TTL_MS);
+    log.info("rpg groups restored", { ...groups, running: runs.length });
+  } catch (err) {
+    log.error("rpg groups restore failed", { err: String(err) });
+  }
+  void rpg
+    .resumeRuns()
+    .then((n) => n > 0 && log.info("rpg runs resumed", { runs: n }))
+    .catch((err) => log.error("rpg runs resume failed", { err: String(err) }));
   const bonfire = new BonfireClient(env("STOAT_WS_URL", "ws://events:14703"), botToken, cache, log, (event) =>
     routeBonfireEvent(event, cache, structure),
   );
@@ -239,6 +252,9 @@ async function main() {
     // Before the sockets close (a closed socket is still an avatar on the map, but say it first).
     const saved = await registry.saveSpots();
     log.info("resume spots saved", saved);
+    // Os grupos de DG (27/11/2026): o próximo processo os traz de volta antes das corridas.
+    const groups = await registry.saveLobbies(lobbyStore);
+    log.info("dungeon groups saved", groups);
     await gateway.close().catch(() => undefined);
     await media?.stop();
     await mongo.close().catch(() => undefined);

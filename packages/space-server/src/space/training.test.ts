@@ -15,7 +15,7 @@ import { silentLog } from "../log.ts";
 import { StoatCache } from "../stoat/cache.ts";
 import type { StoatMember, StoatUser } from "../stoat/types.ts";
 import { MemoryDecorStore } from "./decorStore.ts";
-import { type SessionPort, type Viewer, SpaceRuntime } from "./runtime.ts";
+import { type SessionPort, type Viewer, RESTORED_GRACE_MS, SpaceRuntime } from "./runtime.ts";
 import { MemorySpotStore } from "./spotStore.ts";
 import { MemoryAssignmentStore } from "./store.ts";
 import { MemoryRunStore } from "../game/ot/runs.ts";
@@ -666,4 +666,44 @@ test("jogo idle de ponta a ponta no runtime real: jogador novo, grupo na TV, Ca�
   assert.ok(hero()!.hero.gold > 0);
   assert.equal(rt.lobbies.of(ANA)?.state, "ready");
   assert.equal(runStore.docs.get(runEv.run.id)?.status, "settled");
+});
+
+// 27/11/2026, o dono: "é importante que nenhum grupo se perca pra seguir na DG pós-deploy".
+test("reinício: o grupo refeito pela corrida espera quem reconecta; quem não volta sai depois da carência", async () => {
+  let now = 1_000_000;
+  const BIA = "01JBIA00000000000000000000";
+  const rt = new SpaceRuntime({
+    serverId: SRV,
+    cache: makeCache(),
+    store: new MemoryAssignmentStore(),
+    decorStore: new MemoryDecorStore(),
+    log: silentLog,
+    now: () => now,
+  });
+  await rt.init();
+  const adopted = rt.adoptRun({
+    id: "run-1",
+    tv: "tv-x",
+    room: PUB,
+    dungeon: "masmorra-40",
+    members: [
+      { user_id: ANA, name: "Ana", cls: "guerreiro", level: 45 },
+      { user_id: BIA, name: "Bia", cls: "padre", level: 44 },
+    ],
+    auto: true,
+  });
+  assert.equal(adopted, true);
+  // Antes de reconectar, os dois contam como presentes (o loop não para por "offline").
+  assert.equal(rt.isPresent(ANA), true);
+  assert.equal(rt.isPresent(BIA), true);
+  // A corrida fecha em vitória: o grupo continua e o loop marca a próxima.
+  rt.lobbyRunEnded("run-1", "vitoria", {}, {});
+  assert.equal(rt.lobbies.of(ANA)?.nextAt !== null, true);
+  // Ana volta; Bia não volta a tempo e sai do grupo, que segue com a Ana.
+  enter(rt, ANA, "Ana");
+  now += RESTORED_GRACE_MS + 1;
+  rt.tick();
+  assert.equal(rt.lobbies.of(BIA), undefined);
+  assert.deepEqual(rt.lobbies.of(ANA)?.members.map((m) => m.user_id), [ANA]);
+  assert.equal(rt.isPresent(BIA), false);
 });

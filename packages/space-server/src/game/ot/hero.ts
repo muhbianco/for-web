@@ -207,6 +207,8 @@ export function markRun(
 
 export interface SettledHero {
   left: OwnedItem[];
+  /** O que não coube na mochila e foi para o cofre do Banqueiro (27/11/2026). */
+  toVault: OwnedItem[];
   levelsGained: number;
   jobsGained: number;
 }
@@ -240,6 +242,7 @@ export function settleRunHero(
     ok: true,
     settled: {
       left: r.left,
+      toVault: r.toVault,
       levelsGained: r.levelsGained,
       jobsGained: r.jobsGained,
     },
