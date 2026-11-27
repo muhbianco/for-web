@@ -86,7 +86,7 @@ export default function NewsPanel(props: {
   const [arsenal, setArsenal] = createSignal(props.mode === "arsenal");
   // A nota do Arsenal (pelo título; o link `#arsenal` das notas antigas também vale).
   const hasArsenal = (n: NewsItem) =>
-    /Arsenal/.test(n.title) || n.markdown.includes("#arsenal)");
+    n.title.includes("Arsenal") || n.markdown.includes("#arsenal)");
   const items = () => {
     const s = news();
     return s.kind === "ready" ? s.wire.items : [];
