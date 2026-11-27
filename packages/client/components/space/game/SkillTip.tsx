@@ -19,9 +19,20 @@ import { styled } from "styled-system/jsx";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { type TipBind, HoverTip } from "./ItemTip";
-import { conditionText } from "./gameText";
-import { type SkillRow, derivedOf, num, skillNumbers } from "./heroModel";
+import { conditionText, slotName } from "./gameText";
+import {
+  type SkillPerkSource,
+  type SkillRow,
+  derivedOf,
+  num,
+  skillNumbers,
+  skillPerkSources,
+} from "./heroModel";
+import { type PerkLine, diffSkillLines, factDelta } from "./skillPerkDiff";
 import { longestEffectMs, skillIcon, skillLines } from "./skillText";
+
+// A cor do lendário (RARITY.lendario.color, #ffa64d) vai literal nos estilos: o Panda extrai o CSS no
+// build e uma cor vinda de constante importada some do CSS em silêncio.
 
 /** O que o detalhe de uma skill mostra (montado só com o detalhe aberto). */
 export interface SkillTipInfo {
@@ -43,6 +54,31 @@ export interface SkillTipInfo {
   mechanics?: { name: string; ups: number }[];
   /** Os números são os de base (quem assiste não recebe os pontos de quem joga). */
   base?: boolean;
+  /**
+   * Perks lendários vestidos que fortalecem a skill (27/11/2026): de onde vêm e a mesma skill sem
+   * eles, para o detalhe mostrar o que cada perk mudou.
+   */
+  perks?: SkillPerkSource[];
+  baseDef?: SkillDef;
+  baseMana?: number;
+  baseCooldownS?: number;
+}
+
+/** A comparação com a skill sem os perks vestidos (só quando algum perk mexe nela). */
+function perkCompare(
+  h: HeroV5,
+  content: SkillContent,
+  build: SkillRow["build"],
+): Pick<SkillTipInfo, "perks" | "baseDef" | "baseMana" | "baseCooldownS"> {
+  const perks = skillPerkSources(h, content.id);
+  if (perks.length === 0) return {};
+  const without = skillNumbers(h, content, build, derivedOf(h), false);
+  return {
+    perks,
+    baseDef: without.def,
+    baseMana: without.mana,
+    baseCooldownS: without.cooldownS,
+  };
 }
 
 /** A skill na ficha (aprendida ou não): os pontos marcados entram como no detalhe ao lado. */
@@ -64,6 +100,7 @@ export function heroSkillInfo(h: HeroV5, row: SkillRow): SkillTipInfo {
     mechanics: row.mechanics
       .filter((m) => m.ups > 0)
       .map((m) => ({ name: m.name, ups: m.ups })),
+    ...perkCompare(h, row.content, row.build),
   };
 }
 
@@ -93,9 +130,20 @@ export function runSkillInfo(
     };
   }
   const build = hero.skills.builds[s.id] ?? freshBuild();
+  const mine = skillNumbers(hero, content, build);
+  const cmp = perkCompare(hero, content, build);
   return {
     ...common,
-    def: skillNumbers(hero, content, build).def,
+    ...cmp,
+    // A mana e a recarga da corrida vêm do servidor (já com os perks); sem eles, a mesma diferença
+    // que os perks fazem na conta local.
+    ...(cmp.perks
+      ? {
+          baseMana: s.mana - (mine.mana - cmp.baseMana!),
+          baseCooldownS: s.cd_ms / 1000 - (mine.cooldownS - cmp.baseCooldownS!),
+        }
+      : {}),
+    def: mine.def,
     stats: derivedOf(hero),
     ai: hero.skills.ai[s.id] ?? content.ai,
     customAi: !!hero.skills.ai[s.id],
@@ -135,18 +183,52 @@ const secs = (x: number) =>
 export function SkillCard(props: { info: SkillTipInfo }) {
   const { t } = useLingui();
   const i = () => props.info;
-  const lines = () => skillLines(i().def, i().stats);
+  const lines = (): PerkLine[] => {
+    const now = skillLines(i().def, i().stats);
+    const without = i().baseDef;
+    return without
+      ? diffSkillLines(skillLines(without, i().stats), now)
+      : now.map((text) => ({ kind: "same", text, parts: [{ text }] }));
+  };
   const lasts = () => longestEffectMs(i().def);
+  const perks = () => i().perks ?? [];
+  // O que os perks mudaram no cabeçalho (mana, recarga e duração), no formato da ficha.
+  const manaDelta = () =>
+    i().baseMana === undefined ? null : factDelta(i().baseMana!, i().mana, 0);
+  const cdDelta = () =>
+    i().baseCooldownS === undefined
+      ? null
+      : factDelta(i().baseCooldownS!, i().cooldownS, 1, " s");
+  const lastsDelta = () => {
+    const b = i().baseDef;
+    return b
+      ? factDelta(longestEffectMs(b) / 1000, lasts() / 1000, 1, " s")
+      : null;
+  };
   return (
-    <Card>
+    <Card data-perk={perks().length > 0 ? "" : undefined}>
       <Top>
-        <Icon aria-hidden="true">
+        <Icon
+          aria-hidden="true"
+          data-perk={perks().length > 0 ? "" : undefined}
+        >
           <Symbol size={26}>{skillIcon(i().cls, i().content.id)}</Symbol>
+          <Show when={perks().length > 0}>
+            <Star>★</Star>
+          </Show>
         </Icon>
         <div>
           <Name>{i().content.name}</Name>
           <Meta>
             T{i().content.tier} · {i().content.target}
+            <Show when={perks().length > 0}>
+              {" · "}
+              <PerkTag>
+                {perks().length === 1
+                  ? t`fortalecida por 1 perk`
+                  : t`fortalecida por ${perks().length} perks`}
+              </PerkTag>
+            </Show>
           </Meta>
         </div>
       </Top>
@@ -155,23 +237,89 @@ export function SkillCard(props: { info: SkillTipInfo }) {
         <span>
           <small>{t`Mana`}</small>
           <b>{num(i().mana)}</b>
+          <Show when={manaDelta()}>
+            {(d) => (
+              <Delta data-good={d().startsWith("−") ? "" : undefined}>
+                {d()}
+              </Delta>
+            )}
+          </Show>
         </span>
         <span>
           <small>{t`Recarga`}</small>
           <b>{secs(i().cooldownS)}</b>
+          <Show when={cdDelta()}>
+            {(d) => (
+              <Delta data-good={d().startsWith("−") ? "" : undefined}>
+                {d()}
+              </Delta>
+            )}
+          </Show>
         </span>
         <span>
           <small>{t`Duração`}</small>
           <b>{lasts() > 0 ? secs(lasts() / 1000) : t`na hora`}</b>
+          <Show when={lastsDelta()}>
+            {(d) => (
+              <Delta data-good={d().startsWith("+") ? "" : undefined}>
+                {d()}
+              </Delta>
+            )}
+          </Show>
         </span>
       </Facts>
 
       <Block>
         <h4>{t`O que faz`}</h4>
         <ul>
-          <For each={lines()}>{(l) => <li>{l}</li>}</For>
+          <For each={lines()}>
+            {(l) => (
+              <li data-kind={l.kind}>
+                <Show when={l.kind === "added" || l.kind === "changed"}>
+                  <Mark aria-hidden="true">★</Mark>
+                </Show>
+                <For each={l.parts}>
+                  {(part) =>
+                    part.delta ? (
+                      <PerkNum>
+                        {part.text}
+                        <Delta data-good="">{part.delta}</Delta>
+                      </PerkNum>
+                    ) : (
+                      part.text
+                    )
+                  }
+                </For>
+                <Show when={l.kind === "added"}>
+                  <Delta data-good="">{t`perk`}</Delta>
+                </Show>
+              </li>
+            )}
+          </For>
         </ul>
       </Block>
+
+      <Show when={perks().length > 0}>
+        <PerkBlock>
+          <h4>{t`Fortalecida por lendário`}</h4>
+          <For each={perks()}>
+            {(p) => (
+              <div>
+                <span>★ {p.text}</span>
+                <small>
+                  {p.item} · {slotName(p.slot)} ·{" "}
+                  {p.range
+                    ? t`saiu ${p.value} (faixa ${p.range})`
+                    : t`saiu ${p.value}`}
+                </small>
+              </div>
+            )}
+          </For>
+          <Show when={perks().length > 1}>
+            <small>{t`Os perks somam entre os itens.`}</small>
+          </Show>
+        </PerkBlock>
+      </Show>
 
       <Show when={i().ai}>
         {(ai) => (
@@ -238,6 +386,80 @@ const Card = styled("div", {
     background: "var(--md-sys-color-surface-container)",
     border: "1px solid var(--md-sys-color-outline-variant)",
     borderTop: "3px solid #4f8ff0",
+    // Com perk lendário: a borda e um brilho discreto na cor do lendário.
+    "&[data-perk]": {
+      borderTopColor: "#ffa64d",
+      boxShadow: "0 0 0 1px #ffa64d33, 0 6px 18px #ffa64d1f",
+    },
+  },
+});
+const Star = styled("span", {
+  base: {
+    position: "absolute",
+    right: "-6px",
+    top: "-7px",
+    fontSize: "13px",
+    lineHeight: 1,
+    color: "#ffa64d",
+    textShadow: "0 0 4px rgba(0, 0, 0, 0.9)",
+  },
+});
+const Mark = styled("span", {
+  base: {
+    position: "absolute",
+    left: "-15px",
+    top: "1px",
+    fontSize: "0.85em",
+    color: "#ffa64d",
+  },
+});
+const PerkTag = styled("span", {
+  base: { color: "#ffa64d", fontWeight: 700 },
+});
+const PerkNum = styled("b", {
+  base: { color: "#ffa64d", fontWeight: 700, whiteSpace: "nowrap" },
+});
+const Delta = styled("em", {
+  base: {
+    fontStyle: "normal",
+    fontSize: "0.78em",
+    fontWeight: 700,
+    marginInlineStart: "4px",
+    padding: "0 5px",
+    borderRadius: "999px",
+    whiteSpace: "nowrap",
+    color: "#ffb3a7",
+    background: "rgba(255, 122, 100, 0.14)",
+    "&[data-good]": {
+      color: "#ffa64d",
+      background: "rgba(255, 166, 77, 0.16)",
+    },
+  },
+});
+const PerkBlock = styled("div", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "6px",
+    padding: "8px 10px",
+    borderRadius: "10px",
+    border: "1px solid rgba(255, 166, 77, 0.38)",
+    background:
+      "linear-gradient(180deg, rgba(255, 166, 77, 0.12), rgba(255, 166, 77, 0.03))",
+    "& h4": {
+      margin: 0,
+      fontSize: "0.75em",
+      fontWeight: 800,
+      letterSpacing: "0.04em",
+      textTransform: "uppercase",
+      color: "#ffa64d",
+    },
+    "& > div": { display: "flex", flexDirection: "column", gap: "1px" },
+    "& > div > span": { fontSize: "0.88em", color: "#ffe2c4" },
+    "& small": {
+      fontSize: "0.76em",
+      color: "var(--md-sys-color-on-surface-variant)",
+    },
   },
 });
 const Top = styled("div", {
@@ -264,6 +486,8 @@ const Icon = styled("span", {
     background: "rgba(79, 143, 240, 0.16)",
     border: "1px solid rgba(79, 143, 240, 0.45)",
     color: "#d6e6ff",
+    position: "relative",
+    "&[data-perk]": { borderColor: "rgba(255, 166, 77, 0.7)" },
   },
 });
 const Name = styled("strong", {
@@ -318,6 +542,18 @@ const Block = styled("div", {
       fontSize: "0.9em",
     },
     "& li::marker": { color: "#4f8ff0" },
+    // O diff com a skill sem perk: frase acrescentada pelo perk em laranja; tirada, riscada.
+    "& li[data-kind=added]": { color: "#ffe2c4" },
+    // A estrela das frases do perk é um elemento (Mark), não o ::marker: a ordem das classes atômicas
+    // deixava a cor do marcador de base por cima.
+    "& li[data-kind=added], & li[data-kind=changed]": {
+      listStyle: "none",
+      position: "relative",
+    },
+    "& li[data-kind=removed]": {
+      color: "var(--md-sys-color-on-surface-variant)",
+      textDecoration: "line-through",
+    },
   },
 });
 const Chips = styled("div", {

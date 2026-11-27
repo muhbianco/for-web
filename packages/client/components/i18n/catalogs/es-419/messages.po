@@ -6346,6 +6346,19 @@ msgstr ""
 #~ msgid "Força: dano corpo a corpo (ATQ) e capacidade, +10 oz por ponto."
 #~ msgstr ""
 
+#. placeholder {0}: perks().length
+#: components/space/game/SkillTip.tsx
+msgid "fortalecida por {0} perks"
+msgstr ""
+
+#: components/space/game/SkillTip.tsx
+msgid "fortalecida por 1 perk"
+msgstr ""
+
+#: components/space/game/SkillTip.tsx
+msgid "Fortalecida por lendário"
+msgstr ""
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "FPS"
 msgstr ""
@@ -9288,6 +9301,10 @@ msgstr ""
 #~ msgid "Os monstros da sala se enfurecem: cada vez mais fortes, até a sala cair"
 #~ msgstr ""
 
+#: components/space/game/SkillTip.tsx
+msgid "Os perks somam entre os itens."
+msgstr ""
+
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level."
 #~ msgstr ""
@@ -9619,6 +9636,10 @@ msgstr ""
 
 #: components/space/game/GainTab.tsx
 msgid "Período"
+msgstr ""
+
+#: components/space/game/SkillTip.tsx
+msgid "perk"
 msgstr ""
 
 #. placeholder {0}: i + 1
@@ -10956,6 +10977,17 @@ msgstr ""
 
 #: components/space/game/RunPanel.tsx
 msgid "Sair e perder a recompensa desta corrida?"
+msgstr ""
+
+#. placeholder {0}: p.value
+#: components/space/game/SkillTip.tsx
+msgid "saiu {0}"
+msgstr ""
+
+#. placeholder {0}: p.value
+#. placeholder {1}: p.range
+#: components/space/game/SkillTip.tsx
+msgid "saiu {0} (faixa {1})"
 msgstr ""
 
 #: components/space/game/RunPanel.tsx

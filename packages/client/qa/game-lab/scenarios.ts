@@ -10,6 +10,7 @@ import {
   ARMOR_SLOTS,
   balance as B,
   CLASSES,
+  PERKS,
   bossPrereqs,
   createHero,
   dungeonById,
@@ -202,6 +203,35 @@ export function mage45(): HeroV5 {
       expansions: 0,
     },
     attrResets: 1,
+  };
+}
+
+/**
+ * O mago 45 com perks lendários vestidos (27/11/2026: o detalhe da skill mostra o que o perk muda).
+ * O anel tem 2 perks (a 1ª e a 3ª skill dos slots: frases novas na Seta Arcana, número maior no
+ * Escudo de Mana) e o colar repete o da 1ª: os perks somam.
+ */
+export function mage45Perks(): HeroV5 {
+  const h = mage45();
+  const [first, , third] = h.skills.slots;
+  const top = (skill: string, f = 1) => {
+    const t = PERKS[skill]!;
+    const steps = Math.round((t.max - t.min) / t.step);
+    return { skill, value: Number((t.min + Math.round(steps * f) * t.step).toFixed(6)) };
+  };
+  const anel = h.equipment.anel!;
+  const colar = h.equipment.colar!;
+  return {
+    ...h,
+    equipment: {
+      ...h.equipment,
+      anel: {
+        ...anel,
+        rarity: "lendario",
+        perks: [top(first!), top(third!, 0.5)],
+      },
+      colar: { ...colar, rarity: "lendario", perks: [top(first!, 0)] },
+    },
   };
 }
 

@@ -51,6 +51,7 @@ import {
   hunter52,
   lobbyOf,
   mage45,
+  mage45Perks,
   newUid,
   stateOf,
   stuffBag,
@@ -164,6 +165,12 @@ const SCENARIOS: Scenario[] = [
     label: "Ficha (mago 45)",
     screen: "hero",
     build: () => world(stateOf(mage45())),
+  },
+  {
+    id: "ficha-perks",
+    label: "Ficha com perks lendários",
+    screen: "hero",
+    build: () => world(stateOf(mage45Perks())),
   },
   {
     id: "mercador",
@@ -360,6 +367,13 @@ const SCENARIOS: Scenario[] = [
     label: "Corrida (sala 1)",
     screen: "run",
     build: () => world(stateOf(mage45()), { lobbies: { x: party4() } }),
+    run: { dungeon: "masmorra-40", seek: 4 },
+  },
+  {
+    id: "corrida-perks",
+    label: "Corrida com perks lendários",
+    screen: "run",
+    build: () => world(stateOf(mage45Perks()), { lobbies: { x: party4() } }),
     run: { dungeon: "masmorra-40", seek: 4 },
   },
   {

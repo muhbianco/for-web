@@ -6330,6 +6330,19 @@ msgstr "Força: ATQ corpo a corpo e das armas de força."
 #~ msgid "Força: dano corpo a corpo (ATQ) e capacidade, +10 oz por ponto."
 #~ msgstr "Força: dano corpo a corpo (ATQ) e capacidade, +10 oz por ponto."
 
+#. placeholder {0}: perks().length
+#: components/space/game/SkillTip.tsx
+msgid "fortalecida por {0} perks"
+msgstr "fortalecida por {0} perks"
+
+#: components/space/game/SkillTip.tsx
+msgid "fortalecida por 1 perk"
+msgstr "fortalecida por 1 perk"
+
+#: components/space/game/SkillTip.tsx
+msgid "Fortalecida por lendário"
+msgstr "Fortalecida por lendário"
+
 #: components/modal/modals/ScreenSharePicker.tsx
 msgid "FPS"
 msgstr "FPS"
@@ -9272,6 +9285,10 @@ msgstr "Os itens somem para sempre. Toque de novo"
 #~ msgid "Os monstros da sala se enfurecem: cada vez mais fortes, até a sala cair"
 #~ msgstr "Os monstros da sala se enfurecem: cada vez mais fortes, até a sala cair"
 
+#: components/space/game/SkillTip.tsx
+msgid "Os perks somam entre os itens."
+msgstr "Os perks somam entre os itens."
+
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level."
 #~ msgstr "Os pontos postos voltam a ficar livres. A primeira vez de cada é de graça; depois, 500 de ouro por level."
@@ -9604,6 +9621,10 @@ msgstr "Perfil de voz"
 #: components/space/game/GainTab.tsx
 msgid "Período"
 msgstr "Período"
+
+#: components/space/game/SkillTip.tsx
+msgid "perk"
+msgstr "perk"
 
 #. placeholder {0}: i + 1
 #: components/space/game/SmithPanel.tsx
@@ -10941,6 +10962,17 @@ msgstr "Sair do grupo"
 #: components/space/game/RunPanel.tsx
 msgid "Sair e perder a recompensa desta corrida?"
 msgstr "Sair e perder a recompensa desta corrida?"
+
+#. placeholder {0}: p.value
+#: components/space/game/SkillTip.tsx
+msgid "saiu {0}"
+msgstr "saiu {0}"
+
+#. placeholder {0}: p.value
+#. placeholder {1}: p.range
+#: components/space/game/SkillTip.tsx
+msgid "saiu {0} (faixa {1})"
+msgstr "saiu {0} (faixa {1})"
 
 #: components/space/game/RunPanel.tsx
 #~ msgid "saiu antes (sem recompensa)"

@@ -21,7 +21,6 @@ import {
   cannotEquip,
   CLASSES,
   compileSkill,
-  skillManaCostFor,
   createMonsters,
   createReference,
   dungeonById,
@@ -31,12 +30,20 @@ import {
   freshBuild,
   GEAR_SLOTS,
   heroDerived,
+  itemName,
+  itemPerks,
   legendaryMods,
+  legendaryOf,
   levelProgress,
+  perkRangeText,
+  PERKS,
+  perkText,
+  perkValueText,
   POTION_SIZES,
   potionPrice,
   roleScore,
   scoreHero,
+  skillManaCostFor,
   skillPoints,
   skillPointsSpent,
   SKILLS_BY_CLASS,
@@ -406,6 +413,8 @@ export function skillNumbers(
   s: SkillContent,
   build: SkillBuild,
   d: HeroStats = derivedOf(h),
+  /** false: a mesma skill sem os perks vestidos (a comparação do detalhe, 27/11/2026). */
+  withPerks = true,
 ): SkillNumbers {
   // Com os lendários vestidos, como o motor monta o kit (fighter.ts): a ficha e a corrida batem.
   const def = compileSkill(
@@ -413,7 +422,7 @@ export function skillNumbers(
     build,
     h.skills.ai[s.id],
     B,
-    legendaryMods(h.equipment)[s.id] ?? [],
+    withPerks ? (legendaryMods(h.equipment)[s.id] ?? []) : [],
   );
   // A mesma conta do motor (combat/fight.ts): nunca abaixo de 50% da base.
   const base = (def.baseCooldownMs ?? def.cooldownMs) / 1000;
@@ -428,6 +437,46 @@ export function skillNumbers(
     ),
     def,
   };
+}
+
+/** Um perk lendário vestido que fortalece a skill: de que item, o que faz e quanto saiu. */
+export interface SkillPerkSource {
+  item: string;
+  slot: GearSlot;
+  text: string;
+  value: string;
+  /** A faixa do perk ("de 8% a 16%"); null se for fixo. */
+  range: string | null;
+}
+
+/**
+ * Os perks lendários vestidos que mexem nesta skill (27/11/2026). O mesmo perk em mais de um item
+ * soma (items/legendary.ts): cada item aparece.
+ */
+export function skillPerkSources(
+  h: HeroV5,
+  skillId: string,
+): SkillPerkSource[] {
+  const out: SkillPerkSource[] = [];
+  for (const [slot, it] of Object.entries(h.equipment) as [
+    GearSlot,
+    OwnedItem | undefined,
+  ][]) {
+    if (!it) continue;
+    for (const p of itemPerks(it)) {
+      const t = PERKS[p.skill];
+      const text = perkText(p);
+      if (p.skill !== skillId || !t || !text) continue;
+      out.push({
+        item: itemName(it, legendaryOf(it)?.name),
+        slot,
+        text,
+        value: perkValueText(t, p.value),
+        range: perkRangeText(p.skill),
+      });
+    }
+  }
+  return out;
 }
 
 export interface SkillRow {
