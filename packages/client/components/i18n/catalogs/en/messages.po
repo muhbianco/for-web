@@ -9328,6 +9328,12 @@ msgstr "Poções"
 #~ msgid "Poções na dungeon"
 #~ msgstr "Poções na dungeon"
 
+#. placeholder {0}: st().potions[i()]?.hp ?? 0
+#. placeholder {1}: st().potions[i()]?.mp ?? 0
+#: components/space/game/RunPanel.tsx
+msgid "Poções no cinto: {0} de vida e {1} de mana"
+msgstr "Poções no cinto: {0} de vida e {1} de mana"
+
 #: components/space/game/AttributesPanel.tsx
 #: components/space/game/SkillsPanel.tsx
 msgid "Pontos confirmados."

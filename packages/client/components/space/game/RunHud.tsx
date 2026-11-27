@@ -291,7 +291,7 @@ function Orb(props: {
 
 // ------------------------------------------------------------ cinto
 
-const FLASK_SIZE: Record<PotionSize, 1 | 3 | 5> = {
+export const FLASK_SIZE: Record<PotionSize, 1 | 3 | 5> = {
   pequena: 1,
   media: 3,
   grande: 5,
@@ -353,7 +353,11 @@ const LIQUID: Record<"hp" | "mp", Record<1 | 3 | 5, string>> = {
 };
 
 /** Um frasco desenhado: quanto maior a poção, maior o frasco e mais fundo o líquido. */
-function Flask(props: { kind: "hp" | "mp"; size: 1 | 3 | 5; px: number }) {
+export function Flask(props: {
+  kind: "hp" | "mp";
+  size: 1 | 3 | 5;
+  px: number;
+}) {
   const h = () => Math.round(props.px * (0.72 + 0.07 * (props.size - 1)));
   return (
     <svg

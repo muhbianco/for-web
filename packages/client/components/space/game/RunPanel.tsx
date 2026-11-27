@@ -25,7 +25,7 @@ import { styled } from "styled-system/jsx";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { ItemTip } from "./ItemTip";
-import { CLASS_ICON, RunHud } from "./RunHud";
+import { CLASS_ICON, FLASK_SIZE, Flask, RunHud } from "./RunHud";
 import { RunScene } from "./RunScene";
 import { StatusIcons } from "./StatusIcons";
 import {
@@ -276,9 +276,19 @@ export default function RunPanel(props: {
                 }}
               />
             </Meter>
-            <small data-pots="">
-              ♥ {st().potions[i()]?.hp ?? 0} · ✦ {st().potions[i()]?.mp ?? 0}
-            </small>
+            {/* As poções que sobram no cinto, com o frasco do cinto (o ♥/✦ de antes confundia, 27/11/2026). */}
+            <Pots
+              title={t`Poções no cinto: ${st().potions[i()]?.hp ?? 0} de vida e ${st().potions[i()]?.mp ?? 0} de mana`}
+            >
+              <span>
+                <Flask kind="hp" size={FLASK_SIZE[m.belt.hp]} px={14} />
+                {num(st().potions[i()]?.hp ?? 0)}
+              </span>
+              <span>
+                <Flask kind="mp" size={FLASK_SIZE[m.belt.mp]} px={14} />
+                {num(st().potions[i()]?.mp ?? 0)}
+              </span>
+            </Pots>
             <Show when={!end()}>
               <StatusIcons
                 list={frame()?.u?.h[i()]}
@@ -1286,6 +1296,17 @@ const Mate = styled("div", {
     },
     "&[data-dead]": { opacity: 0.45, filter: "grayscale(1)" },
     "@container (max-width: 560px)": { width: "auto", fontSize: "0.7rem" },
+  },
+});
+/** As poções do cinto no cartão do companheiro: o frasco de vida e o de mana, com quantas sobram. */
+const Pots = styled("div", {
+  base: {
+    display: "flex",
+    gap: "10px",
+    fontSize: "0.68rem",
+    fontVariantNumeric: "tabular-nums",
+    opacity: 0.9,
+    "& > span": { display: "inline-flex", alignItems: "center", gap: "3px" },
   },
 });
 
