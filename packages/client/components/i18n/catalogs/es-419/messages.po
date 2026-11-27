@@ -6828,7 +6828,12 @@ msgstr ""
 
 #. placeholder {0}: legend().join(", ")
 #: components/space/game/DungeonDetail.tsx
-msgid "Lendário possível: {0}"
+#~ msgid "Lendário possível: {0}"
+#~ msgstr ""
+
+#. placeholder {0}: legend().join(", ")
+#: components/space/game/DungeonDetail.tsx
+msgid "Lendário: qualquer item do jogo, com o perk numa habilidade da sua classe (o que não servir, dá para passar a outro jogador pelo Banqueiro). Às vezes vem um com nome: {0}."
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx

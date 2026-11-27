@@ -173,7 +173,9 @@ export default function DungeonDetail(props: {
           <Show
             when={legend().length > 0 && odds().perHero.atLeastOne.lendario > 0}
           >
-            <li>{t`Lendário possível: ${legend().join(", ")}`}</li>
+            <li>
+              {t`Lendário: qualquer item do jogo, com o perk numa habilidade da sua classe (o que não servir, dá para passar a outro jogador pelo Banqueiro). Às vezes vem um com nome: ${legend().join(", ")}.`}
+            </li>
           </Show>
           <li>
             {t`${odds().ore.perHero} minérios de ${odds().ore.material} (1 por sala vencida)`}

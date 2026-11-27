@@ -3,10 +3,13 @@ import {
   type ClassId,
   type RarityId,
   ARMOR_SLOTS,
+  ARMOR_WEIGHTS,
   CLASSES,
+  FAMILY_IDS,
+  OFFHAND_IDS,
 } from "../content.ts";
 import { type DungeonDef, dungeonType } from "../dungeons/catalog.ts";
-import { type ItemInstance, canWearWeight } from "../equipment.ts";
+import type { ItemInstance } from "../equipment.ts";
 import {
   type Balance,
   type DungeonType,
@@ -20,6 +23,7 @@ import {
   materialOf,
 } from "../items/generate.ts";
 import { type LegendaryDef, LEGENDARIES } from "../items/legendary.ts";
+import { perkClass, rollPerk } from "../items/perks.ts";
 import type { RewardKill } from "./rewards.ts";
 import type { RunResult } from "./simulate.ts";
 
@@ -86,34 +90,67 @@ export function rollBase(cls: ClassId, rng: RandomSource): ItemBase {
   return { slot, weight: c.armor };
 }
 
-function wearable(cls: ClassId, l: LegendaryDef): boolean {
-  const c = CLASSES[cls];
-  const b = l.base;
-  if (b.slot === "arma") return c.weapons.includes(b.family);
-  if (b.slot === "secundaria") return c.offhands.includes(b.offhand);
-  return "weight" in b ? canWearWeight(cls, b.weight) : true;
+/** Uma base qualquer do jogo, de qualquer classe: o lugar com a mesma chance, depois a família, a mão secundária ou o peso. */
+export function rollAnyBase(rng: RandomSource): ItemBase {
+  const slot = pick(GEAR_SLOTS, rng);
+  if (slot === "arma") return { slot, family: pick(FAMILY_IDS, rng) };
+  if (slot === "secundaria") return { slot, offhand: pick(OFFHAND_IDS, rng) };
+  if (slot === "colar" || slot === "anel") return { slot };
+  return { slot, weight: pick(ARMOR_WEIGHTS, rng) };
 }
 
-/** Os lendários que podem cair para a classe: os dela que ela veste; sem nenhum, qualquer um que ela veste. */
-export function legendaryPool(cls: ClassId): LegendaryDef[] {
-  const own = LEGENDARIES.filter((l) => l.cls === cls && wearable(cls, l));
-  return own.length > 0 ? own : LEGENDARIES.filter((l) => wearable(cls, l));
-}
-
-/** Os lendários de qualquer classe (a Coroa do Mentor) que a classe veste. */
-export function sharedLegendaries(cls: ClassId): LegendaryDef[] {
-  return LEGENDARIES.filter((l) => l.cls === null && wearable(cls, l));
-}
-
-/** Tudo o que pode sair como Lendário para a classe: os dela e os de qualquer classe (a lista da TV). */
-export function legendaryChoices(cls: ClassId): LegendaryDef[] {
-  return [...new Set([...legendaryPool(cls), ...sharedLegendaries(cls)])];
+/** Os lendários com nome que podem cair (todos, para qualquer classe; a lista da TV). */
+export function namedLegendaries(): LegendaryDef[] {
+  return LEGENDARIES;
 }
 
 /**
- * Um lendário para a classe: os dela primeiro, senão um que ela veste. Com só 8 lendários no conteúdo
- * (P49), pode não haver nenhum: aí sai um Épico. Quem tem lendário próprio tira, em
- * `loot.sharedLegendaryShare` das vezes, um de qualquer classe (a Coroa do Mentor, 27/11/2026).
+ * O Lendário que cai (27/11/2026, pedido do dono: "todo herói consegue dropar qualquer item; se o amigo
+ * quiser, trocam pelo Banqueiro; o perk sempre vem para a classe que dropou"). Uma rolagem:
+ * - `loot.sharedLegendaryShare`: um de qualquer classe (a Coroa do Mentor), com o perk dele;
+ * - `loot.namedLegendaryShare`: um dos lendários com nome, de qualquer classe; o perk de origem só se a
+ *   skill dele for da classe de quem dropou, senão um perk rolado para ela;
+ * - o resto: uma base qualquer do jogo, com um perk rolado para a classe de quem dropou.
+ */
+export function rollLegendary(
+  cls: ClassId,
+  ilvl: number,
+  rng: RandomSource,
+  B: Balance = gameBalance,
+): ItemInstance {
+  const loot = B.cfg.loot;
+  const x = rng.next();
+  const shared = LEGENDARIES.filter((l) => l.cls === null);
+  const named = LEGENDARIES.filter((l) => l.cls !== null);
+  if (shared.length > 0 && x < loot.sharedLegendaryShare) {
+    const l = pick(shared, rng);
+    return {
+      ...generateItem(l.base, ilvl, "lendario", rng, B),
+      legendary: l.id,
+    };
+  }
+  if (
+    named.length > 0 &&
+    x < loot.sharedLegendaryShare + loot.namedLegendaryShare
+  ) {
+    const l = pick(named, rng);
+    const item = {
+      ...generateItem(l.base, ilvl, "lendario", rng, B),
+      legendary: l.id,
+    };
+    return perkClass(l.perk) === cls
+      ? item
+      : { ...item, perks: [rollPerk(cls, [], rng)] };
+  }
+  return {
+    ...generateItem(rollAnyBase(rng), ilvl, "lendario", rng, B),
+    perks: [rollPerk(cls, [], rng)],
+  };
+}
+
+/**
+ * Um item para a classe: de Comum a Épico, numa base que ela usa; Lendário, qualquer item do jogo
+ * (`rollLegendary`).
  */
 export function rollItem(
   cls: ClassId,
@@ -122,24 +159,7 @@ export function rollItem(
   rng: RandomSource,
   B: Balance = gameBalance,
 ): ItemInstance {
-  if (rarity === "lendario") {
-    const pool = legendaryPool(cls);
-    if (pool.length > 0) {
-      const shared = sharedLegendaries(cls);
-      const ownClass = pool.some((l) => l.cls === cls);
-      const l =
-        ownClass &&
-        shared.length > 0 &&
-        rng.next() < B.cfg.loot.sharedLegendaryShare
-          ? pick(shared, rng)
-          : pick(pool, rng);
-      return {
-        ...generateItem(l.base, ilvl, "lendario", rng, B),
-        legendary: l.id,
-      };
-    }
-    rarity = "epico";
-  }
+  if (rarity === "lendario") return rollLegendary(cls, ilvl, rng, B);
   return generateItem(rollBase(cls, rng), ilvl, rarity, rng, B);
 }
 

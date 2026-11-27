@@ -354,11 +354,13 @@ export const BALANCE = {
     huntDropBase: 3,
     huntLegendary: { 4: 0.01, 5: 0.02 } as Record<number, number>,
     /**
-     * Lendário que sai é, nesta fração, um dos de qualquer classe (a Coroa do Mentor); no resto, o da
-     * classe de quem recebe (27/11/2026, pedido do dono: "1 em cada 5"). Antes a Coroa nunca caía:
-     * toda classe tem o seu, e o de qualquer classe só entrava sem ele.
+     * O Lendário que cai (27/11/2026, pedido do dono; run/loot.ts `rollLegendary`): nesta fração, um de
+     * qualquer classe (a Coroa do Mentor, "1 em cada 5"); em `namedLegendaryShare`, um dos lendários com
+     * nome, de qualquer classe; no resto, uma base qualquer do jogo. O perk vem sempre para a classe de
+     * quem dropou ("se o amigo quiser, trocam pelo Banqueiro").
      */
     sharedLegendaryShare: 0.2,
+    namedLegendaryShare: 0.2,
   },
 
   /**

@@ -10,16 +10,15 @@ import { type Material, materialOf } from "../items/generate.ts";
 import { type Monsters, createMonsters } from "../monsters/generate.ts";
 import {
   type LootSlot,
-  legendaryChoices,
-  legendaryPool,
   lootSlots,
   lootSource,
+  namedLegendaries,
 } from "./loot.ts";
 
 /**
  * As chances de drop de uma DG, em números para a tela (a TV): saem das mesmas peças que o sorteio
  * do servidor usa (`dungeonRooms` para quem está em cada sala, `cfg.loot` para a chance e a raridade
- * de cada fonte, `legendaryPool` e `lootSlots` para o que a classe pode tirar). Nada aqui sorteia.
+ * de cada fonte, `lootSlots` e os lendários com nome para o que a classe pode tirar). Nada aqui sorteia.
  *
  * A conta é a de uma corrida vencida com o grupo inteiro vivo até o fim: quem morre não leva o item
  * do abate (`lootFor`), então as chances de verdade só podem ser menores.
@@ -35,7 +34,7 @@ export interface LootSourceOdds {
   chance: number;
   /** Um item para cada herói vivo no abate; senão, um item só, para um vivo sorteado. */
   perPlayer: boolean;
-  /** A raridade do item, somando 1 (com `cls`, o Lendário que a classe não tem vira Épico). */
+  /** A raridade do item, somando 1. */
   rarity: Record<RarityId, number>;
 }
 
@@ -60,7 +59,7 @@ export interface DungeonLootOdds {
   protectionStone: number;
   /** Com `cls`: os lugares que caem para a classe (cada um com a mesma chance). */
   slots: LootSlot[];
-  /** Com `cls`: os lendários que podem cair para a classe. */
+  /** Com `cls`: os lendários com nome (desde 27/11/2026 o Lendário é qualquer item do jogo, de qualquer classe). */
   legendaries: string[];
 }
 
@@ -71,25 +70,21 @@ const monstersFor = (B: Balance) =>
 const zero = (): Record<RarityId, number> =>
   Object.fromEntries(RARITY_IDS.map((r) => [r, 0])) as Record<RarityId, number>;
 
-/** A raridade da fonte somando 1, com o Lendário da classe sem lendário virando Épico (`rollItem`). */
+/** A raridade da fonte somando 1 (todo herói tira Lendário: qualquer item do jogo, `rollLegendary`). */
 function rarityOf(
   weights: Partial<Record<RarityId, number>>,
-  cls: ClassId | undefined,
 ): Record<RarityId, number> {
   const out = zero();
   const total = Object.values(weights).reduce((a, w) => a + (w ?? 0), 0);
   if (total <= 0) return out;
-  const noLegendary = cls !== undefined && legendaryPool(cls).length === 0;
-  for (const [id, w] of Object.entries(weights) as [RarityId, number][]) {
-    const to = noLegendary && id === "lendario" ? "epico" : id;
-    out[to] += w / total;
-  }
+  for (const [id, w] of Object.entries(weights) as [RarityId, number][])
+    out[id] += w / total;
   return out;
 }
 
 /**
- * As chances de drop da DG para um grupo de `partySize` heróis. Com `cls`, a raridade e os lugares
- * são os da classe (um Lendário que ela não tem sai Épico; sem mão secundária, ela não cai).
+ * As chances de drop da DG para um grupo de `partySize` heróis. Com `cls`, os lugares são os da
+ * classe (sem mão secundária, ela não cai); o Lendário é qualquer item do jogo.
  */
 export function dungeonLootOdds(
   d: DungeonDef,
@@ -126,7 +121,7 @@ export function dungeonLootOdds(
       levels: { min: s.min, max: s.max },
       chance: src.chance,
       perPlayer: src.perPlayer,
-      rarity: rarityOf(src.rarity, cls),
+      rarity: rarityOf(src.rarity),
     };
   });
 
@@ -173,6 +168,6 @@ export function dungeonLootOdds(
     },
     protectionStone: 1 - stoneMiss,
     slots: cls ? lootSlots(cls) : [],
-    legendaries: cls ? legendaryChoices(cls).map((l) => l.id) : [],
+    legendaries: cls ? namedLegendaries().map((l) => l.id) : [],
   };
 }

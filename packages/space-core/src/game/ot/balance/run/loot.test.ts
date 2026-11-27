@@ -8,8 +8,9 @@ import { dungeonById } from "../dungeons/catalog.ts";
 import { cannotEquip } from "../equipment.ts";
 import { balance as B } from "../formulas.ts";
 import { materialOf } from "../items/generate.ts";
-import { LEGENDARIES } from "../items/legendary.ts";
+import { itemPerks } from "../items/legendary.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
+import { SKILLS_BY_CLASS } from "../skills/index.ts";
 import { lootFor, rollBase, rollItem, rollRarity, runLoot } from "./loot.ts";
 import type { RewardKill } from "./rewards.ts";
 import { simulateRun } from "./simulate.ts";
@@ -111,24 +112,66 @@ test("o item que cai é de uma base que a classe de quem recebe veste", () => {
   }
 });
 
-test("o Lendário que cai é o da classe, ou a Coroa do Mentor em 1 de cada 5 (27/11/2026)", () => {
+test("o Lendário que cai é qualquer item do jogo, com o perk da classe de quem dropou (27/11/2026)", () => {
   const r = rng(5);
-  const n = 4000;
+  const n = 6000;
   for (const cls of CLASS_IDS) {
-    const own = LEGENDARIES.filter((l) => l.cls === cls).map((l) => l.id);
+    const own = new Set(SKILLS_BY_CLASS[cls].map((s) => s.id));
     let crown = 0;
+    let named = 0;
+    let other = 0;
+    const slots = new Set<string>();
     for (let i = 0; i < n; i++) {
       const item = rollItem(cls, 200, "lendario", r);
       assert.equal(item.rarity, "lendario", cls);
-      if (item.legendary === "coroa-do-mentor") crown++;
-      else assert.ok(own.includes(item.legendary!), `${cls} ${item.legendary}`);
+      slots.add(
+        item.slot === "arma"
+          ? item.family
+          : item.slot === "secundaria"
+            ? item.offhand
+            : "weight" in item
+              ? `${item.slot}-${item.weight}`
+              : item.slot,
+      );
+      const perks = itemPerks(item);
+      assert.equal(perks.length, 1, `${cls} ${item.legendary}`);
+      if (item.legendary === "coroa-do-mentor") {
+        crown++;
+        assert.equal(perks[0]!.skill, "xp-de-job");
+        continue;
+      }
+      // O perk é sempre de uma skill da classe de quem dropou (o de origem só quando é dela).
+      assert.ok(own.has(perks[0]!.skill), `${cls}: perk ${perks[0]!.skill}`);
+      if (item.legendary) named++;
+      else other++;
     }
-    const share = crown / n;
-    assert.ok(
-      Math.abs(share - B.cfg.loot.sharedLegendaryShare) < 0.025,
-      `${cls}: Coroa em ${(share * 100).toFixed(1)}%`,
+    const near = (got: number, want: number, what: string) =>
+      assert.ok(
+        Math.abs(got / n - want) < 0.025,
+        `${cls} ${what}: ${((got / n) * 100).toFixed(1)}%`,
+      );
+    near(crown, B.cfg.loot.sharedLegendaryShare, "Coroa");
+    near(named, B.cfg.loot.namedLegendaryShare, "com nome");
+    near(
+      other,
+      1 - B.cfg.loot.sharedLegendaryShare - B.cfg.loot.namedLegendaryShare,
+      "base qualquer",
     );
+    // Qualquer item do jogo: as 29 bases saem para toda classe (inclusive as que ela não veste).
+    assert.equal(slots.size, 29, `${cls}: ${slots.size} bases`);
   }
+  // O lendário com nome da própria classe vem com o perk de origem.
+  let seen = false;
+  for (let i = 0; i < 4000 && !seen; i++) {
+    const it = rollItem("guerreiro", 100, "lendario", r);
+    if (it.legendary === "machado-do-rugido") {
+      assert.deepEqual(itemPerks(it), [
+        { skill: "grito-de-guerra", value: 0.8 },
+      ]);
+      seen = true;
+    }
+  }
+  assert.ok(seen);
 });
 
 test("a corrida dá minério da região por sala vencida a cada vivo, e os itens dos abates", () => {

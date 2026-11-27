@@ -6,6 +6,7 @@ import { randomSource } from "../combat/fight.ts";
 import { type ClassId, RARITY_IDS } from "../content.ts";
 import { dungeonById, dungeonRooms, dungeonType } from "../dungeons/catalog.ts";
 import { balance as B } from "../formulas.ts";
+import { LEGENDARIES } from "../items/legendary.ts";
 import { createMonsters } from "../monsters/generate.ts";
 import { lootFor } from "./loot.ts";
 import { dungeonLootOdds } from "./lootOdds.ts";
@@ -122,11 +123,14 @@ test("nível e material dos itens, minério da região e Pedra só na Masmorra",
   assert.equal(c51.ore.material, "Bronze");
 });
 
-test("com a classe: os lugares que caem e o lendário dela", () => {
+test("com a classe: os lugares que caem e os lendários com nome", () => {
   const mago = dungeonLootOdds(dg("masmorra-40"), 1, "mago");
   assert.ok(mago.slots.includes("arma") && mago.slots.includes("anel"));
-  // O da classe e a Coroa do Mentor (de qualquer classe; 1 em cada 5 lendários, 27/11/2026).
-  assert.deepEqual(mago.legendaries, ["cetro-das-cinzas", "coroa-do-mentor"]);
+  // Os lendários com nome, de qualquer classe (desde 27/11/2026 o Lendário é qualquer item do jogo).
+  assert.deepEqual(
+    mago.legendaries,
+    LEGENDARIES.map((l) => l.id),
+  );
   assert.ok(mago.perHero.atLeastOne.lendario > 0);
   const semClasse = dungeonLootOdds(dg("masmorra-40"), 1);
   assert.deepEqual(semClasse.slots, []);
