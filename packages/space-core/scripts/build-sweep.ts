@@ -40,6 +40,13 @@ import {
 import { heroFighter } from "../src/game/ot/balance/fighter.ts";
 import { balance as B } from "../src/game/ot/balance/formulas.ts";
 import { createReference } from "../src/game/ot/balance/reference.ts";
+import { DUNGEONS } from "../src/game/ot/balance/dungeons/catalog.ts";
+import { createMonsters } from "../src/game/ot/balance/monsters/generate.ts";
+import { simulateRun } from "../src/game/ot/balance/run/simulate.ts";
+import {
+  LIMIT_GROUP_PARTIES,
+  limitFighter,
+} from "../src/game/ot/balance/sim/calibration.ts";
 import {
   limitEncounters,
   limitMechanics,
@@ -55,13 +62,48 @@ const arg = (k: string, d: string) => {
   const i = process.argv.indexOf(`--${k}`);
   return i > 0 ? process.argv[i + 1]! : d;
 };
-const LEVELS = arg("levels", "45,90,150,250").split(",").map(Number);
+// Níveis com Masmorra (o teste de grupo roda a Masmorra do nível).
+const LEVELS = arg("levels", "40,90,160,260,410").split(",").map(Number);
 const ONLY = arg("classes", "");
 const CLASSES_RUN = (ONLY ? ONLY.split(",") : [...CLASS_IDS]) as ClassId[];
 const OUT = arg("out", "");
 
 const RL = createReference(B, "limite");
 const R0 = createReference(B);
+const M = createMonsters(B);
+
+/**
+ * Masmorra do nível com o grupo do limite (os da calibração): a build entra no lugar da classe e os
+ * outros quatro são os do limite. Vale a ótica do dono (27/11/2026): o druida e o paladino de força
+ * caçam sozinhos com mais autonomia, mas não seguram a PT na Masmorra onde o papel deles faz falta.
+ */
+interface Group {
+  won: boolean;
+  seconds: number;
+  deaths: number;
+}
+function groupOf(cls: ClassId, L: number) {
+  const dg = DUNGEONS.find((d) => d.kind === "masmorra" && d.level === L);
+  // A PT em que a classe é a única do papel dela (o paladino de tanque único, não ao lado do
+  // guerreiro): sem isso, "sem o papel" não mede nada.
+  const role = CLASSES[cls].role;
+  const party =
+    LIMIT_GROUP_PARTIES.find(
+      (p) => p.includes(cls) && p.filter((c) => CLASSES[c].role === role).length === 1,
+    ) ?? LIMIT_GROUP_PARTIES.find((p) => p.includes(cls));
+  if (!dg || !party) return null;
+  const slot = party.indexOf(cls);
+  const others = party.map((c, i) => (i === slot ? null : limitFighter(c, L, {}, B)));
+  return (h: BalanceHero, hs: HeroSkills): Group => {
+    const fighters = others.map((f) => f ?? fighterOf(h, hs));
+    const r = simulateRun(dg, fighters, { mode: "esperado" }, B, M);
+    return {
+      won: r.outcome === "vitoria",
+      seconds: r.seconds,
+      deaths: r.rooms.reduce((a, x) => a + x.deaths, 0),
+    };
+  };
+}
 
 /** Builds de atributo: a da classe e seis arquétipos (pesos em %). */
 const ATTR_BUILDS: Record<string, readonly (readonly [Stat, number])[] | null> = {
@@ -249,10 +291,15 @@ interface Row {
   kit: string[];
   score: number;
   m: Measure;
+  /** Masmorra do nível com o grupo do limite (só na passada de itens × atributos). */
+  g?: Group | null;
 }
 
 const rows: Row[] = [];
 const refs: Record<string, Measure> = {};
+const groupRefs: Record<string, Group | null> = {};
+/** A mesma PT sem o papel da classe (o lugar dela vira um mago do limite): o papel faz falta? */
+const groupWithout: Record<string, Group | null> = {};
 const t0 = Date.now();
 
 for (const cls of CLASSES_RUN) {
@@ -265,6 +312,13 @@ for (const cls of CLASSES_RUN) {
     );
     const ref = measure(base, hs);
     refs[`${cls}@${L}`] = ref;
+    const group = groupOf(cls, L);
+    groupRefs[`${cls}@${L}`] = group ? group(base, hs) : null;
+    if (group && cls !== "mago") {
+      const mage = RL.referenceBalanceHero("mago", L);
+      const mageHs = referenceSkills("mago", B.tierFor(mage.job), mage.job, false, B, "gabarito");
+      groupWithout[`${cls}@${L}`] = group(mage, mageHs);
+    }
     const refRow = {
       weapon: c.referenceWeapon,
       off: c.referenceOffhand,
@@ -281,7 +335,7 @@ for (const cls of CLASSES_RUN) {
           for (const attrs of Object.keys(ATTR_BUILDS)) {
             const h = withAttrs(withItems(base, family, off, weight), attrs);
             const m = measure(h, hs);
-            const row: Row = { cls, level: L, pass: "itens", weapon: family, off, weight, fit, attrs, kit: hs.slots, score: roleScore(cls, m, ref), m };
+            const row: Row = { cls, level: L, pass: "itens", weapon: family, off, weight, fit, attrs, kit: hs.slots, score: roleScore(cls, m, ref), m, g: group ? group(h, hs) : null };
             rows.push(row);
             itemRows.push(row);
           }
@@ -305,6 +359,6 @@ for (const cls of CLASSES_RUN) {
   }
 }
 
-const out = { at: new Date().toISOString(), levels: LEVELS, refs, rows };
+const out = { at: new Date().toISOString(), levels: LEVELS, refs, groupRefs, groupWithout, rows };
 if (OUT) writeFileSync(OUT, JSON.stringify(out));
 process.stderr.write(`fim: ${rows.length} builds em ${Math.round((Date.now() - t0) / 1000)} s\n`);

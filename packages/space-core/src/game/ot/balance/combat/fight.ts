@@ -614,6 +614,13 @@ export function fight(
     /** DoT no modo aleatório: o erro já foi rolado no golpe que o aplicou; vale a rolagem média. */
     dot?: boolean;
     forceCrit?: boolean;
+    /**
+     * Golpe de skill (não o ataque básico): híbrido, usa o maior ataque do herói, ATQ ou MATQ
+     * (27/11/2026, o dono: "o druida pode escolher força em vez de INT; a ótica é a habilidade ser
+     * híbrida"). O elemento segue decidindo defesa, crítico e erro. As 7 referências não mudam: o
+     * elemento das skills de cada classe já é o do maior ataque da build de referência.
+     */
+    skill?: boolean;
   }
 
   /** Dano de 1 golpe do herói no inimigo, antes dos bônus % (passo 6) e já com a defesa do alvo. */
@@ -630,13 +637,17 @@ export function fight(
     const power = 1 + buffOf(h, "poder");
     const avgRoll = (ch.minRoll + 1) / 2;
     const roll = () => ch.minRoll + (1 - ch.minRoll) * rnd();
+    const best = Math.max(ch.atk, ch.matk);
     if (element === "sagrado") {
       const red = 1 - enemyReduction(e, ch.level, true, o.pen ?? 0);
       const r = expected || o.dot ? avgRoll : roll();
-      return { value: ch.atk * power * mult * r * red, landed: true };
+      return {
+        value: (o.skill ? best : ch.atk) * power * mult * r * red,
+        landed: true,
+      };
     }
     const magic = element === "magico";
-    const base = (magic ? ch.matk : ch.atk) * power;
+    const base = (o.skill ? best : magic ? ch.matk : ch.atk) * power;
     const mon = B.monsterStats(arch, m);
     let c =
       (o.canCrit ?? true) && !magic
@@ -1270,6 +1281,7 @@ export function fight(
             critMult,
             pen: p.element === "sagrado" ? 0 : eff.penetration,
             forceCrit,
+            skill: true,
           });
           d += r.value * n;
           landed ||= r.landed;
@@ -1369,6 +1381,7 @@ export function fight(
           let per = heroHit(h, x, eff.coefPerSec * pm, eff.element, {
             canCrit: false,
             dot: !expected,
+            skill: true,
           }).value;
           if (eff.poison) per *= 1 + (h.input.poisonBonus ?? 0);
           per *= 1 + skillBonus(h, s, x);

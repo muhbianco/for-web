@@ -4,7 +4,9 @@
 //
 // Categorias:
 //   acima    — build que passa da referência da classe no papel dela (risco de furar o aperto);
-//   armadilha — combinação nova (pacotes A, B e C) que não chega a metade da referência;
+//   armadilha — combinação nova (pacotes A, B e C) que não chega a metade da referência no papel E
+//               não caça sozinha mais rápido que a referência (a ótica do dono, 27/11/2026: o padre de
+//               besta é um suporte ruim que caça melhor — troca, não armadilha);
 //   papel    — classe que passa a referência de OUTRO papel (um não tanque mais duro que o guerreiro…);
 //   peso     — armadura um peso acima que compensa (a penalidade não pesa);
 //   numero   — NaN, negativo, teto batido (velocidade, recarga, crítico), dano zero;
@@ -116,9 +118,13 @@ for (const [k, rows] of byKey) {
       const c = r.weapon;
       if (!combos.has(c) || combos.get(c)!.score < r.score) combos.set(c, r);
     }
+  // Caçar sozinho melhor que a referência paga o papel fraco: é a troca, não a armadilha.
+  const refKill = data.refs[k]!.killS;
+  const bestSolo = (w: string) =>
+    Math.min(...rows.filter((r) => r.pass === "itens" && r.weapon === w).map((r) => r.m.killS));
   for (const r of combos.values())
-    if (r.score < 0.5)
-      out.push({ cat: "armadilha", cls, level: +lv, value: r.score, text: `${r.weapon}${r.off ? ` + ${r.off}` : ""}: no máximo ${Math.round(r.score * 100)}% da referência (melhor com atributos ${r.attrs})` });
+    if (r.score < 0.5 && bestSolo(r.weapon) >= refKill * 0.95)
+      out.push({ cat: "armadilha", cls, level: +lv, value: r.score, text: `${r.weapon}${r.off ? ` + ${r.off}` : ""}: no máximo ${Math.round(r.score * 100)}% da referência no papel (melhor com atributos ${r.attrs}) e não caça sozinho mais rápido (melhor ${Math.round(bestSolo(r.weapon))} s, referência ${Math.round(refKill)} s)` });
 }
 
 // 3) papel: classe que passa a referência de outro papel no mesmo nível.
