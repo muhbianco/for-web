@@ -5,6 +5,7 @@ import {
   type GearSlot,
   type HeroV5,
   type ItemInstance,
+  CLASSES,
   itemTooltip,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
@@ -169,7 +170,21 @@ export function ItemCard(props: {
         </Show>
       </Lines>
 
-      <Show when={tip().legendary}>{(l) => <Legend>★ {l()}</Legend>}</Show>
+      <For each={tip().perks ?? []}>
+        {(p) => (
+          <Legend
+            data-off={
+              p.cls && props.hero && p.cls !== props.hero.cls ? "" : undefined
+            }
+          >
+            ★ {p.text}
+            <Show when={p.cls && props.hero && p.cls !== props.hero.cls}>
+              {" "}
+              <Muted>{t`(skill de ${CLASSES[p.cls!].titles[1]}: não vale para você)`}</Muted>
+            </Show>
+          </Legend>
+        )}
+      </For>
 
       <Show when={props.price !== undefined}>
         <Line data-price="">
@@ -421,7 +436,11 @@ const Diff = styled("span", {
   },
 });
 const Legend = styled("div", {
-  base: { color: "#ffa64d", fontSize: "0.92em" },
+  base: {
+    color: "#ffa64d",
+    fontSize: "0.92em",
+    "&[data-off]": { opacity: 0.6 },
+  },
 });
 const Compare = styled("div", {
   base: {

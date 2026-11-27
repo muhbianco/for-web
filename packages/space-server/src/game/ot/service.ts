@@ -49,6 +49,8 @@ import {
   randomSource,
   refineItem,
   reforgeItem,
+  rerollPerk,
+  imbuePerk,
   respecAttributes,
   respecSkills,
   runLoot,
@@ -720,6 +722,21 @@ export class RpgService {
             ),
           "rpg smith",
           cmd.d.action === "desmontar",
+        );
+      }
+      case "rpg.smith.perk": {
+        if (!near(cmd.d.npc, "ferreiro")) return;
+        const roll = drawn();
+        // O perk muda a skill do herói: como refinar e reforjar, só fora da corrida.
+        return act(
+          (d) =>
+            apply(
+              d,
+              cmd.d.action === "rolar"
+                ? rerollPerk(d.hero, cmd.d.uid, cmd.d.slot ?? 0, roll())
+                : imbuePerk(d.hero, cmd.d.uid, roll()),
+            ),
+          "rpg smith",
         );
       }
       case "rpg.bank": {

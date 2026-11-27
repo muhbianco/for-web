@@ -29,10 +29,12 @@ import {
   evolveTier,
   heroDerived,
   heroRunFighter,
+  imbuePerk,
   planTransfer,
   raiseAttributes,
   refineItem,
   reforgeItem,
+  rerollPerk,
   respecAttributes,
   respecSkills,
   runLoot,
@@ -314,6 +316,15 @@ export class LabServer implements TvLink {
             : d.action === "reforjar"
               ? reforgeItem(h, String(d.uid), { next: Math.random })
               : dismantleItem(h, String(d.uid)),
+        );
+      case "rpg.smith.perk":
+        return this.apply(
+          re,
+          d.action === "rolar"
+            ? rerollPerk(h, String(d.uid), Number(d.slot ?? 0), {
+                next: Math.random,
+              })
+            : imbuePerk(h, String(d.uid), { next: Math.random }),
         );
       case "rpg.bank":
         return this.apply(re, bankGold(h, Number(d.gold)));

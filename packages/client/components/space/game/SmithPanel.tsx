@@ -1,15 +1,22 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { createMemo, createSignal, For, Show } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import {
   type Affix,
+  type ClassId,
+  type ItemPerk,
   type Material,
   type OwnedItem,
   type RpgHeroState,
   balance as B,
   buyBackPrice,
+  CLASSES,
   dismantle,
+  itemPerks,
   itemTooltip,
+  perkClass,
+  perkRangeText,
+  perkText,
   refinable,
   refineCostOf,
   reforgeCost,
@@ -33,7 +40,15 @@ import {
 } from "./gameUi";
 import { bagMarks, findItem, gold, pct } from "./heroModel";
 
-type Tab = "refinar" | "reforjar" | "desmontar";
+type Tab = "refinar" | "reforjar" | "perk" | "desmontar";
+
+/** O último perk que saiu no Ferreiro (o antes e o depois, na aba do perk). */
+type PerkRoll = {
+  uid: string;
+  slot: number;
+  before: ItemPerk | null;
+  after: ItemPerk;
+};
 
 type Outcome =
   | {
@@ -69,6 +84,7 @@ export function SmithPanel(props: {
   const [outcome, setOutcome] = createSignal<Outcome>(null);
   const [many, setMany] = createSignal<string[]>([]);
   const [broke, setBroke] = createSignal<string | null>(null);
+  const [perkRoll, setPerkRoll] = createSignal<PerkRoll | null>(null);
   const breaking = () => tab() === "desmontar";
   const marks = createMemo(() => (breaking() ? bagMarks(h()) : {}));
   const chosen = () => h().bag.filter((x) => many().includes(x.uid));
@@ -81,14 +97,37 @@ export function SmithPanel(props: {
 
   const worn = () =>
     (Object.values(h().equipment).filter(Boolean) as OwnedItem[]).filter((x) =>
-      tab() === "refinar" ? refinable(x) : tab() === "reforjar",
+      tab() === "refinar"
+        ? refinable(x)
+        : tab() === "perk"
+          ? x.rarity === "lendario"
+          : tab() === "reforjar",
     );
   const bag = () =>
     h().bag.filter((x) =>
       tab() === "refinar"
         ? refinable(x)
-        : tab() !== "reforjar" || x.affixes.length > 0,
+        : tab() === "perk"
+          ? x.rarity === "lendario"
+          : tab() !== "reforjar" || x.affixes.length > 0,
     );
+  /** Rola o perk `slot` (ou imbui o 2º, sem `slot`) e guarda o antes e o depois para a caixa. */
+  const perk = async (it: OwnedItem, slot?: number) => {
+    const before = slot === undefined ? null : (itemPerks(it)[slot] ?? null);
+    setPerkRoll(null);
+    const r = await cmd.run("rpg.smith.perk", {
+      npc: props.npc,
+      uid: it.uid,
+      action: slot === undefined ? "imbuir" : "rolar",
+      ...(slot === undefined ? {} : { slot }),
+    });
+    if (!r?.ok) return;
+    const now = findItem(h(), it.uid)?.item;
+    const perks = now ? itemPerks(now) : [];
+    const at = slot ?? perks.length - 1;
+    const after = perks[at];
+    if (after) setPerkRoll({ uid: it.uid, slot: at, before, after });
+  };
   const item = createMemo(() => {
     const uid = sel();
     return uid ? (findItem(h(), uid)?.item ?? null) : null;
@@ -140,6 +179,7 @@ export function SmithPanel(props: {
       <Row>
         <Gold n={gold(h().gold)} />
         <Muted>{t`Pedras de Proteção: ${h().stones}`}</Muted>
+        <Muted>{t`Essência: ${h().essence}`}</Muted>
       </Row>
       <Tabs
         label={t`Ferreiro`}
@@ -150,10 +190,12 @@ export function SmithPanel(props: {
           setSel(null);
           setProtect(false);
           setMany([]);
+          setPerkRoll(null);
         }}
         items={[
           { id: "refinar", label: t`Refinar` },
           { id: "reforjar", label: t`Reforjar` },
+          { id: "perk", label: t`Perk lendário` },
           { id: "desmontar", label: t`Desmontar` },
         ]}
       />
@@ -233,7 +275,7 @@ export function SmithPanel(props: {
 
       <Show when={inRun() && !breaking()}>
         <Muted role="note">
-          {t`Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora.`}
+          {t`Refinar, reforjar e rolar perk, só quando a corrida acabar. Desmontar da mochila vale agora.`}
         </Muted>
       </Show>
       <Show when={inRun() && !breaking() ? undefined : item()}>
@@ -241,7 +283,22 @@ export function SmithPanel(props: {
           <Show
             when={tab() === "refinar"}
             fallback={
-              <Show when={tab() === "reforjar"}>
+              <Show
+                when={tab() === "reforjar"}
+                fallback={
+                  <Show when={tab() === "perk"}>
+                    <PerkBox
+                      item={it()}
+                      cls={h().cls}
+                      essence={h().essence}
+                      busy={cmd.busy()}
+                      last={perkRoll()?.uid === it().uid ? perkRoll() : null}
+                      onRoll={(slot) => perk(it(), slot)}
+                      onImbue={() => perk(it())}
+                    />
+                  </Show>
+                }
+              >
                 <ReforgeBox
                   item={it()}
                   gold={h().gold}
@@ -454,6 +511,125 @@ function ReforgeBox(props: {
     </Panel>
   );
 }
+
+/**
+ * O perk do lendário (27/11/2026): o que o item tem, a faixa de cada um e as ações. Rolar troca o
+ * perk por um numa skill da sua classe, com o tamanho na faixa dela (1 Essência); imbuir dá o 2º
+ * (20 Essências). A Essência sai de desmontar lendário. Nada disso mexe nos afixos.
+ */
+function PerkBox(props: {
+  item: OwnedItem;
+  cls: ClassId;
+  essence: number;
+  busy: boolean;
+  last: PerkRoll | null;
+  onRoll: (slot: number) => void;
+  onImbue: () => void;
+}) {
+  const { t } = useLingui();
+  const cfg = B.cfg.legendaryPerks;
+  const perks = () => itemPerks(props.item);
+  const slots = () => Math.max(1, perks().length);
+  const className = () => CLASSES[props.cls].titles[1];
+  const off = (p: ItemPerk) => {
+    const c = perkClass(p);
+    return c !== null && c !== props.cls ? CLASSES[c].titles[1] : null;
+  };
+  const rollOk = () => props.essence >= cfg.rerollEssence;
+  const imbueOk = () => props.essence >= cfg.imbueEssence;
+  return (
+    <Panel>
+      <strong>{t`Perk lendário`}</strong>
+      <Muted>
+        {t`Rolar troca o perk por um numa das skills de ${className()} (a sua classe), com o tamanho sorteado na faixa da skill. Os afixos não mudam: isso é o Reforjar.`}
+      </Muted>
+      <For each={Array.from({ length: slots() }, (_, i) => i)}>
+        {(i) => {
+          const p = () => perks()[i];
+          return (
+            <PerkLine>
+              <span>
+                <strong>{t`Perk ${i + 1}`}</strong>{" "}
+                <Show when={p()} fallback={<Muted>{t`(vazio)`}</Muted>}>
+                  {(x) => (
+                    <>
+                      <PerkText data-off={off(x()) ? "" : undefined}>
+                        ★ {perkText(x()) ?? x().skill}
+                      </PerkText>
+                      <Show when={perkRangeText(x().skill)}>
+                        {(r) => <Muted> {t`(faixa ${r()})`}</Muted>}
+                      </Show>
+                      <Show when={off(x())}>
+                        {(c) => (
+                          <Muted>
+                            {" "}
+                            {t`— skill de ${c()}: não vale para você.`}
+                          </Muted>
+                        )}
+                      </Show>
+                    </>
+                  )}
+                </Show>
+              </span>
+              <Confirm
+                tone="primary"
+                disabled={props.busy || !rollOk()}
+                label={t`Rolar o perk ${i + 1} (${cfg.rerollEssence} Essência)`}
+                confirm={t`Trocar este perk? Toque de novo`}
+                onConfirm={() => props.onRoll(i)}
+              />
+            </PerkLine>
+          );
+        }}
+      </For>
+      <Show when={perks().length < cfg.maxPerks && perks().length > 0}>
+        <PerkLine>
+          <span>
+            <strong>{t`2º perk`}</strong>{" "}
+            <Muted>{t`Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola.`}</Muted>
+          </span>
+          <Confirm
+            tone="primary"
+            disabled={props.busy || !imbueOk()}
+            label={t`Imbuir o 2º perk (${cfg.imbueEssence} Essências)`}
+            confirm={t`Gastar ${cfg.imbueEssence} Essências? Toque de novo`}
+            onConfirm={props.onImbue}
+          />
+        </PerkLine>
+      </Show>
+      <Costs>
+        <span data-ok={rollOk() ? "" : undefined}>
+          {rollOk() ? "✓" : "✗"} {t`Essência: você tem ${props.essence}`}
+        </span>
+      </Costs>
+      <Muted>{t`Desmontar um lendário dá ${cfg.dismantleEssence} Essências.`}</Muted>
+      <Show when={props.last}>
+        {(l) => (
+          <Notice
+            ok={
+              l().before
+                ? t`Perk ${l().slot + 1}: saiu ${perkText(l().after) ?? ""} (era: ${perkText(l().before!) ?? ""})`
+                : t`Novo perk: ${perkText(l().after) ?? ""}`
+            }
+          />
+        )}
+      </Show>
+    </Panel>
+  );
+}
+
+const PerkLine = styled("div", {
+  base: {
+    display: "flex",
+    flexWrap: "wrap",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: "8px",
+  },
+});
+const PerkText = styled("span", {
+  base: { color: "#ffa64d", "&[data-off]": { opacity: 0.6 } },
+});
 
 /** O que a lista vira: minério por material (na ordem em que aparece) e a Essência somada. */
 function dismantleTotals(items: OwnedItem[]) {

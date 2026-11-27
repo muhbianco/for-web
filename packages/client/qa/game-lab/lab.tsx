@@ -22,7 +22,12 @@ import { render } from "solid-js/web";
 
 import type { SpaceView } from "@muchat/space-client";
 import type { NewsWire, NpcKind } from "@muchat/space-core";
-import { createHero, materialOf } from "@muchat/space-core/game/ot/balance";
+import {
+  LEGENDARIES,
+  createHero,
+  generateItem,
+  materialOf,
+} from "@muchat/space-core/game/ot/balance";
 
 import { I18nProvider } from "../../components/i18n";
 import HeroSheet from "../../components/space/game/HeroSheet";
@@ -177,6 +182,31 @@ const SCENARIOS: Scenario[] = [
     },
   },
   {
+    id: "ferreiro-perk",
+    label: "Ferreiro (perk lendário, 25 Essências)",
+    screen: "npc",
+    npc: "ferreiro",
+    // 27/11/2026: o perk do lendário rola numa skill da classe de quem rola. O Cajado da Aurora (perk
+    // do Padre) num mago: o perk dele não vale até rolar.
+    build: () => {
+      const h = mage45();
+      let seed = 7;
+      const rng = {
+        next: () => (seed = (seed * 16807) % 2147483647) / 2147483647,
+      };
+      const mk = (id: string) => {
+        const def = LEGENDARIES.find((l) => l.id === id)!;
+        return {
+          ...generateItem(def.base, 45, "lendario", rng),
+          legendary: id,
+          uid: `lab-${id}`,
+        };
+      };
+      const bag = [...h.bag, mk("cajado-da-aurora"), mk("cetro-das-cinzas")];
+      return world(stateOf({ ...h, essence: 25, bag }));
+    },
+  },
+  {
     id: "ferreiro-corrida",
     label: "Ferreiro (na corrida)",
     screen: "npc",
@@ -314,10 +344,30 @@ const SCENARIOS: Scenario[] = [
         },
         kits: {
           "u-ana": ["meteoro", "raio-em-cadeia", "nevasca", "escudo-de-mana"],
-          "u-bia": ["redemoinho", "golpe-provocador", "grito-de-guerra", "muralha-de-ferro"],
-          "u-caio": ["consagracao", "golpe-sagrado", "escudo-da-fe", "bencao-da-egide"],
-          "u-duda": ["fumaca", "lamina-envenenada", "sequencia-letal", "esquiva-sombria"],
-          "u-eva": ["chuva-de-flechas", "rajada-dupla", "marca-do-cacador", "tiro-perfurante"],
+          "u-bia": [
+            "redemoinho",
+            "golpe-provocador",
+            "grito-de-guerra",
+            "muralha-de-ferro",
+          ],
+          "u-caio": [
+            "consagracao",
+            "golpe-sagrado",
+            "escudo-da-fe",
+            "bencao-da-egide",
+          ],
+          "u-duda": [
+            "fumaca",
+            "lamina-envenenada",
+            "sequencia-letal",
+            "esquiva-sombria",
+          ],
+          "u-eva": [
+            "chuva-de-flechas",
+            "rajada-dupla",
+            "marca-do-cacador",
+            "tiro-perfurante",
+          ],
         },
       }),
     run: { dungeon: "masmorra-70", seek: 3 },

@@ -123,7 +123,10 @@ export function reforge(
   return { ...item, affixes };
 }
 
-/** §10: desmontar → minérios da região (Comum 1, Incomum 2, Raro 4, Épico 8, Lendário 16 + 1 Essência). */
+/**
+ * §10: desmontar → minérios da região (Comum 1, Incomum 2, Raro 4, Épico 8, Lendário 16) e, do
+ * lendário, Essência (`legendaryPerks.dismantleEssence`: 2 desde 27/11/2026; o spec dava 1).
+ */
 const DISMANTLE: Record<RarityId, number> = {
   comum: 1,
   incomum: 2,
@@ -132,12 +135,16 @@ const DISMANTLE: Record<RarityId, number> = {
   lendario: 16,
 };
 
-export function dismantle(item: ItemInstance): {
+export function dismantle(
+  item: ItemInstance,
+  B: Balance = gameBalance,
+): {
   ore: { material: Material; count: number };
   essence: number;
 } {
   return {
     ore: { material: materialOf(item.ilvl), count: DISMANTLE[item.rarity] },
-    essence: item.rarity === "lendario" ? 1 : 0,
+    essence:
+      item.rarity === "lendario" ? B.cfg.legendaryPerks.dismantleEssence : 0,
   };
 }

@@ -23,6 +23,7 @@ import {
   type HeroStats,
   balance as gameBalance,
 } from "./formulas.ts";
+import type { ItemPerk } from "./items/perks.ts";
 
 /**
  * O item instanciado (spec §9) e o herói da engine nova: o que vai salvo e o caminho até os derivados.
@@ -43,6 +44,8 @@ interface ItemCommon {
   affixes: Affix[];
   /** Lendário com efeito único (items/legendary.ts). */
   legendary?: string;
+  /** Os perks rolados no Ferreiro (items/perks.ts); sem eles, vale o de origem do lendário. */
+  perks?: ItemPerk[];
 }
 
 export interface WeaponItem extends ItemCommon {

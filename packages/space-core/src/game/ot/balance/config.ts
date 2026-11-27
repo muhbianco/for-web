@@ -355,6 +355,18 @@ export const BALANCE = {
     huntLegendary: { 4: 0.01, 5: 0.02 } as Record<number, number>,
   },
 
+  /**
+   * O perk dos lendários no Ferreiro (27/11/2026, pedido do dono; items/perks.ts): rolar o perk custa
+   * `rerollEssence`; imbuir o 2º perk, `imbueEssence`; desmontar um lendário dá `dismantleEssence`
+   * (o §10 dava 1). A Essência é o que sai de desmontar lendário.
+   */
+  legendaryPerks: {
+    rerollEssence: 1,
+    imbueEssence: 20,
+    maxPerks: 2,
+    dismantleEssence: 2,
+  },
+
   /** §10: Mercador. */
   merchant: {
     /** Equipamento Comum do tier: 20 × ouroLacaio(iL). */

@@ -20,6 +20,7 @@ import {
   rollAffixes,
 } from "./generate.ts";
 import { jobXpBonus, LEGENDARIES, legendaryMods } from "./legendary.ts";
+import { perkMods } from "./perks.ts";
 import {
   dismantle,
   refinable,
@@ -209,7 +210,7 @@ test("reforja mantém raridade, refino e lendário; desmonte dá minério pela r
   assert.notDeepEqual(again.affixes, item.affixes);
   assert.deepEqual(dismantle(item), {
     ore: { material: "Obsidiana", count: 16 },
-    essence: 1,
+    essence: 2,
   });
   assert.deepEqual(dismantle(sword(0)), {
     ore: { material: "Bronze", count: 4 },
@@ -281,7 +282,7 @@ test("Cajado da Aurora: a chance de não gastar mana dá mais Curar quando a man
         "padre",
         hs,
         B,
-        mods ? { curar: LEGENDARIES[2]!.mods! } : {},
+        mods ? { curar: perkMods(LEGENDARIES[2]!.perk) } : {},
       ).map((s) => ({
         ...s,
         manaPct: 0.5,

@@ -14,6 +14,10 @@ msgstr ""
 "Plural-Forms: \n"
 
 #: components/space/game/gameText.ts
+msgid "Este lendário já tem 2 perks."
+msgstr "Este lendário já tem 2 perks."
+
+#: components/space/game/gameText.ts
 msgid "Seleção inválida: marque os itens de novo."
 msgstr "Seleção inválida: marque os itens de novo."
 
@@ -70,6 +74,11 @@ msgstr "— O chefe! —"
 msgid "— Sala {0} —"
 msgstr "— Sala {0} —"
 
+#. placeholder {0}: c()
+#: components/space/game/SmithPanel.tsx
+msgid "— skill de {0}: não vale para você."
+msgstr "— skill de {0}: não vale para você."
+
 #: components/space/game/NpcDialog.tsx
 #~ msgid "\"O que não serve\": o que sua vocação ou level não usa, o que é pior que o vestido e os frascos vazios. Confira antes de vender: a venda não volta."
 #~ msgstr "\"O que não serve\": o que sua vocação ou level não usa, o que é pior que o vestido e os frascos vazios. Confira antes de vender: a venda não volta."
@@ -101,6 +110,11 @@ msgstr "(changes are being saved…)"
 #~ msgid "(chefe)"
 #~ msgstr "(chefe)"
 
+#. placeholder {0}: r()
+#: components/space/game/SmithPanel.tsx
+msgid "(faixa {0})"
+msgstr "(faixa {0})"
+
 #: components/space/game/TvMenu.tsx
 #~ msgid "(líder)"
 #~ msgstr "(líder)"
@@ -119,6 +133,11 @@ msgstr "(padrão)"
 msgid "(recebendo)"
 msgstr "(recebendo)"
 
+#. placeholder {0}: CLASSES[p.cls!].titles[1]
+#: components/space/game/ItemCard.tsx
+msgid "(skill de {0}: não vale para você)"
+msgstr "(skill de {0}: não vale para você)"
+
 #: components/space/game/StatsPanel.tsx
 #~ msgid "(SOR + 10)/10: escapa de qualquer golpe normal."
 #~ msgstr "(SOR + 10)/10: escapa de qualquer golpe normal."
@@ -126,6 +145,10 @@ msgstr "(recebendo)"
 #: components/space/game/StatsPanel.tsx
 #~ msgid "(SOR + 10)/10: escapa de qualquer golpe normal. Nunca passa de 40%."
 #~ msgstr "(SOR + 10)/10: escapa de qualquer golpe normal. Nunca passa de 40%."
+
+#: components/space/game/SmithPanel.tsx
+msgid "(vazio)"
+msgstr "(vazio)"
 
 #. placeholder {0}: gold(props.gold)
 #. placeholder {0}: props.ore
@@ -1463,6 +1486,10 @@ msgstr "12 hours"
 #: components/app/interface/settings/user/Language.tsx
 msgid "24 hours"
 msgstr "24 hours"
+
+#: components/space/game/SmithPanel.tsx
+msgid "2º perk"
+msgstr "2º perk"
 
 #: components/space/game/gameText.ts
 #~ msgid "3 ou 4 heróis. O chefe da região em 3 fases, com todas as mecânicas. Dá um Épico garantido."
@@ -4567,6 +4594,11 @@ msgstr "Desmontar"
 msgid "Desmontar {0} itens"
 msgstr "Desmontar {0} itens"
 
+#. placeholder {0}: cfg.dismantleEssence
+#: components/space/game/SmithPanel.tsx
+msgid "Desmontar um lendário dá {0} Essências."
+msgstr "Desmontar um lendário dá {0} Essências."
+
 #: components/space/game/SmithPanel.tsx
 msgid "Desmontou {n} itens: {ores} e {essence} Essência."
 msgstr "Desmontou {n} itens: {ores} e {essence} Essência."
@@ -5477,9 +5509,23 @@ msgstr "Esse link não é de um vídeo do YouTube."
 #~ msgid "Esse lugar é do herói ou do boneco."
 #~ msgstr "Esse lugar é do herói ou do boneco."
 
+#: components/space/game/gameText.ts
+msgid "Esse perk não existe neste item."
+msgstr "Esse perk não existe neste item."
+
 #: components/space/game/GearPanel.tsx
 msgid "Essência"
 msgstr "Essência"
+
+#. placeholder {0}: h().essence
+#: components/space/game/SmithPanel.tsx
+msgid "Essência: {0}"
+msgstr "Essência: {0}"
+
+#. placeholder {0}: props.essence
+#: components/space/game/SmithPanel.tsx
+msgid "Essência: você tem {0}"
+msgstr "Essência: você tem {0}"
 
 #: components/space/game/skillText.ts
 msgid "Esta cura não usa os seus bônus de cura."
@@ -5695,6 +5741,10 @@ msgstr "Falhou: o item continua +{0}."
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Falhou: só o ouro foi, a arma continua +{to}."
 #~ msgstr "Falhou: só o ouro foi, a arma continua +{to}."
+
+#: components/space/game/gameText.ts
+msgid "Falta Essência (sai de desmontar lendário)."
+msgstr "Falta Essência (sai de desmontar lendário)."
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Falta level para a evolução."
@@ -5985,6 +6035,11 @@ msgstr "Fuga"
 #: components/space/game/SkillTree.tsx
 #~ msgid "Ganhos no dummy de habilidade: {0} (o próximo em {1} tentativas). Postos na árvore: {2}."
 #~ msgstr "Ganhos no dummy de habilidade: {0} (o próximo em {1} tentativas). Postos na árvore: {2}."
+
+#. placeholder {0}: cfg.imbueEssence
+#: components/space/game/SmithPanel.tsx
+msgid "Gastar {0} Essências? Toque de novo"
+msgstr "Gastar {0} Essências? Toque de novo"
 
 #. placeholder {0}: ev().pointsLeft
 #: components/space/game/MasterPanel.tsx
@@ -6343,6 +6398,15 @@ msgstr "Ignora {p} da defesa do alvo."
 #: components/modal/modals/ReportContent.tsx
 msgid "Illegal hacking or cracking"
 msgstr "Illegal hacking or cracking"
+
+#: components/space/game/SmithPanel.tsx
+msgid "Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola."
+msgstr "Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola."
+
+#. placeholder {0}: cfg.imbueEssence
+#: components/space/game/SmithPanel.tsx
+msgid "Imbuir o 2º perk ({0} Essências)"
+msgstr "Imbuir o 2º perk ({0} Essências)"
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Impersonation"
@@ -8226,6 +8290,11 @@ msgstr "nova"
 msgid "Novidades do Muchat e do jogo"
 msgstr "Novidades do Muchat e do jogo"
 
+#. placeholder {0}: perkText(l().after) ?? ""
+#: components/space/game/SmithPanel.tsx
+msgid "Novo perk: {0}"
+msgstr "Novo perk: {0}"
+
 #: components/space/game/SkillTip.tsx
 msgid "Números de base: os pontos de quem joga não chegam para quem assiste."
 msgstr "Números de base: os pontos de quem joga não chegam para quem assiste."
@@ -8954,6 +9023,22 @@ msgstr "Perfil de voz"
 #: components/space/game/labels.ts
 #~ msgid "Perfurante"
 #~ msgstr "Perfurante"
+
+#. placeholder {0}: i + 1
+#: components/space/game/SmithPanel.tsx
+msgid "Perk {0}"
+msgstr "Perk {0}"
+
+#. placeholder {0}: l().slot + 1
+#. placeholder {1}: perkText(l().after) ?? ""
+#. placeholder {2}: perkText(l().before!) ?? ""
+#: components/space/game/SmithPanel.tsx
+msgid "Perk {0}: saiu {1} (era: {2})"
+msgstr "Perk {0}: saiu {1} (era: {2})"
+
+#: components/space/game/SmithPanel.tsx
+msgid "Perk lendário"
+msgstr "Perk lendário"
 
 #: components/app/interface/settings/ChannelSettings.tsx
 msgid "Permissions"
@@ -9775,13 +9860,17 @@ msgid "Refinar ({0})"
 msgstr "Refinar ({0})"
 
 #: components/space/game/SmithPanel.tsx
-msgid "Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora."
-msgstr "Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora."
+#~ msgid "Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora."
+#~ msgstr "Refinar e reforjar, só quando a corrida acabar. Desmontar da mochila vale agora."
 
 #. placeholder {0}: money(cost())
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Refinar por {0}"
 #~ msgstr "Refinar por {0}"
+
+#: components/space/game/SmithPanel.tsx
+msgid "Refinar, reforjar e rolar perk, só quando a corrida acabar. Desmontar da mochila vale agora."
+msgstr "Refinar, reforjar e rolar perk, só quando a corrida acabar. Desmontar da mochila vale agora."
 
 #. placeholder {0}: lvl()
 #: components/space/game/NpcDialog.tsx
@@ -10081,6 +10170,17 @@ msgstr "Revive um aliado caído com {p} da vida."
 #: components/space/game/labels.ts
 #~ msgid "Ritmo"
 #~ msgstr "Ritmo"
+
+#. placeholder {0}: i + 1
+#. placeholder {1}: cfg.rerollEssence
+#: components/space/game/SmithPanel.tsx
+msgid "Rolar o perk {0} ({1} Essência)"
+msgstr "Rolar o perk {0} ({1} Essência)"
+
+#. placeholder {0}: className()
+#: components/space/game/SmithPanel.tsx
+msgid "Rolar troca o perk por um numa das skills de {0} (a sua classe), com o tamanho sorteado na faixa da skill. Os afixos não mudam: isso é o Reforjar."
+msgstr "Rolar troca o perk por um numa das skills de {0} (a sua classe), com o tamanho sorteado na faixa da skill. Os afixos não mudam: isso é o Reforjar."
 
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Role Colour"
@@ -10857,6 +10957,10 @@ msgstr "Smart TV: intervalo entre vídeos"
 #: components/space/game/labels.ts
 #~ msgid "Só dá para se retirar num descanso."
 #~ msgstr "Só dá para se retirar num descanso."
+
+#: components/space/game/gameText.ts
+msgid "Só item Lendário tem perk."
+msgstr "Só item Lendário tem perk."
 
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Só neste dummy"
@@ -11732,6 +11836,10 @@ msgstr "Trocar a dungeon do grupo"
 #: components/space/game/MasterPanel.tsx
 msgid "Trocar de classe"
 msgstr "Trocar de classe"
+
+#: components/space/game/SmithPanel.tsx
+msgid "Trocar este perk? Toque de novo"
+msgstr "Trocar este perk? Toque de novo"
 
 #: components/space/game/GearPanel.tsx
 msgid "Trocar mesmo assim"

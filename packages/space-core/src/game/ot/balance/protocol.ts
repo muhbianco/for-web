@@ -247,6 +247,21 @@ export const RpgSmithDismantleManyCmd = cmd(
   "rpg.smith.dismantle.many",
   z.object({ npc, uids: z.array(ref).min(1).max(BAG_SLOTS) }).strict(),
 );
+/**
+ * Ferreiro: o perk do lendário (27/11/2026): rolar o perk `slot` (1 Essência) ou imbuir o 2º perk
+ * (20 Essências). Vale vestido ou na mochila; não na corrida.
+ */
+export const RpgSmithPerkCmd = cmd(
+  "rpg.smith.perk",
+  z
+    .object({
+      npc,
+      uid: ref,
+      action: z.enum(["rolar", "imbuir"]),
+      slot: z.number().int().min(0).max(1).optional(),
+    })
+    .strict(),
+);
 /** Banqueiro: ouro no cofre (positivo deposita, negativo saca). */
 export const RpgBankCmd = cmd(
   "rpg.bank",
@@ -347,6 +362,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgShopSellManyCmd,
   RpgSmithCmd,
   RpgSmithDismantleManyCmd,
+  RpgSmithPerkCmd,
   RpgBankCmd,
   RpgVaultCmd,
   RpgVaultExpandCmd,

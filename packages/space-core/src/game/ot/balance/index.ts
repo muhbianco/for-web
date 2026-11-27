@@ -14,6 +14,7 @@ export * from "./formulas.ts";
 export * from "./items/autoequip.ts";
 export * from "./items/generate.ts";
 export * from "./items/legendary.ts";
+export * from "./items/perks.ts";
 export * from "./items/smith.ts";
 export * from "./items/view.ts";
 export * from "./monsters/generate.ts";

@@ -347,6 +347,14 @@ export function errorText(code?: string, reason?: string): string {
       return t`Faltam minérios da região do item.`;
     case "sem-pedra":
       return t`Você não tem Pedra de Proteção.`;
+    case "sem-essencia":
+      return t`Falta Essência (sai de desmontar lendário).`;
+    case "nao-lendario":
+      return t`Só item Lendário tem perk.`;
+    case "perk-invalido":
+      return t`Esse perk não existe neste item.`;
+    case "perks-cheios":
+      return t`Este lendário já tem 2 perks.`;
     case "nao-refinavel":
       return t`Este item não pode ser refinado.`;
     case "no-maximo":

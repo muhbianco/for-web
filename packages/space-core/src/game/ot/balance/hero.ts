@@ -26,6 +26,8 @@ import {
   type RandomSource,
   generateItem,
 } from "./items/generate.ts";
+import { itemPerks } from "./items/legendary.ts";
+import { rollPerk } from "./items/perks.ts";
 import {
   dismantle,
   refineAttempt,
@@ -598,6 +600,68 @@ export function reforgeItem(
     ores: { ...h.ores, [cost.ore.material]: ore - cost.ore.count },
   };
   return done(replaceItem(paid, uid, { ...reforge(item, rng, B), uid }));
+}
+
+/**
+ * Rola o perk `slot` (0 ou 1) de um lendário (27/11/2026, pedido do dono): uma skill da classe do herói
+ * (menos a do outro perk do item) com o tamanho na faixa dela. Custa Essência; vale vestido ou na
+ * mochila. Os afixos não mudam (isso é o Reforjar).
+ */
+export function rerollPerk(
+  h: HeroV5,
+  uid: string,
+  slot: number,
+  rng: RandomSource,
+  B: Balance = gameBalance,
+) {
+  const item = findItem(h, uid);
+  if (!item) return fail("item-nao-encontrado" as const);
+  if (item.rarity !== "lendario") return fail("nao-lendario" as const);
+  const perks = itemPerks(item);
+  if (!Number.isInteger(slot) || slot < 0 || slot >= Math.max(1, perks.length))
+    return fail("perk-invalido" as const);
+  const cost = B.cfg.legendaryPerks.rerollEssence;
+  if (h.essence < cost) return fail("sem-essencia" as const);
+  const others = perks.filter((_, i) => i !== slot).map((p) => p.skill);
+  const perk = rollPerk(h.cls, others, rng);
+  const next = [...perks];
+  next[slot] = perk;
+  return done(
+    replaceItem({ ...h, essence: h.essence - cost }, uid, {
+      ...item,
+      perks: next,
+    }),
+    { perk },
+  );
+}
+
+/** Imbuir: o lendário ganha um 2º perk rolado (numa skill que ele ainda não tem), por Essência. */
+export function imbuePerk(
+  h: HeroV5,
+  uid: string,
+  rng: RandomSource,
+  B: Balance = gameBalance,
+) {
+  const item = findItem(h, uid);
+  if (!item) return fail("item-nao-encontrado" as const);
+  if (item.rarity !== "lendario") return fail("nao-lendario" as const);
+  const perks = itemPerks(item);
+  if (perks.length >= B.cfg.legendaryPerks.maxPerks)
+    return fail("perks-cheios" as const);
+  const cost = B.cfg.legendaryPerks.imbueEssence;
+  if (h.essence < cost) return fail("sem-essencia" as const);
+  const perk = rollPerk(
+    h.cls,
+    perks.map((p) => p.skill),
+    rng,
+  );
+  return done(
+    replaceItem({ ...h, essence: h.essence - cost }, uid, {
+      ...item,
+      perks: [...perks, perk],
+    }),
+    { perk },
+  );
 }
 
 export function dismantleItem(h: HeroV5, uid: string) {

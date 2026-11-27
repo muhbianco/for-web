@@ -15,6 +15,7 @@ import { type Balance, balance as gameBalance } from "./formulas.ts";
 import { BAG_SLOTS, HERO_VERSION, type HeroV5, balanceHero } from "./hero.ts";
 import { MATERIALS } from "./items/generate.ts";
 import { LEGENDARIES } from "./items/legendary.ts";
+import { PERKS } from "./items/perks.ts";
 import { vaultSlots } from "./npcs/bank.ts";
 import { skillPoints, skillPointsSpent } from "./skills/tree.ts";
 
@@ -36,6 +37,16 @@ const common = {
   legendary: z
     .string()
     .refine((x) => LEGENDARIES.some((l) => l.id === x))
+    .optional(),
+  // Os perks rolados no Ferreiro (27/11/2026): até 2, numa skill que tenha perk.
+  perks: z
+    .array(
+      z.object({
+        skill: z.string().refine((x) => Object.hasOwn(PERKS, x)),
+        value: z.number().finite().min(0).max(1e4),
+      }),
+    )
+    .max(2)
     .optional(),
 };
 const item = z.union([

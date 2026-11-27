@@ -1,8 +1,15 @@
-import { type AffixId, AFFIXES, FAMILIES, RARITIES } from "../content.ts";
+import {
+  type AffixId,
+  type ClassId,
+  AFFIXES,
+  FAMILIES,
+  RARITIES,
+} from "../content.ts";
 import type { ItemInstance } from "../equipment.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
 import { type Material, itemName, materialOf } from "./generate.ts";
-import { legendaryOf } from "./legendary.ts";
+import { itemPerks, legendaryOf } from "./legendary.ts";
+import { perkClass, perkText } from "./perks.ts";
 
 /**
  * O item como a tela o mostra (spec §9.7): tooltip e o que a arte precisa para desenhar o ícone
@@ -37,7 +44,8 @@ export interface ItemTooltip {
     text: string;
     delta?: number;
   }[];
-  legendary?: string;
+  /** Os perks do lendário (em laranja): a frase e a classe dona da skill (`null`: vale para todas). */
+  perks?: { text: string; cls: ClassId | null }[];
   visual: ItemVisual;
 }
 
@@ -100,6 +108,10 @@ export function itemTooltip(
   B: Balance = gameBalance,
 ): ItemTooltip {
   const leg = legendaryOf(item);
+  const perks = itemPerks(item).flatMap((p) => {
+    const text = perkText(p);
+    return text ? [{ text, cls: perkClass(p) }] : [];
+  });
   const rm = B.rarityMult(item.rarity);
   const base: ItemTooltip["base"] = [];
   let kind: string;
@@ -171,7 +183,7 @@ export function itemTooltip(
     base,
     refine: item.refine,
     affixes,
-    ...(leg ? { legendary: leg.text } : {}),
+    ...(perks.length > 0 ? { perks } : {}),
     visual: itemVisual(item),
   };
 }
