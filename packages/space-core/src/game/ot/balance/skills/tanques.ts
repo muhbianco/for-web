@@ -40,10 +40,12 @@ export const GUERREIRO: SkillContent[] = [
     target: "alvo único",
     cooldownMs: s(8),
     manaPct: 0.04,
-    threatMult: 2,
+    // 27/11/2026: a ameaça agora vem também da VIT; o golpe perde 20% do multiplicador e ganha ~15%
+    // de dano (o dono: "cuidado pro kit do guerreiro não ficar inútil").
+    threatMult: 1.6,
     ai: [SEMPRE],
     effects: [
-      { type: "dano", parts: [fis(1.3)] },
+      { type: "dano", parts: [fis(1.5)] },
       { type: "provocar", durationMs: s(4), scope: "alvo" },
     ],
     mechanics: [
@@ -206,9 +208,11 @@ export const GUERREIRO: SkillContent[] = [
     target: "sala inteira",
     cooldownMs: s(10),
     manaPct: 0.06,
-    threatMult: 2,
+    // 27/11/2026: a ameaça agora vem também da VIT; o golpe perde 20% do multiplicador e ganha ~15%
+    // de dano (o dono: "cuidado pro kit do guerreiro não ficar inútil").
+    threatMult: 1.6,
     ai: [inimigos(3)],
-    effects: [{ type: "dano", parts: [fis(0.9)], targets: "area" }],
+    effects: [{ type: "dano", parts: [fis(1.05)], targets: "area" }],
     mechanics: [
       mech(
         "laminas-giratorias",
@@ -298,10 +302,12 @@ export const PALADINO: SkillContent[] = [
     target: "alvo único",
     cooldownMs: s(8),
     manaPct: 0.04,
-    threatMult: 3,
+    // 27/11/2026: a ameaça agora vem também da VIT; o golpe perde 20% do multiplicador e ganha ~15%
+    // de dano (o dono: "cuidado pro kit do guerreiro não ficar inútil").
+    threatMult: 2.4,
     ai: [SEMPRE],
     effects: [
-      { type: "dano", parts: [fis(0.8), sag(0.8)] },
+      { type: "dano", parts: [fis(0.92), sag(0.92)] },
       { type: "provocar", durationMs: s(4), scope: "alvo" },
     ],
     mechanics: [

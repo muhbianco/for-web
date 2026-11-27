@@ -1904,7 +1904,7 @@ export function fight(
         continue;
       }
       const regen =
-        ch.mp * cfg.regen.mpPctPerSecond +
+        ch.mp * (cfg.regen.mpPctPerSecond + (ch.mpRegenPct ?? 0)) +
         cfg.regen.mpPerIntPerSecond * ch.attrs.INT +
         ch.mp *
           sum(
@@ -1913,7 +1913,8 @@ export function fight(
             ),
           );
       h.mp = Math.min(ch.mp, h.mp + regen * DT);
-      const hpRegen = buffOf(h, "regenVidaPct");
+      // A regeneração da VIT (27/11/2026) soma com a dos buffs.
+      const hpRegen = buffOf(h, "regenVidaPct") + (ch.hpRegenPct ?? 0);
       if (hpRegen > 0) heal(h, maxHp(h) * hpRegen * DT, null);
 
       if (h.manaShield && h.manaShield.until <= t) {
@@ -1945,7 +1946,7 @@ export function fight(
         if (!manaFirst && ratio(h) < at.hp && hasHp) {
           const before = h.hp;
           source = "pocao";
-          heal(h, h.input.potions.hp, null);
+          heal(h, h.input.potions.hp * (ch.potionMult ?? 1), null);
           source = "auto";
           emit({ k: "pocao", a: who(h), v: Math.round(h.hp - before) });
           h.pots--;
@@ -1956,7 +1957,10 @@ export function fight(
             (h.input.potions.hpCooldownMs ?? cfg.potions.cooldownMs) / 1000;
         } else if (h.mp / ch.mp < at.mp && hasMp) {
           const before = h.mp;
-          h.mp = Math.min(ch.mp, h.mp + h.input.potions.mp);
+          h.mp = Math.min(
+            ch.mp,
+            h.mp + h.input.potions.mp * (ch.manaPotionMult ?? 1),
+          );
           emit({
             k: "pocao",
             a: who(h),

@@ -61,7 +61,7 @@ export function statBlurb(s: Stat): string {
     case "AGI":
       return t`Agilidade: esquiva e velocidade de ataque.`;
     case "VIT":
-      return t`Vitalidade: +1% de vida por ponto e um pouco de defesa.`;
+      return t`Vitalidade: +1% de vida por ponto, defesa, mais cura e mana nas poções, regeneração em combate e ameaça (segura o monstro).`;
     case "INT":
       return t`Inteligência: +1% de mana, MATQ e defesa mágica.`;
     case "DES":

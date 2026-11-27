@@ -233,8 +233,12 @@ export function createMonsters(
 
   /** Chefe de Região: o chefe de masmorra com 3 fases (100–50–25%) e todas as mecânicas da faixa. */
   function regional(m: number, o: MonsterOptions): EnemyInput {
+    const c = chefe(m, o);
     return {
-      ...chefe(m, o),
+      ...c,
+      // D63: o chefe de Região cobra o tanque (Golpe Pesado maior, Pulso menor).
+      buster: { ...c.buster!, mult: mon.regionalBusterMult },
+      pulse: { ...c.pulse!, raw: c.pulse!.raw * mon.regionalPulseMult },
       archetype: "regional",
       phase: { ...mech.phase },
       finalPhase: { ...mech.regionalFinal },

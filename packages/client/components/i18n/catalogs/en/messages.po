@@ -13155,8 +13155,12 @@ msgstr "Vira {0}"
 #~ msgstr "VIT"
 
 #: components/space/game/gameText.ts
-msgid "Vitalidade: +1% de vida por ponto e um pouco de defesa."
-msgstr "Vitalidade: +1% de vida por ponto e um pouco de defesa."
+#~ msgid "Vitalidade: +1% de vida por ponto e um pouco de defesa."
+#~ msgstr "Vitalidade: +1% de vida por ponto e um pouco de defesa."
+
+#: components/space/game/gameText.ts
+msgid "Vitalidade: +1% de vida por ponto, defesa, mais cura e mana nas poções, regeneração em combate e ameaça (segura o monstro)."
+msgstr "Vitalidade: +1% de vida por ponto, defesa, mais cura e mana nas poções, regeneração em combate e ameaça (segura o monstro)."
 
 #: components/space/game/heroUi.ts
 #~ msgid "Vitalidade: +1% de vida por ponto, regeneração de vida e defesa contra golpes."

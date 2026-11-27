@@ -110,10 +110,33 @@ export const BALANCE = {
   /** §5: bloqueio de escudo. */
   block: { chance: 0.1, reduce: 0.6 },
 
-  /** §5: regeneração. HP em combate = 0. */
+  /** §5: regeneração. HP em combate só pela VIT (`vit`) e pelos buffs. */
   regen: {
     mpPctPerSecond: 0.004,
     mpPerIntPerSecond: 0.05,
+  },
+
+  /**
+   * A VIT além da vida e da defesa (27/11/2026, o dono: "VIT aumenta cura de pot e regen/s, e a mana
+   * também"; "ameaça da VIT"). Como no RO, ela cura mais com poção e regenera; aqui também segura o
+   * monstro. É o que sustenta a build que quer ficar viva, inclusive a de dano (o assassino "tanque").
+   * - poção: +0,2% de cura e +0,1% de mana por ponto;
+   * - em combate, por segundo: +0,001% da vida máxima e +0,0005% da mana máxima por ponto (a mana
+   *   pela VIT é menor: a regeneração-base já é 0,4%/s, e o tanque de 168 de VIT quase a dobrava). Com
+   *   +0,002% de vida o guerreiro sem suporte vencia a Masmorra do 400 (§14.1): a composição tem de
+   *   continuar valendo;
+   * - ameaça: o multiplicador da classe vale `threatFixed` + (1 − `threatFixed`) × VIT ÷ a VIT da
+   *   build de referência da classe no nível, entre `threatMin` e `threatMax`: a referência fica
+   *   em 1; o tanque sem VIT (o de besta e destreza) segura menos, e o de dano com VIT puxa mais.
+   */
+  vit: {
+    potionPerPoint: 0.002,
+    manaPotionPerPoint: 0.001,
+    hpRegenPctPerPoint: 0.00001,
+    mpRegenPctPerPoint: 0.000005,
+    threatFixed: 0.4,
+    threatMin: 0.4,
+    threatMax: 1.6,
   },
 
   /**
@@ -126,7 +149,13 @@ export const BALANCE = {
    * poção; o teto é a recarga de 1 s que a poção de mana divide com a de vida (~45 por corrida).
    */
   mana: {
-    costScale: 1.3,
+    /**
+     * 1,3 → 1,45 em 27/11/2026: a VIT passou a dar mana (poção e regeneração) e a pressão caiu ~25%;
+     * com 1,45 as poções de mana por corrida do farm voltam ao total de antes (scripts/mana-pressure.ts:
+     * guerreiro 18→17, padre 69→63, mago 54→47, druida 106→106, caçador 38→42, assassino 37→41). A
+     * mana continua sendo o problema, e a VIT alivia um pouco quem a tem.
+     */
+    costScale: 1.45,
     costPerPotencyRank: 0.01,
     costPerMechanicUp: 0.02,
     costCutPerInt: 0.003,
@@ -483,6 +512,16 @@ export const BALANCE = {
     /** Pulso Sombrio = 22% × HP_caç / (1 − RM_caç), mágico, em todos, a cada 12 s. */
     pulsePct: 0.22,
     pulseEverySeconds: 12,
+    /**
+     * D63 (27/11/2026, o dono: o tanque e o suporte de outra build "não servem pra grupo, na masmorra
+     * em que ele será necessário"): o chefe de Região cobra o tanque. O Golpe Pesado vale 5× o golpe
+     * (o da Masmorra, 3×): ~60% da vida efetiva do tanque de referência, e o tanque com bem menos que
+     * isso cai nele de vida cheia, sem cura que salve; o Pulso cai 20%. O aperto (gen-edge) põe os 4 do
+     * limite de volta na beira. Na Masmorra o farm abaixo do limite já cobra o papel; com 5 no limite
+     * a composição pesa menos (D53).
+     */
+    regionalBusterMult: 5,
+    regionalPulseMult: 0.8,
     /** Cataclismo: 40% do HP máx. de cada herói a cada 2 s, dano verdadeiro. */
     cataclysmAtSeconds: 150,
     menorCataclysmAtSeconds: 120,

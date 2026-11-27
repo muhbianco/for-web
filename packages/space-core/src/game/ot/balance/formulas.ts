@@ -112,6 +112,12 @@ export interface HeroStats {
   kind: "melee" | "ranged" | "magic";
   penetration: number;
   threat: number;
+  /** VIT: × na cura e na mana de cada poção. */
+  potionMult: number;
+  manaPotionMult: number;
+  /** VIT: fração da vida máxima e da mana máxima regenerada por segundo em combate. */
+  hpRegenPct: number;
+  mpRegenPct: number;
 }
 
 export function createBalance(cfg: BalanceConfig = BALANCE) {
@@ -329,6 +335,28 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
 
   // ------------------------------------------------------------ derivados do herói (§4.2)
 
+  /** A VIT da build de referência da classe no nível (só a distribuição, sem afixo): a régua da ameaça. */
+  const refVitCache = new Map<string, number>();
+  function referenceVit(cls: ClassDef, level: number): number {
+    const key = `${cls.id}@${level}`;
+    let v = refVitCache.get(key);
+    if (v === undefined) {
+      v = allocateByWeights(attributePoints(level), cls.referenceBuild).VIT;
+      refVitCache.set(key, v);
+    }
+    return v;
+  }
+
+  /** Ameaça pela VIT (`cfg.vit`): 1 na VIT da referência da classe. */
+  function vitThreat(cls: ClassDef, level: number, vit: number): number {
+    const v = cfg.vit;
+    const ref = Math.max(1, referenceVit(cls, level));
+    return Math.min(
+      v.threatMax,
+      Math.max(v.threatMin, v.threatFixed + (1 - v.threatFixed) * (vit / ref)),
+    );
+  }
+
   function heroStats(h: HeroLoadout): HeroStats {
     const d = cfg.derived;
     const A = h.attrs;
@@ -448,7 +476,11 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
       minRoll,
       kind: fam.kind,
       penetration: fam.penetration ?? 0,
-      threat: cls.threat,
+      threat: cls.threat * vitThreat(cls, L, A.VIT),
+      potionMult: 1 + cfg.vit.potionPerPoint * A.VIT,
+      manaPotionMult: 1 + cfg.vit.manaPotionPerPoint * A.VIT,
+      hpRegenPct: cfg.vit.hpRegenPctPerPoint * A.VIT,
+      mpRegenPct: cfg.vit.mpRegenPctPerPoint * A.VIT,
     };
   }
 

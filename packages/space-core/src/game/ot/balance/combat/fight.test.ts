@@ -273,7 +273,9 @@ test("Reflexo Sagrado: o escudo que quebra causa dano sagrado", () => {
 
 test("Consagração: cada inimigo consagrado cura o paladino em 2% do HP máx. por segundo (P63)", () => {
   const gain = (n: number) => {
-    const pal = withSkills("paladino", [skill("paladino", "consagracao")]);
+    const base = withSkills("paladino", [skill("paladino", "consagracao")]);
+    // Só a Consagração: sem a regeneração da VIT (D62), que não cresce com os inimigos.
+    const pal = { ...base, stats: { ...base.stats, hpRegenPct: 0 } };
     const start = 0.6; // acima da linha da poção, que fica sem estoque
     const r = fight([pal], pack(n), {
       maxSeconds: 3,

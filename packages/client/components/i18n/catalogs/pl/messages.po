@@ -13155,7 +13155,11 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "Vitalidade: +1% de vida por ponto e um pouco de defesa."
+#~ msgid "Vitalidade: +1% de vida por ponto e um pouco de defesa."
+#~ msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Vitalidade: +1% de vida por ponto, defesa, mais cura e mana nas poções, regeneração em combate e ameaça (segura o monstro)."
 msgstr ""
 
 #: components/space/game/heroUi.ts

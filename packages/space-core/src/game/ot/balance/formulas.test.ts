@@ -4,6 +4,7 @@ import test from "node:test";
 import { BALANCE } from "./config.ts";
 import { CLASS_IDS, CLASSES } from "./content.ts";
 import { balance as B, createBalance, hyper } from "./formulas.ts";
+import { heroLoadout } from "./equipment.ts";
 import { reference as R } from "./reference.ts";
 
 // Fórmulas e tetos do rebalanceamento (spec §3, §4 e §4.4). As tabelas da §17 estão em reference.test.ts.
@@ -232,4 +233,27 @@ test("createBalance com um config afinado não mexe no do jogo", () => {
   assert.equal(tuned.critChance(1e9, 1, 0.5), 0.5);
   assert.equal(B.critChance(1e9, 1, 0.5), BALANCE.crit.hardCap);
   assert.equal(BALANCE.crit.hardCap, 0.7);
+});
+
+test("D62: a VIT cura mais na poção, regenera e segura o monstro (27/11/2026)", () => {
+  const stats = (cls: (typeof CLASS_IDS)[number], vit: number) => {
+    const h = R.referenceBalanceHero(cls, 160);
+    return B.heroStats(heroLoadout({ ...h, attrs: { ...h.attrs, VIT: vit } }));
+  };
+  // Poção: +0,2% de cura e +0,1% de mana por ponto; regeneração por segundo por ponto.
+  const s100 = stats("assassino", 100);
+  assert.ok(Math.abs(s100.potionMult - 1.2) < 1e-9);
+  assert.ok(Math.abs(s100.manaPotionMult - 1.1) < 1e-9);
+  assert.ok(Math.abs(s100.hpRegenPct - 0.001) < 1e-12);
+  assert.ok(Math.abs(s100.mpRegenPct - 0.0005) < 1e-12);
+  // Ameaça: na VIT da build de referência (sem afixo), o multiplicador da classe; sem VIT, 40%; teto 1,6.
+  for (const cls of ["guerreiro", "paladino", "assassino"] as const) {
+    const refVit = B.allocateByWeights(B.attributePoints(160), CLASSES[cls].referenceBuild).VIT;
+    const bare = R.referenceBalanceHero(cls, 160, { gearAttrs: false });
+    const at = (vit: number) =>
+      B.heroStats(heroLoadout({ ...bare, attrs: { ...bare.attrs, VIT: vit } })).threat;
+    assert.ok(Math.abs(at(refVit) - CLASSES[cls].threat) < 1e-9, cls);
+    assert.ok(Math.abs(at(1) / CLASSES[cls].threat - (0.4 + 0.6 / refVit)) < 1e-9, cls);
+    assert.equal(at(refVit * 10), CLASSES[cls].threat * 1.6, cls);
+  }
 });

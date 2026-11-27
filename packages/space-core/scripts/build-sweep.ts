@@ -44,7 +44,10 @@ import { DUNGEONS } from "../src/game/ot/balance/dungeons/catalog.ts";
 import { createMonsters } from "../src/game/ot/balance/monsters/generate.ts";
 import { simulateRun } from "../src/game/ot/balance/run/simulate.ts";
 import {
+  FARM_TRIOS,
   LIMIT_GROUP_PARTIES,
+  REGION_PARTIES,
+  belowLimitFighter,
   limitFighter,
 } from "../src/game/ot/balance/sim/calibration.ts";
 import {
@@ -63,10 +66,23 @@ const arg = (k: string, d: string) => {
   return i > 0 ? process.argv[i + 1]! : d;
 };
 // Níveis com Masmorra (o teste de grupo roda a Masmorra do nível).
-const LEVELS = arg("levels", "40,90,160,260,410").split(",").map(Number);
+const LEVELS = arg(
+  "levels",
+  process.argv.includes("regiao") ? "50,100,150,250,400" : "40,90,160,260,410",
+)
+  .split(",")
+  .map(Number);
 const ONLY = arg("classes", "");
 const CLASSES_RUN = (ONLY ? ONLY.split(",") : [...CLASS_IDS]) as ClassId[];
 const OUT = arg("out", "");
+/**
+ * O conteúdo do teste de grupo (27/11/2026):
+ * - limite: a Masmorra do nível com a PT de 5 do limite (folgada: D53, no limite a comp pesa menos);
+ * - farm: a Masmorra do nível com o trio do farm ABAIXO do limite (é ele que a calibra, D53);
+ * - regiao: a Região do nível (50, 100… 500) com os 4 no limite (apertada por calibração).
+ * A build entra no lugar da classe numa PT em que ela é a única do papel.
+ */
+const GROUP = arg("group", "limite") as "limite" | "farm" | "regiao";
 
 const RL = createReference(B, "limite");
 const R0 = createReference(B);
@@ -82,18 +98,46 @@ interface Group {
   seconds: number;
   deaths: number;
 }
-function groupOf(cls: ClassId, L: number) {
-  const dg = DUNGEONS.find((d) => d.kind === "masmorra" && d.level === L);
-  // A PT em que a classe é a única do papel dela (o paladino de tanque único, não ao lado do
-  // guerreiro): sem isso, "sem o papel" não mede nada.
+/** A PT do contexto em que a classe é a única do papel (sem isso, "sem o papel" não mede nada). */
+function partyOf(cls: ClassId): readonly ClassId[] | undefined {
   const role = CLASSES[cls].role;
-  const party =
-    LIMIT_GROUP_PARTIES.find(
-      (p) => p.includes(cls) && p.filter((c) => CLASSES[c].role === role).length === 1,
-    ) ?? LIMIT_GROUP_PARTIES.find((p) => p.includes(cls));
+  const sole = (p: readonly ClassId[]) => p.filter((c) => CLASSES[c].role === role).length === 1;
+  const pool = GROUP === "farm" ? FARM_TRIOS : GROUP === "regiao" ? REGION_PARTIES : LIMIT_GROUP_PARTIES;
+  const found = pool.find((p) => p.includes(cls) && sole(p));
+  if (found) return found;
+  // Na Região e no farm nem toda classe tem PT própria: entra no lugar de quem tem o mesmo papel
+  // numa PT em que esse papel é único (o paladino no lugar do guerreiro; o druida no do padre).
+  for (const p of pool) {
+    const i = p.findIndex((c) => CLASSES[c].role === role);
+    if (i >= 0 && sole(p)) return p.map((c, k) => (k === i ? cls : c));
+  }
+  return LIMIT_GROUP_PARTIES.find((p) => p.includes(cls));
+}
+
+/** O herói da build no contexto: no farm, a referência abaixo do limite (refino do farm, sem as mecânicas do limite). */
+function contextBase(cls: ClassId, L: number): { base: BalanceHero; hs: HeroSkills } {
+  if (GROUP === "farm") {
+    const base = R0.referenceBalanceHero(cls, L, { refine: B.cfg.limit.farmRefine });
+    return { base, hs: referenceSkills(cls, B.tierFor(base.job), base.job, false, B, "gabarito") };
+  }
+  const base = RL.referenceBalanceHero(cls, L);
+  return {
+    base,
+    hs: limitMechanics(cls, referenceSkills(cls, B.tierFor(base.job), base.job, false, B, "gabarito")),
+  };
+}
+
+function groupOf(cls: ClassId, L: number) {
+  const dg =
+    GROUP === "regiao"
+      ? DUNGEONS.find((d) => d.kind === "regional" && d.level === L)
+      : DUNGEONS.find((d) => d.kind === "masmorra" && d.level === L);
+  const party = partyOf(cls);
   if (!dg || !party) return null;
   const slot = party.indexOf(cls);
-  const others = party.map((c, i) => (i === slot ? null : limitFighter(c, L, {}, B)));
+  const others = party.map((c, i) =>
+    i === slot ? null : GROUP === "farm" ? belowLimitFighter(c, L, {}, B) : limitFighter(c, L, {}, B),
+  );
   return (h: BalanceHero, hs: HeroSkills): Group => {
     const fighters = others.map((f) => f ?? fighterOf(h, hs));
     const r = simulateRun(dg, fighters, { mode: "esperado" }, B, M);
@@ -313,11 +357,13 @@ for (const cls of CLASSES_RUN) {
     const ref = measure(base, hs);
     refs[`${cls}@${L}`] = ref;
     const group = groupOf(cls, L);
-    groupRefs[`${cls}@${L}`] = group ? group(base, hs) : null;
+    const gctx = contextBase(cls, L);
+    const groupBuild = (family: FamilyId, off: OffhandId | null, weight: ArmorWeight, attrs: string) =>
+      group!(withAttrs(withItems(gctx.base, family, off, weight), attrs), gctx.hs);
+    groupRefs[`${cls}@${L}`] = group ? group(gctx.base, gctx.hs) : null;
     if (group && cls !== "mago") {
-      const mage = RL.referenceBalanceHero("mago", L);
-      const mageHs = referenceSkills("mago", B.tierFor(mage.job), mage.job, false, B, "gabarito");
-      groupWithout[`${cls}@${L}`] = group(mage, mageHs);
+      const m = contextBase("mago", L);
+      groupWithout[`${cls}@${L}`] = group(m.base, m.hs);
     }
     const refRow = {
       weapon: c.referenceWeapon,
@@ -335,7 +381,7 @@ for (const cls of CLASSES_RUN) {
           for (const attrs of Object.keys(ATTR_BUILDS)) {
             const h = withAttrs(withItems(base, family, off, weight), attrs);
             const m = measure(h, hs);
-            const row: Row = { cls, level: L, pass: "itens", weapon: family, off, weight, fit, attrs, kit: hs.slots, score: roleScore(cls, m, ref), m, g: group ? group(h, hs) : null };
+            const row: Row = { cls, level: L, pass: "itens", weapon: family, off, weight, fit, attrs, kit: hs.slots, score: roleScore(cls, m, ref), m, g: group ? groupBuild(family, off, weight, attrs) : null };
             rows.push(row);
             itemRows.push(row);
           }
@@ -359,6 +405,6 @@ for (const cls of CLASSES_RUN) {
   }
 }
 
-const out = { at: new Date().toISOString(), levels: LEVELS, refs, groupRefs, groupWithout, rows };
+const out = { at: new Date().toISOString(), group: GROUP, levels: LEVELS, refs, groupRefs, groupWithout, rows };
 if (OUT) writeFileSync(OUT, JSON.stringify(out));
 process.stderr.write(`fim: ${rows.length} builds em ${Math.round((Date.now() - t0) / 1000)} s\n`);
