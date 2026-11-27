@@ -160,6 +160,14 @@ msgstr "(você tem {0})"
 #~ msgid "(você)"
 #~ msgstr "(você)"
 
+#: components/space/SpacePage.tsx
+msgid "[código]"
+msgstr "[código]"
+
+#: components/space/SpacePage.tsx
+msgid "[spoiler]"
+msgstr "[spoiler]"
+
 #. placeholder {0}: props.count
 #: components/ui/components/features/messaging/elements/BlockedMessage.tsx
 msgid "{0, plural, one {# blocked message} other {# blocked messages}}"
@@ -934,6 +942,11 @@ msgstr "{ms} ms/s (maior trecho {run} ms)"
 #~ msgid "{n} partidas rolando"
 #~ msgstr "{n} partidas rolando"
 
+#. placeholder {0}: b.text
+#: components/space/chat/BubbleLayer.tsx
+msgid "{name} disse: {0}"
+msgstr "{name} disse: {0}"
+
 #. placeholder {0}: r.gold
 #: components/space/game/RunPanel.tsx
 #~ msgid "{name}: +{exp} de experiência, {0} moedas, {items}."
@@ -1411,6 +1424,14 @@ msgstr "⚠ {0}: {1}{target}"
 msgid "✓ pode usar · ★ é o lendário com nome da classe."
 msgstr "✓ pode usar · ★ é o lendário com nome da classe."
 
+#: components/space/SpacePage.tsx
+msgid "📎 {n} anexos"
+msgstr "📎 {n} anexos"
+
+#: components/space/SpacePage.tsx
+msgid "📎 anexo"
+msgstr "📎 anexo"
+
 #. placeholder {0}: r.content.tier
 #: components/space/game/SkillsPanel.tsx
 #~ msgid "🔒 abre no T{0}"
@@ -1827,9 +1848,22 @@ msgstr "Abrir links, notas, imagens e portais desta sala e assistir à Smart TV 
 msgid "Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs das salas"
 msgstr "Abrir links, notas, imagens e portais do Espaço e assistir às Smart TVs das salas"
 
+#: components/space/chat/ChatPanel.tsx
+msgid "Abrir no canal (sai do mapa)"
+msgstr "Abrir no canal (sai do mapa)"
+
+#: components/space/chat/ChatDock.tsx
+msgid "Abrir no chat"
+msgstr "Abrir no chat"
+
 #: components/space/NewsPanel.tsx
 msgid "Abrir o Arsenal"
 msgstr "Abrir o Arsenal"
+
+#. placeholder {0}: props.place
+#: components/space/chat/ChatPanel.tsx
+msgid "Abrir o canal {0} na tela cheia"
+msgstr "Abrir o canal {0} na tela cheia"
 
 #: components/space/game/itemUi.ts
 #~ msgid "Absorve {good}"
@@ -2326,6 +2360,11 @@ msgstr "Arsenal"
 #: components/space/game/StatsPanel.tsx
 #~ msgid "As habilidades voltam DES/300 mais depressa."
 #~ msgstr "As habilidades voltam DES/300 mais depressa."
+
+#. placeholder {0}: props.place
+#: components/space/chat/ChatComposer.tsx
+msgid "As mensagens vão para o chat de {0}"
+msgstr "As mensagens vão para o chat de {0}"
 
 #: components/space/game/ClassPicker.tsx
 msgid "As regras mudaram (atributos, habilidades, itens e dungeons novas) e todo mundo começa do zero: nível 1, o mesmo kit inicial e nenhum ouro. Escolha a classe para começar."
@@ -3173,10 +3212,20 @@ msgid "Channels"
 msgstr "Channels"
 
 #: components/space/SpacePage.tsx
-msgid "Chat da sala"
-msgstr "Chat da sala"
+msgid "chat"
+msgstr "chat"
 
+#: components/space/SpacePage.tsx
+msgid "Chat"
+msgstr "Chat"
+
+#: components/space/SpacePage.tsx
+#~ msgid "Chat da sala"
+#~ msgstr "Chat da sala"
+
+#. placeholder {0}: props.place
 #. placeholder {0}: room.title
+#: components/space/chat/ChatPanel.tsx
 #: components/space/SpacePage.tsx
 msgid "Chat de {0}"
 msgstr "Chat de {0}"
@@ -3789,6 +3838,10 @@ msgstr "Contando desde que você abriu a corrida."
 msgid "Content breaks one or more laws"
 msgstr "Content breaks one or more laws"
 
+#: components/space/chat/BubbleLayer.tsx
+msgid "continua no chat"
+msgstr "continua no chat"
+
 #: components/space/Onboarding.tsx
 msgid "Continuar"
 msgstr "Continuar"
@@ -3847,6 +3900,20 @@ msgstr "Controlado por {0}"
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Controlar a Smart TV"
 msgstr "Controlar a Smart TV"
+
+#. placeholder {0}: props.placeOf(m().channelId)
+#: components/space/chat/BubbleLayer.tsx
+msgid "Conversa em {0}"
+msgstr "Conversa em {0}"
+
+#. placeholder {0}: props.placeOf(m().channelId)
+#: components/space/chat/BubbleLayer.tsx
+msgid "Conversa em {0} · abrir"
+msgstr "Conversa em {0} · abrir"
+
+#: components/space/SpacePage.tsx
+msgid "Conversar"
+msgstr "Conversar"
 
 #: src/interface/navigation/channels/HomeSidebar.tsx
 msgid "Conversations"
@@ -4593,6 +4660,7 @@ msgstr "Descanso antes da próxima sala"
 msgid "Descartado."
 msgstr "Descartado."
 
+#: components/space/chat/ChatDock.tsx
 #: components/space/game/GearPanel.tsx
 msgid "Descartar"
 msgstr "Descartar"
@@ -4726,6 +4794,14 @@ msgstr "Diagnóstico da chamada"
 #: components/space/game/labels.ts
 #~ msgid "Difícil"
 #~ msgstr "Difícil"
+
+#: components/space/chat/ChatComposer.tsx
+msgid "Diga algo…"
+msgstr "Diga algo…"
+
+#: components/space/chat/BubbleLayer.tsx
+msgid "digitando…"
+msgstr "digitando…"
 
 #: components/space/SpacePage.tsx
 msgid "Diminuir zoom"
@@ -5168,6 +5244,10 @@ msgstr "Enquanto queima, cada inimigo atingido cura você em {p} da vida máxima
 msgid "ensurdecido"
 msgstr "ensurdecido"
 
+#: components/space/chat/ChatComposer.tsx
+msgid "Enter"
+msgstr "Enter"
+
 #: components/modal/modals/RenameSession.tsx
 msgid "Enter a new name for this session"
 msgstr "Enter a new name for this session"
@@ -5245,6 +5325,10 @@ msgstr "Entre numa sala para ver a chamada."
 msgid "Enviado."
 msgstr "Enviado."
 
+#: components/space/chat/ChatComposer.tsx
+msgid "Enviar"
+msgstr "Enviar"
+
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Envio do microfone"
 msgstr "Envio do microfone"
@@ -5297,6 +5381,10 @@ msgstr "Equipamento de {0}, nível {1}, para a sua classe:"
 #: components/space/game/MasterPanel.tsx
 msgid "Erro"
 msgstr "Erro"
+
+#: components/space/chat/ChatComposer.tsx
+msgid "Esc · mapa"
+msgstr "Esc · mapa"
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Escolha"
@@ -5896,6 +5984,10 @@ msgstr "Fechar a TV (Esc): o som continua enquanto você estiver na sala"
 #: components/space/MediaStage.tsx
 #~ msgid "Fechar a TV (Esc): para só para você; a sala continua assistindo"
 #~ msgstr "Fechar a TV (Esc): para só para você; a sala continua assistindo"
+
+#: components/space/chat/ChatPanel.tsx
+msgid "Fechar o chat"
+msgstr "Fechar o chat"
 
 #: components/space/DecorPanel.tsx
 msgid "Fechar o editor"
@@ -6910,6 +7002,10 @@ msgstr "Lendários"
 #~ msgid "Lento para a sua vocação"
 #~ msgstr "Lento para a sua vocação"
 
+#: components/space/SpacePage.tsx
+msgid "Ler o chat da sala sem sair do mapa"
+msgstr "Ler o chat da sala sem sair do mapa"
+
 #: components/app/interface/settings/user/Native.tsx
 msgid "Let Muchat use its own custom titlebar."
 msgstr "Let Muchat use its own custom titlebar."
@@ -7310,8 +7406,12 @@ msgstr "Mão secundária"
 #~ msgstr "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. A lista de salas tem as mesmas informações."
 
 #: components/space/SpacePage.tsx
-msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
-msgstr "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
+#~ msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
+#~ msgstr "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
+
+#: components/space/SpacePage.tsx
+msgid "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, Enter abre a conversa, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
+msgstr "Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, Enter abre a conversa, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações."
 
 #: components/space/game/labels.ts
 #~ msgid "Marca da presa"
@@ -7483,6 +7583,15 @@ msgstr "Menos"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Menos processamento e mais qualidade de áudio. Para lugares silenciosos e bons microfones."
 msgstr "Menos processamento e mais qualidade de áudio. Para lugares silenciosos e bons microfones."
+
+#. placeholder {0}: props.place
+#: components/space/chat/ChatComposer.tsx
+msgid "Mensagem em {0}"
+msgstr "Mensagem em {0}"
+
+#: components/space/SpacePage.tsx
+msgid "Mensagens novas"
+msgstr "Mensagens novas"
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Mention"
@@ -8047,6 +8156,10 @@ msgstr "Não deu para testar o microfone agora."
 #~ msgid "Não disponível."
 #~ msgstr "Não disponível."
 
+#: components/space/chat/ChatDock.tsx
+msgid "Não foi enviada"
+msgstr "Não foi enviada"
+
 #: components/space/SpacePage.tsx
 msgid "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
 msgstr "Não foi possível abrir o mapa neste aparelho. A lista de salas continua no canal de cada sala."
@@ -8437,6 +8550,10 @@ msgstr "o alvo"
 #~ msgid "O boneco chegou ao limite: colete para não perder treino."
 #~ msgstr "O boneco chegou ao limite: colete para não perder treino."
 
+#: components/space/SpacePage.tsx
+msgid "O chat de texto de onde você está (Enter escreve no mapa)"
+msgstr "O chat de texto de onde você está (Enter escreve no mapa)"
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R$ 20 libera 30 dias de tela em 1080p e 60 fps, câmera em 1080p e áudio melhor. Apoios seguidos somam os prazos."
 msgstr "O chat é de graça. Apoiar ajuda a pagar o servidor — e a partir de R$ 20 libera 30 dias de tela em 1080p e 60 fps, câmera em 1080p e áudio melhor. Apoios seguidos somam os prazos."
@@ -8759,6 +8876,10 @@ msgstr "Once it's deleted, there's no going back."
 #~ msgid "Onda gélida"
 #~ msgstr "Onda gélida"
 
+#: components/space/chat/ChatPanel.tsx
+msgid "onde você está"
+msgstr "onde você está"
+
 #: components/ui/components/features/profiles/ProfileBadges.tsx
 msgid "One of the first 1000 users!"
 msgstr "One of the first 1000 users!"
@@ -8876,6 +8997,7 @@ msgstr "Output Volume"
 msgid "Outra pessoa mexeu na TV ao mesmo tempo; a TV mostra o que ficou valendo."
 msgstr "Outra pessoa mexeu na TV ao mesmo tempo; a TV mostra o que ficou valendo."
 
+#: components/space/chat/ChatPanel.tsx
 #: components/space/game/TvMenu.tsx
 msgid "outra sala"
 msgstr "outra sala"
@@ -11491,6 +11613,7 @@ msgstr "Tem item +7: toque mais uma vez"
 msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr "Temporarily prevent lower-ranking members from interacting"
 
+#: components/space/chat/ChatDock.tsx
 #: components/space/NewsPanel.tsx
 #: components/space/SpacePage.tsx
 msgid "Tentar de novo"
@@ -12665,9 +12788,17 @@ msgstr "Você está apresentando"
 msgid "Você está com a janela aberta: feche quando terminar."
 msgstr "Você está com a janela aberta: feche quando terminar."
 
+#: components/space/chat/ChatComposer.tsx
+msgid "Você está de castigo e não pode escrever agora."
+msgstr "Você está de castigo e não pode escrever agora."
+
 #: components/space/SpacePage.tsx
 msgid "Você está fora do áudio da sala"
 msgstr "Você está fora do áudio da sala"
+
+#: components/space/chat/ChatPanel.tsx
+msgid "Você está lendo outra sala. O que você escrever aqui vai para ela, sem balão no mapa."
+msgstr "Você está lendo outra sala. O que você escrever aqui vai para ela, sem balão no mapa."
 
 #. placeholder {0}: CLASSES[h().cls].titles[3]
 #: components/space/game/MasterPanel.tsx
@@ -12701,6 +12832,11 @@ msgstr "Você já tem um herói."
 #: components/space/SpacePage.tsx
 msgid "Você não é membro deste servidor"
 msgstr "Você não é membro deste servidor"
+
+#. placeholder {0}: props.place
+#: components/space/chat/ChatComposer.tsx
+msgid "Você não pode escrever em {0}."
+msgstr "Você não pode escrever em {0}."
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Você não pode transferir para você mesmo."
@@ -12791,6 +12927,11 @@ msgstr "Voltar ao áudio"
 #: components/space/game/ArsenalView.tsx
 msgid "Voltar aos avisos"
 msgstr "Voltar aos avisos"
+
+#. placeholder {0}: props.herePlace
+#: components/space/chat/ChatPanel.tsx
+msgid "Voltar para {0}"
+msgstr "Voltar para {0}"
 
 #: components/app/menus/UserContextMenu.tsx
 msgid "Volume"
