@@ -1915,6 +1915,7 @@ msgid "Abrir no canal (sai do mapa)"
 msgstr ""
 
 #: components/space/chat/ChatDock.tsx
+#: components/space/chat/ChatHistory.tsx
 msgid "Abrir no chat"
 msgstr ""
 
@@ -3137,6 +3138,10 @@ msgstr "Diese Nachricht kann nicht bearbeitet werden."
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Carrega {0}"
 #~ msgstr ""
+
+#: components/space/chat/ChatHistory.tsx
+msgid "Carregando o histórico…"
+msgstr ""
 
 #: components/space/NewsPanel.tsx
 msgid "Carregando os avisos…"
@@ -8013,6 +8018,10 @@ msgstr ""
 #~ msgid "Mostrar"
 #~ msgstr ""
 
+#: components/space/chat/ChatDock.tsx
+msgid "Mostrar histórico"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Mostrar lista de salas"
 msgstr ""
@@ -8318,6 +8327,10 @@ msgstr ""
 msgid "Não deu certo agora. Tente de novo."
 msgstr ""
 
+#: components/space/chat/ChatHistory.tsx
+msgid "Não deu para carregar o histórico agora."
+msgstr ""
+
 #: components/space/NewsPanel.tsx
 msgid "Não deu para carregar os avisos agora. Tente de novo em instantes."
 msgstr ""
@@ -8445,6 +8458,10 @@ msgstr "Spitzname"
 #: components/space/game/runUi.ts
 #~ msgid "Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira"
 #~ msgstr ""
+
+#: components/space/chat/ChatHistory.tsx
+msgid "Ninguém escreveu aqui ainda. Diga oi!"
+msgstr ""
 
 #: components/space/game/BankPanel.tsx
 msgid "Ninguém no Espaço agora para receber. A pessoa precisa estar aqui."
@@ -9034,6 +9051,10 @@ msgstr ""
 
 #: components/space/SmartTv.tsx
 msgid "O YouTube recusou o player (configuração de origem)."
+msgstr ""
+
+#: components/space/chat/ChatDock.tsx
+msgid "Ocultar histórico"
 msgstr ""
 
 #: components/space/game/labels.ts
