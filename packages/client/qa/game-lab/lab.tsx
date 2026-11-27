@@ -9,6 +9,7 @@ import "material-symbols";
 import "../../src/index.css";
 
 import {
+  createMemo,
   For,
   Match,
   Show,
@@ -476,6 +477,18 @@ function Lab() {
   const [screen, setScreen] = createSignal<Screen>("hero");
   const [npc, setNpc] = createSignal<NpcKind>("mercador");
   const [open, setOpen] = createSignal(true);
+  // A janela do NPC como no app (SpacePage): o pedido vem de um sinal e chega pela Match; fechar
+  // zera o pedido (closeNpcRequest), e o `request()` da Match fica velho enquanto a janela é
+  // descartada. Com o pedido fixo, o laboratório não via o travamento de 27/11/2026.
+  const [npcReq, setNpcReq] = createSignal<{
+    instance: string;
+    title: string;
+    npc: NpcKind;
+  } | null>(null);
+  // Um estado só, como o `ui()` do app: o pedido e o herói mudam juntos (fechar invalida os dois).
+  const ui = createMemo(() => ({ ...w(), npcRequest: npcReq() }));
+  const askNpc = (kind: NpcKind) =>
+    setNpcReq({ instance: `npc-${kind}`, title: "", npc: kind });
   const [meter, setMeter] = createSignal(false);
   const server = new LabServer(w(), setW, params().speed);
   const load = () => {
@@ -486,6 +499,8 @@ function Lab() {
     setScreen(sc.screen);
     if (sc.npc) setNpc(sc.npc);
     setOpen(true);
+    if (sc.screen === "npc" && sc.npc) askNpc(sc.npc);
+    else setNpcReq(null);
     if (sc.run) {
       const l = Object.values(server.current.lobbies)[0]!;
       server.startRun(l, { seek: sc.run.seek });
@@ -538,7 +553,14 @@ function Lab() {
           <Show when={Object.keys(w().runs).length > 0}>
             <RunChip link={server} runs={w().runs} myId={server.me} />
           </Show>
-          <button type="button" class="reopen" onClick={() => setOpen(true)}>
+          <button
+            type="button"
+            class="reopen"
+            onClick={() => {
+              setOpen(true);
+              if (screen() === "npc") askNpc(npc());
+            }}
+          >
             Abrir a tela
           </button>
         </div>
@@ -555,14 +577,16 @@ function Lab() {
                 onClose={() => setOpen(false)}
               />
             </Match>
-            <Match when={screen() === "npc"}>
-              <NpcDialog
-                link={server}
-                request={{ instance: `npc-${npc()}`, title: "", npc: npc() }}
-                rpg={w().rpg}
-                people={PEOPLE}
-                onClose={() => setOpen(false)}
-              />
+            <Match when={screen() === "npc" ? ui().npcRequest : null}>
+              {(request) => (
+                <NpcDialog
+                  link={server}
+                  request={request()}
+                  rpg={ui().rpg}
+                  people={PEOPLE}
+                  onClose={() => setNpcReq(null)}
+                />
+              )}
             </Match>
             <Match when={screen() === "dojo"}>
               <TrainingDialog

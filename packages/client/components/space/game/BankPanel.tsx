@@ -5,7 +5,7 @@ import {
   createMemo,
   createSignal,
   on,
-  onCleanup,
+  untrack,
 } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
@@ -181,15 +181,20 @@ function writeSeen(uids: string[]) {
 /**
  * O que chegou ao cofre desde a última visita (neste navegador): o loot que não coube na mochila.
  * Na primeira visita tudo conta como visto (sem uma enxurrada de selos); o que a pessoa guarda com
- * a janela aberta não ganha selo; ao fechar, o cofre inteiro vira visto (a lista é a do cofre de
- * agora, então não cresce além dele).
+ * a janela aberta não ganha selo. `known` é o retrato da abertura (o selo vale até a próxima
+ * visita); o que está no cofre vira visto para a próxima a cada mudança, num efeito.
+ *
+ * Nada de ler estado reativo numa limpeza (onCleanup): fechar a janela muda o `ui()` do app, e ler
+ * o herói enquanto a janela é descartada fazia o Solid recalcular ali o Switch que a contém e
+ * limpá-lo duas vezes ("Cannot read properties of null (reading '0')" no cleanNode). A reatividade
+ * do app parava e a tela congelava (27/11/2026; regressão em qa/game-lab/close-check.mjs).
  */
 function useSeen(items: () => OwnedItem[]) {
-  const known = readSeen() ?? new Set(items().map((x) => x.uid));
+  const known = readSeen() ?? new Set(untrack(items).map((x) => x.uid));
   const [mine, setMine] = createSignal<ReadonlySet<string>>(new Set());
   const isNew = (uid: string) => !known.has(uid) && !mine().has(uid);
   const count = createMemo(() => items().filter((x) => isNew(x.uid)).length);
-  onCleanup(() => writeSeen(items().map((x) => x.uid)));
+  createEffect(on(items, (list) => writeSeen(list.map((x) => x.uid))));
   return {
     isNew,
     count,

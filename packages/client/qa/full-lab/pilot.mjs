@@ -73,6 +73,13 @@ const browser = await chromium.launch({
     "--disable-background-timer-throttling",
     "--disable-renderer-backgrounding",
     "--disable-backgrounding-occluded-windows",
+    // --desktop-flags: as chaves do app do PC (muchat/desktop/main.js): composição em software e
+    // sem service worker, para reproduzir o que só acontece no Electron.
+    // --cdp-port <n>: porta de depuração (pausar em exceção, ler a pilha).
+    ...(opt("cdp-port", "") ? [`--remote-debugging-port=${opt("cdp-port", "")}`] : []),
+    ...(args.includes("--desktop-flags")
+      ? ["--disable-gpu-compositing", "--disable-features=ServiceWorker"]
+      : []),
   ],
 });
 
@@ -118,7 +125,12 @@ async function act(body) {
       return "ok";
     }
     case "mouse":
-      await page.mouse.click(body.x, body.y);
+      // count 2: clique duplo de verdade (dblclick).
+      await page.mouse.click(body.x, body.y, { clickCount: body.count ?? 1 });
+      return "ok";
+    case "hover":
+      // Mouse parado em cima (abre a dica de item depois de 300 ms).
+      await page.mouse.move(body.x, body.y, { steps: 4 });
       return "ok";
     case "tap":
       // Toque de verdade (touchstart/touchend), como no celular.
