@@ -88,14 +88,14 @@ test("a corrida fecha uma vez só: recompensa, poções gastas, o que não coube
     potionsUsed: { hp: 2, mp: 0 },
     ammoUsed: 0,
   };
-  const r = settleRunHero(d, "r1", spoils, spoils, 3, 11_000);
+  const r = settleRunHero(d, "r1", spoils, spoils);
   assert.ok(r.ok);
   assert.equal(d.hero.level, 3);
   assert.equal(d.hero.gold, 50);
   assert.equal(d.hero.potions.hp.pequena, 98);
   assert.equal(d.hero.bag.length, 1);
   assert.equal(d.run, null);
-  assert.deepEqual(settleRunHero(d, "r1", spoils, spoils, 3, 12_000), {
+  assert.deepEqual(settleRunHero(d, "r1", spoils, spoils), {
     ok: false,
     reason: "no_run",
   });
@@ -106,8 +106,6 @@ test("a corrida fecha uma vez só: recompensa, poções gastas, o que não coube
     "r2",
     null,
     { potionsUsed: { hp: 1, mp: 0 }, ammoUsed: 0 },
-    1,
-    14_000,
   );
   assert.ok(gone.ok);
   assert.equal(d.hero.gold, 50);

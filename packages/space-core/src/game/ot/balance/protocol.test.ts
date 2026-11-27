@@ -67,6 +67,8 @@ test("os comandos novos passam com os dados certos", () => {
     ["rpg.lobby.loop", { on: true }],
     ["rpg.run.leave"],
     ["rpg.board"],
+    ["rpg.stats", { days: 1 }],
+    ["rpg.stats", { days: 7 }],
   ];
   for (const [t, d] of good) {
     const r = send(t, d);
@@ -91,6 +93,9 @@ test("dados errados e comandos antigos são recusados; o que não é rpg. passa 
       { npc: "b", to: "u2", gold: 1, uids: [], confirmations: 3 },
     ],
     ["rpg.equip", { uid: "i1", extra: 1 }],
+    // A estatística só tem as janelas de 24 h e 7 dias (o teto da leitura).
+    ["rpg.stats", { days: 30 }],
+    ["rpg.stats", {}],
     // Os do modelo antigo (D2: sem renascimento; vocação e treino OT saíram).
     ["rpg.vocation", { vocation: 1 }],
     ["rpg.rebirth", {}],

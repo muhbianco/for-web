@@ -6,6 +6,7 @@ import {
   type RpgHeroState,
   type RpgRunEvent,
   type RpgRunTickEvent,
+  type RpgStatsEvent,
 } from "@muchat/space-core/game/ot/balance";
 
 import { silentLog } from "../../log.ts";
@@ -247,7 +248,8 @@ test("jogador novo: abrir sem herói não grava; escolhe a classe uma vez; o kit
   const h = s.hero()!;
   assert.equal(h.hero.cls, "padre");
   assert.equal(h.hero.level, 1);
-  assert.equal(h.stamina, 2520);
+  // A stamina saiu do jogo (27/11/2026).
+  assert.equal("stamina" in h, false);
   const again = await send("rpg.class", { cls: "mago" });
   assert.deepEqual(s.errors(again), [
     { code: "rpg_invalid", reason: "has_hero" },
@@ -865,4 +867,54 @@ test("herói de antes de 26/11: as vitórias guardadas em rpg_runs5 viram conclu
   t.svc.forget("U1");
   await t.send("rpg.open");
   assert.deepEqual(t.s.hero()!.cleared, ["cacada-1", "cacada-10"]);
+});
+
+test("ganho por hora (rpg.stats): a corrida fechada entra com o XP dela; sem stamina; quem saiu antes fica de fora", async () => {
+  const t = setup();
+  const run = await huntRun(t);
+  // Sem a stamina (27/11/2026): o multiplicador gravado é só a taxa do servidor (1).
+  const doc = t.runStore.docs.get(run.id)!;
+  assert.equal(doc.members[0]!.xp_mult, 1);
+  const empty = await t.send("rpg.stats", { days: 1 });
+  assert.deepEqual(t.s.errors(empty), []);
+  const first = t.s.of<RpgStatsEvent>("rpg.stats").at(-1)!;
+  assert.equal(first.re, empty);
+  assert.equal(first.d.runs, 0);
+
+  t.clock.advance(doc.seconds * 1000);
+  await t.svc.tickRuns();
+  await t.svc.idle("U1");
+  const reward = t.s.of<RpgRunEvent>("rpg.run").at(-1)!.d.end!.members[0]!
+    .reward!;
+  // A corrida que fechou apaga o cache: a estatística já conta ela.
+  await t.send("rpg.stats", { days: 1 });
+  const d = t.s.of<RpgStatsEvent>("rpg.stats").at(-1)!.d;
+  assert.equal(d.runs, 1);
+  assert.equal(d.capped, false);
+  assert.equal(d.dungeons.length, 1);
+  const g = d.dungeons[0]!;
+  assert.equal(g.dungeon, "cacada-1");
+  assert.equal(g.runs, 1);
+  assert.equal(g.wins, 1);
+  assert.equal(g.xp, reward.xp);
+  assert.equal(g.job_xp, reward.job_xp);
+  assert.equal(g.gold, reward.gold);
+  assert.equal(g.run_s, doc.seconds);
+
+  // Outra corrida, e o herói sai no meio: não levou nada, não conta.
+  const again = await t.send("rpg.lobby.start");
+  assert.deepEqual(t.s.errors(again), []);
+  t.clock.advance(LOBBY.countdownMs);
+  await t.tick();
+  const second = t.s.of<RpgRunEvent>("rpg.run").at(-1)!.d.run;
+  assert.notEqual(second.id, run.id);
+  t.clock.advance(2000);
+  await t.send("rpg.run.leave");
+  await t.svc.idle("U1");
+  assert.deepEqual(t.runStore.docs.get(second.id)!.left, ["U1"]);
+  await t.send("rpg.stats", { days: 7 });
+  const after = t.s.of<RpgStatsEvent>("rpg.stats").at(-1)!.d;
+  assert.equal(after.days, 7);
+  assert.equal(after.runs, 1);
+  assert.equal(after.dungeons[0]!.runs, 1);
 });

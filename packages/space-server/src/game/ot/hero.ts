@@ -14,15 +14,10 @@ import {
   stopDojo,
   withCleared,
 } from "@muchat/space-core/game/ot/balance";
-import {
-  regenStamina,
-  STAMINA,
-  staminaMultiplier,
-} from "@muchat/space-core/game/ot";
 
 /**
  * O herói da engine nova no servidor (Fase 8): o herói v5 do núcleo (balance/hero.ts) mais o que só o
- * servidor sabe — revisão, datas, stamina, o treino no Dojô (em que boneco e servidor), a corrida em
+ * servidor sabe — revisão, datas, o treino no Dojô (em que boneco e servidor), a corrida em
  * andamento e as transferências a caminho. Na virada todo mundo recomeça (D34): não há conversão do
  * v4, e a coleção é outra (store.ts), de modo que a antiga fica intacta para o rollback.
  */
@@ -63,9 +58,10 @@ export interface RpgHeroDoc {
   created_at: number;
   updated_at: number;
   hero: HeroV5;
-  /** Minutos de stamina no instante `stamina_at` (spec §2: fica como era). */
-  stamina: number;
-  stamina_at: number;
+  /*
+   * A stamina saiu do jogo (27/11/2026: o dono quer grindar à vontade, XP igual para todos). Documento
+   * de antes disso ainda traz `stamina`/`stamina_at`: ninguém lê.
+   */
   dojo: RpgDojo | null;
   run: RpgRunMark | null;
   outbox: RpgTransfer[];
@@ -95,8 +91,6 @@ export function newRpgHero(
     created_at: now,
     updated_at: now,
     hero: createHero(cls, newId),
-    stamina: STAMINA.max,
-    stamina_at: now,
     dojo: null,
     run: null,
     outbox: [],
@@ -136,17 +130,6 @@ export function markCleared(d: RpgHeroDoc, dungeon: string): void {
 
 export function inRun(d: RpgHeroDoc, now: number): boolean {
   return d.run !== null && now < d.run.ends_at + RUN_STALE_MS;
-}
-
-/** Stamina agora: recupera fora da dungeon (como era). */
-export function staminaNow(d: RpgHeroDoc, now: number): number {
-  if (inRun(d, now)) return d.stamina;
-  return regenStamina(d.stamina, Math.max(0, (now - d.stamina_at) / 1000));
-}
-
-/** O multiplicador de XP da stamina de agora (×1,5 descansado, ×0,5 cansado; P14 em aberto). */
-export function staminaXpMult(d: RpgHeroDoc, now: number): number {
-  return staminaMultiplier(staminaNow(d, now));
 }
 
 /** O código de vocação que o mapa usa para a animação de treino (1 magia, 2 cura, 3 arco, 4 corpo a corpo). */
@@ -210,7 +193,7 @@ export function openDojo(
 
 // ------------------------------------------------------------ corrida
 
-/** Marca a corrida no herói (o treino fecha antes; a stamina para de recuperar). */
+/** Marca a corrida no herói (o treino fecha antes). */
 export function markRun(
   d: RpgHeroDoc,
   mark: RpgRunMark,
@@ -218,8 +201,6 @@ export function markRun(
 ): RpgOutcome {
   if (inRun(d, now) && d.run?.id !== mark.id) return no("in_run");
   closeDojo(d, now, 0);
-  d.stamina = staminaNow(d, now);
-  d.stamina_at = now;
   d.run = mark;
   return yes;
 }
@@ -239,8 +220,6 @@ export function settleRunHero(
   runId: string,
   spoils: RunSpoils | null,
   spent: { potionsUsed: { hp: number; mp: number }; ammoUsed: number },
-  staminaCost: number,
-  now: number,
 ): { ok: true; settled: SettledHero } | { ok: false; reason: string } {
   if (d.run?.id !== runId) return { ok: false, reason: "no_run" };
   const s: RunSpoils = spoils ?? {
@@ -256,8 +235,6 @@ export function settleRunHero(
   const r = applyRun(d.hero, s);
   if (!r.ok) return { ok: false, reason: "apply" };
   d.hero = r.hero;
-  d.stamina = Math.max(0, staminaNow(d, now) - staminaCost);
-  d.stamina_at = now;
   d.run = null;
   return {
     ok: true,
@@ -343,11 +320,9 @@ export function transferSettled(
 export function rpgHeroState(
   d: RpgHeroDoc,
   rates: { exp: number },
-  now: number,
 ): RpgHeroState {
   return {
     hero: d.hero,
-    stamina: staminaNow(d, now),
     dojo: d.dojo ? { instance: d.dojo.instance, since: d.dojo.since } : null,
     run: d.run,
     rates: { exp: rates.exp },

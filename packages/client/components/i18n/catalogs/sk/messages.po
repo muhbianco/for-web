@@ -323,6 +323,11 @@ msgstr ""
 msgid "{0} começou a compartilhar a tela."
 msgstr ""
 
+#. placeholder {0}: r.g.runs
+#: components/space/game/GainTab.tsx
+msgid "{0} corridas"
+msgstr ""
+
 #. placeholder {0}: lobby().runs ?? 0
 #: components/space/game/TvMenu.tsx
 #~ msgid "{0} corridas juntos"
@@ -507,6 +512,11 @@ msgstr ""
 #: components/space/game/LobbyChip.tsx
 #~ msgid "{0} monta um grupo na TV: {1} · {2}/{3}"
 #~ msgstr ""
+
+#. placeholder {0}: levels(x.level!)
+#: components/space/game/GainTab.tsx
+msgid "{0} níveis"
+msgstr ""
 
 #. placeholder {0}: props.count
 #: components/space/game/RunHud.tsx
@@ -1483,6 +1493,10 @@ msgstr "1 osoba reagovala"
 msgid "12 hours"
 msgstr "12-hodinový formát"
 
+#: components/space/game/GainTab.tsx
+msgid "24 h"
+msgstr ""
+
 #: components/app/interface/settings/user/Language.tsx
 msgid "24 hours"
 msgstr "24-hodinový formát"
@@ -1498,6 +1512,10 @@ msgstr ""
 #: components/space/game/gameText.ts
 #~ msgid "3 ou 4 heróis. O chefe tem mecânicas: precisa de tanque, suporte e dano."
 #~ msgstr ""
+
+#: components/space/game/GainTab.tsx
+msgid "7 dias"
+msgstr ""
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "A 2ª classe recupera vida e mana mais depressa, como a promoção do OT, e abre a 2ª parte da árvore."
@@ -3726,6 +3744,11 @@ msgstr ""
 msgid "Contando desde que você abriu a corrida."
 msgstr ""
 
+#. placeholder {0}: d().runs
+#: components/space/game/GainTab.tsx
+msgid "Contando só as {0} corridas mais recentes."
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Content breaks one or more laws"
 msgstr "Obsah správy porušuje jeden alebo viacero zákonov"
@@ -3887,6 +3910,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Corrente"
 #~ msgstr ""
+
+#: components/space/game/GainTab.tsx
+msgid "Corridas em que você caiu"
+msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Corridas rolando"
@@ -4729,6 +4756,10 @@ msgstr ""
 #: src/interface/navigation/servers/UserMenu.tsx
 msgid "Do Not Disturb"
 msgstr "Nerušiť"
+
+#: components/space/game/GainTab.tsx
+msgid "Do seu nível, por hora"
+msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
 msgid "Dojô · Proficiência"
@@ -6028,6 +6059,10 @@ msgstr ""
 #: components/space/game/labels.ts
 #~ msgid "Fúria da mata"
 #~ msgstr ""
+
+#: components/space/game/RunMeter.tsx
+msgid "Ganho"
+msgstr ""
 
 #. placeholder {0}: sp().earned
 #. placeholder {1}: Math.max(0, sp().next - sp().tries)
@@ -8000,6 +8035,14 @@ msgstr ""
 msgid "Nenhum monstro na luta agora."
 msgstr ""
 
+#: components/space/game/GainTab.tsx
+msgid "Nenhuma corrida fechada nas últimas 24 h."
+msgstr ""
+
+#: components/space/game/GainTab.tsx
+msgid "Nenhuma corrida fechada nos últimos 7 dias."
+msgstr ""
+
 #: components/space/game/labels.ts
 #~ msgid "Nenhuma expedição em andamento."
 #~ msgstr ""
@@ -8758,6 +8801,14 @@ msgstr ""
 msgid "Ouro insuficiente."
 msgstr ""
 
+#: components/space/game/GainTab.tsx
+msgid "Ouro por corrida"
+msgstr ""
+
+#: components/space/game/GainTab.tsx
+msgid "ouro/h"
+msgstr ""
+
 #: components/app/interface/settings/user/voice/VoiceInputOptions.tsx
 msgid "Output Volume"
 msgstr "Hlasitosť výstupu"
@@ -9024,6 +9075,10 @@ msgstr ""
 #~ msgid "Perfurante"
 #~ msgstr ""
 
+#: components/space/game/GainTab.tsx
+msgid "Período"
+msgstr ""
+
 #. placeholder {0}: i + 1
 #: components/space/game/SmithPanel.tsx
 msgid "Perk {0}"
@@ -9246,6 +9301,11 @@ msgstr ""
 
 #: components/space/game/skillText.ts
 msgid "Por {dur}, {p} do dano que você recebe sai da mana em vez da vida."
+msgstr ""
+
+#. placeholder {0}: Math.round(d().lead_s)
+#: components/space/game/GainTab.tsx
+msgid "Por hora de DG, contando a largada entre uma corrida e a próxima (cerca de {0} s)."
 msgstr ""
 
 #: components/space/game/GearPanel.tsx
@@ -11009,6 +11069,10 @@ msgstr ""
 msgid "software"
 msgstr ""
 
+#: components/space/game/GainTab.tsx
+msgid "Somando as corridas…"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "sombrio"
 msgstr ""
@@ -12718,6 +12782,10 @@ msgstr ""
 msgid "Would you like to create a new server or join an existing one?"
 msgstr ""
 
+#: components/space/game/GainTab.tsx
+msgid "XP de job por hora"
+msgstr ""
+
 #: components/space/game/RunPanel.tsx
 #~ msgid "XP desde que você abriu a tela"
 #~ msgstr ""
@@ -12725,6 +12793,14 @@ msgstr ""
 #: components/space/game/RunPanel.tsx
 #~ msgid "XP desta corrida até agora"
 #~ msgstr ""
+
+#: components/space/game/GainTab.tsx
+msgid "XP por corrida"
+msgstr ""
+
+#: components/space/game/GainTab.tsx
+msgid "XP/h"
+msgstr ""
 
 #: components/app/interface/settings/user/bots/MyBots.tsx
 msgid "You agree that your bot is subject to the Acceptable Usage Policy."

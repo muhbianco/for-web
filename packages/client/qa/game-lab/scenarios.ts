@@ -164,7 +164,6 @@ export function stateOf(
 ): RpgHeroState {
   return {
     hero,
-    stamina: 2400,
     dojo: null,
     run: null,
     rates: { exp: 1 },

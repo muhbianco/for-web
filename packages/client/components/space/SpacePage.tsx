@@ -1301,6 +1301,7 @@ function ServerSpace(props: { serverId: string }) {
                 <RunMeter
                   state={state()}
                   myId={client().user?.id ?? null}
+                  link={view()!}
                   onClose={() => setMeterOpen(false)}
                 />
               </Suspense>

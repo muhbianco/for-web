@@ -339,6 +339,14 @@ export const RpgRunWatchCmd = cmd(
   z.object({ id: ref }).strict(),
 );
 export const RpgBoardCmd = cmd("rpg.board", empty);
+/**
+ * O ganho por hora do herói em cada DG (a aba "Ganho" do medidor, 27/11/2026): as corridas fechadas
+ * das últimas 24 h ou dos últimos 7 dias.
+ */
+export const RpgStatsCmd = cmd(
+  "rpg.stats",
+  z.object({ days: z.union([z.literal(1), z.literal(7)]) }).strict(),
+);
 
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
@@ -377,6 +385,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgRunLeaveCmd,
   RpgRunWatchCmd,
   RpgBoardCmd,
+  RpgStatsCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -415,12 +424,10 @@ export function parseRpgCommand(
 
 /**
  * O estado do herói: o documento v5 inteiro (o app calcula o resto com o núcleo) e o que só o
- * servidor sabe — a stamina agora, o treino no Dojô e a corrida em andamento.
+ * servidor sabe — o treino no Dojô e a corrida em andamento (a stamina saiu do jogo em 27/11/2026).
  */
 export interface RpgHeroState {
   hero: HeroV5;
-  /** Stamina em minutos no instante `server_now` (ela multiplica o XP; spec §2: fica como era). */
-  stamina: number;
   /** Treino no Dojô: o boneco e desde quando (o app projeta o XP pelo relógio). */
   dojo: { instance: string; since: number } | null;
   /** Na dungeon agora: até quando. */
@@ -619,6 +626,44 @@ export interface RpgBoardEvent {
   t: "rpg.board";
   re?: string;
   d: { lobbies: RpgLobbyView[]; runs: RpgBoardRun[] };
+}
+
+/** O ganho de uma DG na janela pedida (os totais; o app divide pelo tempo). */
+export interface RpgGainDungeonView {
+  dungeon: string;
+  runs: number;
+  wins: number;
+  /** Corridas em que o herói caiu. */
+  deaths: number;
+  /** Segundos das corridas (os quadros). */
+  run_s: number;
+  /** Segundos com a largada entre uma corrida e a próxima: o divisor do "por hora". */
+  cycle_s: number;
+  /**
+   * O XP (e o de job) que essas corridas dão hoje: sem a stamina, que valia até 27/11/2026 e saiu do
+   * jogo, e com a taxa do servidor de agora. É o que compara as DGs.
+   */
+  xp: number;
+  job_xp: number;
+  gold: number;
+}
+
+export interface RpgStatsEvent {
+  v: 1;
+  t: "rpg.stats";
+  re?: string;
+  d: {
+    days: 1 | 7;
+    /** Desde quando (ms) as corridas contam. */
+    since: number;
+    /** Corridas lidas; `capped`: bateu no teto e as mais antigas da janela ficaram fora. */
+    runs: number;
+    capped: boolean;
+    /** A largada medida entre as corridas (mediana, segundos). */
+    lead_s: number;
+    /** Da que mais rende XP por hora para a que menos rende. */
+    dungeons: RpgGainDungeonView[];
+  };
 }
 
 /** Os erros que o servidor devolve em `error.d.code` (mais os das ações do herói, em `reason`). */

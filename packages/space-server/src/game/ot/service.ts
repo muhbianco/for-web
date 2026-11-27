@@ -18,11 +18,13 @@ import {
   type RpgRunTickEvent,
   type RpgRunView,
   type RpgStateEvent,
+  type RpgStatsEvent,
   type RunFrame,
   type RunResult,
   type RunSpoils,
   ENGINE_VERSION,
   FAMILIES,
+  GAIN_MAX_RUNS,
   Rng,
   autoEquipBag,
   bankGold,
@@ -33,12 +35,14 @@ import {
   bossMissing,
   bossRegions,
   changeClass,
+  createVictoryXp,
   dismantleItem,
   dismantleItems,
   dungeonById,
   equipItem,
   evolveTier,
   fitHeroSkills,
+  gainByDungeon,
   heroRunFighter,
   meterOf,
   normalizeCleared,
@@ -69,7 +73,6 @@ import {
   vaultTake,
   balance as gameBalance,
 } from "@muchat/space-core/game/ot/balance";
-import { runStaminaCost } from "@muchat/space-core/game/ot";
 
 import type { AvatarGear, NpcKind } from "@muchat/space-core";
 
@@ -92,7 +95,6 @@ import {
   rpgDocBytes,
   rpgHeroState,
   settleRunHero,
-  staminaXpMult,
   transferIn,
   transferOut,
   transferSettled,
@@ -200,6 +202,9 @@ const FEED_MAX = 40;
 const SETTLE_RETRY_MS = 30_000;
 const BOARD_MAX = 30;
 const WATCHERS_MAX = 64;
+/** O ganho por hora fica pronto por isto (abrir e fechar a aba não relê milhares de corridas). */
+const STATS_CACHE_MS = 60_000;
+const STATS_CACHE_MAX = 200;
 
 interface ActiveRun {
   doc: RpgRunDoc;
@@ -283,6 +288,9 @@ export class RpgService {
    */
   private readonly starting = new Set<string>();
   private ticker: ReturnType<typeof setInterval> | null = null;
+  /** O ganho por hora já calculado, por pessoa e janela; a corrida que fecha apaga o da pessoa. */
+  private readonly stats = new Map<string, { at: number; d: RpgStatsEvent["d"] }>();
+  private victoryXp: ReturnType<typeof createVictoryXp> | null = null;
   private hostOf: (serverId: string) => RpgHost | null = () => null;
 
   constructor(deps: {
@@ -926,6 +934,8 @@ export class RpgService {
           re: cmd.id,
         });
       }
+      case "rpg.stats":
+        return this.sendStats(session, userId, cmd.d.days, cmd.id);
       case "rpg.board": {
         const runs: RpgBoardRun[] = [];
         for (const r of this.active.values()) {
@@ -960,6 +970,64 @@ export class RpgService {
         return session.send(ev as unknown as Record<string, unknown>);
       }
     }
+  }
+
+  /**
+   * O ganho por hora do herói em cada DG (a aba "Ganho" do medidor): as corridas fechadas da janela,
+   * do cache se for de menos de um minuto. A leitura tem teto (`GAIN_MAX_RUNS`, as mais novas).
+   */
+  private async sendStats(
+    session: SessionPort,
+    userId: string,
+    days: 1 | 7,
+    re: string,
+  ): Promise<void> {
+    const now = this.now();
+    const key = `${userId}:${days}`;
+    let hit = this.stats.get(key);
+    if (!hit || now - hit.at > STATS_CACHE_MS) {
+      const since = now - days * 86_400_000;
+      const { rows, capped } = await this.runStore.gainRows(
+        userId,
+        since,
+        GAIN_MAX_RUNS,
+      );
+      this.victoryXp ??= createVictoryXp();
+      const g = gainByDungeon(rows, {
+        victoryXp: this.victoryXp,
+        rate: this.rates.exp,
+      });
+      hit = {
+        at: now,
+        d: {
+          days,
+          since: capped ? (rows.at(-1)?.startedAt ?? since) : since,
+          runs: g.runs,
+          capped,
+          lead_s: Math.round(g.leadSeconds * 10) / 10,
+          dungeons: g.dungeons.map((x) => ({
+            dungeon: x.dungeon,
+            runs: x.runs,
+            wins: x.wins,
+            deaths: x.deaths,
+            run_s: x.runSeconds,
+            cycle_s: Math.round(x.cycleSeconds),
+            xp: x.xp,
+            job_xp: x.jobXp,
+            gold: x.gold,
+          })),
+        },
+      };
+      if (this.stats.size >= STATS_CACHE_MAX)
+        this.stats.delete(this.stats.keys().next().value!);
+      this.stats.set(key, hit);
+    }
+    const ev: RpgStatsEvent = { v: 1, t: "rpg.stats", re, d: hit.d };
+    session.send(ev as unknown as Record<string, unknown>);
+  }
+
+  private forgetStats(userId: string) {
+    for (const days of [1, 7]) this.stats.delete(`${userId}:${days}`);
   }
 
   /**
@@ -1043,7 +1111,7 @@ export class RpgService {
 
   /**
    * O líder começa. Lê e valida todos, simula a corrida inteira com a semente do servidor (os quadros
-   * da tela e o que cada um leva: XP com stamina e taxa, ouro, itens já com id, minério, pedras,
+   * da tela e o que cada um leva: XP com a taxa, ouro, itens já com id, minério, pedras,
    * poções e munição), fecha o grupo (só se ele não mudou enquanto os heróis eram lidos), grava a
    * corrida e marca cada herói.
    */
@@ -1119,10 +1187,12 @@ export class RpgService {
       record: true,
     });
     const frames = result.frames ?? [];
+    // A stamina saiu do jogo (27/11/2026): o XP de todos é o da corrida vezes a taxa do servidor.
+    const xpMult = docs.map(() => this.rates.exp);
     const spoils = this.spoilsOf(
       dungeon,
       heroes,
-      docs.map((d) => staminaXpMult(d!, now) * this.rates.exp),
+      xpMult,
       fighters,
       result,
       seed,
@@ -1153,6 +1223,7 @@ export class RpgService {
           hero: heroes[i]!,
           dead: !result.heroes[i]!.alive,
           spoils: spoils[i]!,
+          xp_mult: xpMult[i]!,
         }),
       ),
       outcome: result.outcome,
@@ -1395,8 +1466,6 @@ export class RpgService {
         runId,
         null,
         spent,
-        runStaminaCost(elapsed),
-        now,
       );
       if (!r.ok) return r;
       end = {
@@ -1440,7 +1509,6 @@ export class RpgService {
     const now = this.now();
     const host = this.hostOf(doc.server);
     try {
-      const cost = runStaminaCost(doc.seconds);
       const abandoned = doc.members.every((m) => run.left.has(m.userId));
       const levels: Record<string, number> = {};
       const regions: Record<string, number[]> = {};
@@ -1463,7 +1531,7 @@ export class RpgService {
         };
         await this.inQueue(m.userId, async () => {
           const out = await this.mutate(m.userId, null, (d) => {
-            const r = settleRunHero(d, doc._id, m.spoils, m.spoils, cost, now);
+            const r = settleRunHero(d, doc._id, m.spoils, m.spoils);
             if (!r.ok) return r;
             // A vitória do grupo conclui a DG para quem ficou até o fim (vivo ou não; 26/11/2026).
             if (doc.outcome === "vitoria") markCleared(d, doc.dungeon);
@@ -1496,7 +1564,8 @@ export class RpgService {
         });
         ends.push(end);
       }
-      await this.runStore.settle(doc._id, now);
+      await this.runStore.settle(doc._id, now, [...run.left]);
+      for (const m of doc.members) this.forgetStats(m.userId);
       this.active.delete(doc._id);
       const outcome: RpgRunEnd = abandoned ? "retirada" : doc.outcome;
       host?.lobbyRunEnded(doc._id, outcome, levels, regions);
@@ -1603,7 +1672,7 @@ export class RpgService {
       d: {
         server_now: this.now(),
         rev: doc?.rev ?? 0,
-        hero: doc ? rpgHeroState(doc, this.rates, this.now()) : null,
+        hero: doc ? rpgHeroState(doc, this.rates) : null,
       },
     };
     session.send(ev as unknown as Record<string, unknown>);

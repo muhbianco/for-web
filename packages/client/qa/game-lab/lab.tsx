@@ -590,6 +590,7 @@ function Lab() {
                 <RunMeter
                   state={run()!}
                   myId={server.me}
+                  link={server}
                   onClose={() => setMeter(false)}
                 />
               </Show>

@@ -1,4 +1,5 @@
 import type {
+  GainRunRow,
   HeroV5,
   RunOutcome,
   RunSpoils,
@@ -17,8 +18,13 @@ export interface RpgRunMember {
   /** O herói como entrou (o replay dos quadros sai dele e da semente). */
   hero: HeroV5;
   dead: boolean;
-  /** O que leva no fim (XP já com stamina e taxa; poções e munição gastas). */
+  /** O que leva no fim (XP já com a taxa — e com a stamina até 27/11/2026; poções e munição gastas). */
   spoils: RunSpoils;
+  /**
+   * O multiplicador do XP de `spoils` na largada: a taxa do servidor (até 27/11/2026 também a stamina,
+   * que saiu do jogo). Corridas de antes disso não têm; a estatística deduz pela vitória.
+   */
+  xp_mult?: number;
 }
 
 export interface RpgRunDoc {
@@ -39,6 +45,8 @@ export interface RpgRunDoc {
   status: "running" | "settled";
   settled_at: number | null;
   auto?: boolean;
+  /** Quem saiu antes do fim (não levou nada desta corrida); gravado no fechamento desde 27/11/2026. */
+  left?: string[];
 }
 
 export const RUNS_COLLECTION = "rpg_runs5";
@@ -51,13 +59,56 @@ export const RUNS_KEEP_MS = 30 * 24 * 3600_000;
 export interface RunStore {
   create(doc: RpgRunDoc): Promise<void>;
   running(limit: number): Promise<RpgRunDoc[]>;
-  /** Marca como fechada; false se já estava (outro processo fechou). */
-  settle(id: string, at: number): Promise<boolean>;
+  /** Marca como fechada (com quem saiu antes); false se já estava (outro processo fechou). */
+  settle(id: string, at: number, left?: string[]): Promise<boolean>;
   /**
    * As DGs das corridas fechadas em vitória de que a pessoa participou (ids como gravados, sem
    * repetir). É de onde sai a lista de concluídas do herói gravado antes de 26/11/2026.
    */
   victories(userId: string): Promise<string[]>;
+  /**
+   * As corridas fechadas da pessoa desde `since` (ms), da mais nova para a mais antiga, até `limit`,
+   * já do ponto de vista dela (a estatística de ganho por hora). Quem saiu antes do fim fica de fora.
+   */
+  gainRows(
+    userId: string,
+    since: number,
+    limit: number,
+  ): Promise<{ rows: GainRunRow[]; capped: boolean }>;
+}
+
+/** O que a estatística lê de uma corrida fechada. */
+type GainDoc = Pick<
+  RpgRunDoc,
+  "dungeon" | "outcome" | "started_at" | "seconds" | "left"
+> & {
+  members: {
+    userId: string;
+    dead: boolean;
+    hero: { level: number };
+    spoils: { xp: number; jobXp: number; gold: number };
+    xp_mult?: number;
+  }[];
+};
+
+/** A corrida do ponto de vista de `userId` (null: não estava nela, ou saiu antes do fim). */
+export function gainRowOf(doc: GainDoc, userId: string): GainRunRow | null {
+  const me = doc.members.findIndex((m) => m.userId === userId);
+  if (me < 0 || doc.left?.includes(userId)) return null;
+  const m = doc.members[me]!;
+  return {
+    dungeon: doc.dungeon,
+    outcome: doc.outcome,
+    startedAt: doc.started_at,
+    seconds: doc.seconds,
+    levels: doc.members.map((x) => x.hero.level),
+    dead: doc.members.map((x) => x.dead),
+    me,
+    xp: m.spoils.xp,
+    jobXp: m.spoils.jobXp,
+    gold: m.spoils.gold,
+    ...(typeof m.xp_mult === "number" ? { xpMult: m.xp_mult } : {}),
+  };
 }
 
 export class MemoryRunStore implements RunStore {
@@ -76,11 +127,12 @@ export class MemoryRunStore implements RunStore {
       .map((d) => structuredClone(d));
   }
 
-  async settle(id: string, at: number): Promise<boolean> {
+  async settle(id: string, at: number, left?: string[]): Promise<boolean> {
     const d = this.docs.get(id);
     if (!d || d.status !== "running") return false;
     d.status = "settled";
     d.settled_at = at;
+    if (left?.length) d.left = [...left];
     return true;
   }
 
@@ -95,10 +147,28 @@ export class MemoryRunStore implements RunStore {
         out.add(d.dungeon);
     return [...out];
   }
+
+  async gainRows(userId: string, since: number, limit: number) {
+    const docs = [...this.docs.values()]
+      .filter(
+        (d) =>
+          d.status === "settled" &&
+          d.started_at >= since &&
+          d.members.some((m) => m.userId === userId),
+      )
+      .sort((a, b) => b.started_at - a.started_at);
+    const rows = docs
+      .slice(0, limit)
+      .map((d) => gainRowOf(d, userId))
+      .filter((r): r is GainRunRow => r !== null);
+    return { rows, capped: docs.length > limit };
+  }
 }
 
 type RunMongo = RpgRunDoc & { expire_at: Date | null };
 const OP = { maxTimeMS: 2_000 } as const;
+/** A leitura da estatística passa por milhares de corridas grandes (o herói inteiro de cada um). */
+const GAIN_QUERY_MS = 5_000;
 
 /** Mongo `muchat_space.rpg_runs5` (a `rpg_runs` do v4 fica como estava). */
 export class MongoRunStore implements RunStore {
@@ -123,6 +193,11 @@ export class MongoRunStore implements RunStore {
       { "members.userId": 1, outcome: 1 },
       { maxTimeMS: 10_000 },
     );
+    // O ganho por hora de uma pessoa (as corridas dela numa janela de tempo; 27/11/2026).
+    await this.col.createIndex(
+      { "members.userId": 1, started_at: -1 },
+      { maxTimeMS: 10_000 },
+    );
   }
 
   async create(doc: RpgRunDoc): Promise<void> {
@@ -138,7 +213,7 @@ export class MongoRunStore implements RunStore {
       .map(({ expire_at: _e, ...doc }) => doc as RpgRunDoc);
   }
 
-  async settle(id: string, at: number): Promise<boolean> {
+  async settle(id: string, at: number, left?: string[]): Promise<boolean> {
     const res = await this.col.updateOne(
       { _id: id, status: "running" },
       {
@@ -146,6 +221,7 @@ export class MongoRunStore implements RunStore {
           status: "settled",
           settled_at: at,
           expire_at: new Date(at + RUNS_KEEP_MS),
+          ...(left?.length ? { left: [...left] } : {}),
         },
       },
       OP,
@@ -160,5 +236,43 @@ export class MongoRunStore implements RunStore {
       OP,
     );
     return ids.filter((x): x is string => typeof x === "string");
+  }
+
+  async gainRows(userId: string, since: number, limit: number) {
+    // Uma a mais que o teto: diz se a janela tinha mais corridas do que as lidas.
+    const docs = (await this.col
+      .find(
+        {
+          "members.userId": userId,
+          status: "settled",
+          started_at: { $gte: since },
+        },
+        {
+          maxTimeMS: GAIN_QUERY_MS,
+          limit: limit + 1,
+          sort: { started_at: -1 },
+          projection: {
+            _id: 0,
+            dungeon: 1,
+            outcome: 1,
+            started_at: 1,
+            seconds: 1,
+            left: 1,
+            "members.userId": 1,
+            "members.dead": 1,
+            "members.hero.level": 1,
+            "members.spoils.xp": 1,
+            "members.spoils.jobXp": 1,
+            "members.spoils.gold": 1,
+            "members.xp_mult": 1,
+          },
+        },
+      )
+      .toArray()) as unknown as GainDoc[];
+    const rows = docs
+      .slice(0, limit)
+      .map((d) => gainRowOf(d, userId))
+      .filter((r): r is GainRunRow => r !== null);
+    return { rows, capped: docs.length > limit };
   }
 }
