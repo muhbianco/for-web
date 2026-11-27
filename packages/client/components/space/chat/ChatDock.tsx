@@ -1,6 +1,7 @@
-import { type Accessor, For, Show, createEffect } from "solid-js";
+import { type Accessor, For, Show, createEffect, createSignal } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
+import type { BubbleLabels } from "@muchat/space-client";
 import type { Channel } from "stoat.js";
 import { css } from "styled-system/css";
 
@@ -9,12 +10,33 @@ import { useState } from "@revolt/state";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
 import { ChatComposer } from "./ChatComposer";
+import { ChatHistory } from "./ChatHistory";
 import type { FeedLine, SpaceChat } from "./spaceChat";
+
+/** Mostrar ou não o histórico sobre o campo: vale até a pessoa clicar de novo (neste aparelho). */
+const HISTORY_KEY = "muchat.space.chatHistory";
+
+function storedHistory(): boolean {
+  try {
+    return localStorage.getItem(HISTORY_KEY) !== "hidden";
+  } catch {
+    return true;
+  }
+}
+
+function storeHistory(shown: boolean) {
+  try {
+    localStorage.setItem(HISTORY_KEY, shown ? "shown" : "hidden");
+  } catch {
+    // Janela anônima ou armazenamento bloqueado: a escolha vale só até recarregar.
+  }
+}
 
 interface Props {
   chat: SpaceChat;
   channel: Channel;
   place: string;
+  labels: BubbleLabels;
   focusRequest: Accessor<number>;
   onLeave: () => void;
   onFocusChange?: (focused: boolean) => void;
@@ -25,13 +47,20 @@ interface Props {
 
 /**
  * O campo de conversa sobre o mapa, no pé e no meio (onde o olho volta depois de ler um balão),
- * com as linhas de quem falou sem aparecer no mapa logo acima. Some quando o painel do chat está
- * aberto (um campo só na tela) e quando a corrida do jogo cobre o pé do mapa.
+ * com o histórico do canal logo acima (27/11/2026). O botão do campo oculta o histórico; aí
+ * voltam as linhas discretas de quem falou sem aparecer no mapa. Some quando o painel do chat
+ * está aberto (um campo só na tela) e quando a corrida do jogo cobre o pé do mapa.
  */
 export function ChatDock(props: Props) {
   const { t } = useLingui();
   const state = useState();
   const client = useClient();
+  const [history, setHistory] = createSignal(storedHistory());
+  function toggleHistory() {
+    const next = !history();
+    setHistory(next);
+    storeHistory(next);
+  }
 
   // Um envio seu que falhou vira linha com "Tentar de novo" (no painel, a lista já mostra).
   const reported = new Set<string>();
@@ -57,8 +86,16 @@ export function ChatDock(props: Props) {
 
   return (
     <div class={dock}>
+      <Show when={history()}>
+        <ChatHistory
+          channel={props.channel}
+          labels={props.labels}
+          onOpen={(id) => props.onOpenPanel(props.channel.id, id)}
+        />
+      </Show>
       <div class={feed}>
-        <For each={props.chat.feed()}>
+        {/* Com o histórico à vista, ele já mostra quem falou fora do mapa: só a falha de envio fica. */}
+        <For each={props.chat.feed().filter((l) => !history() || l.failed)}>
           {(line) => (
             <Show
               when={line.failed}
@@ -108,10 +145,42 @@ export function ChatDock(props: Props) {
         onFocusChange={props.onFocusChange}
         touch={props.touch}
         carry
+        actions={
+          <button
+            type="button"
+            class={toggle}
+            data-history-toggle=""
+            aria-pressed={history()}
+            aria-label={history() ? t`Ocultar histórico` : t`Mostrar histórico`}
+            title={history() ? t`Ocultar histórico` : t`Mostrar histórico`}
+            onClick={toggleHistory}
+          >
+            <Symbol size={18}>{history() ? "expand_more" : "history"}</Symbol>
+          </button>
+        }
       />
     </div>
   );
 }
+
+/** O botão do histórico, nas cores fixas do campo (o mapa é escuro em qualquer tema). */
+const toggle = css({
+  flexShrink: 0,
+  display: "grid",
+  placeItems: "center",
+  width: "32px",
+  height: "32px",
+  padding: 0,
+  border: "none",
+  borderRadius: "8px",
+  background: "transparent",
+  color: "rgba(242, 241, 247, 0.72)",
+  cursor: "pointer",
+  "&:hover": { background: "rgba(255, 255, 255, 0.1)", color: "#F2F1F7" },
+  "&:focus-visible": { outline: "2px solid #7AA2FF", outlineOffset: "1px" },
+  "&[aria-pressed=true]": { color: "#C9D7FF" },
+  "@media (pointer: coarse)": { width: "40px", height: "40px" },
+});
 
 const dock = css({
   position: "absolute",

@@ -1,5 +1,6 @@
 import {
   type Accessor,
+  type JSX,
   Show,
   createEffect,
   createSignal,
@@ -43,6 +44,8 @@ interface Props {
   carry?: boolean;
   /** Mandou (o painel desce até o fim da conversa). */
   onSent?: () => void;
+  /** Botões a mais no fim do campo (o do histórico, no mapa). */
+  actions?: JSX.Element;
 }
 
 /**
@@ -241,6 +244,8 @@ export function ChatComposer(props: Props) {
           </IconButton>
         </Show>
       </Show>
+      {/* Fora do Show: o botão do histórico vale até para quem não pode escrever. */}
+      {props.actions}
     </div>
   );
 }

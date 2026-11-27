@@ -436,17 +436,19 @@ function ServerSpace(props: { serverId: string }) {
 
   // ---- Chat do Espaço (27/11/2026): balões sobre as cabeças, o campo no mapa, o canal no painel ----
   const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /** Como um balão diz o que não cabe nele (os mesmos no histórico sobre o campo). */
+  const chatLabels = {
+    code: t`[código]`,
+    spoiler: t`[spoiler]`,
+    attachment: t`📎 anexo`,
+    attachments: (n: number) => t`📎 ${n} anexos`,
+  };
   const chat = createSpaceChat({
     serverId,
     client,
     view,
     tick: ui,
-    labels: {
-      code: t`[código]`,
-      spoiler: t`[spoiler]`,
-      attachment: t`📎 anexo`,
-      attachments: (n) => t`📎 ${n} anexos`,
-    },
+    labels: chatLabels,
   });
   /** O painel mostra outra sala (aberta pela lista); null = segue você. */
   const [chatPinned, setChatPinned] = createSignal<string | null>(null);
@@ -1254,6 +1256,7 @@ function ServerSpace(props: { serverId: string }) {
                 chat={chat}
                 channel={ch()}
                 place={placeOf(ch().id)}
+                labels={chatLabels}
                 focusRequest={dockFocus}
                 onLeave={leaveChat}
                 onOpenPanel={(channelId, messageId) => openChat(channelId, messageId)}

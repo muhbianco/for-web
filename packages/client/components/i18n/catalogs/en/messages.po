@@ -1915,6 +1915,7 @@ msgid "Abrir no canal (sai do mapa)"
 msgstr "Abrir no canal (sai do mapa)"
 
 #: components/space/chat/ChatDock.tsx
+#: components/space/chat/ChatHistory.tsx
 msgid "Abrir no chat"
 msgstr "Abrir no chat"
 
@@ -3137,6 +3138,10 @@ msgstr "Cannot edit this message."
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Carrega {0}"
 #~ msgstr "Carrega {0}"
+
+#: components/space/chat/ChatHistory.tsx
+msgid "Carregando o histórico…"
+msgstr "Carregando o histórico…"
 
 #: components/space/NewsPanel.tsx
 msgid "Carregando os avisos…"
@@ -8013,6 +8018,10 @@ msgstr "morto-vivo"
 #~ msgid "Mostrar"
 #~ msgstr "Mostrar"
 
+#: components/space/chat/ChatDock.tsx
+msgid "Mostrar histórico"
+msgstr "Mostrar histórico"
+
 #: components/space/SpacePage.tsx
 msgid "Mostrar lista de salas"
 msgstr "Mostrar lista de salas"
@@ -8318,6 +8327,10 @@ msgstr "não dá para vestir"
 msgid "Não deu certo agora. Tente de novo."
 msgstr "Não deu certo agora. Tente de novo."
 
+#: components/space/chat/ChatHistory.tsx
+msgid "Não deu para carregar o histórico agora."
+msgstr "Não deu para carregar o histórico agora."
+
 #: components/space/NewsPanel.tsx
 msgid "Não deu para carregar os avisos agora. Tente de novo em instantes."
 msgstr "Não deu para carregar os avisos agora. Tente de novo em instantes."
@@ -8445,6 +8458,10 @@ msgstr "Nickname"
 #: components/space/game/runUi.ts
 #~ msgid "Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira"
 #~ msgstr "Ninguém conseguiu ferir os monstros por 60 s: o grupo se retira"
+
+#: components/space/chat/ChatHistory.tsx
+msgid "Ninguém escreveu aqui ainda. Diga oi!"
+msgstr "Ninguém escreveu aqui ainda. Diga oi!"
 
 #: components/space/game/BankPanel.tsx
 msgid "Ninguém no Espaço agora para receber. A pessoa precisa estar aqui."
@@ -9035,6 +9052,10 @@ msgstr "O YouTube não conseguiu tocar este vídeo (erro {0})."
 #: components/space/SmartTv.tsx
 msgid "O YouTube recusou o player (configuração de origem)."
 msgstr "O YouTube recusou o player (configuração de origem)."
+
+#: components/space/chat/ChatDock.tsx
+msgid "Ocultar histórico"
+msgstr "Ocultar histórico"
 
 #: components/space/game/labels.ts
 #~ msgid "Oferecer"
