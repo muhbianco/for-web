@@ -398,6 +398,11 @@ msgstr ""
 #~ msgid "{0} de mana; sai com {need} (guarda {kept} de reserva)"
 #~ msgstr ""
 
+#. placeholder {0}: num(m.ammo_used)
+#: components/space/game/RunPanel.tsx
+msgid "{0} de munição"
+msgstr ""
+
 #. placeholder {0}: props.n
 #: components/space/game/gameUi.tsx
 msgid "{0} de ouro"
@@ -460,8 +465,8 @@ msgstr "{0} файла надвишиха максималния размер о
 
 #. placeholder {0}: num(m.ammo_used)
 #: components/space/game/RunPanel.tsx
-msgid "{0} flechas"
-msgstr ""
+#~ msgid "{0} flechas"
+#~ msgstr ""
 
 #. placeholder {0}: users()[0]!.username
 #: components/app/interface/channels/text/CompositionInfo.tsx
@@ -1798,6 +1803,10 @@ msgstr ""
 msgid "A reprodução neste computador está engasgando"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "A segunda lâmina: só com adaga ou espada. Não refina."
+msgstr ""
+
 #: components/space/game/TvMenu.tsx
 #~ msgid "a sua"
 #~ msgstr ""
@@ -2137,8 +2146,7 @@ msgstr ""
 msgid "Aliado com mana abaixo de {0}%"
 msgstr ""
 
-#: components/space/game/ArsenalView.tsx
-#: components/space/game/MerchantPanel.tsx
+#: components/space/game/gameText.ts
 msgid "Aljava"
 msgstr ""
 
@@ -2969,8 +2977,12 @@ msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia 
 msgstr ""
 
 #: components/space/game/ArsenalView.tsx
-msgid "Cada classe veste o peso dela ou um mais leve."
+msgid "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
 msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Cada classe veste o peso dela ou um mais leve."
+#~ msgstr ""
 
 #: components/space/game/skillText.ts
 msgid "Cada inimigo atingido cura você em {p} da vida máxima."
@@ -3596,6 +3608,10 @@ msgstr ""
 
 #: components/space/chat/ChatDock.tsx
 msgid "Com o mouse em cima ou digitando, ele volta a ficar sólido."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Com penalidade"
 msgstr ""
 
 #: components/space/game/TrainingDialog.tsx
@@ -5616,8 +5632,7 @@ msgstr ""
 msgid "escudo"
 msgstr ""
 
-#: components/space/game/ArsenalView.tsx
-#: components/space/game/MerchantPanel.tsx
+#: components/space/game/gameText.ts
 #: components/space/game/SkillsPanel.tsx
 #: components/space/game/StatusIcons.tsx
 msgid "Escudo"
@@ -5648,7 +5663,11 @@ msgid "escudo de mana"
 msgstr ""
 
 #: components/space/game/ArsenalView.tsx
-msgid "Escudo, focus e aljava."
+#~ msgid "Escudo, focus e aljava."
+#~ msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Escudo, focus, aljava e punhal."
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -6228,8 +6247,7 @@ msgstr ""
 #~ msgid "Foco"
 #~ msgstr ""
 
-#: components/space/game/ArsenalView.tsx
-#: components/space/game/MerchantPanel.tsx
+#: components/space/game/gameText.ts
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
 #: src/interface/navigation/channels/HomeSidebar.tsx
@@ -9019,6 +9037,10 @@ msgstr ""
 msgid "O preço é o job e a Proficiência: os dois voltam ao 1, e as habilidades da classe nova começam no tier 1. Ficam o nível, a experiência, o ouro, os itens, as poções, a munição e o minério. Os atributos voltam para você distribuir de novo, sem gastar a redistribuição."
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "O punhal só vai com arma corpo a corpo de uma mão (adaga ou espada)."
+msgstr ""
+
 #: components/space/game/DungeonDetail.tsx
 msgid "O que cai"
 msgstr ""
@@ -9618,7 +9640,12 @@ msgstr ""
 
 #. placeholder {0}: weightName(x.weight)
 #: components/space/game/ArsenalView.tsx
-msgid "Peso {0}: quem veste esse peso ou mais pesado."
+#~ msgid "Peso {0}: quem veste esse peso ou mais pesado."
+#~ msgstr ""
+
+#. placeholder {0}: weightName(x.weight)
+#: components/space/game/ArsenalView.tsx
+msgid "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
 msgstr ""
 
 #: components/space/game/itemUi.ts
@@ -10011,6 +10038,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Pulso Sombrio"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Punhal"
 msgstr ""
 
 #: components/space/game/itemUi.ts
@@ -10414,7 +10445,11 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/SmithPanel.tsx
-msgid "Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam."
+#~ msgid "Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam."
+#~ msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Refina arma, armadura e escudo. Colar, anel, focus, aljava e punhal não refinam."
 msgstr ""
 
 #: components/space/game/SmithPanel.tsx
@@ -11564,8 +11599,12 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/ArsenalView.tsx
-msgid "Só com arma de distância. Não refina."
+msgid "Só com arco ou besta. Não refina."
 msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Só com arma de distância. Não refina."
+#~ msgstr ""
 
 #: components/space/game/ArsenalView.tsx
 msgid "Só com arma mágica de 1 mão. Não refina."

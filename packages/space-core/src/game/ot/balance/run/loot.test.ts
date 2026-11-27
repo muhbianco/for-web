@@ -104,7 +104,8 @@ test("o item que cai é de uma base que a classe de quem recebe veste", () => {
         err === null ||
           err.startsWith("duas-maos") ||
           err.startsWith("focus") ||
-          err.startsWith("aljava"),
+          err.startsWith("aljava") ||
+          err.startsWith("punhal"),
         `${cls}: ${err}`,
       );
     }
@@ -157,8 +158,9 @@ test("o Lendário que cai é qualquer item do jogo, com o perk da classe de quem
       1 - B.cfg.loot.sharedLegendaryShare - B.cfg.loot.namedLegendaryShare,
       "base qualquer",
     );
-    // Qualquer item do jogo: as 29 bases saem para toda classe (inclusive as que ela não veste).
-    assert.equal(slots.size, 29, `${cls}: ${slots.size} bases`);
+    // Qualquer item do jogo: as 30 bases saem para toda classe (inclusive as que ela não veste;
+    // o punhal entrou em 27/11/2026).
+    assert.equal(slots.size, 30, `${cls}: ${slots.size} bases`);
   }
   // O lendário com nome da própria classe vem com o perk de origem.
   let seen = false;

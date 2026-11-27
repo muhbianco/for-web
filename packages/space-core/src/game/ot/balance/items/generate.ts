@@ -68,6 +68,7 @@ const OFFHAND_NAME: Record<OffhandId, string> = {
   escudo: "Escudo",
   focus: "Focus",
   aljava: "Aljava",
+  punhal: "Punhal",
 };
 
 /** Quantos afixos o item traz: os da raridade, +1 em colar e anel (§9.3). */

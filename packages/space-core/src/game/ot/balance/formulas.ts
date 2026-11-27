@@ -82,6 +82,8 @@ export interface HeroLoadout {
   armorMdef: number;
   /** Bônus da munição (0, 5% ou 10%) no ATQ à distância. */
   ammoPct?: number;
+  /** Peças de armadura um peso acima do da classe (penalidade de velocidade e recarga). */
+  overweight?: number;
   bonus?: GearBonus;
 }
 
@@ -356,6 +358,7 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
     let watk = h.weaponBase * fam.atk;
     let wmatk = h.weaponBase * fam.matk;
     if (h.offhand === "aljava") watk *= 1 + cfg.items.quiverAtk;
+    if (h.offhand === "punhal") watk *= 1 + cfg.items.offDaggerAtk;
     if (h.offhand === "focus")
       wmatk += h.weaponBase * cfg.items.focusMatkOfBase;
     if (fam.kind === "ranged") watk *= 1 + (h.ammoPct ?? 0);
@@ -404,15 +407,19 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
       (b.hit ?? 0);
     const flee = d.fleePerAgi * A.AGI + d.fleePerLuck * A.SOR + (b.flee ?? 0);
 
+    const overweight = h.overweight ?? 0;
     const haste = Math.min(
       cfg.haste.hardCap,
-      hyper(A.AGI, cfg.haste.k, cfg.haste.curveCap) + (b.hastePct ?? 0),
+      hyper(A.AGI, cfg.haste.k, cfg.haste.curveCap) +
+        (b.hastePct ?? 0) -
+        overweight * cfg.items.overweightHaste,
     );
     const cooldownCut = Math.min(
       cfg.cooldown.hardCap,
       hyper(A.DES, cfg.cooldown.k, cfg.cooldown.curveCap) +
         (fam.cooldownCut ?? 0) +
-        (b.cooldownPct ?? 0),
+        (b.cooldownPct ?? 0) -
+        overweight * cfg.items.overweightCooldown,
     );
     const minRoll =
       cfg.minRoll.base + (cfg.minRoll.span * A.DES) / (A.DES + cfg.minRoll.k);

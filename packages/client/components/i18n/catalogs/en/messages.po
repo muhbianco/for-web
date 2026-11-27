@@ -398,6 +398,11 @@ msgstr "{0} de job"
 #~ msgid "{0} de mana; sai com {need} (guarda {kept} de reserva)"
 #~ msgstr "{0} de mana; sai com {need} (guarda {kept} de reserva)"
 
+#. placeholder {0}: num(m.ammo_used)
+#: components/space/game/RunPanel.tsx
+msgid "{0} de munição"
+msgstr "{0} de munição"
+
 #. placeholder {0}: props.n
 #: components/space/game/gameUi.tsx
 msgid "{0} de ouro"
@@ -460,8 +465,8 @@ msgstr "{0} files exceed the maximum size limit of {maxSizeFormatted} and were n
 
 #. placeholder {0}: num(m.ammo_used)
 #: components/space/game/RunPanel.tsx
-msgid "{0} flechas"
-msgstr "{0} flechas"
+#~ msgid "{0} flechas"
+#~ msgstr "{0} flechas"
 
 #. placeholder {0}: users()[0]!.username
 #: components/app/interface/channels/text/CompositionInfo.tsx
@@ -1798,6 +1803,10 @@ msgstr "A Proficiência efetiva é limitada pelo nível (10 × nível + 250); o 
 msgid "A reprodução neste computador está engasgando"
 msgstr "A reprodução neste computador está engasgando"
 
+#: components/space/game/ArsenalView.tsx
+msgid "A segunda lâmina: só com adaga ou espada. Não refina."
+msgstr "A segunda lâmina: só com adaga ou espada. Não refina."
+
 #: components/space/game/TvMenu.tsx
 #~ msgid "a sua"
 #~ msgstr "a sua"
@@ -2137,8 +2146,7 @@ msgstr "Aliado caído"
 msgid "Aliado com mana abaixo de {0}%"
 msgstr "Aliado com mana abaixo de {0}%"
 
-#: components/space/game/ArsenalView.tsx
-#: components/space/game/MerchantPanel.tsx
+#: components/space/game/gameText.ts
 msgid "Aljava"
 msgstr "Aljava"
 
@@ -2969,8 +2977,12 @@ msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia 
 msgstr "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 
 #: components/space/game/ArsenalView.tsx
-msgid "Cada classe veste o peso dela ou um mais leve."
-msgstr "Cada classe veste o peso dela ou um mais leve."
+msgid "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
+msgstr "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Cada classe veste o peso dela ou um mais leve."
+#~ msgstr "Cada classe veste o peso dela ou um mais leve."
 
 #: components/space/game/skillText.ts
 msgid "Cada inimigo atingido cura você em {p} da vida máxima."
@@ -3597,6 +3609,10 @@ msgstr "Com a ficha aberta, a próxima corrida do grupo espera você fechar."
 #: components/space/chat/ChatDock.tsx
 msgid "Com o mouse em cima ou digitando, ele volta a ficar sólido."
 msgstr "Com o mouse em cima ou digitando, ele volta a ficar sólido."
+
+#: components/space/game/ArsenalView.tsx
+msgid "Com penalidade"
+msgstr "Com penalidade"
 
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
@@ -5616,8 +5632,7 @@ msgstr "Esconder lista de salas"
 msgid "escudo"
 msgstr "escudo"
 
-#: components/space/game/ArsenalView.tsx
-#: components/space/game/MerchantPanel.tsx
+#: components/space/game/gameText.ts
 #: components/space/game/SkillsPanel.tsx
 #: components/space/game/StatusIcons.tsx
 msgid "Escudo"
@@ -5648,8 +5663,12 @@ msgid "escudo de mana"
 msgstr "escudo de mana"
 
 #: components/space/game/ArsenalView.tsx
-msgid "Escudo, focus e aljava."
-msgstr "Escudo, focus e aljava."
+#~ msgid "Escudo, focus e aljava."
+#~ msgstr "Escudo, focus e aljava."
+
+#: components/space/game/ArsenalView.tsx
+msgid "Escudo, focus, aljava e punhal."
+msgstr "Escudo, focus, aljava e punhal."
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 #: components/space/SpacePage.tsx
@@ -6228,8 +6247,7 @@ msgstr "físico"
 #~ msgid "Foco"
 #~ msgstr "Foco"
 
-#: components/space/game/ArsenalView.tsx
-#: components/space/game/MerchantPanel.tsx
+#: components/space/game/gameText.ts
 #: components/ui/components/features/profiles/ProfileStatus.tsx
 #: src/interface/channels/text/MemberSidebar.tsx
 #: src/interface/navigation/channels/HomeSidebar.tsx
@@ -9019,6 +9037,10 @@ msgstr "O pagamento abre numa janela do navegador. Quando confirmar, volte aqui 
 msgid "O preço é o job e a Proficiência: os dois voltam ao 1, e as habilidades da classe nova começam no tier 1. Ficam o nível, a experiência, o ouro, os itens, as poções, a munição e o minério. Os atributos voltam para você distribuir de novo, sem gastar a redistribuição."
 msgstr "O preço é o job e a Proficiência: os dois voltam ao 1, e as habilidades da classe nova começam no tier 1. Ficam o nível, a experiência, o ouro, os itens, as poções, a munição e o minério. Os atributos voltam para você distribuir de novo, sem gastar a redistribuição."
 
+#: components/space/game/gameText.ts
+msgid "O punhal só vai com arma corpo a corpo de uma mão (adaga ou espada)."
+msgstr "O punhal só vai com arma corpo a corpo de uma mão (adaga ou espada)."
+
 #: components/space/game/DungeonDetail.tsx
 msgid "O que cai"
 msgstr "O que cai"
@@ -9618,8 +9640,13 @@ msgstr "pesada"
 
 #. placeholder {0}: weightName(x.weight)
 #: components/space/game/ArsenalView.tsx
-msgid "Peso {0}: quem veste esse peso ou mais pesado."
-msgstr "Peso {0}: quem veste esse peso ou mais pesado."
+#~ msgid "Peso {0}: quem veste esse peso ou mais pesado."
+#~ msgstr "Peso {0}: quem veste esse peso ou mais pesado."
+
+#. placeholder {0}: weightName(x.weight)
+#: components/space/game/ArsenalView.tsx
+msgid "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
+msgstr "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
 
 #: components/space/game/itemUi.ts
 #~ msgid "Peso {w}"
@@ -10012,6 +10039,10 @@ msgstr "Pular"
 #: components/space/game/gameText.ts
 msgid "Pulso Sombrio"
 msgstr "Pulso Sombrio"
+
+#: components/space/game/gameText.ts
+msgid "Punhal"
+msgstr "Punhal"
 
 #: components/space/game/itemUi.ts
 #~ msgid "punhos"
@@ -10414,8 +10445,12 @@ msgstr "Refazer"
 #~ msgstr "Refina a arma que você empunha, até +{REFINE_MAX}. Cada nível dá dano; acima do +{REFINE_SAFE} pode falhar, e aí só o ouro vai (a arma fica no nível em que estava)."
 
 #: components/space/game/SmithPanel.tsx
-msgid "Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam."
-msgstr "Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam."
+#~ msgid "Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam."
+#~ msgstr "Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam."
+
+#: components/space/game/SmithPanel.tsx
+msgid "Refina arma, armadura e escudo. Colar, anel, focus, aljava e punhal não refinam."
+msgstr "Refina arma, armadura e escudo. Colar, anel, focus, aljava e punhal não refinam."
 
 #: components/space/game/SmithPanel.tsx
 msgid "Refinar"
@@ -11564,8 +11599,12 @@ msgstr "Smart TV: intervalo entre vídeos"
 #~ msgstr "Só armas se refinam."
 
 #: components/space/game/ArsenalView.tsx
-msgid "Só com arma de distância. Não refina."
-msgstr "Só com arma de distância. Não refina."
+msgid "Só com arco ou besta. Não refina."
+msgstr "Só com arco ou besta. Não refina."
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Só com arma de distância. Não refina."
+#~ msgstr "Só com arma de distância. Não refina."
 
 #: components/space/game/ArsenalView.tsx
 msgid "Só com arma mágica de 1 mão. Não refina."

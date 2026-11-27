@@ -4,6 +4,7 @@ import {
   type ArmorSlot,
   type ArmorWeight,
   type ClassId,
+  type FamilyDef,
   type FamilyId,
   type OffhandId,
   type RarityId,
@@ -111,13 +112,51 @@ export type EquipError =
   | "duas-maos-com-escudo"
   | "focus-sem-arma-magica-de-uma-mao"
   | "aljava-sem-arma-de-distancia"
+  | "punhal-sem-arma-de-uma-mao"
   | "slot-errado";
 
-/** Peso de armadura que a classe pode vestir: o dela ou mais leve (§9.3). */
+/**
+ * Como a classe veste um peso de armadura (§9.3; 27/11/2026): "natural" é o dela ou mais leve;
+ * "acima" é um peso acima, com penalidade (`overweightHaste`/`overweightCooldown` por peça); null
+ * não veste.
+ */
+export function armorFit(
+  cls: ClassId,
+  weight: ArmorWeight,
+): "natural" | "acima" | null {
+  const d =
+    ARMOR_WEIGHTS.indexOf(weight) - ARMOR_WEIGHTS.indexOf(CLASSES[cls].armor);
+  return d <= 0 ? "natural" : d === 1 ? "acima" : null;
+}
+
+/** Peso de armadura que a classe pode vestir: o dela, os mais leves e um acima (com penalidade). */
 export function canWearWeight(cls: ClassId, weight: ArmorWeight): boolean {
-  return (
-    ARMOR_WEIGHTS.indexOf(weight) <= ARMOR_WEIGHTS.indexOf(CLASSES[cls].armor)
-  );
+  return armorFit(cls, weight) !== null;
+}
+
+/**
+ * A mão secundária combina com a arma (§9.1)? A regra é uma só para vestir a arma, vestir a mão
+ * secundária e o "escolher o melhor sozinho": escudo com arma de uma mão (ou nenhuma); focus com
+ * arma mágica de uma mão; aljava com arco ou besta; punhal com arma corpo a corpo de uma mão.
+ */
+export function offhandMismatch(
+  off: OffhandId,
+  w: FamilyDef | null,
+): EquipError | null {
+  switch (off) {
+    case "escudo":
+      return w?.hands === 2 ? "duas-maos-com-escudo" : null;
+    case "focus":
+      return w && w.kind === "magic" && w.hands === 1
+        ? null
+        : "focus-sem-arma-magica-de-uma-mao";
+    case "aljava":
+      return w?.kind === "ranged" ? null : "aljava-sem-arma-de-distancia";
+    case "punhal":
+      return w && w.kind === "melee" && w.hands === 1
+        ? null
+        : "punhal-sem-arma-de-uma-mao";
+  }
 }
 
 /**
@@ -135,26 +174,14 @@ export function cannotEquip(
     case "arma": {
       if (!cls.weapons.includes(item.family)) return "classe-nao-usa";
       const off = hero.equipment.secundaria?.offhand;
-      const fam = FAMILIES[item.family];
-      if (off === "escudo" && fam.hands === 2) return "duas-maos-com-escudo";
-      if (off === "focus" && !(fam.kind === "magic" && fam.hands === 1))
-        return "focus-sem-arma-magica-de-uma-mao";
-      if (off === "aljava" && fam.kind !== "ranged")
-        return "aljava-sem-arma-de-distancia";
-      return null;
+      return off ? offhandMismatch(off, FAMILIES[item.family]) : null;
     }
     case "secundaria": {
       if (!cls.offhands.includes(item.offhand)) return "classe-nao-usa";
       const w = hero.equipment.arma
         ? FAMILIES[hero.equipment.arma.family]
         : null;
-      if (item.offhand === "escudo" && w?.hands === 2)
-        return "duas-maos-com-escudo";
-      if (item.offhand === "focus" && !(w?.kind === "magic" && w.hands === 1))
-        return "focus-sem-arma-magica-de-uma-mao";
-      if (item.offhand === "aljava" && w?.kind !== "ranged")
-        return "aljava-sem-arma-de-distancia";
-      return null;
+      return offhandMismatch(item.offhand, w);
     }
     case "colar":
     case "anel":
@@ -234,9 +261,11 @@ export function heroLoadout(
 
   let armorDef = 0;
   let armorMdef = 0;
+  let overweight = 0;
   for (const slot of ARMOR_SLOTS) {
     const piece = eq[slot];
     if (!piece) continue;
+    if (armorFit(hero.cls, piece.weight) === "acima") overweight++;
     const mult = B.rarityMult(piece.rarity) * B.refineMult(piece.refine, false);
     armorDef += B.armorDefPiece(piece.ilvl, slot, piece.weight) * mult;
     armorMdef += B.armorMdefPiece(piece.ilvl, slot, piece.weight) * mult;
@@ -254,6 +283,7 @@ export function heroLoadout(
     armorDef,
     armorMdef,
     ammoPct: hero.ammo ? AMMO_GRADES[hero.ammo] : 0,
+    overweight,
     bonus,
   };
 }

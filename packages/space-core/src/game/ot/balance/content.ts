@@ -37,7 +37,8 @@ export const FAMILY_IDS = [
 ] as const;
 export type FamilyId = (typeof FAMILY_IDS)[number];
 
-export const OFFHAND_IDS = ["escudo", "focus", "aljava"] as const;
+/** Punhal (27/11/2026): a segunda lâmina do Assassino, com arma corpo a corpo de uma mão. */
+export const OFFHAND_IDS = ["escudo", "focus", "aljava", "punhal"] as const;
 export type OffhandId = (typeof OFFHAND_IDS)[number];
 
 export const ARMOR_WEIGHTS = ["leve", "media", "pesada"] as const;
@@ -113,7 +114,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: "guerreiro",
     role: "tanque",
     titles: ["Recruta", "Guerreiro", "Vanguarda", "Senhor da Guerra"],
-    weapons: ["espada", "machado", "lanca"],
+    weapons: ["espada", "machado", "lanca", "adaga", "martelo"],
     offhands: ["escudo"],
     armor: "pesada",
     hp0: 150,
@@ -143,8 +144,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: "paladino",
     role: "tanque",
     titles: ["Escudeiro", "Paladino", "Templário", "Cruzado"],
-    weapons: ["espada", "lanca", "martelo"],
-    offhands: ["escudo"],
+    weapons: ["espada", "lanca", "martelo", "adaga", "maca", "besta"],
+    offhands: ["escudo", "aljava"],
     armor: "pesada",
     hp0: 145,
     hpPerLevel: 14,
@@ -173,8 +174,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: "padre",
     role: "suporte",
     titles: ["Acólito", "Padre", "Sumo Sacerdote", "Arcebispo"],
-    weapons: ["cajado", "maca", "besta"],
-    offhands: ["escudo"],
+    weapons: ["cajado", "maca", "besta", "cetro", "bastao"],
+    offhands: ["escudo", "aljava", "focus"],
     armor: "leve",
     hp0: 100,
     hpPerLevel: 7,
@@ -207,8 +208,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
       "Guardião do Bosque",
       "Arquidruida",
     ],
-    weapons: ["cajado", "adaga", "lanca", "bastao"],
-    offhands: ["escudo"],
+    weapons: ["cajado", "adaga", "lanca", "bastao", "katar", "cetro"],
+    offhands: ["escudo", "focus"],
     armor: "media",
     hp0: 105,
     hpPerLevel: 8,
@@ -242,7 +243,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: "mago",
     role: "dps",
     titles: ["Aprendiz", "Mago", "Feiticeiro", "Arquimago"],
-    weapons: ["cajado", "cetro"],
+    weapons: ["cajado", "cetro", "adaga", "bastao"],
     offhands: ["focus", "escudo"],
     armor: "leve",
     hp0: 90,
@@ -276,7 +277,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     role: "dps",
     titles: ["Arqueiro", "Caçador", "Sentinela", "Patrulheiro"],
     weapons: ["arco", "besta", "adaga", "lanca"],
-    offhands: ["aljava"],
+    offhands: ["aljava", "escudo"],
     armor: "media",
     hp0: 110,
     hpPerLevel: 8,
@@ -305,8 +306,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: "assassino",
     role: "dps",
     titles: ["Gatuno", "Assassino", "Algoz", "Mestre das Sombras"],
-    weapons: ["katar", "adaga", "espada", "lanca", "arco"],
-    offhands: ["escudo"],
+    weapons: ["katar", "adaga", "espada", "lanca", "arco", "machado"],
+    offhands: ["escudo", "aljava", "punhal"],
     armor: "media",
     hp0: 115,
     hpPerLevel: 9,

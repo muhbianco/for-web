@@ -264,7 +264,7 @@ export function SmithPanel(props: {
         <Muted>{t`O que está vestido não desmonta: tire antes na ficha.`}</Muted>
       </Show>
       <Show when={tab() === "refinar"}>
-        <Muted>{t`Refina arma, armadura e escudo. Colar, anel, focus e aljava não refinam.`}</Muted>
+        <Muted>{t`Refina arma, armadura e escudo. Colar, anel, focus, aljava e punhal não refinam.`}</Muted>
       </Show>
 
       {/* keyed: cada tentativa é um resultado novo (o Result lê o desfecho uma vez). */}

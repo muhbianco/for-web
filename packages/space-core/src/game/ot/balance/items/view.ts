@@ -124,29 +124,38 @@ export function itemTooltip(
     if (f.matk > 0)
       base.push({ label: "MATQ", value: Math.round(wb * f.matk) });
   } else if (item.slot === "secundaria") {
-    kind =
-      item.offhand === "escudo"
-        ? "Escudo"
-        : item.offhand === "focus"
-          ? "Focus"
-          : "Aljava";
-    if (item.offhand === "escudo")
-      base.push({
-        label: "DEF",
-        value: Math.round(
-          B.shieldDefValue(item.ilvl) * rm * B.refineMult(item.refine, false),
-        ),
-      });
-    else if (item.offhand === "focus")
-      base.push({
-        label: "MATQ da arma",
-        value: Math.round(B.cfg.items.focusMatkOfBase * 100),
-      });
-    else
-      base.push({
-        label: "ATQ à distância da arma",
-        value: Math.round(B.cfg.items.quiverAtk * 100),
-      });
+    switch (item.offhand) {
+      case "escudo":
+        kind = "Escudo";
+        base.push({
+          label: "DEF",
+          value: Math.round(
+            B.shieldDefValue(item.ilvl) * rm * B.refineMult(item.refine, false),
+          ),
+        });
+        break;
+      case "focus":
+        kind = "Focus";
+        base.push({
+          label: "MATQ da arma",
+          value: Math.round(B.cfg.items.focusMatkOfBase * 100),
+        });
+        break;
+      case "aljava":
+        kind = "Aljava";
+        base.push({
+          label: "ATQ à distância da arma",
+          value: Math.round(B.cfg.items.quiverAtk * 100),
+        });
+        break;
+      case "punhal":
+        kind = "Punhal (segunda lâmina)";
+        base.push({
+          label: "ATQ corpo a corpo da arma",
+          value: Math.round(B.cfg.items.offDaggerAtk * 100),
+        });
+        break;
+    }
   } else if (!("weight" in item)) {
     kind = item.slot === "colar" ? "Colar" : "Anel";
   } else {

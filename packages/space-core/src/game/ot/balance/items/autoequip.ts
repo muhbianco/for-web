@@ -6,6 +6,7 @@ import {
   type ItemInstance,
   cannotEquip,
   heroDerived,
+  offhandMismatch,
 } from "../equipment.ts";
 import { heroFighter } from "../fighter.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
@@ -108,10 +109,7 @@ export interface AutoEquipResult {
 function offhandFits(eq: Equipment): boolean {
   const off = eq.secundaria?.offhand;
   if (!off) return true;
-  const w = eq.arma ? FAMILIES[eq.arma.family] : null;
-  if (off === "escudo") return !w || w.hands === 1;
-  if (off === "focus") return !!w && w.kind === "magic" && w.hands === 1;
-  return !!w && w.kind === "ranged";
+  return offhandMismatch(off, eq.arma ? FAMILIES[eq.arma.family] : null) === null;
 }
 
 export function autoEquip(

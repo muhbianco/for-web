@@ -18,6 +18,7 @@ import {
   OFFHAND_IDS,
   RARITY_IDS,
   affixCount,
+  armorFit,
   canWearWeight,
   generateItem,
   itemName,
@@ -27,7 +28,13 @@ import {
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
-import { rarityName, roleName, slotName, weightName } from "./gameText";
+import {
+  offhandName,
+  rarityName,
+  roleName,
+  slotName,
+  weightName,
+} from "./gameText";
 import { RARITY } from "./gameTheme";
 import { Btn, ItemIcon, Muted } from "./gameUi";
 
@@ -45,6 +52,8 @@ interface Base {
   group: Group;
   base: ItemBase;
   classes: ClassId[];
+  /** Armadura um peso acima do da classe: veste, com penalidade (27/11/2026). */
+  heavy?: ClassId[];
 }
 
 const BASES: Base[] = [
@@ -66,6 +75,7 @@ const BASES: Base[] = [
       group: "armadura" as const,
       base: { slot: s, weight: w } as ItemBase,
       classes: CLASS_IDS.filter((c) => canWearWeight(c, w)),
+      heavy: CLASS_IDS.filter((c) => armorFit(c, w) === "acima"),
     })),
   ),
   ...(["colar", "anel"] as const).map((s) => ({
@@ -106,12 +116,7 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
   const baseName = (b: Base): string => {
     const x = b.base;
     if (x.slot === "arma") return FAMILIES[x.family].name;
-    if (x.slot === "secundaria")
-      return x.offhand === "escudo"
-        ? t`Escudo`
-        : x.offhand === "focus"
-          ? t`Focus`
-          : t`Aljava`;
+    if (x.slot === "secundaria") return offhandName(x.offhand);
     if ("weight" in x) return `${slotName(x.slot)} ${weightName(x.weight)}`;
     return slotName(x.slot);
   };
@@ -131,13 +136,18 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
         : t`1 mão · ${kind} · ${aps} ataques/s · escala ${f.scale}`;
     }
     if (x.slot === "secundaria")
-      return x.offhand === "escudo"
-        ? t`Não combina com arma de 2 mãos.`
-        : x.offhand === "focus"
-          ? t`Só com arma mágica de 1 mão. Não refina.`
-          : t`Só com arma de distância. Não refina.`;
+      switch (x.offhand) {
+        case "escudo":
+          return t`Não combina com arma de 2 mãos.`;
+        case "focus":
+          return t`Só com arma mágica de 1 mão. Não refina.`;
+        case "aljava":
+          return t`Só com arco ou besta. Não refina.`;
+        case "punhal":
+          return t`A segunda lâmina: só com adaga ou espada. Não refina.`;
+      }
     if ("weight" in x)
-      return t`Peso ${weightName(x.weight)}: quem veste esse peso ou mais pesado.`;
+      return t`Peso ${weightName(x.weight)}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −${heavyPct}% de velocidade de ataque e de recarga por peça.`;
     return t`Todas as classes. Não refina; 1 afixo a mais.`;
   };
 
@@ -150,12 +160,12 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
     {
       id: "secundaria" as const,
       title: t`Mão secundária`,
-      blurb: t`Escudo, focus e aljava.`,
+      blurb: t`Escudo, focus, aljava e punhal.`,
     },
     {
       id: "armadura" as const,
       title: t`Armaduras`,
-      blurb: t`Cada classe veste o peso dela ou um mais leve.`,
+      blurb: t`Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade.`,
     },
     {
       id: "joia" as const,
@@ -168,15 +178,22 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
   const named = Math.round(B.cfg.loot.namedLegendaryShare * 100);
   const namedCount = LEGENDARIES.filter((l) => l.cls !== null).length;
 
-  const Who = (p: { classes: readonly ClassId[] }) => (
+  const heavyPct = Math.round(B.cfg.items.overweightHaste * 100);
+  const Who = (p: {
+    classes: readonly ClassId[];
+    heavy?: readonly ClassId[] | undefined;
+  }) => (
     <WhoRow>
       <For each={CLASS_IDS}>
         {(c) => (
           <WhoChip
             data-yes={p.classes.includes(c) ? "" : undefined}
+            data-heavy={p.heavy?.includes(c) ? "" : undefined}
             data-me={cls() === c ? "" : undefined}
+            title={p.heavy?.includes(c) ? t`Com penalidade` : undefined}
           >
             {title(c)}
+            {p.heavy?.includes(c) ? " ◐" : ""}
           </WhoChip>
         )}
       </For>
@@ -294,7 +311,7 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
                       <Muted>
                         {t`No jogo: ${itemName(comum())} · iL ${ilvl()}`}
                       </Muted>
-                      <Who classes={b.classes} />
+                      <Who classes={b.classes} heavy={b.heavy} />
                       <Tiers>
                         <For each={RARITY_IDS}>
                           {(r) => {
@@ -420,7 +437,11 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
                                 }
                                 data-me={cls() === c ? "" : undefined}
                               >
-                                {b.classes.includes(c) ? "✓" : "·"}
+                                {b.heavy?.includes(c)
+                                  ? "◐"
+                                  : b.classes.includes(c)
+                                    ? "✓"
+                                    : "·"}
                               </td>
                             )}
                           </For>
@@ -599,6 +620,7 @@ const WhoChip = styled("span", {
       borderColor: "#5c4d36",
       background: "#2e271d",
     },
+    "&[data-heavy]": { borderStyle: "dashed", opacity: 0.85 },
     "&[data-me]": { borderColor: "#d9b45a", color: "#ffe9b0" },
   },
 });

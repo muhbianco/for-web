@@ -7,6 +7,7 @@ import {
   type BalanceHero,
   type ItemInstance,
   affixTotals,
+  armorFit,
   cannotEquip,
   canWearWeight,
   heroDerived,
@@ -136,12 +137,70 @@ test("refino e raridade entram na base da arma e das peças", () => {
   assert.ok(Math.abs(w(10, "lendario") / w(0, "comum") - 1.2 * 1.65) < 1e-12);
 });
 
-test("peso de armadura: o da classe ou mais leve", () => {
+test("peso de armadura: o da classe e os mais leves; um acima, com penalidade (27/11/2026)", () => {
   assert.ok(canWearWeight("guerreiro", "leve"));
-  assert.ok(canWearWeight("guerreiro", "pesada"));
-  assert.ok(canWearWeight("cacador", "media"));
-  assert.ok(!canWearWeight("mago", "media"));
-  assert.ok(!canWearWeight("cacador", "pesada"));
+  assert.equal(armorFit("guerreiro", "pesada"), "natural");
+  assert.equal(armorFit("cacador", "media"), "natural");
+  assert.equal(armorFit("mago", "media"), "acima");
+  assert.equal(armorFit("cacador", "pesada"), "acima");
+  assert.equal(armorFit("mago", "pesada"), null);
+  assert.ok(!canWearWeight("padre", "pesada"));
+  // Cada peça acima tira 4% da velocidade e do corte de recarga.
+  const piece = (weight: "leve" | "media") => ({ ...raro, weight });
+  const dressed = (weight: "leve" | "media") =>
+    hero({
+      cls: "mago",
+      equipment: {
+        elmo: { ...piece(weight), slot: "elmo" },
+        armadura: { ...piece(weight), slot: "armadura" },
+        calcas: { ...piece(weight), slot: "calcas" },
+        botas: { ...piece(weight), slot: "botas" },
+      },
+    });
+  const light = heroDerived(dressed("leve"));
+  const heavy = heroDerived(dressed("media"));
+  assert.ok(heavy.def > light.def, "a média protege mais");
+  assert.ok(
+    Math.abs(light.haste - heavy.haste - 4 * B.cfg.items.overweightHaste) < 1e-9,
+    `velocidade: ${light.haste} → ${heavy.haste}`,
+  );
+  assert.ok(
+    Math.abs(
+      light.cooldownCut - heavy.cooldownCut - 4 * B.cfg.items.overweightCooldown,
+    ) < 1e-9,
+    `recarga: ${light.cooldownCut} → ${heavy.cooldownCut}`,
+  );
+});
+
+test("punhal: a segunda lâmina do Assassino, com adaga ou espada (27/11/2026)", () => {
+  const punhal: ItemInstance = { ...raro, slot: "secundaria", offhand: "punhal" };
+  const killer = (family?: "adaga" | "katar") =>
+    hero({
+      cls: "assassino",
+      ...(family
+        ? { equipment: { arma: { ...raro, slot: "arma", family } } }
+        : {}),
+    });
+  assert.equal(cannotEquip(killer("adaga"), punhal), null);
+  assert.equal(cannotEquip(killer("katar"), punhal), "punhal-sem-arma-de-uma-mao");
+  assert.equal(cannotEquip(killer(), punhal), "punhal-sem-arma-de-uma-mao");
+  assert.equal(cannotEquip(hero(), punhal), "classe-nao-usa");
+  const withPunhal = hero({
+    cls: "assassino",
+    equipment: { secundaria: punhal },
+  });
+  assert.equal(
+    cannotEquip(withPunhal, { ...raro, slot: "arma", family: "katar" }),
+    "punhal-sem-arma-de-uma-mao",
+  );
+  // +15% no ATQ da arma.
+  const dagger = { ...raro, slot: "arma" as const, family: "adaga" as const };
+  const bare = heroLoadout(hero({ cls: "assassino", equipment: { arma: dagger } }));
+  const dual = heroLoadout(
+    hero({ cls: "assassino", equipment: { arma: dagger, secundaria: punhal } }),
+  );
+  const atk = (l: typeof bare) => B.heroStats(l).atk;
+  assert.ok(atk(dual) > atk(bare), "o punhal soma ATQ");
 });
 
 test("quem pode equipar o quê (classe, nível, mãos e mão secundária)", () => {
@@ -183,6 +242,11 @@ test("quem pode equipar o quê (classe, nível, mãos e mão secundária)", () =
   assert.equal(
     cannotEquip(mage, { ...raro, slot: "armadura", weight: "pesada" }),
     "peso-acima-da-classe",
+  );
+  // Um peso acima veste (com penalidade nos derivados).
+  assert.equal(
+    cannotEquip(mage, { ...raro, slot: "armadura", weight: "media" }),
+    null,
   );
   const hunter = hero({ cls: "cacador" });
   assert.equal(

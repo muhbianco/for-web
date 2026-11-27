@@ -850,7 +850,7 @@ function EndCard(props: {
               </Show>
               <small>
                 {t`Gastou ${m.potions_used.hp} poções de vida e ${m.potions_used.mp} de mana`}
-                {m.ammo_used > 0 ? ` · ${t`${num(m.ammo_used)} flechas`}` : ""}
+                {m.ammo_used > 0 ? ` · ${t`${num(m.ammo_used)} de munição`}` : ""}
               </small>
             </li>
           )}

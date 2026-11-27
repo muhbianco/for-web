@@ -375,6 +375,14 @@ const SHAPES: Record<string, Shape[]> = {
     ),
     rect(14.5, 21, 3, 3, "metal"),
   ],
+  // A segunda lâmina do Assassino (27/11/2026): adaga curta, com a guarda larga de aparar.
+  punhal: [
+    line([20, 20], [8, 8], 2.4, "metal"),
+    line([8, 8], [6, 6], 1.2, "metal"),
+    line([23, 17], [17, 23], 2.4, "metal"),
+    line([21, 21], [25, 25], 2.4, "leather"),
+    circle([26, 26], 1.6, "metal"),
+  ],
   aljava: [
     line([10, 28], [19, 10], 7, "leather"),
     line([18, 9], [22, 2], 1.2, "wood"),

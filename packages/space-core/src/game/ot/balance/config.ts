@@ -549,6 +549,14 @@ export const BALANCE = {
     /** Aljava: +15% no ATQ da arma à distância; +100 de capacidade de munição. */
     quiverAtk: 0.15,
     quiverAmmoCapacity: 100,
+    /** Punhal (mão esquerda do Assassino, 27/11/2026): +15% no ATQ da arma corpo a corpo de 1 mão. */
+    offDaggerAtk: 0.15,
+    /**
+     * Armadura um peso acima do da classe (27/11/2026): cada peça tira 4% da velocidade de ataque e
+     * 4% do corte de recarga das habilidades (a armadura pesada atrapalha o golpe e a magia).
+     */
+    overweightHaste: 0.04,
+    overweightCooldown: 0.04,
     /** Requisito: nível ≥ iL − 5. */
     requirementSlack: 5,
     /** Afixo de atributo: 1 + iL/40; Precisão, Fuga e crítico: 2 × isso. */

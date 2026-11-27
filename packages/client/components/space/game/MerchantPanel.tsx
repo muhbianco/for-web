@@ -11,6 +11,7 @@ import {
   BAG_SLOTS,
   CLASSES,
   FAMILIES,
+  OFFHAND_IDS,
   ammoPackPrice,
   buyBackPrice,
   commonItemPrice,
@@ -20,7 +21,7 @@ import {
 import { styled } from "styled-system/jsx";
 
 import { ItemCard, ItemGrid } from "./ItemCard";
-import { sizeName, slotName, weightName } from "./gameText";
+import { offhandName, sizeName, slotName, weightName } from "./gameText";
 import {
   type GameLink,
   Btn,
@@ -271,7 +272,7 @@ function basesFor(cls: RpgHeroState["hero"]["cls"], all: boolean): ItemBase[] {
     ? (Object.keys(FAMILIES) as (keyof typeof FAMILIES)[])
     : c.weapons;
   const out: ItemBase[] = fams.map((family) => ({ slot: "arma", family }));
-  for (const off of all ? (["escudo", "focus", "aljava"] as const) : c.offhands)
+  for (const off of all ? OFFHAND_IDS : c.offhands)
     out.push({ slot: "secundaria", offhand: off });
   for (const slot of ARMOR_SLOTS) out.push({ slot, weight: c.armor });
   out.push({ slot: "colar" }, { slot: "anel" });
@@ -290,11 +291,7 @@ function Commons(props: { state: RpgHeroState; busy: boolean; onBuy: BuyFn }) {
     b.slot === "arma"
       ? FAMILIES[b.family].name
       : b.slot === "secundaria"
-        ? b.offhand === "escudo"
-          ? t`Escudo`
-          : b.offhand === "focus"
-            ? t`Focus`
-            : t`Aljava`
+        ? offhandName(b.offhand)
         : "weight" in b
           ? `${slotName(b.slot)} (${weightName(b.weight)})`
           : slotName(b.slot);

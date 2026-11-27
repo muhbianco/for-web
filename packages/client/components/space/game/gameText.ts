@@ -8,6 +8,7 @@ import type {
   Family,
   GearSlot,
   MechanicEvent,
+  OffhandId,
   PotionSize,
   RarityId,
   Stat,
@@ -141,6 +142,20 @@ export function sizeName(s: PotionSize): string {
 
 export function weightName(w: string): string {
   return w === "leve" ? t`leve` : w === "media" ? t`média` : t`pesada`;
+}
+
+/** O nome da mão secundária (um lugar só: o punhal entrou em 27/11/2026). */
+export function offhandName(o: OffhandId): string {
+  switch (o) {
+    case "escudo":
+      return t`Escudo`;
+    case "focus":
+      return t`Focus`;
+    case "aljava":
+      return t`Aljava`;
+    case "punhal":
+      return t`Punhal`;
+  }
 }
 
 /** "Caçada 40", "Masmorra 40"; o Chefe de Região pelo nome dele (o catálogo da TV). */
@@ -372,6 +387,8 @@ export function errorText(code?: string, reason?: string): string {
       return t`O focus só vai com arma mágica de uma mão.`;
     case "aljava-sem-arma-de-distancia":
       return t`A aljava só vai com arco ou besta.`;
+    case "punhal-sem-arma-de-uma-mao":
+      return t`O punhal só vai com arma corpo a corpo de uma mão (adaga ou espada).`;
     case "sem-pontos":
       return t`Sem pontos livres.`;
     case "pedido-vazio":
