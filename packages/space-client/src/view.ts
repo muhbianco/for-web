@@ -176,6 +176,7 @@ export type GameWireEvent = {
     | "rpg.state"
     | "rpg.lobby"
     | "rpg.run"
+    | "rpg.stats"
     | "error";
   re?: string;
   d: Record<string, unknown>;
@@ -737,6 +738,13 @@ export class SpaceView {
         const re = typeof e.re === "string" ? e.re : undefined;
         if (re) this.gameCommands.delete(re);
         this.emitGame({ t: "rpg.run", re, d });
+        return;
+      }
+      case "rpg.stats": {
+        // The run meter asked for the gain per hour (27/11/2026): only its own command waits for it.
+        const re = typeof e.re === "string" ? e.re : undefined;
+        if (re) this.gameCommands.delete(re);
+        this.emitGame({ t: "rpg.stats", re, d });
         return;
       }
       case "rpg.board": {

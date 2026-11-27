@@ -157,7 +157,6 @@ export class LabServer implements TvLink {
     const next = hero
       ? {
           ...(cur ?? {
-            stamina: 2400,
             dojo: null,
             run: null,
             rates: { exp: 1 },
@@ -199,6 +198,7 @@ export class LabServer implements TvLink {
     const free = [
       "rpg.run.leave",
       "rpg.board",
+      "rpg.stats",
       "rpg.lobby.leave",
       "rpg.lobby.loop",
       "rpg.run.watch",
@@ -445,6 +445,46 @@ export class LabServer implements TvLink {
       }
       case "rpg.run.watch":
         return this.emit({ t: "rpg.run", re, d: {} });
+      case "rpg.stats": {
+        // Um histórico de exemplo (a aba Ganho do medidor): três DGs, uma com quedas.
+        const days = d.days === 7 ? 7 : 1;
+        const k = days === 7 ? 6 : 1;
+        const g = (
+          dungeon: string,
+          runs: number,
+          runS: number,
+          xp: number,
+          goldPer: number,
+          wins = runs,
+          deaths = 0,
+        ) => ({
+          dungeon,
+          runs: runs * k,
+          wins: wins * k,
+          deaths: deaths * k,
+          run_s: runs * k * runS,
+          cycle_s: runs * k * (runS + 12),
+          xp: runs * k * xp,
+          job_xp: Math.round(runs * k * xp * 0.3),
+          gold: runs * k * goldPer,
+        });
+        return this.emit({
+          t: "rpg.stats",
+          re,
+          d: {
+            days,
+            since: Date.now() - days * 86_400_000,
+            runs: 101 * k,
+            capped: false,
+            lead_s: 12.3,
+            dungeons: [
+              g("masmorra-60", 48, 128, 33567, 4538),
+              g("regiao-1", 22, 92, 18000, 2600),
+              g("cacada-60", 31, 75, 9000, 1200, 29, 2),
+            ],
+          },
+        });
+      }
       default:
         return this.refuse(re, "invalid_message", "invalid_message");
     }

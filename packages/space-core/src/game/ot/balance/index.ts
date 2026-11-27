@@ -37,3 +37,4 @@ export * from "./run/loot.ts";
 export * from "./run/lootOdds.ts";
 export * from "./run/rewards.ts";
 export * from "./run/meter.ts";
+export * from "./run/gain.ts";

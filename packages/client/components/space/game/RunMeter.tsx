@@ -7,16 +7,17 @@ import { styled } from "styled-system/jsx";
 
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
+import GainTab from "./GainTab";
 import { CLASS_ICON } from "./RunHud";
 import { AGGRO_SWITCH_PCT, type AggroLevel, aggroFill, aggroViews } from "./aggro";
 import { gameFrame } from "./gameTheme";
-import { Grip, Tabs } from "./gameUi";
+import { type GameLink, Grip, Tabs } from "./gameUi";
 import { num } from "./heroModel";
 import { dungeonName } from "./partyUi";
 import { runCast } from "./runUi";
 import { useWide, useWindowDrag } from "./windowDrag";
 
-type Tab = "dmg" | "taken" | "heal" | "threat";
+type Tab = "dmg" | "taken" | "heal" | "threat" | "gain";
 
 /** A cor da barra de ameaça pelo nível (o número em % vai junto: a cor nunca é o único sinal). */
 const AGGRO_COLOR: Record<AggroLevel, string> = {
@@ -49,11 +50,14 @@ function clock(s: number): string {
  * por aba (dano causado, dano recebido, cura), cada herói com o total, o por segundo e a fatia do
  * grupo; clicar no herói abre de onde veio (skill a skill). Embaixo, o dano e a cura do grupo
  * por segundo e o tempo da corrida. A aba Ameaça (26/11/2026) mostra cada monstro vivo da sala, quem
- * ele mira e quem está mais perto de puxar, com a barra até o ponto da troca de alvo.
+ * ele mira e quem está mais perto de puxar, com a barra até o ponto da troca de alvo. A aba Ganho
+ * (27/11/2026) mostra o XP e o ouro por hora de cada DG nas corridas do herói (`GainTab`).
  */
 export default function RunMeter(props: {
   state: RunState;
   myId: string | null;
+  /** Para a aba Ganho, que pede as contas ao servidor (sem ela, a aba não aparece). */
+  link?: GameLink;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -157,6 +161,7 @@ export default function RunMeter(props: {
           { id: "taken", label: t`Recebido` },
           { id: "heal", label: t`Cura` },
           { id: "threat", label: t`Ameaça` },
+          ...(props.link ? [{ id: "gain" as const, label: t`Ganho` }] : []),
         ]}
       />
       <Show when={tab() === "threat"}>
@@ -223,7 +228,12 @@ export default function RunMeter(props: {
           </Empty>
         </Show>
       </Show>
-      <Show when={tab() !== "threat"}>
+      <Show when={tab() === "gain" ? props.link : undefined}>
+        {(link) => (
+          <GainTab link={link()} state={props.state} myId={props.myId} />
+        )}
+      </Show>
+      <Show when={tab() !== "threat" && tab() !== "gain"}>
       <List role="list">
         <For each={rows()}>
           {(r) => (
@@ -267,6 +277,7 @@ export default function RunMeter(props: {
         </For>
       </List>
       </Show>
+      <Show when={tab() !== "gain"}>
       <Foot>
         <span>
           {t`Grupo`}: <strong>{num(sum(m().dmg) / secs())}</strong>{" "}
@@ -278,6 +289,7 @@ export default function RunMeter(props: {
           <small>{t`Contando desde que você abriu a corrida.`}</small>
         </Show>
       </Foot>
+      </Show>
     </Win>
   );
 }
@@ -287,7 +299,8 @@ const Win = styled("div", {
     position: "absolute",
     left: "12px",
     top: "64px",
-    width: "300px",
+    // 372 px: as cinco abas cabem sem rolar (a Ganho entrou em 27/11/2026; medido 351 px de abas).
+    width: "372px",
     maxWidth: "calc(100% - 24px)",
     maxHeight: "calc(100% - 80px)",
     overflow: "auto",
