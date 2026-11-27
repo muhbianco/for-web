@@ -515,6 +515,7 @@ function ServerSpace(props: { serverId: string }) {
     else if (heroOpen()) setHeroOpen(false);
     else if (u.npcRequest) v.closeNpcRequest();
     else if (u.newsRequest) v.closeNewsRequest();
+    else if (u.arsenalRequest) v.closeArsenalRequest();
     else if (u.trainRequest) v.closeTrainRequest();
     else if (u.interaction) v.closeInteraction();
     else if (u.runOpen) v.closeRun();
@@ -1175,6 +1176,21 @@ function ServerSpace(props: { serverId: string }) {
                     title={request().title}
                     onClose={() => {
                       view()?.closeNewsRequest();
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
+            </Match>
+            <Match when={view() && ui()?.arsenalRequest}>
+              {(request) => (
+                <Suspense>
+                  <NewsPanel
+                    view={view()!}
+                    title={request().title}
+                    mode="arsenal"
+                    onClose={() => {
+                      view()?.closeArsenalRequest();
                       host?.focus();
                     }}
                   />

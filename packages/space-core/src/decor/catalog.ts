@@ -132,6 +132,8 @@ const ITEMS: DecorItem[] = [
   def({ id: "curtain", name: "Cortina", category: "decor", layer: "wall", w: 2, h: 1, solid: false, variants: FABRIC }),
   def({ id: "clock", name: "Relógio", category: "decor", layer: "wall", solid: false }),
   def({ id: "whiteboard", name: "Quadro branco", category: "decor", layer: "wall", w: 2, h: 1, solid: false, interaction: "note", description: "Mostra um texto ao interagir.", tags: ["reunião", "anotações"] }),
+  // O Arsenal (27/11/2026, pedido do dono): uma estante de armas de pé que abre todos os itens do jogo.
+  def({ id: "arsenal", name: "Arsenal", category: "equipment", w: 2, h: 1, interaction: "arsenal", description: "Estante de armas: mostra todos os itens do jogo nas 5 raridades, os lendários e quem usa cada um.", tags: ["arsenal", "armas", "itens", "jogo", "estante"] }),
   def({ id: "notice-board", name: "Quadro de avisos", category: "decor", layer: "wall", w: 2, h: 1, solid: false, interaction: "news", description: "Mostra as novidades do Muchat e do jogo. Ganha um alfinete vermelho quando há nota nova.", tags: ["avisos", "novidades", "notícias", "mural", "cortiça"] }),
   def({ id: "sign", name: "Placa", category: "decor", layer: "wall", w: 2, h: 1, solid: false, interaction: "note", variants: ["madeira", "neon", "metal"], description: "Um aviso na parede, com texto ao interagir." }),
   def({ id: "trophy-shelf", name: "Prateleira de troféus", category: "decor", layer: "wall", w: 2, h: 1, solid: false }),

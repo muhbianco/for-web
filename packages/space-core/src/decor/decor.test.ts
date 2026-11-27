@@ -16,7 +16,7 @@ import {
   validateConfig,
   validatePlacement,
 } from "./placement.ts";
-import { defaultDecor, furnish, NOTICE_BOARD_MARK } from "./theme.ts";
+import { arsenalMark, defaultDecor, furnish, NOTICE_BOARD_MARK } from "./theme.ts";
 import { type DecorInstance, emptyDecor } from "./types.ts";
 import { roomZoneKey, wingZoneKey, zonesOf } from "./zones.ts";
 
@@ -330,4 +330,49 @@ test("quadro de avisos nos servidores que já existiam: entra uma vez no hall e 
   // Quem já tinha posto um quadro em outro lugar não ganha outro.
   const own = { ...old, items: [...old.items, inst({ id: "x-2", item: "notice-board", zone: "spine", x: 0, y: -1 })] };
   assert.equal(furnish(ix, own).items.filter((i) => i.item === "notice-board").length, 1);
+});
+
+test("Arsenal (27/11/2026): uma estante no hall e em cada sala do jogo, uma vez; não volta se tirarem", () => {
+  const map = generateLayout({
+    templateVersion: 2,
+    wings: [
+      {
+        index: 0,
+        title: "Geral",
+        slots: [
+          { roomId: fakeUlid(1), label: "Café", size: "S" },
+          { roomId: fakeUlid(2), label: "Idle Hunt", size: "M" },
+          { roomId: fakeUlid(3), label: "Arena", size: "L" },
+        ],
+      },
+    ],
+  });
+  const ix = indexMap(map);
+  const zones = zonesOf(map);
+  const ctx = (state = emptyDecor()): PlacementContext => ({ ix, zones, catalog: CATALOG, state });
+  const game = roomZoneKey(fakeUlid(2));
+  const fresh = defaultDecor(ix, { serverName: "Novo" });
+  const racks = fresh.items.filter((i) => i.item === "arsenal");
+  assert.deepEqual(racks.map((i) => i.zone).sort(), ["hall", game].sort());
+  assert.ok(fresh.furnished.includes(arsenalMark("hall")) && fresh.furnished.includes(arsenalMark(game)));
+  // No hall, embaixo do quadro de avisos e ao lado do Mercador.
+  const hall = racks.find((i) => i.zone === "hall")!;
+  assert.deepEqual([hall.x, hall.y], [9, 1]);
+  for (const r of racks) {
+    const others = { ...fresh, items: fresh.items.filter((i) => i.id !== r.id) };
+    assert.equal(validatePlacement(ctx(others), r), null, r.zone);
+  }
+  // Um servidor de antes do Arsenal ganha as estantes uma vez; tiradas depois da marca, não voltam.
+  const old = {
+    ...fresh,
+    items: fresh.items.filter((i) => i.item !== "arsenal"),
+    furnished: fresh.furnished.filter((k) => !k.endsWith(":arsenal")),
+  };
+  const migrated = furnish(ix, old);
+  assert.equal(migrated.items.filter((i) => i.item === "arsenal").length, 2);
+  assert.equal(furnish(ix, migrated).items.length, migrated.items.length);
+  const removed = { ...migrated, items: migrated.items.filter((i) => i.item !== "arsenal") };
+  assert.equal(furnish(ix, removed).items.filter((i) => i.item === "arsenal").length, 0);
+  // A estante só aceita título.
+  assert.equal(itemOf(CATALOG, "arsenal")?.interaction, "arsenal");
 });

@@ -271,6 +271,12 @@ export const NOTICE_BOARD_MARK = "hall:notice-board";
 /** Onde o tema põe o quadro na parede de cima do hall (o mesmo x do `hallSpecs`). */
 const NOTICE_BOARD_X = 9;
 
+/**
+ * Marca em `furnished`: o Arsenal (27/11/2026) já foi para esta zona (o hall ou uma sala do jogo), ou
+ * ela já tinha um. Tirado depois da marca, não volta.
+ */
+export const arsenalMark = (zoneKey: string) => `${zoneKey}:arsenal`;
+
 export interface ThemeOptions {
   serverName?: string;
   catalog?: Catalog;
@@ -338,7 +344,37 @@ export function furnish(ix: MapIndex, state: DecorState, opts: ThemeOptions = {}
     furnished.add(NOTICE_BOARD_MARK);
     next = { ...next, furnished: [...furnished] };
   }
+  // O Arsenal (27/11/2026, pedido do dono: "uma decoração na sala para abrir o arsenal") entrou
+  // depois que os servidores já tinham hall e salas do jogo: vai uma vez para o hall (embaixo do
+  // quadro de avisos, ao lado do Mercador) e para cada sala do jogo, no primeiro lugar livre.
+  const gameRooms = map.rooms.filter((r) => isGameRoom(r.label)).map((r) => roomZoneKey(r.roomId));
+  for (const key of ["hall", ...gameRooms]) {
+    if (!furnished.has(key) || furnished.has(arsenalMark(key))) continue;
+    if (ensureArsenal(key)) {
+      furnished.add(arsenalMark(key));
+      next = { ...next, furnished: [...furnished] };
+    }
+  }
   return next;
+
+  /** A estante do Arsenal na zona: os lugares de preferência (no hall, embaixo do quadro de avisos e ao lado do Mercador) e depois qualquer um livre. */
+  function ensureArsenal(key: string): boolean {
+    if (items.some((i) => i.zone === key && i.item === "arsenal")) return true;
+    const zone = zones.byKey.get(key);
+    if (!zone) return false;
+    const w = zone.rect.x1 - zone.rect.x0 + 1;
+    const h = zone.rect.y1 - zone.rect.y0 + 1;
+    const tries: [number, number][] = key === "hall" ? [[9, 1], [1, 3], [9, 3]] : [[2, 1], [2, 3]];
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) tries.push([x, y]);
+    for (const [x, y] of tries) {
+      const inst: DecorInstance = { id: `t-${hash(key).toString(36)}-arsenal`, item: "arsenal", zone: key, x, y, rot: 0 };
+      if (validatePlacement(ctx(), inst) !== null) continue;
+      items.push(inst);
+      next = { ...next, items: [...items] };
+      return true;
+    }
+    return false;
+  }
 
   /** A sala do jogo: cada objeto na primeira posição livre da lista dele (gameRoomPlan). */
   function placeGameRoom(key: string, room: CompiledRoom) {

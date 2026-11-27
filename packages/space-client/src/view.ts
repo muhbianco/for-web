@@ -145,6 +145,8 @@ export interface SpaceUiState {
   } | null;
   /** Usamos o quadro de avisos: o app abre o painel das novidades. */
   newsRequest: { instance: string; title: string; n: number } | null;
+  /** Usamos a estante do Arsenal (27/11/2026): o app abre todos os itens do jogo. */
+  arsenalRequest: { instance: string; title: string; n: number } | null;
   /** Someone used a TV with the game on: the app shows "watch" or "dungeon". */
   tvMenu: { instance: string; title: string; n: number } | null;
   /** Dungeon groups at the TVs of our room (stage O4), by TV instance. */
@@ -301,6 +303,7 @@ export class SpaceView {
       trainRequest: null,
       npcRequest: null,
       newsRequest: null,
+      arsenalRequest: null,
       tvMenu: null,
       lobbies: {},
       lobbyStarted: null,
@@ -1192,6 +1195,17 @@ export class SpaceView {
       });
       return;
     }
+    if (p.item.interaction === "arsenal") {
+      // A estante do Arsenal: o app abre todos os itens do jogo (nada vai ao servidor).
+      this.patch({
+        arsenalRequest: {
+          instance: p.inst.id,
+          title: p.inst.config?.title?.trim() || p.item.name,
+          n: (this.state.arsenalRequest?.n ?? 0) + 1,
+        },
+      });
+      return;
+    }
     if (p.item.interaction === "news") {
       // O quadro de avisos: o app busca as novidades e abre o painel.
       this.patch({
@@ -1368,6 +1382,10 @@ export class SpaceView {
 
   closeNewsRequest() {
     if (this.state.newsRequest) this.patch({ newsRequest: null });
+  }
+
+  closeArsenalRequest() {
+    if (this.state.arsenalRequest) this.patch({ arsenalRequest: null });
   }
 
   /** As novidades do quadro de avisos (o servidor guarda por minutos; o Outline fica atrás dele). */

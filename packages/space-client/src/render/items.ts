@@ -920,6 +920,48 @@ export const ART: Record<string, ArtDef> = {
       rect(g, 3, T - 4, g.W - 6, 1, shade(METAL, -0.2));
     },
   },
+  arsenal: {
+    // O Arsenal (27/11/2026): estante de madeira de pé com espada, machado e lança; abre todos os itens.
+    tall: 1,
+    draw(g) {
+      const t = g.top;
+      const wood = WOOD.mel!;
+      const dark = WOOD.escuro!;
+      const gold = "#d9b45a";
+      // A estante: dois postes, a travessa de cima e a base.
+      for (const x of [2, 27]) {
+        rect(g, x, t - 11, 3, 24, OUTLINE);
+        rect(g, x + 1, t - 10, 1, 22, wood);
+      }
+      rect(g, 2, t - 12, 28, 3, OUTLINE);
+      rect(g, 3, t - 11, 26, 1, shade(wood, 0.2));
+      rect(g, 1, t + 10, 30, 4, OUTLINE);
+      rect(g, 2, t + 11, 28, 2, dark);
+      // A espada, de ponta para cima.
+      rect(g, 7, t - 9, 4, 13, OUTLINE);
+      rect(g, 8, t - 8, 2, 11, METAL);
+      rect(g, 8, t - 8, 1, 11, shade(METAL, 0.35));
+      rect(g, 5, t + 3, 8, 3, OUTLINE);
+      rect(g, 6, t + 4, 6, 1, gold);
+      rect(g, 8, t + 6, 2, 3, shade(wood, -0.2));
+      dot(g, 8, t + 9, gold);
+      // O machado.
+      rect(g, 15, t - 9, 3, 19, OUTLINE);
+      rect(g, 16, t - 8, 1, 17, wood);
+      rect(g, 12, t - 9, 5, 7, OUTLINE);
+      rect(g, 13, t - 8, 3, 5, METAL);
+      rect(g, 13, t - 8, 1, 5, shade(METAL, 0.35));
+      // A lança.
+      rect(g, 21, t - 7, 3, 17, OUTLINE);
+      rect(g, 22, t - 6, 1, 15, shade(wood, -0.1));
+      rect(g, 20, t - 12, 5, 6, OUTLINE);
+      rect(g, 21, t - 11, 3, 4, METAL);
+      dot(g, 22, t - 12, shade(METAL, 0.4));
+      // A travessa do meio, na frente das armas.
+      rect(g, 2, t + 1, 28, 3, OUTLINE);
+      rect(g, 3, t + 2, 26, 1, wood);
+    },
+  },
   "notice-board": {
     // O quadro de avisos (25/11/2026): moldura de madeira, cortiça e três papéis presos. Com nota
     // que você ainda não leu, o renderer pede a variante "novo": um alfinete vermelho com brilho.

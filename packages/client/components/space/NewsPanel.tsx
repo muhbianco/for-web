@@ -34,6 +34,8 @@ export default function NewsPanel(props: {
   view: SpaceView;
   title: string;
   onClose: () => void;
+  /** `arsenal`: aberto pela estante do Arsenal (27/11/2026): só o Arsenal, sem buscar nem marcar as novidades. */
+  mode?: "arsenal";
 }) {
   const { t } = useLingui();
   let backdrop: HTMLDivElement | undefined;
@@ -75,11 +77,16 @@ export default function NewsPanel(props: {
       if (alive) setNews({ kind: "error" });
     }
   };
-  onMount(() => void load());
+  // Aberto pela estante do Arsenal, não busca as novidades (e não as marca como lidas).
+  onMount(() => {
+    if (props.mode !== "arsenal") void load();
+  });
   const [selectedId, setSelectedId] = createSignal<string | null>(null);
   // A nota com o link `#arsenal` abre o Arsenal (todos os itens do jogo) no lugar dos avisos (27/11/2026).
-  const [arsenal, setArsenal] = createSignal(false);
-  const hasArsenal = (n: NewsItem) => n.markdown.includes("#arsenal)");
+  const [arsenal, setArsenal] = createSignal(props.mode === "arsenal");
+  // A nota do Arsenal (pelo título; o link `#arsenal` das notas antigas também vale).
+  const hasArsenal = (n: NewsItem) =>
+    /Arsenal/.test(n.title) || n.markdown.includes("#arsenal)");
   const items = () => {
     const s = news();
     return s.kind === "ready" ? s.wire.items : [];
@@ -132,7 +139,11 @@ export default function NewsPanel(props: {
             <h2 id="space-news-title" tabIndex={-1} ref={title}>
               {props.title}
             </h2>
-            <Muted>{t`Novidades do Muchat e do jogo`}</Muted>
+            <Muted>
+              {props.mode === "arsenal"
+                ? t`Todos os itens do jogo`
+                : t`Novidades do Muchat e do jogo`}
+            </Muted>
           </div>
           <Close type="button" aria-label={t`Fechar`} onClick={props.onClose}>
             ×
@@ -156,7 +167,11 @@ export default function NewsPanel(props: {
           </Match>
           <Match when={arsenal()}>
             <Scroll>
-              <ArsenalView onBack={() => setArsenal(false)} />
+              <ArsenalView
+                onBack={
+                  props.mode === "arsenal" ? undefined : () => setArsenal(false)
+                }
+              />
             </Scroll>
           </Match>
           <Match when={selected()}>

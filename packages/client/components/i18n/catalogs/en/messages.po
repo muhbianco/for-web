@@ -11922,6 +11922,10 @@ msgstr "Todos"
 msgid "todos os inimigos"
 msgstr "todos os inimigos"
 
+#: components/space/NewsPanel.tsx
+msgid "Todos os itens do jogo"
+msgstr "Todos os itens do jogo"
+
 #. placeholder {0}: pointsSpent(h().attrs) - pointsSpent({ FOR: 1, AGI: 1, VIT: 1, INT: 1, DES: 1, SOR: 1 })
 #: components/space/game/MasterPanel.tsx
 msgid "Todos voltam a 1 e os {0} pontos ficam livres para distribuir de novo."
