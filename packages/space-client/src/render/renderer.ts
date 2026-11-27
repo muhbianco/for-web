@@ -202,6 +202,32 @@ function drawLive(a: AvatarSprite, f: LiveFrame) {
   tag.position.set(px + 7, py + ph / 2);
 }
 
+/**
+ * Top of what is drawn over someone's head (the name, the call badges, the live screen), in
+ * world px from the root (negative: up). The app's chat bubbles start just above it.
+ */
+function adornTop(a: AvatarSprite): number {
+  const top = SPRITE * AVATAR_SCALE;
+  let y = -top - 2 - a.name.height;
+  if (a.badged) y = Math.min(y, -top - 25);
+  if (a.sharing) {
+    const bottom = a.badged ? -top - 27 : -top - 17;
+    // The screen, its "AO VIVO" tag over the top edge, and the bob of the animation.
+    y = Math.min(y, bottom - 3 - LIVE_SCREEN.h - 7);
+  }
+  return y;
+}
+
+/**
+ * Where someone's head ends on the map's element (CSS px from its top-left corner): the app
+ * lays the chat bubbles there. `visible`: the point is on screen.
+ */
+export interface HeadAnchor {
+  x: number;
+  y: number;
+  visible: boolean;
+}
+
 /** What the editor wants drawn over the map this frame. */
 export interface EditorOverlay {
   enabled: boolean;
@@ -308,6 +334,53 @@ export class Renderer {
    * when the media stage or a side panel opens. Resize (and redraw) on that.
    */
   private resizeObs: ResizeObserver | null = null;
+
+  /** Whose heads the app follows (people with a chat bubble up); empty: nothing is computed. */
+  private headIds: ReadonlySet<string> = new Set();
+  private headListener:
+    | ((heads: ReadonlyMap<string, HeadAnchor>) => void)
+    | null = null;
+  /** The heads as last told to the app, so a still frame tells nothing. */
+  private headKey = "";
+
+  /**
+   * Follows these people's heads on screen: `listener` gets their anchors whenever one moves
+   * (walking, the camera, a zoom), never on a still frame. An empty set (or null) stops it.
+   */
+  watchHeads(
+    ids: ReadonlySet<string>,
+    listener: ((heads: ReadonlyMap<string, HeadAnchor>) => void) | null,
+  ) {
+    this.headIds = listener ? ids : new Set();
+    this.headListener = listener;
+    this.headKey = "";
+    this.emitHeads();
+  }
+
+  private emitHeads() {
+    const listener = this.headListener;
+    if (!listener || this.headIds.size === 0) return;
+    const w = this.app.screen.width;
+    const h = this.app.screen.height;
+    const out = new Map<string, HeadAnchor>();
+    let key = "";
+    for (const id of this.headIds) {
+      const a = this.avatars.get(id);
+      if (!a) continue;
+      const p = a.root.position;
+      const x = Math.round(this.stage.position.x + p.x * this.zoom);
+      const y = Math.round(
+        this.stage.position.y + (p.y + adornTop(a)) * this.zoom,
+      );
+      // The head on screen; its feet may be under the bottom edge.
+      const visible = x >= 0 && x <= w && y >= 0 && y <= h;
+      out.set(id, { x, y, visible });
+      key += `${id}:${x}:${y}:${visible ? 1 : 0};`;
+    }
+    if (key === this.headKey) return;
+    this.headKey = key;
+    listener(out);
+  }
 
   private observeSize(el: HTMLElement) {
     this.resizeObs?.disconnect();
@@ -1252,6 +1325,7 @@ export class Renderer {
     this.drawOverlay();
     this.drawPrompt();
     if (this.tvDirty) this.drawTvGlow(world);
+    this.emitHeads();
   }
 
   /**
@@ -1315,6 +1389,7 @@ export class Renderer {
   destroy() {
     this.resizeObs?.disconnect();
     this.resizeObs = null;
+    this.headListener = null;
     this.dropChunks();
     for (const t of this.ownedTextures) t.destroy(true);
     this.ownedTextures.length = 0;

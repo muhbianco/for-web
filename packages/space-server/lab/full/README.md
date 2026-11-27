@@ -96,6 +96,31 @@ FULL_LAB_DIR=<pasta do lab> node qa/full-lab/mobile-audit.mjs --with-share [--de
   - o aviso "O Stoat funciona melhor como aplicativo" só aparece em `localhost` e nos domínios do Stoat; o APK nunca o mostra;
   - o botão "Devtools" só existe no modo dev.
 
+## Chat no mapa (balões sobre os avatares)
+
+O roteiro `packages/client/qa/full-lab/chat-lab.mjs` (27/11/2026, ADR 0010 no overlay muchat) põe Ana, Bia e Caio para conversar pelo campo do mapa e mede o que decide se o chat é confortável:
+- **Legibilidade:** letra, contraste e largura do balão.
+- **Atribuição:** a ponta na cabeça de quem falou.
+- **Sobreposição:** com todos no mesmo ponto.
+- **Esteira:** velocidade e esperas.
+- **Modo mapa × campo:** WASD e M viram texto; Esc e Enter vazio voltam ao mapa.
+- **Canal de texto:** pela API do Stoat; editar troca o balão e apagar o tira na hora.
+- **Linha de quem está fora do mapa.**
+- **Painel e chat de outra sala.**
+- **Celular e "reduzir movimento".**
+- **Custo:** quadros longos e quantas vezes o mapa chama o chat.
+
+Não precisa de LiveKit: basta `docker compose up -d database redis rabbit api events`.
+
+Rodar no build com `VITE_SPACE_TEST_HOOKS=1` (launch.json: `chat-lab-space`, `chat-lab-client-build`):
+
+```sh
+cd packages/client
+FULL_LAB_DIR=<pasta do lab> node qa/full-lab/chat-lab.mjs --run nome
+```
+
+**Saída:** `qa/full-lab/out/chat/<rodada>/report.html`, com as capturas de cada passo.
+
 ## Arquivos gerados (gitignored)
 
 | Arquivo | O que guarda |

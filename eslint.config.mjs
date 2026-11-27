@@ -46,7 +46,11 @@ export default defineConfig([
     // Regra zero da voz (docs/espaco ADR 0009, decisão 10): o jogo do Espaço
     // não cria áudio, não captura mídia e não importa a chamada. A varredura
     // do space-core (testing/voiceGuard.ts) cobre também os pacotes space-*.
-    files: ["packages/client/components/space/game/**/*.{ts,tsx}"],
+    // O chat do Espaço (27/11/2026) segue a mesma regra: balão não faz som.
+    files: [
+      "packages/client/components/space/game/**/*.{ts,tsx}",
+      "packages/client/components/space/chat/**/*.{ts,tsx}",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",

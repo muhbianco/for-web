@@ -64,7 +64,7 @@ import {
 import { type MediaStatus, type VoicePort, MediaLink } from "./media.ts";
 import { Mover } from "./mover.ts";
 import { fitZoom } from "./render/framing.ts";
-import { Renderer } from "./render/renderer.ts";
+import { type HeadAnchor, Renderer } from "./render/renderer.ts";
 import { decodeMap, World } from "./world.ts";
 
 export interface SpaceViewOptions {
@@ -903,7 +903,8 @@ export class SpaceView {
         this.mover.setKey(k, true);
         return;
       }
-      if (ev.code === "KeyE" || ev.key === "Enter") {
+      // E only: Enter belongs to the app, which opens the chat with it (27/11/2026).
+      if (ev.code === "KeyE") {
         if (this.prompt && !this.editor.state.enabled) {
           ev.preventDefault();
           this.interact();
@@ -1154,7 +1155,7 @@ export class SpaceView {
       this.patch({ prompt: p ? { id: p.inst.id, label: p.label } : null });
   }
 
-  /** Use the interactive object within reach (E, Enter, tap). */
+  /** Use the interactive object within reach (E, tap). */
   interact() {
     const p = this.prompt;
     if (!p) return;
@@ -1505,6 +1506,25 @@ export class SpaceView {
       id: this.conn.nextId(),
       d: report,
     });
+  }
+
+  /**
+   * The chat bubbles of the app follow these people's heads (render/renderer.ts): `listener`
+   * gets where each head is on the map's element whenever one moves. An empty set stops it.
+   */
+  watchHeads(
+    ids: ReadonlySet<string>,
+    listener: ((heads: ReadonlyMap<string, HeadAnchor>) => void) | null,
+  ) {
+    this.renderer.watchHeads(ids, listener);
+  }
+
+  /** Where someone is in this space: a room id, null in the halls, undefined when not on the map. */
+  roomOf(userId: string): string | null | undefined {
+    const me = this.world.me;
+    if (me?.userId === userId) return me.room;
+    const r = this.world.others.get(userId);
+    return r ? r.room : undefined;
   }
 
   /** Who is speaking in our room's call right now (LiveKit, from the app). */
