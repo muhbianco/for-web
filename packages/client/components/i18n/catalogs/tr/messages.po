@@ -482,6 +482,11 @@ msgstr ""
 msgid "{0} itens"
 msgstr ""
 
+#. placeholder {0}: d().uids.length
+#: components/space/game/BankPanel.tsx
+msgid "{0} itens de volta na mochila."
+msgstr ""
+
 #. placeholder {0}: m.left.length
 #: components/space/game/RunPanel.tsx
 msgid "{0} itens ficaram na dungeon: a mochila estava cheia."
@@ -494,8 +499,8 @@ msgstr ""
 
 #. placeholder {0}: d().uids.length
 #: components/space/game/BankPanel.tsx
-msgid "{0} itens na mochila."
-msgstr ""
+#~ msgid "{0} itens na mochila."
+#~ msgstr ""
 
 #. placeholder {0}: m.to_vault!.length
 #: components/space/game/RunPanel.tsx
@@ -1506,6 +1511,7 @@ msgstr ""
 msgid "1 inimigo"
 msgstr ""
 
+#: components/space/game/BankPanel.tsx
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item"
 msgstr ""
@@ -1518,9 +1524,17 @@ msgstr ""
 msgid "1 item {rarity} ou melhor para cada um"
 msgstr ""
 
+#: components/space/game/BankPanel.tsx
+msgid "1 item de volta na mochila."
+msgstr ""
+
 #. placeholder {0}: pct(s().chance - Math.floor(s().chance))
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item e {0} de mais um, para alguém do grupo"
+msgstr ""
+
+#: components/space/game/BankPanel.tsx
+msgid "1 item guardado no cofre."
 msgstr ""
 
 #: components/space/game/DungeonDetail.tsx
@@ -5497,6 +5511,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
+msgstr ""
+
+#: components/space/game/BankPanel.tsx
+msgid "Escolha itens no cofre ou na mochila para mover."
 msgstr ""
 
 #: components/space/AudioCheck.tsx
@@ -11333,6 +11351,10 @@ msgstr ""
 msgid "Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada."
 msgstr ""
 
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói está numa dungeon. O cofre e o ouro funcionam normalmente; transferir, só quando a corrida acabar."
+msgstr ""
+
 #. placeholder {0}: vocationName(v())
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Seu herói já é {0}."
@@ -12321,6 +12343,10 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Transferir do banco para"
 #~ msgstr ""
+
+#: components/space/game/BankPanel.tsx
+msgid "Transferir fica para quando a corrida acabar."
+msgstr ""
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Travamentos"

@@ -751,9 +751,9 @@ export class SpaceRuntime implements MediaHost, TvHost {
     }
   }
 
-  /** The room's groups, and the person's own group wherever it is. */
-  private sendLobbiesTo(session: SessionPort, room: string) {
-    const shown = this.lobbies.inRoom(room);
+  /** The room's groups (none outside a room), and the person's own group wherever it is. */
+  private sendLobbiesTo(session: SessionPort, room: string | null) {
+    const shown = room ? this.lobbies.inRoom(room) : [];
     const mine = this.lobbies.of(session.viewer.user._id);
     if (mine && !shown.includes(mine)) shown.push(mine);
     for (const l of shown) session.send({ v: 1, t: "rpg.lobby", d: { tv: l.tv, id: l.id, lobby: lobbyView(l) } });
@@ -1727,7 +1727,9 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.sendPresence(session);
     // Back inside a room (reconnect, new tab, restart): its TV where it is now.
     if (a.move.room) this.tv.entered(session, a.move.room);
-    if (a.move.room) this.sendLobbiesTo(session, a.move.room);
+    // O próprio grupo vai sempre, mesmo fora de uma sala (27/11/2026): quem recarregava no hall não
+    // sabia do grupo até a próxima corrida, e a ficha aberta não segurava a largada do loop.
+    this.sendLobbiesTo(session, a.move.room);
     if (a.move.room) this.onRoomEntered?.(user._id, a.move.room);
     // Reconnected away from the dummy: the training that went on offline closes now.
     this.checkTraining(user._id);

@@ -596,6 +596,12 @@ test("Mercador na corrida: vende da mochila e compra poção e munição; item n
   });
   const bought = t.s.hero()!.hero.bag.at(-1)!;
   assert.ok(bought, "o colar está na mochila");
+  await t.send("rpg.shop.buy", {
+    npc: "mercador-1",
+    buy: { kind: "item", base: { slot: "anel" } },
+  });
+  const ring = t.s.hero()!.hero.bag.at(-1)!;
+  assert.notEqual(ring.uid, bought.uid);
   await t.send("rpg.lobby.create", { tv: "tv1", dungeon: "cacada-1" });
   await t.send("rpg.lobby.start");
   t.clock.advance(LOBBY.countdownMs);
@@ -626,10 +632,30 @@ test("Mercador na corrida: vende da mochila e compra poção e munição; item n
   assert.deepEqual(t.s.errors(item), [
     { code: "rpg_invalid", reason: "in_run_item" },
   ]);
-  const smith = await t.send("rpg.bank", { npc: "banqueiro-1", gold: 100 });
-  assert.deepEqual(t.s.errors(smith), [
-    { code: "rpg_invalid", reason: "in_run" },
-  ]);
+  // O Banqueiro vale na corrida (27/11/2026): ouro e cofre; transferir, não.
+  const gold = t.s.hero()!.hero.gold;
+  const bank = await t.send("rpg.bank", { npc: "banqueiro-1", gold: 100 });
+  assert.deepEqual(t.s.errors(bank), []);
+  assert.equal(t.s.hero()!.hero.gold, gold - 100);
+  assert.equal(t.s.hero()!.hero.vault.gold, 100);
+  const put = await t.send("rpg.vault.many", {
+    npc: "banqueiro-1",
+    action: "guardar",
+    uids: [ring.uid],
+  });
+  assert.deepEqual(t.s.errors(put), []);
+  assert.deepEqual(
+    t.s.hero()!.hero.vault.items.map((x) => x.uid),
+    [ring.uid],
+  );
+  const back = await t.send("rpg.vault", {
+    npc: "banqueiro-1",
+    action: "retirar",
+    uid: ring.uid,
+  });
+  assert.deepEqual(t.s.errors(back), []);
+  assert.ok(t.s.hero()!.hero.bag.some((x) => x.uid === ring.uid));
+  assert.ok(t.s.hero()!.run, "segue na corrida");
   const swap = await t.send("rpg.master.class", {
     npc: "mestre-1",
     cls: t.s.hero()!.hero.cls === "padre" ? "mago" : "padre",

@@ -700,7 +700,11 @@ test("reinício: o grupo refeito pela corrida espera quem reconecta; quem não v
   rt.lobbyRunEnded("run-1", "vitoria", {}, {});
   assert.equal(rt.lobbies.of(ANA)?.nextAt !== null, true);
   // Ana volta; Bia não volta a tempo e sai do grupo, que segue com a Ana.
-  enter(rt, ANA, "Ana");
+  const ana = enter(rt, ANA, "Ana");
+  // Volta no hall (fora de sala): o app recebe o próprio grupo na hora (27/11/2026; antes só na
+  // próxima corrida, e a ficha aberta não segurava a largada do loop).
+  const got = ana.last("rpg.lobby")?.d as { lobby?: { members: { user_id: string }[] } } | undefined;
+  assert.deepEqual(got?.lobby?.members.map((m) => m.user_id), [ANA, BIA]);
   now += RESTORED_GRACE_MS + 1;
   rt.tick();
   assert.equal(rt.lobbies.of(BIA), undefined);

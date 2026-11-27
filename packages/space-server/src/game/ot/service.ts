@@ -797,25 +797,37 @@ export class RpgService {
           "rpg smith",
         );
       }
+      // O Banqueiro vale na corrida (27/11/2026): no loop o herói passa quase o tempo todo numa, e o
+      // cofre ficava mudo. Ouro e cofre não mexem no que a corrida usa (ela saiu calculada com o
+      // herói da largada; o que vem no fim cai na mochila ou, sem espaço, no cofre). Transferir, não.
       case "rpg.bank": {
         if (!near(cmd.d.npc, "banqueiro")) return;
-        return act((d) => apply(d, bankGold(d.hero, cmd.d.gold)));
+        return act(
+          (d) => apply(d, bankGold(d.hero, cmd.d.gold)),
+          undefined,
+          true,
+        );
       }
       case "rpg.vault": {
         if (!near(cmd.d.npc, "banqueiro")) return;
-        return act((d) =>
-          apply(
-            d,
-            cmd.d.action === "guardar"
-              ? vaultPut(d.hero, cmd.d.uid)
-              : vaultTake(d.hero, cmd.d.uid),
-          ),
+        return act(
+          (d) =>
+            apply(
+              d,
+              cmd.d.action === "guardar"
+                ? vaultPut(d.hero, cmd.d.uid)
+                : vaultTake(d.hero, cmd.d.uid),
+            ),
+          undefined,
+          true,
         );
       }
       case "rpg.vault.many": {
         if (!near(cmd.d.npc, "banqueiro")) return;
-        return act((d) =>
-          apply(d, vaultMoveMany(d.hero, cmd.d.action, cmd.d.uids)),
+        return act(
+          (d) => apply(d, vaultMoveMany(d.hero, cmd.d.action, cmd.d.uids)),
+          undefined,
+          true,
         );
       }
       case "rpg.bank.transfer": {

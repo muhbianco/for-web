@@ -204,8 +204,11 @@ export class LabServer implements TvLink {
       "rpg.run.watch",
     ];
     // O que o servidor libera na corrida (26/11/2026): vender e comprar consumível no Mercador,
-    // desmontar no Ferreiro.
+    // desmontar no Ferreiro; e (27/11/2026) o ouro e o cofre do Banqueiro.
     const duringRun =
+      t === "rpg.bank" ||
+      t === "rpg.vault" ||
+      t === "rpg.vault.many" ||
       t === "rpg.shop.sell" ||
       t === "rpg.shop.sell.many" ||
       (t === "rpg.shop.buy" &&

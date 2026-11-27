@@ -55,10 +55,19 @@ export default function NpcDialog(props: {
                   ? t`Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada.`
                   : props.request.npc === "ferreiro"
                     ? t`Seu herói está numa dungeon. Dá para desmontar da mochila (abre espaço para o loot); refinar e reforjar, só quando a corrida acabar.`
-                    : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
+                    : props.request.npc === "banqueiro"
+                      ? t`Seu herói está numa dungeon. O cofre e o ouro funcionam normalmente; transferir, só quando a corrida acabar.`
+                      : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
               </Muted>
             </Show>
-            <Show when={!s().run && props.request.npc !== "mercador" && props.inGroup}>
+            <Show
+              when={
+                !s().run &&
+                props.request.npc !== "mercador" &&
+                props.request.npc !== "banqueiro" &&
+                props.inGroup
+              }
+            >
               <Muted role="note">
                 {t`Enquanto esta janela estiver aberta, a próxima corrida do seu grupo espera por você.`}
               </Muted>

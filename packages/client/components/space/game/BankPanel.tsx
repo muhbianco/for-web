@@ -275,7 +275,6 @@ function VaultBox(props: {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
   const h = () => props.state.hero;
-  const locked = () => !!props.state.run;
 
   const [query, setQuery] = createSignal("");
   const [cat, setCat] = createSignal<Cat>("todos");
@@ -431,30 +430,6 @@ function VaultBox(props: {
 
   return (
     <>
-      <Show when={cmd.error()}>
-        <Notice error={cmd.error()} />
-      </Show>
-      <Show when={done()}>
-        {(d) => (
-          <Toast role="status">
-            <span>
-              {d().action === "guardar"
-                ? t`${d().uids.length} itens guardados no cofre.`
-                : t`${d().uids.length} itens na mochila.`}
-            </span>
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              disabled={cmd.busy() || locked()}
-              onClick={undo}
-            >
-              ↶ {t`Desfazer`}
-            </Btn>
-          </Toast>
-        )}
-      </Show>
-
       <Panes>
         <Pane aria-label={t`Cofre`}>
           <PaneHead>
@@ -463,7 +438,9 @@ function VaultBox(props: {
               <Muted>
                 {filtering()
                   ? t`${list().length} de ${h().vault.items.length}`
-                  : t`${h().vault.items.length} itens`}
+                  : h().vault.items.length === 1
+                    ? t`1 item`
+                    : t`${h().vault.items.length} itens`}
               </Muted>
             </h3>
             <Select
@@ -573,7 +550,7 @@ function VaultBox(props: {
                 items={visible()}
                 selected={vaultSel()}
                 onSelect={setPickVault}
-                onQuick={(u) => !locked() && void move("retirar", [u])}
+                onQuick={(u) => void move("retirar", [u])}
                 marks={vaultMarks()}
                 isNew={props.isNew}
                 hero={h()}
@@ -648,7 +625,7 @@ function VaultBox(props: {
               items={h().bag}
               selected={bagSel()}
               onSelect={setPickBag}
-              onQuick={(u) => !locked() && void move("guardar", [u])}
+              onQuick={(u) => void move("guardar", [u])}
               marks={bagMarksNow()}
               hero={h()}
             />
@@ -702,13 +679,74 @@ function VaultBox(props: {
       <MoveBar
         aria-label={t`Mover itens`}
         data-idle={
-          bagSel().length === 0 && vaultSel().length === 0 ? "" : undefined
+          bagSel().length === 0 &&
+          vaultSel().length === 0 &&
+          !done() &&
+          !cmd.error()
+            ? ""
+            : undefined
         }
       >
+        {/* A linha de estado tem altura fixa: o aviso e o Desfazer não empurram a tela. */}
+        <Status
+          role="status"
+          data-kind={
+            cmd.error()
+              ? "error"
+              : done()
+                ? "ok"
+                : vaultSel().length > room()
+                  ? "warn"
+                  : undefined
+          }
+        >
+          <Show
+            when={cmd.error()}
+            fallback={
+              <Show
+                when={done()}
+                fallback={
+                  <span>
+                    {vaultSel().length > room()
+                      ? room() > 0
+                        ? t`Cabem só ${room()} na mochila: tire ${vaultSel().length - room()} da escolha.`
+                        : t`A mochila está cheia: guarde, venda ou desmonte algo antes.`
+                      : t`Escolha itens no cofre ou na mochila para mover.`}
+                  </span>
+                }
+              >
+                {(d) => (
+                  <>
+                    <span>
+                      {d().uids.length === 1
+                        ? d().action === "guardar"
+                          ? t`1 item guardado no cofre.`
+                          : t`1 item de volta na mochila.`
+                        : d().action === "guardar"
+                          ? t`${d().uids.length} itens guardados no cofre.`
+                          : t`${d().uids.length} itens de volta na mochila.`}
+                    </span>
+                    <Btn
+                      type="button"
+                      data-size="sm"
+                      data-tone="quiet"
+                      disabled={cmd.busy()}
+                      onClick={undo}
+                    >
+                      ↶ {t`Desfazer`}
+                    </Btn>
+                  </>
+                )}
+              </Show>
+            }
+          >
+            {(e) => <span>⚠ {e()}</span>}
+          </Show>
+        </Status>
         <Btn
           type="button"
           data-tone={bagSel().length > 0 ? "primary" : undefined}
-          disabled={cmd.busy() || locked() || bagSel().length === 0}
+          disabled={cmd.busy() || bagSel().length === 0}
           onClick={() => void move("guardar", bagSel())}
         >
           ←{" "}
@@ -729,10 +767,7 @@ function VaultBox(props: {
               : undefined
           }
           disabled={
-            cmd.busy() ||
-            locked() ||
-            vaultSel().length === 0 ||
-            vaultSel().length > room()
+            cmd.busy() || vaultSel().length === 0 || vaultSel().length > room()
           }
           onClick={() => void move("retirar", vaultSel())}
         >
@@ -748,13 +783,6 @@ function VaultBox(props: {
           </Short>{" "}
           →
         </Btn>
-        <Show when={vaultSel().length > room()}>
-          <Muted role="note">
-            {room() > 0
-              ? t`Cabem só ${room()} na mochila: tire ${vaultSel().length - room()} da escolha.`
-              : t`A mochila está cheia: guarde, venda ou desmonte algo antes.`}
-          </Muted>
-        </Show>
       </MoveBar>
     </>
   );
@@ -1091,7 +1119,7 @@ function TransferBox(props: {
           <Confirm
             tone="primary"
             steps={risky() ? 2 : 1}
-            disabled={props.busy || !to() || !plan().ok}
+            disabled={props.busy || !!props.state.run || !to() || !plan().ok}
             label={t`Transferir`}
             confirm={t`Mandar para ${who()}? Não dá para desfazer`}
             confirm2={t`Tem item +7: confirme mais uma vez`}
@@ -1114,7 +1142,14 @@ function TransferBox(props: {
                 })
             }
           />
-          <Muted>{t`Para mandar algo do cofre, retire para a mochila antes. Fica tudo no registro de transferências.`}</Muted>
+          <Show
+            when={props.state.run}
+            fallback={
+              <Muted>{t`Para mandar algo do cofre, retire para a mochila antes. Fica tudo no registro de transferências.`}</Muted>
+            }
+          >
+            <Muted role="note">{t`Transferir fica para quando a corrida acabar.`}</Muted>
+          </Show>
         </Panel>
       </Show>
     </>
@@ -1171,18 +1206,36 @@ const Meter = styled("span", {
     },
   },
 });
-const Toast = styled("div", {
+/** A linha de estado da barra de mover: dica, "cabem N", o que foi movido (com Desfazer) ou o erro. */
+const Status = styled("div", {
   base: {
+    flexBasis: "100%",
     display: "flex",
     alignItems: "center",
     justifyContent: "space-between",
     gap: "8px",
-    padding: "6px 6px 6px 12px",
-    borderRadius: "10px",
-    fontSize: "0.9em",
-    background: "rgba(126, 224, 138, 0.1)",
-    color: "#cdf5d3",
-    border: "1px solid rgba(126, 224, 138, 0.35)",
+    minHeight: "30px",
+    padding: "0 4px 0 10px",
+    borderRadius: "8px",
+    fontSize: "0.88em",
+    color: "var(--md-sys-color-on-surface-variant)",
+    "& > span": {
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      whiteSpace: "nowrap",
+    },
+    "&[data-kind=ok]": {
+      background: "rgba(126, 224, 138, 0.1)",
+      color: "#cdf5d3",
+    },
+    "&[data-kind=warn]": { color: "#ffd8a0" },
+    "&[data-kind=error]": {
+      background: "rgba(255, 138, 122, 0.12)",
+      color: "#ffcfc6",
+    },
+    "@container (max-width: 600px)": {
+      "& > span": { whiteSpace: "normal" },
+    },
   },
 });
 const Panes = styled("div", {
@@ -1374,7 +1427,6 @@ const MoveBar = styled("div", {
     background: "rgba(20, 18, 15, 0.96)",
     border: "1px solid var(--md-sys-color-outline)",
     boxShadow: "0 -6px 16px rgba(0,0,0,0.45)",
-    "& > [role=note]": { flexBasis: "100%" },
     // No celular a barra só aparece com algo escolhido, e os dois botões dividem a linha.
     "@container (max-width: 600px)": {
       padding: "8px",

@@ -482,6 +482,11 @@ msgstr "{0} item é +7 ou mais."
 msgid "{0} itens"
 msgstr "{0} itens"
 
+#. placeholder {0}: d().uids.length
+#: components/space/game/BankPanel.tsx
+msgid "{0} itens de volta na mochila."
+msgstr "{0} itens de volta na mochila."
+
 #. placeholder {0}: m.left.length
 #: components/space/game/RunPanel.tsx
 msgid "{0} itens ficaram na dungeon: a mochila estava cheia."
@@ -494,8 +499,8 @@ msgstr "{0} itens guardados no cofre."
 
 #. placeholder {0}: d().uids.length
 #: components/space/game/BankPanel.tsx
-msgid "{0} itens na mochila."
-msgstr "{0} itens na mochila."
+#~ msgid "{0} itens na mochila."
+#~ msgstr "{0} itens na mochila."
 
 #. placeholder {0}: m.to_vault!.length
 #: components/space/game/RunPanel.tsx
@@ -1506,6 +1511,7 @@ msgstr "1 hora"
 msgid "1 inimigo"
 msgstr "1 inimigo"
 
+#: components/space/game/BankPanel.tsx
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item"
 msgstr "1 item"
@@ -1518,10 +1524,18 @@ msgstr "1 item {rarity} ou melhor para alguém do grupo"
 msgid "1 item {rarity} ou melhor para cada um"
 msgstr "1 item {rarity} ou melhor para cada um"
 
+#: components/space/game/BankPanel.tsx
+msgid "1 item de volta na mochila."
+msgstr "1 item de volta na mochila."
+
 #. placeholder {0}: pct(s().chance - Math.floor(s().chance))
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item e {0} de mais um, para alguém do grupo"
 msgstr "1 item e {0} de mais um, para alguém do grupo"
+
+#: components/space/game/BankPanel.tsx
+msgid "1 item guardado no cofre."
+msgstr "1 item guardado no cofre."
 
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item para alguém do grupo"
@@ -5495,6 +5509,10 @@ msgstr "Escolha a pessoa"
 #: components/app/interface/settings/user/voice/VoiceProcessingOptions.tsx
 msgid "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
 msgstr "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
+
+#: components/space/game/BankPanel.tsx
+msgid "Escolha itens no cofre ou na mochila para mover."
+msgstr "Escolha itens no cofre ou na mochila para mover."
 
 #: components/space/AudioCheck.tsx
 msgid "Escolha o microfone e o alto-falante. Ao entrar numa sala, você fala e ouve quem está nela."
@@ -11330,6 +11348,10 @@ msgstr "Seu herói está numa dungeon. Dá para desmontar da mochila (abre espa�
 msgid "Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada."
 msgstr "Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada."
 
+#: components/space/game/NpcDialog.tsx
+msgid "Seu herói está numa dungeon. O cofre e o ouro funcionam normalmente; transferir, só quando a corrida acabar."
+msgstr "Seu herói está numa dungeon. O cofre e o ouro funcionam normalmente; transferir, só quando a corrida acabar."
+
 #. placeholder {0}: vocationName(v())
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Seu herói já é {0}."
@@ -12317,6 +12339,10 @@ msgstr "Transferir"
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Transferir do banco para"
 #~ msgstr "Transferir do banco para"
+
+#: components/space/game/BankPanel.tsx
+msgid "Transferir fica para quando a corrida acabar."
+msgstr "Transferir fica para quando a corrida acabar."
 
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Travamentos"
