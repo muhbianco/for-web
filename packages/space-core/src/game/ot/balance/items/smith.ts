@@ -41,6 +41,20 @@ export function refineCostOf(
   };
 }
 
+/**
+ * A Pedra de Proteção serve nesta tentativa? Só quando a falha derrubaria o nível (P48). Fora disso o
+ * pedido de proteger é ignorado: nem gasta, nem exige ter pedra (26/11/2026, o pedido ficava preso
+ * de um item para outro e travava o refino com "sem pedra").
+ */
+export function stoneMatters(
+  item: ItemInstance,
+  B: Balance = gameBalance,
+): boolean {
+  return (
+    refineCostOf(item, B) !== null && B.refineFailure(item.refine) === "cai"
+  );
+}
+
 export type RefineOutcome =
   | { kind: "subiu"; item: ItemInstance }
   | { kind: "falhou"; item: ItemInstance }

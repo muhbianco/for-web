@@ -41,6 +41,7 @@ import {
   vaultTake,
 } from "./hero.ts";
 import { generateItem, materialOf } from "./items/generate.ts";
+import { stoneMatters } from "./items/smith.ts";
 import { buyBackPrice } from "./npcs/merchant.ts";
 import { freshHeroSkills } from "./skills/tree.ts";
 
@@ -208,6 +209,18 @@ test("Ferreiro: refino cobra ouro e minério, a Pedra só se gasta no +8 a +10; 
     ok: false,
     error: "sem-minerio",
   });
+  // A Pedra pedida onde ela não serve é ignorada: sem pedra, o +4 → +5 refina (26/11/2026, o pedido
+  // preso de outro item travava o refino com "sem pedra").
+  const noStone = ok(refineItem({ ...h, stones: 0 }, sword.uid, rng(9), true));
+  assert.equal(noStone.hero.stones, 0);
+  assert.equal(stoneMatters(it), false);
+  // Do +8 em diante ela serve: pedir sem ter recusa (não refina sem a proteção pedida).
+  const high = { ...it, refine: 8 };
+  assert.equal(stoneMatters(high), true);
+  assert.deepEqual(
+    refineItem({ ...h, stones: 0, bag: [high] }, sword.uid, rng(), true),
+    { ok: false, error: "sem-pedra" },
+  );
   const d = ok(dismantleItem(h, sword.uid));
   assert.equal(d.hero.ores[mat], h.ores[mat]! + 4);
   assert.equal(d.hero.bag.length, 0);

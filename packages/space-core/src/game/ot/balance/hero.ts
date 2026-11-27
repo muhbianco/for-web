@@ -32,6 +32,7 @@ import {
   refineCostOf,
   reforge,
   reforgeCost,
+  stoneMatters,
 } from "./items/smith.ts";
 import { vaultExpansionCost, vaultSlots } from "./npcs/bank.ts";
 import {
@@ -564,8 +565,9 @@ export function refineItem(
   if (cost.gold > h.gold) return fail("sem-ouro" as const);
   const ore = h.ores[cost.ore.material] ?? 0;
   if (ore < cost.ore.count) return fail("sem-minerio" as const);
-  if (protect && h.stones < 1) return fail("sem-pedra" as const);
-  const r = refineAttempt(item, rng, { protect }, B);
+  const useStone = protect && stoneMatters(item, B);
+  if (useStone && h.stones < 1) return fail("sem-pedra" as const);
+  const r = refineAttempt(item, rng, { protect: useStone }, B);
   if (!r.ok) return fail(r.error);
   const paid: HeroV5 = {
     ...h,

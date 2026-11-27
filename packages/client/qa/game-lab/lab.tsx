@@ -22,7 +22,7 @@ import { render } from "solid-js/web";
 
 import type { SpaceView } from "@muchat/space-client";
 import type { NewsWire, NpcKind } from "@muchat/space-core";
-import { createHero } from "@muchat/space-core/game/ot/balance";
+import { createHero, materialOf } from "@muchat/space-core/game/ot/balance";
 
 import { I18nProvider } from "../../components/i18n";
 import HeroSheet from "../../components/space/game/HeroSheet";
@@ -159,6 +159,22 @@ const SCENARIOS: Scenario[] = [
     screen: "npc",
     npc: "ferreiro",
     build: () => world(stateOf(mage45())),
+  },
+  {
+    id: "ferreiro-pedra",
+    label: "Ferreiro (uma Pedra, ouro e minério de sobra)",
+    screen: "npc",
+    npc: "ferreiro",
+    // A caixa da Pedra não passa de um item para outro nem fica presa quando a pedra acaba (26/11/2026).
+    build: () => {
+      const h = mage45();
+      const ores = Object.fromEntries(
+        [...h.bag, ...Object.values(h.equipment)]
+          .filter((x) => !!x)
+          .map((x) => [materialOf(x!.ilvl), 9999]),
+      );
+      return world(stateOf({ ...h, gold: 1e9, stones: 1, ores }));
+    },
   },
   {
     id: "ferreiro-corrida",

@@ -13,6 +13,7 @@ import {
   refinable,
   refineCostOf,
   reforgeCost,
+  stoneMatters,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
@@ -94,7 +95,15 @@ export function SmithPanel(props: {
   });
   const pick = (uid: string) => {
     setOutcome(null);
+    // A Pedra é escolha de cada item: trocar de item desmarca (26/11/2026).
+    setProtect(false);
     setSel(sel() === uid ? null : uid);
+  };
+  // O que vai no pedido: a Pedra só quando ela serve (item na faixa que cai) e há pedra na mão. A
+  // caixa marcada sozinha não basta: ela some abaixo do +8 e fica travada quando a pedra acaba.
+  const useStone = () => {
+    const it = item();
+    return protect() && h().stones > 0 && !!it && stoneMatters(it);
   };
   const ore = (m: string) => h().ores[m as Material] ?? 0;
 
@@ -107,9 +116,10 @@ export function SmithPanel(props: {
       npc: props.npc,
       action: "refinar",
       uid: it.uid,
-      ...(protect() ? { protect: true } : {}),
+      ...(useStone() ? { protect: true } : {}),
     });
     if (!r?.ok) return;
+    if (h().stones < 1) setProtect(false);
     const now = findItem(h(), it.uid)?.item.refine ?? from;
     setOutcome({
       kind:
@@ -138,6 +148,7 @@ export function SmithPanel(props: {
           setTab(v);
           setOutcome(null);
           setSel(null);
+          setProtect(false);
           setMany([]);
         }}
         items={[
@@ -254,7 +265,7 @@ export function SmithPanel(props: {
               gold={h().gold}
               stones={h().stones}
               ore={ore(refineCostOf(it())?.ore.material ?? "")}
-              protect={protect()}
+              protect={useStone()}
               setProtect={setProtect}
               busy={cmd.busy()}
               onRefine={refine}
