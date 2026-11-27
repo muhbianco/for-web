@@ -736,7 +736,7 @@ try {
         () => true,
         () => false,
       );
-    check("vira linha discreta acima do campo (não some)", fed);
+    check("aparece perto do campo, no histórico ou numa linha (não some)", fed);
     await shot(ana.page, "linha-fora-do-mapa");
   }
 
@@ -1016,6 +1016,102 @@ try {
   await wait(800);
   await shot(ana.page, "estreito-painel");
   await ana.page.setViewportSize({ width: 1440, height: 900 });
+
+  // 17. O histórico sobre o campo (27/11/2026) e o botão que o oculta até ser clicado de novo.
+  step(
+    "17-historico",
+    "Histórico sobre o campo: a conversa da sala, ao vivo, e o botão de ocultar que vale até clicar de novo",
+  );
+  const closeChat = ana.page.getByRole("button", { name: "Fechar o chat" });
+  if (await closeChat.isVisible().catch(() => false)) await closeChat.click();
+  await wait(800);
+  const hist = ana.page.locator("[data-space-history]");
+  const histShown = () => hist.isVisible().catch(() => false);
+  check(
+    "o histórico aparece sobre o campo (à vista por padrão)",
+    await histShown(),
+  );
+  await ana.page
+    .waitForFunction(
+      () =>
+        !document
+          .querySelector("[data-space-history]")
+          ?.textContent?.includes("Carregando"),
+      null,
+      { timeout: 6000 },
+    )
+    .catch(() => undefined);
+  const histText = (await hist.textContent().catch(() => "")) ?? "";
+  check(
+    "traz a conversa da sala, também a de antes de abrir (busca no canal)",
+    histText.includes("Testando numa tela menor") &&
+      histText.includes("Cheguei pelo celular"),
+  );
+  check(
+    "mostra a fala de quem escreveu fora do mapa",
+    histText.includes("Lembrete: a sala fecha"),
+  );
+  await say(bia.page, "Chegou no histórico?");
+  const live = await ana.page
+    .waitForFunction(
+      () =>
+        document
+          .querySelector("[data-space-history]")
+          ?.textContent?.includes("Chegou no histórico?"),
+      null,
+      { timeout: 4000 },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  check("a fala nova entra no histórico na hora", live);
+  await wait(400);
+  const geo = await ana.page.evaluate(() => {
+    const card = document.querySelector("[data-space-history]");
+    const scroller = card?.firstElementChild;
+    return {
+      top: card?.getBoundingClientRect().top ?? 0,
+      // column-reverse: 0 é o fim da conversa.
+      atEnd: scroller ? Math.abs(scroller.scrollTop) < 4 : false,
+    };
+  });
+  check("o histórico fica no fim da conversa", geo.atEnd);
+  const anaHead = await headOn(ana.page, id.ana);
+  check(
+    "o histórico não cobre o seu avatar",
+    anaHead && anaHead.feetY < geo.top,
+    anaHead
+      ? `pé do avatar y=${anaHead.feetY}, histórico a partir de ${geo.top.toFixed(0)}`
+      : "",
+  );
+  await shot(ana.page, "historico-a-vista");
+  await ana.page.locator("[data-history-toggle]").click();
+  await wait(300);
+  check("o botão oculta o histórico", !(await histShown()));
+  await shot(ana.page, "historico-oculto");
+  const reloadAna = async () => {
+    await ana.page.reload({ waitUntil: "domcontentloaded" });
+    await ana.page.waitForFunction(
+      () => !!window.__spaceView?.world?.me,
+      null,
+      {
+        timeout: 60_000,
+      },
+    );
+    await wait(2000);
+  };
+  await reloadAna();
+  check(
+    "oculto continua oculto depois de recarregar",
+    (await ana.page.locator("[data-history-toggle]").count()) > 0 &&
+      !(await histShown()),
+  );
+  await ana.page.locator("[data-history-toggle]").click();
+  await wait(400);
+  check("clicar de novo mostra o histórico", await histShown());
+  await reloadAna();
+  check("e ele continua à vista depois de recarregar", await histShown());
 } catch (err) {
   console.error(err);
   if (current)
