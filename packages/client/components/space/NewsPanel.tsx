@@ -151,6 +151,18 @@ export default function NewsPanel(props: {
         </Head>
 
         <Switch>
+          {/* O Arsenal primeiro: ele não depende das novidades. Aberto pela estante (modo `arsenal`)
+              as novidades nem são buscadas, e com o "Carregando" na frente o painel ficava preso
+              nele (27/11/2026). */}
+          <Match when={arsenal()}>
+            <Scroll>
+              <ArsenalView
+                onBack={
+                  props.mode === "arsenal" ? undefined : () => setArsenal(false)
+                }
+              />
+            </Scroll>
+          </Match>
           <Match when={news().kind === "loading"}>
             <p>{t`Carregando os avisos…`}</p>
           </Match>
@@ -164,15 +176,6 @@ export default function NewsPanel(props: {
           </Match>
           <Match when={items().length === 0}>
             <p>{t`Nenhum aviso por enquanto.`}</p>
-          </Match>
-          <Match when={arsenal()}>
-            <Scroll>
-              <ArsenalView
-                onBack={
-                  props.mode === "arsenal" ? undefined : () => setArsenal(false)
-                }
-              />
-            </Scroll>
           </Match>
           <Match when={selected()}>
             {(note) => (

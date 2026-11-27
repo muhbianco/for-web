@@ -64,7 +64,15 @@ const NewsPanel = lazy(() =>
   ),
 );
 
-type Screen = "hero" | "npc" | "dojo" | "tv" | "run" | "map" | "news";
+type Screen =
+  | "hero"
+  | "npc"
+  | "dojo"
+  | "tv"
+  | "run"
+  | "map"
+  | "news"
+  | "arsenal";
 
 /** O quadro de avisos sem o space-server: só o que o painel lê da vista. */
 const NEWS: NewsWire = {
@@ -101,6 +109,11 @@ const NEWS: NewsWire = {
 };
 const newsView = {
   news: async () => NEWS,
+  setNewsUnread: () => {},
+} as unknown as SpaceView;
+/** A estante do Arsenal não busca as novidades: se buscar, o cenário acusa. */
+const shelfView = {
+  news: () => Promise.reject(new Error("a estante do Arsenal não busca as novidades")),
   setNewsUnread: () => {},
 } as unknown as SpaceView;
 
@@ -437,6 +450,12 @@ const SCENARIOS: Scenario[] = [
     build: () => world(stateOf(mage45())),
   },
   {
+    id: "estante",
+    label: "Estante do Arsenal",
+    screen: "arsenal",
+    build: () => world(stateOf(mage45())),
+  },
+  {
     id: "mapa",
     label: "Faixas no mapa",
     screen: "map",
@@ -618,6 +637,16 @@ function Lab() {
                 <NewsPanel
                   view={newsView}
                   title="Quadro de avisos"
+                  onClose={() => setOpen(false)}
+                />
+              </Suspense>
+            </Match>
+            <Match when={screen() === "arsenal"}>
+              <Suspense>
+                <NewsPanel
+                  view={shelfView}
+                  title="Arsenal"
+                  mode="arsenal"
                   onClose={() => setOpen(false)}
                 />
               </Suspense>
