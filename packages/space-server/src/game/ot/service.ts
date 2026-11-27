@@ -327,11 +327,13 @@ export class RpgService {
   }
 
   /**
-   * As corridas em andamento no banco como o grupo de cada uma (27/11/2026): na subida, o grupo que
-   * não voltou do snapshot é refeito por elas antes de `resumeRuns` (o fim da corrida acha o grupo
-   * e o loop segue).
+   * As corridas como o grupo de cada uma (27/11/2026): na subida, o grupo que não voltou do snapshot
+   * é refeito por elas antes de `resumeRuns` (o fim da corrida acha o grupo e o loop segue). Primeiro
+   * as em andamento; depois as vitórias do loop que fecharam desde `endedSince` (`ended`: o grupo
+   * estava no intervalo entre uma corrida e a próxima), da mais nova para a mais antiga, sem quem
+   * saiu antes do fim.
    */
-  async runningGroups(): Promise<
+  async runningGroups(endedSince?: number): Promise<
     {
       id: string;
       server: string;
@@ -340,16 +342,24 @@ export class RpgService {
       dungeon: string;
       members: RpgLobbyMember[];
       auto: boolean;
+      ended?: true;
     }[]
   > {
-    const docs = await this.runStore.running(RUNS_RESUME_LIMIT);
-    return docs.map((d) => ({
+    const running = await this.runStore.running(RUNS_RESUME_LIMIT);
+    const ended =
+      endedSince === undefined
+        ? []
+        : await this.runStore.loopWinsSince(endedSince, RUNS_RESUME_LIMIT);
+    const group = (d: (typeof running)[number], isEnded: boolean) => ({
       id: d._id,
       server: d.server,
       tv: d.tv,
       room: d.room,
       dungeon: d.dungeon,
-      members: d.members.map((m) => ({
+      ...(isEnded ? { ended: true as const } : {}),
+      members: d.members
+        .filter((m) => !(isEnded && d.left?.includes(m.userId)))
+        .map((m) => ({
         user_id: m.userId,
         name: m.name,
         cls: m.hero.cls,
@@ -358,7 +368,11 @@ export class RpgService {
         ...(regionOf(d.dungeon) !== null ? { regions: [regionOf(d.dungeon)!] } : {}),
       })),
       auto: d.auto === true,
-    }));
+    });
+    return [
+      ...running.map((d) => group(d, false)),
+      ...ended.map((d) => group(d, true)),
+    ];
   }
 
   /** Corridas em andamento no banco (reinício, redeploy): voltam e fecham na hora certa. */

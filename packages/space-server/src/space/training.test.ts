@@ -707,3 +707,44 @@ test("reinício: o grupo refeito pela corrida espera quem reconecta; quem não v
   assert.deepEqual(rt.lobbies.of(ANA)?.members.map((m) => m.user_id), [ANA]);
   assert.equal(rt.isPresent(BIA), false);
 });
+
+test("o grupo que estava entre duas corridas do loop volta e pede a próxima sozinho", async () => {
+  let now = 1_000_000;
+  const BIA = "01JBIA00000000000000000000";
+  const rt = new SpaceRuntime({
+    serverId: SRV,
+    cache: makeCache(),
+    store: new MemoryAssignmentStore(),
+    decorStore: new MemoryDecorStore(),
+    log: silentLog,
+    now: () => now,
+  });
+  await rt.init();
+  const due: [string, string, boolean][] = [];
+  rt.onLobbyDue = (leader, id, auto) => due.push([leader, id, auto]);
+  assert.equal(
+    rt.adoptRun({
+      id: "run-ended",
+      tv: "tv-x",
+      room: PUB,
+      dungeon: "masmorra-40",
+      members: [
+        { user_id: ANA, name: "Ana", cls: "guerreiro", level: 45 },
+        { user_id: BIA, name: "Bia", cls: "padre", level: 44 },
+      ],
+      auto: true,
+      ended: true,
+    }),
+    true,
+  );
+  const lobby = rt.lobbies.of(ANA)!;
+  assert.equal(lobby.state, "ready");
+  // Os dois voltam antes da hora da próxima: o loop pede a largada sozinho.
+  enter(rt, ANA, "Ana");
+  enter(rt, BIA, "Bia");
+  for (let i = 0; i < 20 && due.length === 0; i++) {
+    now += 1_000;
+    rt.tick();
+  }
+  assert.deepEqual(due, [[ANA, lobby.id, true]]);
+});

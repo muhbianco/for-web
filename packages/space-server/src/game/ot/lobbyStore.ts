@@ -16,6 +16,12 @@ export interface LobbyStore {
 
 /** Um grupo gravado há mais que isso não volta (o processo ficou fora tempo demais). */
 export const LOBBY_RESUME_TTL_MS = 30 * 60_000;
+/**
+ * Na subida, a vitória do loop que fechou há menos que isso refaz o grupo (ele estava no intervalo de
+ * 12 s entre uma corrida e a próxima quando o processo parou). Cobre o intervalo mais a troca do
+ * container; mais que isso, o grupo pode ter desfeito de propósito.
+ */
+export const LOBBY_BETWEEN_RUNS_MS = 2 * 60_000;
 /** Teto de grupos por servidor num documento. */
 export const LOBBY_RESUME_MAX = 200;
 

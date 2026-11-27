@@ -23,7 +23,7 @@ import { Registry } from "./space/registry.ts";
 import { MongoProfileStore } from "./space/profiles.ts";
 import { MongoDecorStore } from "./space/decorStore.ts";
 import { MongoSpotStore } from "./space/spotStore.ts";
-import { LOBBY_RESUME_TTL_MS, MongoLobbyStore } from "./game/ot/lobbyStore.ts";
+import { LOBBY_BETWEEN_RUNS_MS, LOBBY_RESUME_TTL_MS, MongoLobbyStore } from "./game/ot/lobbyStore.ts";
 import { MongoAssignmentStore } from "./space/store.ts";
 import { MongoTvStore } from "./space/tv.ts";
 import { MemberCache, StoatApi } from "./stoat/api.ts";
@@ -166,7 +166,9 @@ async function main() {
   // andamento sem grupo, o grupo refeito por ela. Precisa da estrutura (abre o espaço do servidor)
   // e vem antes de `resumeRuns`: o fim de cada corrida acha o grupo e o loop marca a próxima.
   try {
-    const runs = await rpg.runningGroups();
+    // A vitória do loop que fechou há pouco: o grupo estava no intervalo (12 s, ou mais com alguém
+    // na ficha) quando o processo de antes parou.
+    const runs = await rpg.runningGroups(Date.now() - LOBBY_BETWEEN_RUNS_MS);
     const groups = await registry.restoreLobbies(lobbyStore, runs, Date.now() - LOBBY_RESUME_TTL_MS);
     log.info("rpg groups restored", { ...groups, running: runs.length });
   } catch (err) {

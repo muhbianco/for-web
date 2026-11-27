@@ -392,4 +392,16 @@ test("reinício sem snapshot: a corrida em andamento refaz o grupo (o primeiro c
   const h2 = new LobbyHub();
   assert.equal(h2.adopt({ ...run, id: "r2", auto: false }, 0)!.loop, false);
   assert.equal(h2.adopt({ ...run, id: "r3", dungeon: "nao-existe", members: [m("Z")] }, 0), null);
+  // A vitória do loop que acabou de fechar (o grupo estava no intervalo): volta pronto, a próxima
+  // marcada; quem já voltou noutro grupo (por uma corrida em andamento) fica de fora.
+  const h3 = new LobbyHub();
+  h3.adopt({ ...run, id: "r4", members: [m("C", 62, "mago")] }, 0);
+  const between = h3.adopt({ ...run, id: "r5", ended: true }, 2000)!;
+  assert.equal(between.state, "ready");
+  assert.equal(between.runId, null);
+  assert.equal(between.loop, true);
+  assert.equal(between.nextAt, 2000 + LOBBY.loopDelayMs);
+  assert.equal(between.last, "vitoria");
+  assert.deepEqual(between.members.map((x) => x.user_id), ["A", "B"]);
+  assert.equal(h3.of("C")!.runId, "r4");
 });

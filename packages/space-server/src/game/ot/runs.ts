@@ -59,6 +59,11 @@ export const RUNS_KEEP_MS = 30 * 24 * 3600_000;
 export interface RunStore {
   create(doc: RpgRunDoc): Promise<void>;
   running(limit: number): Promise<RpgRunDoc[]>;
+  /**
+   * As fechadas em vitória pelo loop (`auto`) que terminaram desde `since`, da mais nova para a mais
+   * antiga: na subida, o grupo que estava no intervalo entre uma corrida e a próxima (27/11/2026).
+   */
+  loopWinsSince(since: number, limit: number): Promise<RpgRunDoc[]>;
   /** Marca como fechada (com quem saiu antes); false se já estava (outro processo fechou). */
   settle(id: string, at: number, left?: string[]): Promise<boolean>;
   /**
@@ -125,6 +130,19 @@ export class MemoryRunStore implements RunStore {
       .sort((a, b) => a.ends_at - b.ends_at)
       .slice(0, limit)
       .map((d) => structuredClone(d));
+  }
+
+  async loopWinsSince(since: number, limit: number): Promise<RpgRunDoc[]> {
+    return [...this.docs.values()]
+      .filter(
+        (d) =>
+          d.status === "settled" &&
+          d.auto === true &&
+          d.outcome === "vitoria" &&
+          d.ends_at >= since,
+      )
+      .sort((a, b) => b.ends_at - a.ends_at)
+      .slice(0, limit);
   }
 
   async settle(id: string, at: number, left?: string[]): Promise<boolean> {
@@ -207,6 +225,19 @@ export class MongoRunStore implements RunStore {
   async running(limit: number): Promise<RpgRunDoc[]> {
     const rows = await this.col
       .find({ status: "running" }, { ...OP, limit, sort: { ends_at: 1 } })
+      .toArray();
+    return rows
+      .filter((r) => r.v === 2)
+      .map(({ expire_at: _e, ...doc }) => doc as RpgRunDoc);
+  }
+
+  async loopWinsSince(since: number, limit: number): Promise<RpgRunDoc[]> {
+    // Pelo índice (status, ends_at): a corrida fecha no fim dela.
+    const rows = await this.col
+      .find(
+        { status: "settled", ends_at: { $gte: since }, auto: true, outcome: "vitoria" },
+        { ...OP, limit, sort: { ends_at: -1 } },
+      )
       .toArray();
     return rows
       .filter((r) => r.v === 2)

@@ -523,7 +523,8 @@ export class LobbyHub {
   /**
    * O grupo de uma corrida em andamento que não voltou do snapshot: os membros dela, o primeiro
    * como líder, o loop ligado se a corrida saiu do loop (`auto`). Null se a corrida já tem grupo,
-   * a DG sumiu ou todos já estão noutro grupo.
+   * a DG sumiu ou todos já estão noutro grupo. `ended`: a corrida é uma vitória do loop que acabou
+   * de fechar (o grupo estava no intervalo): volta pronto, com a próxima marcada como no `runEnded`.
    */
   adopt(
     run: {
@@ -533,10 +534,13 @@ export class LobbyHub {
       dungeon: string;
       members: RpgLobbyMember[];
       auto: boolean;
+      ended?: boolean;
     },
     now: number,
   ): Lobby | null {
     if (this.all().some((l) => l.runId === run.id)) return null;
+    const ended = run.ended === true;
+    const loop = run.auto;
     if (!dungeonById(run.dungeon)) return null;
     const members = run.members.filter((m) => !this.memberOf.has(m.user_id));
     if (members.length === 0) return null;
@@ -548,13 +552,13 @@ export class LobbyHub {
       leader: members[0]!.user_id,
       members,
       createdAt: now,
-      expiresAt: NEVER,
-      state: "running",
-      runId: run.id,
-      runs: 0,
-      loop: run.auto,
-      nextAt: null,
-      last: null,
+      expiresAt: ended ? now + LOBBY.idleMs : NEVER,
+      state: ended ? "ready" : "running",
+      runId: ended ? null : run.id,
+      runs: ended ? 1 : 0,
+      loop,
+      nextAt: ended && loop ? now + LOBBY.loopDelayMs : null,
+      last: ended ? "vitoria" : null,
       stopped: null,
       stoppedDetail: null,
       pending: false,

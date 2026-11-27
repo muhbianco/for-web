@@ -231,22 +231,27 @@ export class Registry implements RuntimeRegistry {
   /**
    * Na subida, antes de as corridas voltarem: os grupos gravados no desligamento e, para cada
    * corrida em andamento sem grupo, o grupo refeito pela corrida (o processo de antes deste código
-   * não gravava). Abre o espaço do servidor para isso (o fim da corrida precisa achar o grupo).
+   * não gravava); depois, as vitórias do loop que acabaram de fechar (`ended`, na ordem dada: a mais
+   * nova primeiro), o grupo que estava entre uma corrida e a próxima. Abre o espaço do servidor para
+   * isso (o fim da corrida precisa achar o grupo).
    */
   async restoreLobbies(
     store: LobbyStore,
     runs: readonly (Parameters<SpaceRuntime["adoptRun"]>[0] & { server: string })[],
     since: number,
-  ): Promise<{ restored: number; rebuilt: number }> {
-    const out = { restored: 0, rebuilt: 0 };
-    const active = new Set(runs.map((r) => r.id));
+  ): Promise<{ restored: number; rebuilt: number; between: number }> {
+    const out = { restored: 0, rebuilt: 0, between: 0 };
+    const active = new Set(runs.filter((r) => !r.ended).map((r) => r.id));
     for (const s of await store.takeAll(since)) {
       const rt = await this.get(s.serverId).catch(() => null);
       if (rt) out.restored += rt.restoreLobbies(s.lobbies, active);
     }
-    for (const run of runs) {
+    for (const run of [...runs].sort((a, b) => Number(!!a.ended) - Number(!!b.ended))) {
       const rt = await this.get(run.server).catch(() => null);
-      if (rt?.adoptRun(run)) out.rebuilt++;
+      if (rt?.adoptRun(run)) {
+        if (run.ended) out.between++;
+        else out.rebuilt++;
+      }
     }
     return out;
   }
