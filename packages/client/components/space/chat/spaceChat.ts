@@ -8,7 +8,7 @@ import {
   onCleanup,
   untrack,
 } from "solid-js";
-import { createStore, produce, reconcile } from "solid-js/store";
+import { createStore, produce } from "solid-js/store";
 
 import {
   type BubbleLabels,
@@ -17,9 +17,12 @@ import {
   type Measure,
   type SpaceView,
   BUBBLE,
+  BUBBLE_TEXT_WIDTH,
   bubbleMs,
   bubbleText,
   planBubble,
+  TTS_FACE_PX,
+  ttsBody,
 } from "@muchat/space-client";
 import type { Channel, Client, Message } from "stoat.js";
 
@@ -46,6 +49,8 @@ export interface SayBubble {
   userId: string;
   text: string;
   plan: BubblePlan;
+  /** Veio do gerador de voz (`/tts`): o balão mostra a carinha falando. */
+  tts: boolean;
   at: number;
   until: number;
   mine: boolean;
@@ -217,8 +222,16 @@ export function createSpaceChat(opts: SpaceChatOptions) {
 
   // ---- entrada das mensagens ------------------------------------------------------------------
 
+  /** Largura do texto no balão: a carinha do TTS ocupa o começo. */
+  const boxOf = (m: Message) =>
+    ttsBody(m.contentPlain) !== null
+      ? BUBBLE_TEXT_WIDTH - TTS_FACE_PX
+      : BUBBLE_TEXT_WIDTH;
+
   function textOf(m: Message): string {
-    return bubbleText(m.contentPlain, {
+    // `/tts texto`: o balão mostra o texto, e a carinha falando no lugar do comando.
+    const plain = m.contentPlain;
+    return bubbleText(ttsBody(plain) ?? plain, {
       attachments: m.attachments?.length ?? 0,
       labels: opts.labels,
     });
@@ -226,7 +239,7 @@ export function createSpaceChat(opts: SpaceChatOptions) {
 
   function pushSay(m: Message, text: string) {
     const now = Date.now();
-    const plan = planBubble(text, measure);
+    const plan = planBubble(text, measure, boxOf(m));
     const shown = plan.mode === "ticker" ? plan.text : text;
     const bubble: SayBubble = {
       key: m.id,
@@ -237,6 +250,7 @@ export function createSpaceChat(opts: SpaceChatOptions) {
       at: now,
       until: now + bubbleMs(shown, plan),
       mine: m.authorId === myId(),
+      tts: ttsBody(m.contentPlain) !== null,
       leaving: false,
     };
     batch(() => {
@@ -308,7 +322,7 @@ export function createSpaceChat(opts: SpaceChatOptions) {
               if (!list.length) delete all[user];
               continue;
             }
-            const plan = planBubble(text, measure);
+            const plan = planBubble(text, measure, boxOf(m));
             const shown = plan.mode === "ticker" ? plan.text : text;
             const b = list[i]!;
             b.text = shown;
@@ -476,9 +490,11 @@ export function createSpaceChat(opts: SpaceChatOptions) {
     }),
   );
 
+  // Só o timer: escrever no store durante o descarte acorda computações que estão sendo
+  // descartadas (o store vai embora junto com a página).
   onCleanup(() => {
     if (timer) clearTimeout(timer);
-    setSays(reconcile({}));
+    timer = undefined;
   });
 
   return {

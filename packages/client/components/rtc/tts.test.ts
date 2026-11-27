@@ -94,3 +94,13 @@ test("falls back to the same base language, then to nothing", () => {
   );
   assert.equal(pickTtsVoice([voices[0]], "pt-BR"), undefined);
 });
+
+test("a channel claimed by the Espaço is not read again by the call's TTS", async () => {
+  const { claimTts, ttsClaimed } = await import("./tts.ts");
+  assert.equal(ttsClaimed("room-1"), false);
+  const release = claimTts((id) => id.startsWith("room-"));
+  assert.equal(ttsClaimed("room-1"), true);
+  assert.equal(ttsClaimed("dm-9"), false);
+  release();
+  assert.equal(ttsClaimed("room-1"), false);
+});

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* global console, process, URL, setTimeout, fetch, window, document, getComputedStyle, PerformanceObserver, localStorage, requestAnimationFrame */
+/* global console, process, URL, setTimeout, fetch, window, document, getComputedStyle, PerformanceObserver, localStorage, requestAnimationFrame, Event */
 /**
  * Laboratório do chat do Espaço (27/11/2026): Ana, Bia e Caio conversam no mapa como gente,
  * no app de verdade (build do laboratório), e cada passo mede o que decide se o chat é
@@ -25,7 +25,15 @@ import { join, resolve } from "node:path";
 
 import { chromium } from "@playwright/test";
 
+import { avatarVoice } from "../../components/space/ttsVoice.ts";
 import { openPerson } from "./person.mjs";
+
+/** As vozes do gravador de TTS (o mesmo conjunto da página). */
+const LAB_VOICES = [
+  { name: "Google português do Brasil", lang: "pt-BR" },
+  { name: "Microsoft Daniel - Portuguese (Brazil)", lang: "pt-BR" },
+  { name: "Microsoft Maria - Portuguese (Brazil)", lang: "pt-BR" },
+];
 
 const args = process.argv.slice(2);
 const opt = (name, dflt) => {
@@ -106,6 +114,70 @@ async function enterSpace(person) {
   await page.context().addInitScript(() => {
     // O diálogo do áudio já foi visto neste aparelho (o laboratório não tem LiveKit).
     localStorage.setItem("muchat.space.audio-checked", "1");
+    // O Chromium headless não tem vozes: um gravador no lugar da Web Speech API registra cada
+    // fala (texto, voz, tom, ritmo, volume) e simula o começo e o fim dela (1,6 s).
+    const log = [];
+    window.__ttsLog = log;
+    const voices = [
+      {
+        name: "Google português do Brasil",
+        lang: "pt-BR",
+        default: false,
+        localService: false,
+        voiceURI: "g",
+      },
+      {
+        name: "Microsoft Daniel - Portuguese (Brazil)",
+        lang: "pt-BR",
+        default: false,
+        localService: true,
+        voiceURI: "d",
+      },
+      {
+        name: "Microsoft Maria - Portuguese (Brazil)",
+        lang: "pt-BR",
+        default: true,
+        localService: true,
+        voiceURI: "m",
+      },
+    ];
+    class FakeUtterance {
+      constructor(text) {
+        Object.assign(this, {
+          text,
+          lang: "",
+          volume: 1,
+          rate: 1,
+          pitch: 1,
+          voice: null,
+        });
+        this.onstart = this.onend = this.onerror = null;
+      }
+    }
+    const synth = {
+      paused: false,
+      getVoices: () => voices,
+      speak(u) {
+        log.push({
+          text: u.text,
+          voice: u.voice?.name ?? null,
+          pitch: u.pitch,
+          rate: u.rate,
+          volume: u.volume,
+        });
+        setTimeout(() => u.onstart?.(), 30);
+        setTimeout(() => u.onend?.(), 1600);
+      },
+      cancel() {},
+      resume() {},
+      addEventListener() {},
+      removeEventListener() {},
+    };
+    Object.defineProperty(window, "speechSynthesis", {
+      value: synth,
+      configurable: true,
+    });
+    window.SpeechSynthesisUtterance = FakeUtterance;
   });
   await page.goto(`${BASE}${SPACE}`, { waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => !!window.__spaceView?.world?.me, null, {
@@ -585,7 +657,7 @@ try {
     const b = [
       ...document.querySelectorAll('[data-kind="say"][data-ticker]'),
     ].at(-1);
-    const track = b?.querySelector("span span");
+    const track = b?.querySelector("[data-track]");
     const anim = track?.getAnimations()[0];
     const t = anim?.effect?.getTiming();
     const kf = anim?.effect?.getKeyframes();
@@ -1112,6 +1184,321 @@ try {
   check("clicar de novo mostra o histórico", await histShown());
   await reloadAna();
   check("e ele continua à vista depois de recarregar", await histShown());
+
+  // 18. TTS do Espaço (27/11/2026): carinha no balão, voz por avatar, volume próprio, só a zona.
+  step(
+    "18-tts",
+    "TTS do Espaço: a carinha no balão, uma voz por avatar, volume próprio no menu e só para a mesma zona",
+  );
+  await bia.page.reload({ waitUntil: "domcontentloaded" });
+  await bia.page.waitForFunction(() => !!window.__spaceView?.world?.me, null, {
+    timeout: 60_000,
+  });
+  await bia.page.emulateMedia({ reducedMotion: "no-preference" });
+  await walkToRoom(bia.page, ROOM);
+  await walkToRoom(ana.page, ROOM);
+  await wait(1200);
+  const ttsLog = (p) => p.evaluate(() => window.__ttsLog.slice());
+  const clearTts = (p) => p.evaluate(() => void (window.__ttsLog.length = 0));
+  await clearTts(bia.page);
+  await say(ana.page, "/tts oi gente, tudo bem?");
+  await waitBubble(bia.page, "oi gente, tudo bem?");
+  const ttsBubble = await bia.page.evaluate(() => {
+    const b = [...document.querySelectorAll('[data-kind="say"]')].find((x) =>
+      x.textContent?.includes("oi gente, tudo bem?"),
+    );
+    return { text: b?.textContent ?? "", face: !!b?.querySelector("svg") };
+  });
+  check(
+    "o balão mostra o texto sem o /tts",
+    ttsBubble.text && !ttsBubble.text.includes("/tts"),
+    ttsBubble.text,
+  );
+  check("e a carinha falando no lugar do comando", ttsBubble.face);
+  const mouth = await bia.page
+    .waitForFunction(
+      () => !!document.querySelector('[data-kind="say"] svg[data-speaking]'),
+      null,
+      {
+        timeout: 2000,
+      },
+    )
+    .then(
+      () => true,
+      () => false,
+    );
+  check("a boca da carinha mexe enquanto a voz toca", mouth);
+  await shot(bia.page, "tts-carinha");
+  await wait(1900);
+  check(
+    "e para quando a voz acaba",
+    await bia.page.evaluate(
+      () => !document.querySelector('[data-kind="say"] svg[data-speaking]'),
+    ),
+  );
+  const heardB = (await ttsLog(bia.page)).filter(
+    (e) => e.text === "oi gente, tudo bem?",
+  );
+  check(
+    "a Bia ouve a fala uma vez só",
+    heardB.length === 1,
+    `${heardB.length}×`,
+  );
+  const anaVoice = avatarVoice(id.ana, LAB_VOICES);
+  const e0 = heardB[0];
+  check(
+    "com a voz do avatar da Ana (voz, tom e ritmo)",
+    e0 &&
+      e0.voice === anaVoice.voice?.name &&
+      e0.pitch === anaVoice.pitch &&
+      e0.rate === anaVoice.rate,
+    e0 ? `${e0.voice} · tom ${e0.pitch} · ritmo ${e0.rate}` : "",
+  );
+  check(
+    "e no volume cheio por padrão",
+    e0 && e0.volume === 1,
+    e0 ? `${e0.volume}` : "",
+  );
+  // O Caio (no celular, na mesma sala) fala pela API: outra voz.
+  await clearTts(bia.page);
+  await api(
+    `/channels/${ROOM}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ content: "/tts eu também cheguei" }),
+    },
+    "caio",
+  );
+  await bia.page
+    .waitForFunction(
+      () => window.__ttsLog.some((e) => e.text === "eu também cheguei"),
+      null,
+      { timeout: 5000 },
+    )
+    .catch(() => undefined);
+  const caioHeard = (await ttsLog(bia.page)).find(
+    (e) => e.text === "eu também cheguei",
+  );
+  check(
+    "o Caio soa diferente da Ana",
+    caioHeard &&
+      e0 &&
+      (caioHeard.voice !== e0.voice ||
+        caioHeard.pitch !== e0.pitch ||
+        caioHeard.rate !== e0.rate),
+    caioHeard
+      ? `${caioHeard.voice} · tom ${caioHeard.pitch} · ritmo ${caioHeard.rate}`
+      : "não ouviu",
+  );
+  // Menu do botão direito na Ana (barra lateral): o bloco da voz do TTS, separado.
+  const anaRow = bia.page
+    .locator(`[data-voice-drop="${ROOM}"]`)
+    .getByText(/^Ana( |$)/)
+    .first();
+  await anaRow.click({ button: "right" });
+  const ttsTitle = bia.page.getByText("Voz do TTS no Espaço").first();
+  const menuOk = await ttsTitle.waitFor({ timeout: 4000 }).then(
+    () => true,
+    () => false,
+  );
+  check("o menu do botão direito tem o bloco da voz do TTS", menuOk);
+  await shot(bia.page, "menu-tts");
+  const setTtsVolume = (v) =>
+    bia.page.evaluate((value) => {
+      // O título traz o texto do ícone antes ("record_voice_over…"): o mais fundo que contém.
+      const title = [...document.querySelectorAll("span")]
+        .filter((s) => s.textContent?.includes("Voz do TTS no Espaço"))
+        .at(-1);
+      let el = title;
+      while (el && !el.querySelector?.("mdui-slider")) el = el.parentElement;
+      const slider = el?.querySelector("mdui-slider");
+      if (!slider) return false;
+      slider.value = value;
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+      return true;
+    }, v);
+  check("o volume do TTS se ajusta no menu", await setTtsVolume(0.3));
+  await bia.page.keyboard.press("Escape");
+  await clearTts(bia.page);
+  await say(ana.page, "/tts agora mais baixinho");
+  await bia.page
+    .waitForFunction(() => window.__ttsLog.length > 0, null, { timeout: 5000 })
+    .catch(() => undefined);
+  const low = (await ttsLog(bia.page)).find(
+    (e) => e.text === "agora mais baixinho",
+  );
+  check(
+    "o volume vale para o TTS da Ana (30%)",
+    low && Math.abs(low.volume - 0.3) < 0.01,
+    low ? `${low.volume}` : "não ouviu",
+  );
+  // Zero: silêncio (o balão continua).
+  await anaRow.click({ button: "right" });
+  await ttsTitle.waitFor({ timeout: 4000 }).catch(() => undefined);
+  await setTtsVolume(0);
+  await bia.page.keyboard.press("Escape");
+  await clearTts(bia.page);
+  await say(ana.page, "/tts agora sem som");
+  await waitBubble(bia.page, "agora sem som");
+  await wait(600);
+  check(
+    "no zero a Ana fica em silêncio para a Bia (o balão continua)",
+    !(await ttsLog(bia.page)).some((e) => e.text === "agora sem som"),
+  );
+  // De volta ao volume cheio.
+  await anaRow.click({ button: "right" });
+  await ttsTitle.waitFor({ timeout: 4000 }).catch(() => undefined);
+  await setTtsVolume(1);
+  await bia.page.keyboard.press("Escape");
+  // Outra zona não ouve: a Bia no hall.
+  const hallSpot = await bia.page.evaluate(() => {
+    const h = window.__spaceView.world.map.hall;
+    return { x: ((h.x0 + h.x1 + 1) / 2) * 32, y: ((h.y0 + h.y1 + 1) / 2) * 32 };
+  });
+  await walkTo(bia.page, hallSpot.x, hallSpot.y);
+  await clearTts(bia.page);
+  await say(ana.page, "/tts quem está no hall não ouve");
+  await wait(1500);
+  check(
+    "quem está em outra zona não ouve o TTS da sala",
+    !(await ttsLog(bia.page)).some(
+      (e) => e.text === "quem está no hall não ouve",
+    ),
+  );
+  await walkToRoom(bia.page, ROOM);
+
+  // 19. Mover de sala arrastando na barra lateral (o recurso que voltou).
+  step(
+    "19-mover",
+    "A Ana arrasta a Bia para o Cinema na barra lateral; a Bia vai e fica sabendo quem a levou",
+  );
+  await wait(800);
+  const src = ana.page
+    .locator(`[data-voice-drop="${ROOM}"]`)
+    .getByText(/^Bia( |$)/)
+    .first();
+  const dst = ana.page.locator(`[data-voice-drop="${OTHER}"]`).first();
+  const sb = await src.boundingBox();
+  const db = await dst.boundingBox();
+  check("a Bia aparece na sala, na barra lateral da Ana", !!sb && !!db);
+  if (sb && db) {
+    await ana.page.mouse.move(sb.x + sb.width / 2, sb.y + sb.height / 2);
+    await ana.page.mouse.down();
+    await ana.page.mouse.move(
+      sb.x + sb.width / 2 + 12,
+      sb.y + sb.height / 2 + 12,
+      { steps: 4 },
+    );
+    await ana.page.mouse.move(
+      db.x + db.width / 2,
+      db.y + Math.min(16, db.height / 2),
+      { steps: 10 },
+    );
+    await shot(ana.page, "arrastando");
+    await ana.page.mouse.up();
+    const moved = await bia.page
+      .waitForFunction(
+        (room) => window.__spaceView.world.me.room === room,
+        OTHER,
+        { timeout: 6000 },
+      )
+      .then(
+        () => true,
+        () => false,
+      );
+    check("a Bia foi para o Cinema (o avatar e a chamada dela)", moved);
+    const told = await bia.page
+      .getByText("Ana levou você para Cinema.")
+      .first()
+      .waitFor({ timeout: 4000 })
+      .then(
+        () => true,
+        () => false,
+      );
+    check("a Bia fica sabendo quem a levou", told);
+    await shot(bia.page, "levada-para-o-cinema");
+    await wait(1200);
+    const inCinema = await ana.page
+      .locator(`[data-voice-drop="${OTHER}"]`)
+      .getByText(/^Bia( |$)/)
+      .count();
+    check("a barra lateral da Ana mostra a Bia no Cinema", inCinema > 0);
+    await shot(ana.page, "bia-no-cinema");
+  }
+
+  // 20. Transparência do chat sobre o mapa (o "esmaecer"), lembrada até mudar de novo.
+  step(
+    "20-transparencia",
+    "Ana deixa o chat 50% transparente: vale até mudar, e com o mouse em cima volta a ficar sólido",
+  );
+  await ana.page.locator("[data-fade-toggle]").click();
+  const panelOk = await ana.page
+    .locator("[data-chat-fade]")
+    .waitFor({ timeout: 3000 })
+    .then(
+      () => true,
+      () => false,
+    );
+  check("o botão abre o ajuste de transparência", panelOk);
+  await ana.page.evaluate(() => {
+    const r = document.querySelector("[data-chat-fade]");
+    r.value = "50";
+    r.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await shot(ana.page, "ajuste");
+  await ana.page.keyboard.press("Escape");
+  // Mouse longe do chat e foco no mapa: esmaecido.
+  await focusMap(ana.page);
+  await ana.page.mouse.move(420, 160);
+  await wait(400);
+  const alpha = () =>
+    ana.page.evaluate(() => {
+      const card = document.querySelector("[data-space-history]");
+      return card ? Number(getComputedStyle(card).opacity) : -1;
+    });
+  const faded = await alpha();
+  check(
+    "com o mouse fora, o chat fica 50% transparente",
+    Math.abs(faded - 0.5) < 0.02,
+    `${faded}`,
+  );
+  await shot(ana.page, "esmaecido");
+  const histBox = await ana.page.locator("[data-space-history]").boundingBox();
+  if (histBox)
+    await ana.page.mouse.move(
+      histBox.x + histBox.width / 2,
+      histBox.y + histBox.height / 2,
+    );
+  await wait(400);
+  const solid = await alpha();
+  check(
+    "com o mouse em cima, volta a ficar sólido para ler",
+    solid === 1,
+    `${solid}`,
+  );
+  await ana.page.mouse.move(420, 160);
+  await ana.page.reload({ waitUntil: "domcontentloaded" });
+  await ana.page.waitForFunction(() => !!window.__spaceView?.world?.me, null, {
+    timeout: 60_000,
+  });
+  await wait(2000);
+  await ana.page.mouse.move(420, 160);
+  await focusMap(ana.page);
+  await wait(400);
+  const kept = await alpha();
+  check(
+    "a escolha continua depois de recarregar",
+    Math.abs(kept - 0.5) < 0.02,
+    `${kept}`,
+  );
+  // Volta ao sólido.
+  await ana.page.locator("[data-fade-toggle]").click();
+  await ana.page.evaluate(() => {
+    const r = document.querySelector("[data-chat-fade]");
+    r.value = "0";
+    r.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await ana.page.keyboard.press("Escape");
 } catch (err) {
   console.error(err);
   if (current)

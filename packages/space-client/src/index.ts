@@ -23,6 +23,7 @@ export {
   type Presence,
   PresenceLink,
   type PresenceLinkOptions,
+  type MoveResult,
 } from "./presence.ts";
 export { type GameWireEvent, type Interaction, SpaceView, type SpaceUiState, type SpaceViewOptions } from "./view.ts";
 export { applyFrames, RUN_FEED_MAX, type RunState, runStateFrom } from "./runState.ts";
@@ -44,6 +45,8 @@ export {
   type BubblePlan,
   bubbleMs,
   bubbleText,
+  ttsBody,
+  TTS_FACE_PX,
   layoutBubbles,
   type Measure,
   planBubble,

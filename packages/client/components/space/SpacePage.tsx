@@ -46,6 +46,7 @@ import { BubbleLayer } from "./chat/BubbleLayer";
 import { ChatDock } from "./chat/ChatDock";
 import { ChatPanel } from "./chat/ChatPanel";
 import { createSpaceChat } from "./chat/spaceChat";
+import { ttsSpeaking } from "./spaceTts";
 import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
 import { InteractionDialog } from "./InteractionDialog";
@@ -450,6 +451,25 @@ function ServerSpace(props: { serverId: string }) {
     tick: ui,
     labels: chatLabels,
   });
+  // Um moderador levou você para uma sala (arrastando na barra lateral): diz quem e para onde.
+  const movedN = createMemo(() => ui()?.moved?.n ?? 0);
+  createEffect(
+    on(
+      movedN,
+      (n) => {
+        const m = untrack(() => ui()?.moved);
+        if (!n || !m) return;
+        const place = placeOf(m.roomId);
+        setNotice(
+          m.byName
+            ? t`${m.byName} levou você para ${place}.`
+            : t`Você foi levado para ${place}.`,
+        );
+      },
+      { defer: true },
+    ),
+  );
+
   /** O painel mostra outra sala (aberta pela lista); null = segue você. */
   const [chatPinned, setChatPinned] = createSignal<string | null>(null);
   const chatChannel = () => {
@@ -891,6 +911,10 @@ function ServerSpace(props: { serverId: string }) {
         reducedMotion: matchMedia("(prefers-reduced-motion: reduce)").matches,
         voice,
         stoat: () => client(),
+        tts: {
+          output: () => appState.voice.outputVolume,
+          volumeOf: (userId) => appState.voice.getUserTtsVolume(userId),
+        },
       });
       if (disposed) return leaveSpacePage(serverId);
       setView(v);
@@ -1245,6 +1269,7 @@ function ServerSpace(props: { serverId: string }) {
                 view={v()}
                 reducedMotion={reducedMotion}
                 placeOf={placeOf}
+                speaking={(id) => ttsSpeaking().has(id)}
                 insets={mapInsets()}
                 onOpen={(channelId, messageId) => openChat(channelId, messageId)}
               />
@@ -1257,6 +1282,7 @@ function ServerSpace(props: { serverId: string }) {
                 channel={ch()}
                 place={placeOf(ch().id)}
                 labels={chatLabels}
+                speaking={(id) => ttsSpeaking().has(id)}
                 focusRequest={dockFocus}
                 onLeave={leaveChat}
                 onOpenPanel={(channelId, messageId) => openChat(channelId, messageId)}

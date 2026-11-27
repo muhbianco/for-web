@@ -181,8 +181,11 @@ export class Gateway {
         });
         return;
       }
+      // A moderator moves someone to a room from the sidebar (its session is watch-only) or the map.
+      if (cmd.t === "member.move") return s.runtime.moveMember(s, cmd.id, cmd.d.user_id, cmd.d.room_id);
       if (s.mode === "observe") {
-        // A watch-only session reads presence; it never acts in the space.
+        // A watch-only session reads presence; it never acts in the space (moving someone, above,
+        // is the one moderation it may do: it needs no avatar).
         if (cmd.t === "ping") return s.send({ v: 1, t: "pong", re: cmd.id, d: { server_ms: Date.now() } });
         return s.send({ v: 1, t: "error", re: "id" in cmd ? cmd.id : undefined, d: { code: "not_allowed" } });
       }

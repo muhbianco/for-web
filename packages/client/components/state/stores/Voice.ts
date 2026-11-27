@@ -13,11 +13,11 @@ import {
   NOISE_SUPPRESSION_SCHEMA,
 } from "./noiseSuppressionPolicy";
 import {
+  type VoiceBitrate,
+  type VoiceProfile,
   DEFAULT_VOICE_BITRATE,
   isVoiceBitrate,
   matchVoiceProfile,
-  type VoiceBitrate,
-  type VoiceProfile,
   VOICE_PROFILES,
 } from "./voiceProfiles";
 
@@ -27,8 +27,12 @@ import {
  * - enhanced: RNNoise (light)
  * - advanced: DeepFilterNet3 (default), falls back to RNNoise on weaker devices
  */
-export type { DeepFilterSensitivity, NoiseSuppresionState };
-export type { VoiceBitrate, VoiceProfile };
+export type {
+  DeepFilterSensitivity,
+  NoiseSuppresionState,
+  VoiceBitrate,
+  VoiceProfile,
+};
 
 /**
  * Possible screen share qualities. Low is 720p@30fps, high 1080p@30fps and text is source@5fps.
@@ -90,6 +94,9 @@ export interface TypeVoice {
 
   screenShareVolumes: Record<string, number>;
   screenShareMutes: Record<string, boolean>;
+
+  /** Volume of each person's `/tts` voice in the Muchat Espaço (0–1; apart from their voice). */
+  ttsVolumes: Record<string, number>;
 }
 
 /**
@@ -136,6 +143,7 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       userMutes: {},
       screenShareVolumes: {},
       screenShareMutes: {},
+      ttsVolumes: {},
     };
   }
 
@@ -230,6 +238,18 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
       data.micOn = input.micOn;
     }
 
+    if (typeof input.ttsVolumes === "object" && input.ttsVolumes) {
+      Object.entries(input.ttsVolumes)
+        .filter(
+          ([userId, volume]) =>
+            typeof userId === "string" &&
+            typeof volume === "number" &&
+            volume >= 0 &&
+            volume <= 1,
+        )
+        .forEach(([k, v]) => (data.ttsVolumes[k] = v));
+    }
+
     if (typeof input.userVolumes === "object") {
       Object.entries(input.userVolumes)
         .filter(
@@ -283,6 +303,23 @@ export class Voice extends AbstractStore<"voice", TypeVoice> {
    */
   getUserVolume(userId: string): number {
     return this.get().userVolumes[userId] || 1.0;
+  }
+
+  /**
+   * Set the volume of a person's `/tts` voice in the Espaço (apart from their call volume)
+   * @param userId User ID
+   * @param volume 0 (silent) to 1
+   */
+  setUserTtsVolume(userId: string, volume: number) {
+    this.set("ttsVolumes", userId, Math.max(0, Math.min(1, volume)));
+  }
+
+  /**
+   * Volume of a person's `/tts` voice in the Espaço (0 stays 0: silenced on purpose)
+   * @param userId User ID
+   */
+  getUserTtsVolume(userId: string): number {
+    return this.get().ttsVolumes?.[userId] ?? 1;
   }
 
   /**

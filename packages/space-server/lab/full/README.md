@@ -121,6 +121,11 @@ FULL_LAB_DIR=<pasta do lab> node qa/full-lab/chat-lab.mjs --run nome
 
 **Saída:** `qa/full-lab/out/chat/<rodada>/report.html`, com as capturas de cada passo.
 
+**Dois laboratórios ao mesmo tempo:**
+- `FULL_LAB_CLIENT_PORT` e `FULL_LAB_SPACE_PORT` trocam as portas do app e do servidor do Espaço (scripts `run-client.mjs`, `run-space.mjs` e `qa/full-lab/vite.config.ts`). O build tem de usar a mesma porta em `VITE_API_URL`/`VITE_HOST`.
+- **Limite:** o Stoat do laboratório anuncia o websocket de eventos em `localhost:5173/ws` (`Revolt.toml`). Um segundo app em outra porta só loga enquanto alguém serve a 5173 com o proxy do `/ws`. Sem isso, o login para no formulário. Achado em 27/11/2026.
+- **Contas compartilhadas:** as contas de teste são as mesmas nos dois laboratórios. Avise a outra sessão antes de rodar.
+
 ## Arquivos gerados (gitignored)
 
 | Arquivo | O que guarda |

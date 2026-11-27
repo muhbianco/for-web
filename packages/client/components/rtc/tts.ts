@@ -113,13 +113,32 @@ export function ttsSupported(): boolean {
   );
 }
 
+/**
+ * Channels whose `/tts` another part of the app speaks (the Muchat Espaço speaks its rooms'
+ * and hall's with a voice per avatar, always on). The call's handler skips those, so a message
+ * is never read twice.
+ */
+const claims = new Set<(channelId: string) => boolean>();
+
+/** Claim the `/tts` of some channels; returns the release. */
+export function claimTts(owns: (channelId: string) => boolean): () => void {
+  claims.add(owns);
+  return () => claims.delete(owns);
+}
+
+/** Whether someone else speaks this channel's `/tts`. */
+export function ttsClaimed(channelId: string): boolean {
+  for (const owns of claims) if (owns(channelId)) return true;
+  return false;
+}
+
 let pendingVoices: Promise<SpeechSynthesisVoice[]> | undefined;
 
 /**
  * Chromium/Electron populate `getVoices()` asynchronously and signal it via
  * `voiceschanged`. Wait for that (bounded) instead of speaking with no voice.
  */
-function loadVoices(): Promise<SpeechSynthesisVoice[]> {
+export function loadVoices(): Promise<SpeechSynthesisVoice[]> {
   const synth = window.speechSynthesis;
   const now = synth.getVoices();
   if (now.length) return Promise.resolve(now);
@@ -151,7 +170,18 @@ function clampVolume(volume: number | undefined): number {
  */
 export async function speakTts(
   text: string,
-  opts: { volume?: number; lang?: string } = {},
+  opts: {
+    volume?: number;
+    lang?: string;
+    /** A voice of the device's list (the Espaço gives each avatar its own). */
+    voice?: (
+      voices: SpeechSynthesisVoice[],
+    ) => SpeechSynthesisVoice | undefined;
+    pitch?: number;
+    rate?: number;
+    onStart?: () => void;
+    onEnd?: () => void;
+  } = {},
 ): Promise<void> {
   if (!ttsSupported()) return;
   const body = text.trim();
@@ -164,10 +194,16 @@ export async function speakTts(
   const utterance = new SpeechSynthesisUtterance(body);
   utterance.lang = lang;
   utterance.volume = clampVolume(opts.volume);
-  utterance.rate = 1;
-  utterance.pitch = 1;
-  const voice = pickTtsVoice(voices, lang);
+  utterance.rate = opts.rate ?? 1;
+  utterance.pitch = opts.pitch ?? 1;
+  const voice = opts.voice?.(voices) ?? pickTtsVoice(voices, lang);
   if (voice) utterance.voice = voice;
+  if (opts.onStart) utterance.onstart = () => opts.onStart?.();
+  if (opts.onEnd) {
+    // `end` or `error` (cancelled, interrupted): either way it stopped.
+    utterance.onend = () => opts.onEnd?.();
+    utterance.onerror = () => opts.onEnd?.();
+  }
 
   // Chromium can wedge in a paused state after tab/background changes.
   if (synth.paused) synth.resume();

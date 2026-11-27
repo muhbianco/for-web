@@ -13,6 +13,8 @@ import type { Client } from "stoat.js";
 import type { useVoice } from "@revolt/rtc";
 import { participantUserId } from "@revolt/rtc/identity";
 
+import { type SpaceTtsDeps, attachSpaceTts } from "./spaceTts";
+
 type Voice = ReturnType<typeof useVoice>;
 
 /**
@@ -70,7 +72,12 @@ const holds = (s: SpaceUiState) =>
  * its own once that audio ends.
  */
 export function openSpace(
-  opts: Omit<SpaceViewOptions, "voice"> & { voice: Voice; stoat: () => Client },
+  opts: Omit<SpaceViewOptions, "voice"> & {
+    voice: Voice;
+    stoat: () => Client;
+    /** Volumes do TTS do Espaço: o de saída e o de cada pessoa (spaceTts.ts). */
+    tts: Pick<SpaceTtsDeps, "output" | "volumeOf">;
+  },
 ): Promise<SpaceView> {
   const existing = sessions.get(opts.serverId);
   if (existing) {
@@ -96,12 +103,23 @@ export function openSpace(
   if (pending) return pending;
 
   const p = (async () => {
-    const { voice, stoat, ...viewOpts } = opts;
+    const { voice, stoat, tts, ...viewOpts } = opts;
     const view = await SpaceView.mount({
       ...viewOpts,
       voice: voicePort(voice, stoat),
     });
     const dispose = createRoot((disposeRoot) => {
+      // O TTS do Espaço vive com a sessão: fala também com o mapa fechado e a chamada mantida.
+      onCleanup(
+        attachSpaceTts({
+          serverId: opts.serverId,
+          view,
+          client: stoat,
+          deafened: () => voice.deafen(),
+          output: tts.output,
+          volumeOf: tts.volumeOf,
+        }),
+      );
       // The call changed under the space: hung up in the dock, another call
       // started, or LiveKit dropped. MediaLink decides what that means.
       createEffect(

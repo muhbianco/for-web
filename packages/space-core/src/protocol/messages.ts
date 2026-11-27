@@ -273,6 +273,19 @@ export const TeleportCmd = z.object({
   d: z.object({ id: instanceId }),
 });
 
+/**
+ * A moderator (MoveMembers) takes someone to a room: the drag of a person onto another room in
+ * the server's sidebar (27/11/2026; the classic voice move came back for the Espaço). The
+ * server places their avatar inside the room, and their call follows like any room change.
+ * Allowed also from a watch-only session (the sidebar's), which never has an avatar.
+ */
+export const MemberMoveCmd = z.object({
+  v: z.literal(PROTOCOL_VERSION),
+  t: z.literal("member.move"),
+  id: commandId,
+  d: z.object({ user_id: ulid, room_id: ulid }),
+});
+
 export const ClientCommand = z.discriminatedUnion("t", [
   HelloCmd,
   MoveCmd,
@@ -291,6 +304,7 @@ export const ClientCommand = z.discriminatedUnion("t", [
   DecorFloorCmd,
   DecorSettingsCmd,
   TeleportCmd,
+  MemberMoveCmd,
 ]);
 export type ClientCommand = z.infer<typeof ClientCommand>;
 

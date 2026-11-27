@@ -82,7 +82,6 @@ function VariantSpace(props: { channel: Channel }) {
               deafened={!!p.voice?.deaf}
               camera={!!p.voice?.camera}
               screenshare={!!p.voice?.screen}
-              noDrag
               dimmed={p.state === "reconnecting" || !p.voice?.connected}
               note={
                 p.state === "reconnecting"
@@ -201,7 +200,7 @@ function CommonUser(props: {
   camera: boolean;
   screenshare: boolean;
   isLive?: boolean;
-  /** No dragging to another channel (rooms of the space are entered by walking). */
+  /** No dragging to another channel. */
   noDrag?: boolean;
   /** Inside the room but not (yet) in its call, or reconnecting. */
   dimmed?: boolean;
@@ -232,11 +231,11 @@ function CommonUser(props: {
         opacity: rest.dimmed ? 0.55 : undefined,
       }}
       onPointerDown={(event) => {
-        const member = user().member;
-        if (rest.noDrag || !member || !drag) return;
+        if (rest.noDrag || !drag) return;
+        // A room of the Espaço moves by who it is (the member may not be loaded yet).
         drag.beginUserDrag(
           event,
-          member,
+          { userId: rest.userId, member: user().member },
           props.channel,
           user().username,
           user().avatar,

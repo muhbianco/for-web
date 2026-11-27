@@ -10,12 +10,14 @@ import {
 } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
-import { type BubbleLabels, bubbleText } from "@muchat/space-client";
+import { type BubbleLabels, bubbleText, ttsBody } from "@muchat/space-client";
 import type { Channel, Message } from "stoat.js";
 import { css } from "styled-system/css";
 
 import { useClient } from "@revolt/client";
 import { useTime } from "@revolt/i18n";
+
+import { TtsFace } from "./TtsFace";
 
 /** Mensagens buscadas ao abrir (e o teto guardado enquanto chegam novas). */
 const FETCH = 30;
@@ -26,6 +28,7 @@ const GROUP_MS = 5 * 60_000;
 interface Props {
   channel: Channel;
   labels: BubbleLabels;
+  speaking: (messageId: string) => boolean;
   /** Um clique numa fala: o painel do chat abre nela. */
   onOpen: (messageId: string) => void;
 }
@@ -117,10 +120,11 @@ export function ChatHistory(props: Props) {
 
   // O texto acompanha a edição: o `content` da mensagem do Stoat é reativo.
   const textOf = (m: Message) =>
-    bubbleText(m.contentPlain, {
+    bubbleText(ttsBody(m.contentPlain) ?? m.contentPlain, {
       attachments: m.attachments?.length ?? 0,
       labels: props.labels,
     });
+  const isTts = (m: Message) => ttsBody(m.contentPlain) !== null;
 
   return (
     <div class={card} data-space-history="">
@@ -151,6 +155,9 @@ export function ChatHistory(props: Props) {
                   <span class={who}>{r.m.username ?? ""}</span>
                 ) : null}
                 <span class={say}>
+                  {isTts(r.m) ? (
+                    <TtsFace speaking={props.speaking(r.m.id)} size={17} />
+                  ) : null}
                   <span class={text}>{textOf(r.m) || "…"}</span>
                   <time class={time} dateTime={r.m.createdAt.toISOString()}>
                     {dayjs(r.m.createdAt).format("HH:mm")}

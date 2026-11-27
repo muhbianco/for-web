@@ -20,6 +20,8 @@ const ip = readFileSync(
   "utf8",
 ).trim();
 const spacePort = process.env.FULL_LAB_SPACE_PORT ?? "8097";
+// FULL_LAB_CLIENT_PORT: two sessions can run their labs side by side (27/11/2026).
+const clientPort = Number(process.env.FULL_LAB_CLIENT_PORT ?? 5173);
 
 // The prefix goes, the rest (query included) stays, always with a leading slash.
 const strip = (prefix: string) => (path: string) => {
@@ -53,10 +55,10 @@ const proxy = {
 
 export default mergeConfig(base, {
   // `vite preview` (the production build, FULL_LAB_MODE=preview) uses the same routes.
-  preview: { host: "127.0.0.1", port: 5173, strictPort: true, proxy },
+  preview: { host: "127.0.0.1", port: clientPort, strictPort: true, proxy },
   server: {
     host: "127.0.0.1",
-    port: 5173,
+    port: clientPort,
     strictPort: true,
     proxy,
   },

@@ -29,6 +29,8 @@ const keys = Object.fromEntries(
     .map((l) => l.split("=", 2)),
 );
 const port = process.env.FULL_LAB_SPACE_PORT ?? "8097";
+// The app this space server answers (FULL_LAB_CLIENT_PORT, default 5173).
+const clientPort = process.env.FULL_LAB_CLIENT_PORT ?? "5173";
 
 const child = spawn(
   process.execPath,
@@ -43,13 +45,13 @@ const child = spawn(
       MONGO_URL: `mongodb://${ip}:27018`,
       REDIS_URL: `redis://${ip}:16379`,
       LIVEKIT_URL: `http://${ip}:17880`,
-      LIVEKIT_PUBLIC_URL: "ws://localhost:5173/livekit",
+      LIVEKIT_PUBLIC_URL: `ws://localhost:${clientPort}/livekit`,
       LIVEKIT_SPACE_KEY: keys.LAB_LIVEKIT_KEY,
       LIVEKIT_SPACE_SECRET: keys.LAB_LIVEKIT_SECRET,
       SPACE_ENABLED_SERVERS: "*",
       // O jogo idle em todos os servidores do laboratório (em produção, só os da lista).
       SPACE_GAME_SERVERS: process.env.SPACE_GAME_SERVERS ?? "*",
-      SPACE_ALLOWED_ORIGINS: "http://localhost:5173",
+      SPACE_ALLOWED_ORIGINS: `http://localhost:${clientPort}`,
       SPACE_PORT: port,
     },
   },

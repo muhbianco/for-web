@@ -42,12 +42,6 @@ import type {
   RunMeter,
 } from "@muchat/space-core/game/ot/balance";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
-import {
-  type RunState,
-  applyFrames,
-  followsNextRun,
-  runStateFrom,
-} from "./runState.ts";
 import { type EditorState, Editor } from "./editor.ts";
 import { myHeroOf } from "./hero.ts";
 import { type Prompt, nearestInteractive } from "./interact.ts";
@@ -65,6 +59,12 @@ import { type MediaStatus, type VoicePort, MediaLink } from "./media.ts";
 import { Mover } from "./mover.ts";
 import { fitZoom } from "./render/framing.ts";
 import { type HeadAnchor, Renderer } from "./render/renderer.ts";
+import {
+  type RunState,
+  applyFrames,
+  followsNextRun,
+  runStateFrom,
+} from "./runState.ts";
 import { decodeMap, World } from "./world.ts";
 
 export interface SpaceViewOptions {
@@ -149,6 +149,8 @@ export interface SpaceUiState {
   arsenalRequest: { instance: string; title: string; n: number } | null;
   /** Someone used a TV with the game on: the app shows "watch" or "dungeon". */
   tvMenu: { instance: string; title: string; n: number } | null;
+  /** A moderator took us to a room (27/11/2026): the app says who. `n` grows on every move. */
+  moved: { roomId: string; byName: string; n: number } | null;
   /** Dungeon groups at the TVs of our room (stage O4), by TV instance. */
   lobbies: Record<string, RpgLobbyView>;
   /** The last group that started in our room (the app tells the room). */
@@ -174,12 +176,7 @@ export type { RunState } from "./runState.ts";
 
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
-  t:
-    | "rpg.state"
-    | "rpg.lobby"
-    | "rpg.run"
-    | "rpg.stats"
-    | "error";
+  t: "rpg.state" | "rpg.lobby" | "rpg.run" | "rpg.stats" | "error";
   re?: string;
   d: Record<string, unknown>;
 };
@@ -305,6 +302,7 @@ export class SpaceView {
       newsRequest: null,
       arsenalRequest: null,
       tvMenu: null,
+      moved: null,
       lobbies: {},
       lobbyStarted: null,
       runs: {},
@@ -754,7 +752,9 @@ export class SpaceView {
         if (typeof e.re === "string") this.gameCommands.delete(e.re);
         this.patch({
           board: {
-            lobbies: Array.isArray(d.lobbies) ? (d.lobbies as RpgLobbyView[]) : [],
+            lobbies: Array.isArray(d.lobbies)
+              ? (d.lobbies as RpgLobbyView[])
+              : [],
             runs: Array.isArray(d.runs) ? (d.runs as RpgBoardRun[]) : [],
             at: Date.now(),
           },
@@ -842,6 +842,20 @@ export class SpaceView {
         this.world.setTv(d.room_id, tv.state);
         if (!this.clock.ready && tv.state) this.conn.probeClock();
         this.syncTv();
+        return;
+      }
+      case "member.moved": {
+        // A moderator took us to a room (the sidebar's drag): the correction already placed
+        // us there and our call follows; the app says who did it.
+        const m = d as { room_id?: string; by?: string; by_name?: string };
+        if (typeof m.room_id !== "string") return;
+        this.patch({
+          moved: {
+            roomId: m.room_id,
+            byName: typeof m.by_name === "string" ? m.by_name : "",
+            n: (this.state.moved?.n ?? 0) + 1,
+          },
+        });
         return;
       }
       case "screen.stopped":
@@ -1139,8 +1153,7 @@ export class SpaceView {
     if (this.mapPrompt === on) return;
     this.mapPrompt = on;
     const p = this.prompt;
-    this.renderer.prompt =
-      p && on ? { x: p.x, y: p.y, label: p.label } : null;
+    this.renderer.prompt = p && on ? { x: p.x, y: p.y, label: p.label } : null;
   }
 
   private updatePrompt() {
@@ -1391,9 +1404,12 @@ export class SpaceView {
 
   /** As novidades do quadro de avisos (o servidor guarda por minutos; o Outline fica atrás dele). */
   async news(): Promise<NewsWireT> {
-    const res = await fetch(new URL("/_muchat/space/v1/news", this.opts.baseUrl), {
-      headers: { "X-Session-Token": this.opts.sessionToken },
-    });
+    const res = await fetch(
+      new URL("/_muchat/space/v1/news", this.opts.baseUrl),
+      {
+        headers: { "X-Session-Token": this.opts.sessionToken },
+      },
+    );
     if (!res.ok) throw new Error(`news ${res.status}`);
     const parsed = NewsWire.safeParse(await res.json());
     if (!parsed.success) throw new Error("news: resposta fora do contrato");
