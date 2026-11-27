@@ -517,6 +517,11 @@ msgstr "{0} joined"
 msgid "{0} left"
 msgstr "{0} left"
 
+#. placeholder {0}: m.byName
+#: components/space/SpacePage.tsx
+msgid "{0} levou você para {place}."
+msgstr "{0} levou você para {place}."
+
 #. placeholder {0}: (message.systemMessage as ChannelOwnershipChangeSystemMessage).from ?.username
 #. placeholder {1}: (message.systemMessage as ChannelOwnershipChangeSystemMessage).to ?.username
 #: components/client/NotificationsWorker.tsx
@@ -3589,6 +3594,10 @@ msgstr "Com a ficha aberta, a próxima corrida do grupo espera você fechar."
 #~ msgid "Com o grupo completo (as 4 classes), confortável desde a entrada."
 #~ msgstr "Com o grupo completo (as 4 classes), confortável desde a entrada."
 
+#: components/space/chat/ChatDock.tsx
+msgid "Com o mouse em cima ou digitando, ele volta a ficar sólido."
+msgstr "Com o mouse em cima ou digitando, ele volta a ficar sólido."
+
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
 #~ msgstr "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
@@ -5734,9 +5743,17 @@ msgstr "Essa corrida já acabou."
 #~ msgid "Essa pessoa ainda não escolheu a vocação."
 #~ msgstr "Essa pessoa ainda não escolheu a vocação."
 
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "Essa pessoa não está mais no Espaço."
+msgstr "Essa pessoa não está mais no Espaço."
+
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Essa pessoa não está no Espaço agora."
 #~ msgstr "Essa pessoa não está no Espaço agora."
+
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "Essa pessoa não pode entrar nessa sala."
+msgstr "Essa pessoa não pode entrar nessa sala."
 
 #: components/space/game/rpgUi.ts
 #~ msgid "Esse adereço já está no máximo."
@@ -8335,6 +8352,10 @@ msgstr "Não deu para carregar o histórico agora."
 msgid "Não deu para carregar os avisos agora. Tente de novo em instantes."
 msgstr "Não deu para carregar os avisos agora. Tente de novo em instantes."
 
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "Não deu para mover"
+msgstr "Não deu para mover"
+
 #: components/space/AudioCheck.tsx
 msgid "Não deu para testar o microfone agora."
 msgstr "Não deu para testar o microfone agora."
@@ -8363,9 +8384,17 @@ msgstr "Não foi possível carregar o player do YouTube neste aparelho (bloquead
 #~ msgid "Não foi possível fazer isso agora. Tente de novo."
 #~ msgstr "Não foi possível fazer isso agora. Tente de novo."
 
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "Não foi possível mover agora."
+msgstr "Não foi possível mover agora."
+
 #: components/space/game/gameText.ts
 msgid "Não há largada para cancelar."
 msgstr "Não há largada para cancelar."
+
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "Não há lugar livre nessa sala."
+msgstr "Não há lugar livre nessa sala."
 
 #: components/space/game/NpcDialog.tsx
 #~ msgid "Não há pontos postos para redistribuir."
@@ -8815,6 +8844,10 @@ msgstr "O cofre está vazio."
 msgid "O cofre tem só {0}."
 msgstr "O cofre tem só {0}."
 
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "O Espaço não respondeu. Tente de novo."
+msgstr "O Espaço não respondeu. Tente de novo."
+
 #: components/space/game/gameText.ts
 msgid "O focus só vai com arma mágica de uma mão."
 msgstr "O focus só vai com arma mágica de uma mão."
@@ -9257,6 +9290,10 @@ msgstr "Outra pessoa mexeu na TV ao mesmo tempo; a TV mostra o que ficou valendo
 #: components/space/game/TvMenu.tsx
 msgid "outra sala"
 msgstr "outra sala"
+
+#: components/app/menus/UserContextMenu.tsx
+msgid "Ouvir a voz"
+msgstr "Ouvir a voz"
 
 #: components/app/interface/settings/ChannelSettings.tsx
 #: components/app/interface/settings/ServerSettings.tsx
@@ -12365,6 +12402,10 @@ msgstr "Transferir"
 msgid "Transferir fica para quando a corrida acabar."
 msgstr "Transferir fica para quando a corrida acabar."
 
+#: components/space/chat/ChatDock.tsx
+msgid "Transparência do chat"
+msgstr "Transparência do chat"
+
 #: components/app/interface/settings/user/voice/CallDiagnosticsOptions.tsx
 msgid "Travamentos"
 msgstr "Travamentos"
@@ -13144,6 +13185,10 @@ msgstr "Você está lendo outra sala. O que você escrever aqui vai para ela, se
 msgid "Você está no último tier: {0}."
 msgstr "Você está no último tier: {0}."
 
+#: components/space/SpacePage.tsx
+msgid "Você foi levado para {place}."
+msgstr "Você foi levado para {place}."
+
 #: components/space/game/gameText.ts
 msgid "Você já é dessa classe."
 msgstr "Você já é dessa classe."
@@ -13204,6 +13249,10 @@ msgstr "Você não tem permissão para controlar a TV desta sala."
 #: components/space/game/labels.ts
 #~ msgid "Você não tem permissão para jogar aqui."
 #~ msgstr "Você não tem permissão para jogar aqui."
+
+#: components/ui/components/features/voice/VoiceMemberDrag.tsx
+msgid "Você não tem permissão para mover pessoas para essa sala."
+msgstr "Você não tem permissão para mover pessoas para essa sala."
 
 #: components/space/InteractionDialog.tsx
 msgid "Você não tem permissão para usar este objeto aqui."
@@ -13292,6 +13341,10 @@ msgstr "Voz acelerada"
 #: components/ui/components/features/voice/VoiceDock.tsx
 msgid "Voz conectada"
 msgstr "Voz conectada"
+
+#: components/app/menus/UserContextMenu.tsx
+msgid "Voz do TTS no Espaço"
+msgstr "Voz do TTS no Espaço"
 
 #: components/space/game/ItemCard.tsx
 msgid "vs vestido"
