@@ -533,9 +533,8 @@ function Entry(
 
   return (
     <div
-      data-voice-drop={
-        props.channel.isVoice && !asRoom() ? props.channel.id : undefined
-      }
+      // A room of the Espaço takes a dragged person too (the space server moves them, 27/11/2026).
+      data-voice-drop={props.channel.isVoice ? props.channel.id : undefined}
       style={{
         outline: voiceDrag?.isDropTarget(props.channel.id)
           ? "2px solid var(--md-sys-color-primary)"

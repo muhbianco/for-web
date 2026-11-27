@@ -1,20 +1,26 @@
 import {
+  type JSX,
   Show,
   createContext,
   createSignal,
   onCleanup,
   useContext,
-  type JSX,
 } from "solid-js";
 import { Portal } from "solid-js/web";
+
+import { useLingui } from "@lingui/solid/macro";
 import type { Channel, ServerMember } from "stoat.js";
 import { styled } from "styled-system/jsx";
 
+import { useClient } from "@revolt/client";
 import { useDevice } from "@revolt/common";
 import { useModals } from "@revolt/modal";
+import { isSpaceServer } from "@revolt/space/config";
+import { moveInSpace } from "@revolt/space/presence";
 
 type DragState = {
-  member: ServerMember;
+  userId: string;
+  member?: ServerMember;
   fromChannel: Channel;
   username: string;
   avatar?: string;
@@ -28,7 +34,7 @@ const VoiceMemberDragContext = createContext<{
   canDragMembers: (channel: Channel) => boolean;
   beginUserDrag: (
     event: PointerEvent,
-    member: ServerMember,
+    who: { userId: string; member?: ServerMember },
     fromChannel: Channel,
     username: string,
     avatar?: string,
@@ -39,10 +45,16 @@ const VoiceMemberDragContext = createContext<{
 /**
  * Pointer-based drag of voice members between channels.
  * Kept separate from channel reorder (solid-dnd-directive).
+ *
+ * In a server with the Muchat Espaço the voice channels are rooms of the map: the drop asks the
+ * space server to take the person there (27/11/2026), and their call follows. Elsewhere it is
+ * Stoat's own move (`voice_channel`).
  */
 export function VoiceMemberDragProvider(props: { children: JSX.Element }) {
   const { isMobile } = useDevice();
   const { showError } = useModals();
+  const { t } = useLingui();
+  const client = useClient();
   const [drag, setDrag] = createSignal<DragState>();
 
   function canDragMembers(channel: Channel) {
@@ -57,16 +69,49 @@ export function VoiceMemberDragProvider(props: { children: JSX.Element }) {
     return el?.dataset.voiceDrop;
   }
 
+  /** O que o servidor do Espaço recusou, em palavras. */
+  function moveError(code: string, reason?: string): string {
+    if (code === "not_allowed" && reason === "no_access")
+      return t`Essa pessoa não pode entrar nessa sala.`;
+    if (code === "not_allowed" && reason === "no_space")
+      return t`Não há lugar livre nessa sala.`;
+    if (code === "not_allowed")
+      return t`Você não tem permissão para mover pessoas para essa sala.`;
+    if (code === "not_found") return t`Essa pessoa não está mais no Espaço.`;
+    if (code === "timeout") return t`O Espaço não respondeu. Tente de novo.`;
+    return t`Não foi possível mover agora.`;
+  }
+
+  function moveTo(state: DragState, target: Channel) {
+    const serverId = target.serverId;
+    if (serverId && isSpaceServer(serverId)) {
+      void moveInSpace(client(), serverId, state.userId, target.id).then(
+        (r) => {
+          if (r.ok) return;
+          const error = new Error(moveError(r.code, r.reason));
+          error.name = t`Não deu para mover`;
+          showError(error);
+        },
+      );
+      return;
+    }
+    if (!state.member) return;
+    void state.member.edit({ voice_channel: target.id }).catch(showError);
+  }
+
   function beginUserDrag(
     event: PointerEvent,
-    member: ServerMember,
+    who: { userId: string; member?: ServerMember },
     fromChannel: Channel,
     username: string,
     avatar?: string,
   ) {
     if (event.button !== 0) return;
     if (!canDragMembers(fromChannel)) return;
-    if (member.user?.self) return;
+    if (who.userId === client().user?.id) return;
+    // Stoat's classic move needs the member; a room of the Espaço only needs who it is.
+    const space = !!fromChannel.serverId && isSpaceServer(fromChannel.serverId);
+    if (!space && !who.member) return;
 
     event.preventDefault();
     const startX = event.clientX;
@@ -81,7 +126,8 @@ export function VoiceMemberDragProvider(props: { children: JSX.Element }) {
         document.body.style.cursor = "grabbing";
       }
       setDrag({
-        member,
+        userId: who.userId,
+        member: who.member,
         fromChannel,
         username,
         avatar,
@@ -101,10 +147,13 @@ export function VoiceMemberDragProvider(props: { children: JSX.Element }) {
         ? (current?.dropChannelId ?? dropChannelAt(ev.clientX, ev.clientY))
         : undefined;
       setDrag(undefined);
-      if (!started || !targetId || targetId === fromChannel.id) return;
-      const target = fromChannel.server?.channels.find((c) => c.id === targetId);
+      if (!started || !current || !targetId || targetId === fromChannel.id)
+        return;
+      const target = fromChannel.server?.channels.find(
+        (c) => c.id === targetId,
+      );
       if (!target?.isVoice) return;
-      void member.edit({ voice_channel: target.id }).catch(showError);
+      moveTo(current, target);
     };
 
     window.addEventListener("pointermove", onMove);

@@ -32,6 +32,8 @@ const u = who
 
 // FULL_LAB_MODE=preview serves the production build (dist/, made with
 // `vite build` and these same VITE_* values) instead of the dev server.
+// FULL_LAB_CLIENT_PORT (default 5173): another port, for a second lab beside the first.
+const CLIENT_PORT = process.env.FULL_LAB_CLIENT_PORT ?? "5173";
 const preview =
   process.env.FULL_LAB_MODE === "preview" || process.argv.includes("--preview");
 const child = spawn(
@@ -47,10 +49,10 @@ const child = spawn(
     stdio: "inherit",
     env: {
       ...process.env,
-      VITE_DEV_API_URL: "http://localhost:5173/api",
-      VITE_DEV_HOST: "localhost:5173",
-      VITE_API_URL: "http://localhost:5173/api",
-      VITE_HOST: "localhost:5173",
+      VITE_DEV_API_URL: `http://localhost:${CLIENT_PORT}/api`,
+      VITE_DEV_HOST: `localhost:${CLIENT_PORT}`,
+      VITE_API_URL: `http://localhost:${CLIENT_PORT}/api`,
+      VITE_HOST: `localhost:${CLIENT_PORT}`,
       // The mobile audit (qa/full-lab/mobile-audit.mjs) drives the view through
       // window.__spaceView; production builds never set it.
       VITE_SPACE_TEST_HOOKS: "1",

@@ -2,9 +2,11 @@ import { Trans } from "@lingui/solid/macro";
 import { useClient } from "@revolt/client";
 import { useModals } from "@revolt/modal";
 import { useSmartParams } from "@revolt/routing";
+import { startPrivateCall, useVoice } from "@revolt/rtc";
+import { isSpaceServer } from "@revolt/space/config";
+import { previewAvatarVoice } from "@revolt/space/ttsPreview";
 import { useState } from "@revolt/state";
 import { Slider, Symbol, Text } from "@revolt/ui";
-import { useVoice, startPrivateCall } from "@revolt/rtc";
 import { useNavigate } from "@solidjs/router";
 import { type JSX, Match, Show, Switch } from "solid-js";
 import type { Channel, Message, ServerMember, User } from "stoat.js";
@@ -171,15 +173,21 @@ export function UserContextMenu(props: {
    * Voice channel the target is currently in, if any
    */
   function targetVoiceChannel() {
-    return findVoiceChannel(
-      client(),
-      props.user.id,
-      props.member?.server,
-    );
+    return findVoiceChannel(client(), props.user.id, props.member?.server);
   }
 
   function isInVoice() {
     return !!props.inVoice || !!targetVoiceChannel();
+  }
+
+  /**
+   * A pessoa está num servidor com o Muchat Espaço: o menu ganha a voz do TTS dela (volume
+   * próprio e "Ouvir a voz"). Não aparece para você mesmo nem na tela compartilhada.
+   */
+  function ttsInSpace() {
+    if (props.user.self || props.isScreenshare || props.user.bot) return false;
+    const serverId = props.member?.server?.id ?? targetVoiceChannel()?.serverId;
+    return !!serverId && isSpaceServer(serverId);
   }
 
   /**
@@ -487,6 +495,52 @@ export function UserContextMenu(props: {
             <Trans>Send Alert</Trans>
           </ContextMenuButton>
         </Show>
+        <ContextMenuDivider />
+      </Show>
+      {/*
+        Muchat Espaço: a voz do /tts desta pessoa, à parte da voz dela na chamada (o TTS do
+        Espaço é sempre ligado e cada avatar tem a sua voz). Bloco próprio, com título.
+      */}
+      <Show when={ttsInSpace()}>
+        <ContextMenuButton
+          onpointerdown={(e) => e.stopImmediatePropagation()}
+          onClick={(e) => e.stopImmediatePropagation()}
+        >
+          <TtsTitle>
+            <Symbol size={16}>record_voice_over</Symbol>
+            <Trans>Voz do TTS no Espaço</Trans>
+          </TtsTitle>
+          <Slider
+            min={0}
+            max={1}
+            step={0.05}
+            value={state.voice.getUserTtsVolume(props.user.id)}
+            onInput={(event) =>
+              state.voice.setUserTtsVolume(
+                props.user.id,
+                event.currentTarget.value,
+              )
+            }
+            labelFormatter={(label) => (label * 100).toFixed(0) + "%"}
+          />
+        </ContextMenuButton>
+        <ContextMenuButton
+          symbol={
+            <IconSlot>
+              <Symbol size={16}>play_circle</Symbol>
+            </IconSlot>
+          }
+          onClick={() =>
+            previewAvatarVoice(
+              props.user.id,
+              `Oi, eu sou ${props.member?.displayName ?? props.user.displayName}. Essa é a minha voz no Espaço.`,
+              Math.min(1, state.voice.outputVolume) *
+                state.voice.getUserTtsVolume(props.user.id),
+            )
+          }
+        >
+          <Trans>Ouvir a voz</Trans>
+        </ContextMenuButton>
         <ContextMenuDivider />
       </Show>
       <Show
@@ -978,5 +1032,18 @@ const IconSlot = styled("div", {
     width: "16px",
     height: "16px",
     flexShrink: 0,
+  },
+});
+
+/** O título do bloco da voz do TTS no Espaço: ícone e texto na cor de destaque (separa do volume da chamada). */
+const TtsTitle = styled("span", {
+  base: {
+    display: "flex",
+    alignItems: "center",
+    gap: "6px",
+    fontSize: "12px",
+    fontWeight: 600,
+    letterSpacing: "0.01em",
+    color: "var(--md-sys-color-primary)",
   },
 });

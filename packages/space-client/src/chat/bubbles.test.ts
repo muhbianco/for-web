@@ -229,3 +229,12 @@ test("mapa mais estreito que o balão: o balão encosta na margem", () => {
   });
   assert.equal(p!.left, BUBBLE.margin);
 });
+
+test("TTS: o balão mostra o texto sem o /tts (a carinha entra no lugar)", async () => {
+  const { ttsBody } = await import("./bubbles.ts");
+  assert.equal(ttsBody("/tts aqui aqui aqui"), "aqui aqui aqui");
+  assert.equal(ttsBody("  /TTS  oi gente "), "oi gente");
+  assert.equal(ttsBody("/tts"), "");
+  assert.equal(ttsBody("/ttsx não é"), null);
+  assert.equal(ttsBody("falei /tts no meio"), null);
+});

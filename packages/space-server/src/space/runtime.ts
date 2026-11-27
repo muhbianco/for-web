@@ -1603,6 +1603,38 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.log.info("screen share stopped by moderator", { server: this.serverId, room, actor: a.userId, target: targetId });
   }
 
+  /**
+   * A moderator takes someone to a room: the drag of a person onto another room in the server's
+   * sidebar (27/11/2026; the classic voice move, lost when the voice channels became rooms). Needs
+   * MoveMembers in the target room and in the room the person is in (when in one), like Stoat's
+   * move; the person must be allowed in the target (a private room stays private). Their avatar
+   * lands inside and their call follows (`place` syncs the media), as if they had walked in.
+   * May come from a watch-only session (the sidebar's), which has no avatar of its own.
+   */
+  moveMember(session: SessionPort, cmdId: string, targetId: string, roomId: string): void {
+    const fail = (code: string, reason?: string) =>
+      session.send({ v: 1, t: "error", re: cmdId, d: { code, ...(reason ? { reason } : {}) } });
+    const actor = session.viewer;
+    if (targetId === actor.user._id) return fail("invalid_message", "self");
+    const target = this.avatars.get(targetId);
+    if (!target || target.evicted) return fail("not_found");
+    const room = this.ix.roomsById.get(roomId);
+    if (!room) return fail("not_found", "unknown_room");
+    if (!has(this.perms(actor, roomId), Perm.MoveMembers)) return fail("not_allowed");
+    const from = target.move.room;
+    if (from && !has(this.perms(actor, from), Perm.MoveMembers)) return fail("not_allowed");
+    if (!this.doorOpenFor(target.viewer, roomId)) return fail("not_allowed", "no_access");
+    const ok = () => session.send({ v: 1, t: "member.move.ok", re: cmdId, d: { user_id: targetId, room_id: roomId } });
+    if (from === roomId) return ok();
+    const spot = this.nearestFree(room.inside, roomId);
+    if (!spot) return fail("not_allowed", "no_space");
+    this.place(target, spot, roomId);
+    const byName = this.avatars.get(actor.user._id)?.name ?? (actor.member.nickname || actor.user.display_name || actor.user.username);
+    target.session?.send({ v: 1, t: "member.moved", d: { room_id: roomId, by: actor.user._id, by_name: byName } });
+    ok();
+    this.log.info("member moved by moderator", { server: this.serverId, from, room: roomId, actor: actor.user._id, target: targetId });
+  }
+
   // ---- sessions ------------------------------------------------------------
 
   private view(a: Avatar): AvatarView {

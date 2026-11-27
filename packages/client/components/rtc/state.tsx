@@ -73,7 +73,7 @@ import {
   screenShareEncoding,
   screenShareLabel,
 } from "./screenSharePresets";
-import { cancelTts, parseTtsCommand, speakTts } from "./tts";
+import { cancelTts, parseTtsCommand, speakTts, ttsClaimed } from "./tts";
 import {
   type VoiceEngineStatus,
   IDLE_VOICE_ENGINE_STATUS,
@@ -1676,6 +1676,8 @@ class Voice {
    * author). Nothing is published to LiveKit.
    */
   handleTtsMessage(message: Message) {
+    // The Muchat Espaço speaks its rooms' `/tts` itself (a voice per avatar, always on).
+    if (ttsClaimed(message.channelId)) return;
     if (!this.#settings.ttsEnabled || this.#settings.deafen) return;
     if (this.state() !== "CONNECTED") return;
 

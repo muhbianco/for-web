@@ -39,6 +39,15 @@ export default defineConfig({
           "0%": { opacity: 0, transform: "translateY(4px) scale(0.94)" },
           "100%": { opacity: 1, transform: "translateY(0) scale(1)" },
         },
+        // [Muchat] The face of a `/tts` bubble: the mouth talks, the waves pulse (27/11/2026).
+        spaceTtsMouth: {
+          "0%": { transform: "scaleY(0.3)" },
+          "100%": { transform: "scaleY(1)" },
+        },
+        spaceTtsWave: {
+          "0%, 100%": { opacity: 0.25 },
+          "50%": { opacity: 1 },
+        },
         spaceTypingDot: {
           "0%, 60%, 100%": { opacity: 0.35, transform: "translateY(0)" },
           "30%": { opacity: 1, transform: "translateY(-2px)" },

@@ -132,8 +132,19 @@ export type BubblePlan =
   | { mode: "ticker"; text: string; ticker: TickerPlan };
 
 /** Parado (até `BUBBLE.maxLines` linhas) ou esteira (uma linha correndo), com o tempo de cada um. */
-export function planBubble(text: string, measure: Measure): BubblePlan {
-  const lines = wrapLines(text, BUBBLE_TEXT_WIDTH, measure);
+/** Quanto a carinha do TTS ocupa no começo do balão (desenho + respiro), em px. */
+export const TTS_FACE_PX = 24;
+
+/**
+ * `box`: a largura do texto (menor quando o balão tem a carinha do TTS na frente: a esteira
+ * anda até o fim encostar na borda da janela que sobra).
+ */
+export function planBubble(
+  text: string,
+  measure: Measure,
+  box: number = BUBBLE_TEXT_WIDTH,
+): BubblePlan {
+  const lines = wrapLines(text, box, measure);
   if (lines.length <= BUBBLE.maxLines)
     return { mode: "static", lines: lines.length };
   const shown =
@@ -143,7 +154,7 @@ export function planBubble(text: string, measure: Measure): BubblePlan {
   return {
     mode: "ticker",
     text: shown,
-    ticker: tickerPlan(measure(shown), shown.length),
+    ticker: tickerPlan(measure(shown), shown.length, box),
   };
 }
 
@@ -215,6 +226,17 @@ export function bubbleText(
       : labels.attachment;
   if (s && opts.attachments) s = `📎 ${s}`;
   return s;
+}
+
+const RE_TTS = /^\s*\/tts(?=\s|$)/i;
+
+/**
+ * `/tts texto` (o gerador de voz): o texto sem o comando, para o balão mostrar a carinha
+ * falando no lugar de "/tts". null quando a mensagem não é TTS.
+ */
+export function ttsBody(plain: string): string | null {
+  const m = RE_TTS.exec(plain);
+  return m ? plain.slice(m[0].length).trim() : null;
 }
 
 /** `https://www.youtube.com/watch?v=x` → `youtube.com/…`. */

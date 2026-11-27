@@ -18,6 +18,7 @@ import {
 import { css } from "styled-system/css";
 
 import type { SayBubble, SpaceChat } from "./spaceChat";
+import { TtsFace } from "./TtsFace";
 
 interface Props {
   chat: SpaceChat;
@@ -27,6 +28,8 @@ interface Props {
   onOpen: (channelId: string, messageId?: string) => void;
   /** Nome da sala de um canal, para o sinal de conversa em outra sala. */
   placeOf: (channelId: string) => string;
+  /** A voz do TTS desta mensagem está tocando neste aparelho (a carinha mexe a boca). */
+  speaking: (messageId: string) => boolean;
   /**
    * O que cobre a borda direita e o pé do mapa (folhas, o painel flutuante, a doca), em px: os
    * balões ficam na parte à vista, como a câmera.
@@ -198,10 +201,15 @@ export function BubbleLayer(props: Props) {
   );
 
   // O mapa só segue as cabeças de quem tem balão; sem ninguém, para de calcular.
+  // A visão que está seguindo cabeças, numa variável comum: a limpeza não pode ler props (no
+  // Solid 1.9, ler estado reativo no meio do descarte quebra a reatividade do app inteiro).
+  let watched: SpaceView | null = null;
   createEffect(
     on(
       () => [props.view, props.chat.columnIds()] as const,
       ([v, ids]) => {
+        if (watched && watched !== v) watched.watchHeads(new Set(), null);
+        watched = v;
         if (!v) return;
         v.watchHeads(new Set(ids), ids.length ? onHeads : null);
         measureSoon();
@@ -209,7 +217,8 @@ export function BubbleLayer(props: Props) {
     ),
   );
   onCleanup(() => {
-    props.view?.watchHeads(new Set(), null);
+    watched?.watchHeads(new Set(), null);
+    watched = null;
     if (measureRaf) cancelAnimationFrame(measureRaf);
   });
 
@@ -239,8 +248,10 @@ export function BubbleLayer(props: Props) {
 
   function Column(p: { userId: string }) {
     let el!: HTMLDivElement;
+    // Fixo por coluna (a lista é por id): a limpeza usa esta cópia, não a prop.
+    const id = p.userId;
     onMount(() => {
-      cols.set(p.userId, {
+      cols.set(id, {
         el,
         w: 0,
         h: 0,
@@ -252,7 +263,7 @@ export function BubbleLayer(props: Props) {
       measureSoon();
     });
     onCleanup(() => {
-      cols.delete(p.userId);
+      cols.delete(id);
     });
     // Mudou o que a coluna mostra: mede de novo.
     createEffect(
@@ -280,6 +291,7 @@ export function BubbleLayer(props: Props) {
               onHold={(on) => props.chat.hold(b.key, on)}
               onOpen={() => props.onOpen(b.channelId, b.key)}
               moreLabel={t`continua no chat`}
+              speaking={b.tts && props.speaking(b.key)}
             />
           )}
         </For>
@@ -350,6 +362,8 @@ function Say(p: {
   onHold: (on: boolean) => void;
   onOpen: () => void;
   moreLabel: string;
+  /** A voz do TTS desta fala está tocando agora neste aparelho. */
+  speaking: boolean;
 }) {
   let box!: HTMLButtonElement;
   let track: HTMLSpanElement | undefined;
@@ -435,22 +449,30 @@ function Say(p: {
       <Show when={p.name}>
         <b class={who}>{p.name}</b>
       </Show>
-      <Show
-        when={ticker()}
-        fallback={
-          <>
-            <span class={staticText}>{p.bubble.text}</span>
-            <Show when={p.bubble.plan.mode === "ticker"}>
-              <span class={more}>{p.moreLabel}</span>
-            </Show>
-          </>
-        }
-      >
-        <span class={windowCss}>
-          <span ref={track} class={trackCss}>
-            {p.bubble.text}
+      <span class={body}>
+        {/* `/tts`: a carinha falando no lugar do comando (a boca mexe enquanto a voz toca). */}
+        <Show when={p.bubble.tts}>
+          <TtsFace speaking={p.speaking} />
+        </Show>
+        <Show
+          when={ticker()}
+          fallback={
+            <span class={stack}>
+              <span class={staticText}>{p.bubble.text}</span>
+              <Show when={p.bubble.plan.mode === "ticker"}>
+                <span class={more}>{p.moreLabel}</span>
+              </Show>
+            </span>
+          }
+        >
+          <span class={windowCss}>
+            <span ref={track} class={trackCss} data-track="">
+              {p.bubble.text}
+            </span>
           </span>
-        </span>
+        </Show>
+      </span>
+      <Show when={ticker()}>
         <span class={progress}>
           <span ref={bar} />
         </span>
@@ -599,6 +621,20 @@ const who = css({
   "[data-named] &": { display: "block" },
 });
 
+/** O conteúdo do balão: a carinha do TTS (quando há) e o texto ao lado. */
+const body = css({
+  display: "flex",
+  alignItems: "flex-start",
+  gap: "4px",
+  minWidth: 0,
+});
+
+const stack = css({
+  display: "block",
+  flex: 1,
+  minWidth: 0,
+});
+
 const staticText = css({
   lineClamp: 3,
 });
@@ -614,6 +650,8 @@ const more = css({
 /** A janela da esteira: as bordas esmaecem para o lado de onde vem e para onde vai o texto. */
 const windowCss = css({
   display: "block",
+  flex: 1,
+  minWidth: 0,
   overflow: "hidden",
   whiteSpace: "nowrap",
   maskImage: "linear-gradient(90deg, #000 calc(100% - 16px), transparent)",

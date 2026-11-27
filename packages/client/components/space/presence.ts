@@ -7,6 +7,7 @@ import {
 } from "solid-js";
 
 import {
+  type MoveResult,
   type Presence,
   EMPTY_PRESENCE,
   PresenceLink,
@@ -92,4 +93,25 @@ export function useSpacePresence(
     if (e) onCleanup(() => release(id, e));
   });
   return () => entry()?.presence() ?? EMPTY_PRESENCE;
+}
+
+/**
+ * Leva alguém para uma sala do Espaço (o arrastar da barra lateral, 27/11/2026). Usa a conexão
+ * só de olhar que a barra lateral já mantém; o servidor do Espaço confere a permissão (Mover
+ * membros) e se a pessoa pode estar na sala, e a chamada dela vai junto.
+ */
+export async function moveInSpace(
+  client: Client,
+  serverId: string,
+  userId: string,
+  roomId: string,
+): Promise<MoveResult> {
+  if (!isSpaceServer(serverId)) return { ok: false, code: "not_space" };
+  const entry = acquire(client, serverId);
+  if (!entry) return { ok: false, code: "unauthenticated" };
+  try {
+    return await entry.link.moveMember(userId, roomId);
+  } finally {
+    release(serverId, entry);
+  }
 }
