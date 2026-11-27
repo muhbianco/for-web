@@ -117,23 +117,21 @@ export const BALANCE = {
   },
 
   /**
-   * A VIT além da vida e da defesa (27/11/2026, o dono: "VIT aumenta cura de pot e regen/s, e a mana
-   * também"; "ameaça da VIT"). Como no RO, ela cura mais com poção e regenera; aqui também segura o
-   * monstro. É o que sustenta a build que quer ficar viva, inclusive a de dano (o assassino "tanque").
-   * - poção: +0,2% de cura e +0,1% de mana por ponto;
-   * - em combate, por segundo: +0,001% da vida máxima e +0,0005% da mana máxima por ponto (a mana
-   *   pela VIT é menor: a regeneração-base já é 0,4%/s, e o tanque de 168 de VIT quase a dobrava). Com
-   *   +0,002% de vida o guerreiro sem suporte vencia a Masmorra do 400 (§14.1): a composição tem de
-   *   continuar valendo;
+   * A VIT além da vida e da defesa (27/11/2026, o dono: "VIT aumenta cura de pot e regen/s"; "ameaça
+   * da VIT"). Como no RO, ela cura mais com poção e regenera; aqui também segura o monstro. É o que
+   * sustenta a build que quer ficar viva, inclusive a de dano (o assassino "tanque"). Só vida: "a VIT é
+   * pra vida, como a INT é pra mana; VIT não pode mexer na mana" (o dono, 27/11/2026; a mana pela VIT
+   * ficou no ar das 19:28 às correções seguintes).
+   * - poção de vida: +0,2% de cura por ponto;
+   * - em combate, por segundo: +0,001% da vida máxima por ponto. Com +0,002% o guerreiro sem suporte
+   *   vencia a Masmorra do 400 (§14.1): a composição tem de continuar valendo;
    * - ameaça: o multiplicador da classe vale `threatFixed` + (1 − `threatFixed`) × VIT ÷ a VIT da
    *   build de referência da classe no nível, entre `threatMin` e `threatMax`: a referência fica
    *   em 1; o tanque sem VIT (o de besta e destreza) segura menos, e o de dano com VIT puxa mais.
    */
   vit: {
     potionPerPoint: 0.002,
-    manaPotionPerPoint: 0.001,
     hpRegenPctPerPoint: 0.00001,
-    mpRegenPctPerPoint: 0.000005,
     threatFixed: 0.4,
     threatMin: 0.4,
     threatMax: 1.6,
@@ -150,12 +148,12 @@ export const BALANCE = {
    */
   mana: {
     /**
-     * 1,3 → 1,45 em 27/11/2026: a VIT passou a dar mana (poção e regeneração) e a pressão caiu ~25%;
-     * com 1,45 as poções de mana por corrida do farm voltam ao total de antes (scripts/mana-pressure.ts:
-     * guerreiro 18→17, padre 69→63, mago 54→47, druida 106→106, caçador 38→42, assassino 37→41). A
-     * mana continua sendo o problema, e a VIT alivia um pouco quem a tem.
+     * 27/11/2026: subiu para 1,45 quando a VIT dava mana e voltou a 1,3 quando ela deixou de dar (o dono:
+     * "a VIT é pra vida, como a INT é pra mana"). Com 1,3 as poções de mana por corrida do farm ficam as
+     * de antes (scripts/mana-pressure.ts: guerreiro 18, padre 69, mago 51, druida 109, caçador 39,
+     * assassino 38).
      */
-    costScale: 1.45,
+    costScale: 1.3,
     costPerPotencyRank: 0.01,
     costPerMechanicUp: 0.02,
     costCutPerInt: 0.003,

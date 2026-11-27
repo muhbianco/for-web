@@ -13199,7 +13199,11 @@ msgstr ""
 #~ msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "Vitalidade: +1% de vida por ponto, defesa, mais cura e mana nas poções, regeneração em combate e ameaça (segura o monstro)."
+#~ msgid "Vitalidade: +1% de vida por ponto, defesa, mais cura e mana nas poções, regeneração em combate e ameaça (segura o monstro)."
+#~ msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Vitalidade: +1% de vida por ponto, defesa, mais cura na poção de vida, regeneração de vida em combate e ameaça (segura o monstro)."
 msgstr ""
 
 #: components/space/game/heroUi.ts

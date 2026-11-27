@@ -112,12 +112,10 @@ export interface HeroStats {
   kind: "melee" | "ranged" | "magic";
   penetration: number;
   threat: number;
-  /** VIT: × na cura e na mana de cada poção. */
+  /** VIT: × na cura de cada poção de vida. */
   potionMult: number;
-  manaPotionMult: number;
-  /** VIT: fração da vida máxima e da mana máxima regenerada por segundo em combate. */
+  /** VIT: fração da vida máxima regenerada por segundo em combate. */
   hpRegenPct: number;
-  mpRegenPct: number;
 }
 
 export function createBalance(cfg: BalanceConfig = BALANCE) {
@@ -478,9 +476,7 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
       penetration: fam.penetration ?? 0,
       threat: cls.threat * vitThreat(cls, L, A.VIT),
       potionMult: 1 + cfg.vit.potionPerPoint * A.VIT,
-      manaPotionMult: 1 + cfg.vit.manaPotionPerPoint * A.VIT,
       hpRegenPct: cfg.vit.hpRegenPctPerPoint * A.VIT,
-      mpRegenPct: cfg.vit.mpRegenPctPerPoint * A.VIT,
     };
   }
 

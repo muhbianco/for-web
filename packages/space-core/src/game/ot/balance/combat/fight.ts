@@ -1904,7 +1904,7 @@ export function fight(
         continue;
       }
       const regen =
-        ch.mp * (cfg.regen.mpPctPerSecond + (ch.mpRegenPct ?? 0)) +
+        ch.mp * cfg.regen.mpPctPerSecond +
         cfg.regen.mpPerIntPerSecond * ch.attrs.INT +
         ch.mp *
           sum(
@@ -1957,10 +1957,7 @@ export function fight(
             (h.input.potions.hpCooldownMs ?? cfg.potions.cooldownMs) / 1000;
         } else if (h.mp / ch.mp < at.mp && hasMp) {
           const before = h.mp;
-          h.mp = Math.min(
-            ch.mp,
-            h.mp + h.input.potions.mp * (ch.manaPotionMult ?? 1),
-          );
+          h.mp = Math.min(ch.mp, h.mp + h.input.potions.mp);
           emit({
             k: "pocao",
             a: who(h),

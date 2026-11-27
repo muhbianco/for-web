@@ -235,17 +235,19 @@ test("createBalance com um config afinado não mexe no do jogo", () => {
   assert.equal(BALANCE.crit.hardCap, 0.7);
 });
 
-test("D62: a VIT cura mais na poção, regenera e segura o monstro (27/11/2026)", () => {
+test("D62: a VIT cura mais na poção de vida, regenera vida e segura o monstro; não mexe na mana (27/11/2026)", () => {
   const stats = (cls: (typeof CLASS_IDS)[number], vit: number) => {
     const h = R.referenceBalanceHero(cls, 160);
     return B.heroStats(heroLoadout({ ...h, attrs: { ...h.attrs, VIT: vit } }));
   };
-  // Poção: +0,2% de cura e +0,1% de mana por ponto; regeneração por segundo por ponto.
+  // Poção de vida: +0,2% de cura por ponto; regeneração de vida por segundo por ponto.
   const s100 = stats("assassino", 100);
   assert.ok(Math.abs(s100.potionMult - 1.2) < 1e-9);
-  assert.ok(Math.abs(s100.manaPotionMult - 1.1) < 1e-9);
   assert.ok(Math.abs(s100.hpRegenPct - 0.001) < 1e-12);
-  assert.ok(Math.abs(s100.mpRegenPct - 0.0005) < 1e-12);
+  // A mana é da INT: VIT a mais não muda nada nela (o dono: "VIT não pode mexer na mana").
+  const s1 = stats("assassino", 1);
+  assert.equal(s100.mp, s1.mp);
+  assert.ok(!("manaPotionMult" in s100) && !("mpRegenPct" in s100));
   // Ameaça: na VIT da build de referência (sem afixo), o multiplicador da classe; sem VIT, 40%; teto 1,6.
   for (const cls of ["guerreiro", "paladino", "assassino"] as const) {
     const refVit = B.allocateByWeights(B.attributePoints(160), CLASSES[cls].referenceBuild).VIT;
