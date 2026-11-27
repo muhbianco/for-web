@@ -386,7 +386,8 @@ export function createBalance(cfg: BalanceConfig = BALANCE) {
     const matk =
       (statusMagic + wmatk * (1 + d.weaponScalePerPoint * A.INT)) *
       P.matk *
-      (1 + (b.matkPct ?? 0));
+      (1 + (b.matkPct ?? 0)) *
+      (1 - (h.overweight ?? 0) * cfg.items.overweightMatk);
 
     const def =
       (h.armorDef + h.shieldDef + d.defPerVit * A.VIT) *

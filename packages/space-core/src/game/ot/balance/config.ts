@@ -557,6 +557,8 @@ export const BALANCE = {
      */
     overweightHaste: 0.04,
     overweightCooldown: 0.04,
+    /** E tira MATQ (a magia e a cura sofrem com a armadura pesada), por peça. */
+    overweightMatk: 0,
     /** Requisito: nível ≥ iL − 5. */
     requirementSlack: 5,
     /** Afixo de atributo: 1 + iL/40; Precisão, Fuga e crítico: 2 × isso. */
