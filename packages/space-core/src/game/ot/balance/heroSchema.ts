@@ -12,7 +12,13 @@ import {
 } from "./content.ts";
 import { cannotEquip } from "./equipment.ts";
 import { type Balance, balance as gameBalance } from "./formulas.ts";
-import { BAG_SLOTS, HERO_VERSION, type HeroV5, balanceHero } from "./hero.ts";
+import {
+  BAG_SLOTS,
+  HERO_VERSION,
+  type HeroV5,
+  balanceHero,
+  fitWornGear,
+} from "./hero.ts";
 import { MATERIALS } from "./items/generate.ts";
 import { LEGENDARIES } from "./items/legendary.ts";
 import { PERKS } from "./items/perks.ts";
@@ -128,15 +134,29 @@ export const heroV5Schema = z.object({
 });
 
 export type HeroCheck =
-  | { ok: true; hero: HeroV5 }
+  | { ok: true; hero: HeroV5; /** Peças tiradas por `fitGear` (regra de item que mudou). */ gearMoved: number }
   | { ok: false; reason: string };
 
 /** Confere forma e coerência (pontos, slots, cofre, ids únicos, o que está vestido cabe). */
-export function checkHero(doc: unknown, B: Balance = gameBalance): HeroCheck {
+export function checkHero(
+  doc: unknown,
+  B: Balance = gameBalance,
+  opts: {
+    /**
+     * Antes de conferir o que está vestido, tira o que a regra de item de agora não deixa vestir
+     * (`fitWornGear`, 27/11/2026). É o que a leitura do servidor usa; sem isso, a regra que mudou
+     * recusaria o herói inteiro.
+     */
+    fitGear?: boolean;
+  } = {},
+): HeroCheck {
   const p = heroV5Schema.safeParse(doc);
   if (!p.success)
     return { ok: false, reason: `forma: ${p.error.issues[0]?.path.join(".")}` };
-  const h = p.data as unknown as HeroV5;
+  const fit = opts.fitGear
+    ? fitWornGear(p.data as unknown as HeroV5, B)
+    : { hero: p.data as unknown as HeroV5, moved: [] };
+  const h = fit.hero;
   if (!validAllocation(h.level, h.attrs, B))
     return { ok: false, reason: "atributos acima dos pontos do nível" };
   if (skillPointsSpent(h.skills) > skillPoints(h.job, B))
@@ -161,5 +181,5 @@ export function checkHero(doc: unknown, B: Balance = gameBalance): HeroCheck {
     if (err && err !== "nivel-baixo")
       return { ok: false, reason: `${slot}: ${err}` };
   }
-  return { ok: true, hero: h };
+  return { ok: true, hero: h, gearMoved: fit.moved.length };
 }

@@ -25,6 +25,7 @@ import {
   dismantleItems,
   equipItem,
   evolveTier,
+  fitWornGear,
   heroRunFighter,
   raiseAttributes,
   refineItem,
@@ -378,7 +379,7 @@ test("o herói salvo passa na conferência; documento torto volta com o motivo (
   for (const cls of CLASS_IDS) {
     const h = createHero(cls, id);
     const back = JSON.parse(JSON.stringify(h));
-    assert.deepEqual(checkHero(back), { ok: true, hero: back }, cls);
+    assert.deepEqual(checkHero(back), { ok: true, hero: back, gearMoved: 0 }, cls);
   }
   const h = createHero("guerreiro", id);
   const bad = (x: unknown) => {
@@ -407,6 +408,44 @@ test("o herói salvo passa na conferência; documento torto volta com o motivo (
     }),
     /forma: bag/,
   );
+});
+
+test("regra de item que mudou (27/11/2026): a peça que não cabe sai para a mochila e, cheia, para o cofre; a arma fica e o escudo sai; nível baixo continua vestido", () => {
+  const mage = createHero("mago", id);
+  const dagger: OwnedItem = { ...mage.equipment.arma!, uid: "adaga", family: "adaga" };
+  // O mago gravado com adaga (antes de 27/11/2026): a leitura sem ajuste recusa o herói.
+  const old: HeroV5 = { ...mage, equipment: { ...mage.equipment, arma: dagger } };
+  assert.match((checkHero(old) as { reason: string }).reason, /arma: classe-nao-usa/);
+  const fit = fitWornGear(old, B);
+  assert.deepEqual(fit.moved.map((x) => x.uid), ["adaga"]);
+  assert.equal(fit.hero.equipment.arma, undefined);
+  assert.ok(fit.hero.bag.some((x) => x.uid === "adaga"));
+  const read = checkHero(old, B, { fitGear: true });
+  assert.ok(read.ok && read.gearMoved === 1 && !read.hero.equipment.arma);
+  // Mochila cheia: vai para o cofre (sem limite, D58).
+  const full: HeroV5 = {
+    ...old,
+    bag: Array.from({ length: BAG_SLOTS }, () => own({ slot: "anel" })),
+  };
+  const toVault = fitWornGear(full, B).hero;
+  assert.equal(toVault.bag.length, BAG_SLOTS);
+  assert.ok(toVault.vault.items.some((x) => x.uid === "adaga"));
+  // Arma de 2 mãos com escudo: confere na ordem de vestir; sai o escudo, a arma fica.
+  const w = createHero("guerreiro", id);
+  const axe: OwnedItem = { ...w.equipment.arma!, uid: "machado", family: "machado" };
+  const both: HeroV5 = { ...w, equipment: { ...w.equipment, arma: axe } };
+  assert.ok(both.equipment.secundaria, "o guerreiro começa de escudo");
+  const fit2 = fitWornGear(both, B);
+  assert.equal(fit2.hero.equipment.arma?.uid, "machado");
+  assert.equal(fit2.hero.equipment.secundaria, undefined);
+  // Dentro das regras: nada muda (o mesmo objeto), e o requisito de nível não tira a peça.
+  const fine = createHero("guerreiro", id);
+  assert.equal(fitWornGear(fine, B).hero, fine);
+  const high: HeroV5 = {
+    ...fine,
+    equipment: { ...fine.equipment, arma: { ...fine.equipment.arma!, ilvl: 300 } },
+  };
+  assert.equal(fitWornGear(high, B).moved.length, 0);
 });
 
 test("Mestre: trocar de classe zera job e Proficiência; nível, XP, ouro e itens ficam; o que não veste vai para a mochila", () => {

@@ -267,6 +267,47 @@ export function fitHeroSkills(
     : { hero: h, changed: false };
 }
 
+/**
+ * O que o herói veste dentro das regras de item de agora (27/11/2026). Quando a regra muda (o mago
+ * deixou de usar adaga; a aljava pede arma de longe; o foco, arma mágica de uma mão…), o herói gravado
+ * com a peça que não cabe mais seria recusado inteiro na leitura e o jogador ficaria sem jogar. O
+ * servidor chama ao ler o herói do banco e grava se mudou: a peça vai para a mochila e, sem lugar, para
+ * o cofre (sem limite, D58). Confere na ordem de vestir (a arma antes da mão secundária: com arma de 2
+ * mãos, sai o escudo, não a arma). O requisito de nível não conta: vale para vestir, não para
+ * continuar vestido.
+ */
+export function fitWornGear(
+  h: HeroV5,
+  B: Balance = gameBalance,
+): { hero: HeroV5; moved: OwnedItem[] } {
+  const worn: Record<string, OwnedItem> = {};
+  const moved: OwnedItem[] = [];
+  for (const slot of WEAR_ORDER) {
+    const it = (h.equipment as Record<string, OwnedItem | undefined>)[slot];
+    if (!it) continue;
+    const probe = { ...h, equipment: worn as OwnedEquipment };
+    const err = cannotEquip(balanceHero(probe), it, B);
+    if (err && err !== "nivel-baixo") moved.push(it);
+    else worn[slot] = it;
+  }
+  if (moved.length === 0) return { hero: h, moved };
+  const room = Math.max(0, BAG_SLOTS - h.bag.length);
+  const toBag = moved.slice(0, room);
+  const toVault = moved.slice(room);
+  return {
+    hero: {
+      ...h,
+      equipment: worn as OwnedEquipment,
+      bag: [...h.bag, ...toBag],
+      vault:
+        toVault.length > 0
+          ? { ...h.vault, items: [...h.vault.items, ...toVault] }
+          : h.vault,
+    },
+    moved,
+  };
+}
+
 /** Mestre: evoluir de tier (grátis, D11). */
 export function evolveTier(h: HeroV5, B: Balance = gameBalance) {
   const r = evolve(h.cls, h.job, h.skills, B);

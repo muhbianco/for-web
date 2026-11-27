@@ -483,6 +483,31 @@ test("D51: herói acima do que o job dá desce ao ser lido, perde a skill, receb
   assert.equal(t.store.writes, writes + 1);
 });
 
+test("regra de item que mudou: o mago vestindo adaga é lido com ela na mochila e grava uma vez (27/11/2026)", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "mago" });
+  // Gravado quando o mago ainda usava adaga: sem o ajuste, a leitura recusava o herói inteiro.
+  edit(t, "U1", (h) => ({
+    ...h,
+    equipment: {
+      ...h.equipment,
+      arma: { ...h.equipment.arma!, uid: "adaga-velha", family: "adaga" },
+    },
+  }));
+  const writes = t.store.writes;
+  const fresh = setup({ store: t.store, runStore: t.runStore });
+  await fresh.send("rpg.open");
+  const h = fresh.s.hero()!.hero;
+  assert.equal(h.equipment.arma, undefined);
+  assert.ok(h.bag.some((x) => x.uid === "adaga-velha"));
+  assert.equal(t.store.writes, writes + 1);
+  assert.equal(t.store.docs.get("U1")!.hero.equipment.arma, undefined);
+  // Já dentro das regras: ler de novo não grava nada.
+  const again = setup({ store: t.store, runStore: t.runStore });
+  await again.send("rpg.open");
+  assert.equal(t.store.writes, writes + 1);
+});
+
 test("taxa do operador: só a de XP vale na engine nova", () => {
   assert.deepEqual(ratesFromEnv("exp=2,skill=5,loot=3"), { exp: 2 });
   assert.deepEqual(ratesFromEnv(undefined), { exp: 1 });

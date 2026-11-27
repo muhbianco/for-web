@@ -243,7 +243,8 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     id: "mago",
     role: "dps",
     titles: ["Aprendiz", "Mago", "Feiticeiro", "Arquimago"],
-    weapons: ["cajado", "cetro", "adaga", "bastao"],
+    // 27/11/2026 (o dono): a adaga saiu do mago — não servia em nada (nem caçar, nem no grupo).
+    weapons: ["cajado", "cetro", "bastao"],
     offhands: ["focus", "escudo"],
     armor: "leve",
     hp0: 90,

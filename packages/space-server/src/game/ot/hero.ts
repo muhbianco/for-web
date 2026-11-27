@@ -99,17 +99,23 @@ export function newRpgHero(
   };
 }
 
-/** Confere o documento lido do banco; o motivo vai para o log (nada é consertado em silêncio). */
+/**
+ * Confere o documento lido do banco; o motivo vai para o log (nada é consertado em silêncio). A única
+ * correção é a da regra de item que mudou (27/11/2026): a peça vestida que a classe não usa mais vai
+ * para a mochila ou o cofre (`gearMoved`); quem lê grava e registra no log.
+ */
 export function checkHeroDoc(
   raw: unknown,
-): { ok: true; doc: RpgHeroDoc } | { ok: false; reason: string } {
+):
+  | { ok: true; doc: RpgHeroDoc; gearMoved: number }
+  | { ok: false; reason: string } {
   const d = raw as Partial<RpgHeroDoc> | null;
   if (!d || typeof d !== "object") return { ok: false, reason: "vazio" };
   if (d.v !== RPG_VERSION)
     return { ok: false, reason: `versão ${String(d.v)}` };
   if (typeof d._id !== "string" || typeof d.rev !== "number")
     return { ok: false, reason: "cabeçalho" };
-  const h = checkHero(d.hero);
+  const h = checkHero(d.hero, undefined, { fitGear: true });
   if (!h.ok) return { ok: false, reason: `herói: ${h.reason}` };
   if (!Array.isArray(d.outbox) || !Array.isArray(d.inbox))
     return { ok: false, reason: "transferências" };
@@ -120,7 +126,11 @@ export function checkHeroDoc(
       d.cleared.some((x) => typeof x !== "string"))
   )
     return { ok: false, reason: "concluídas" };
-  return { ok: true, doc: d as RpgHeroDoc };
+  return {
+    ok: true,
+    doc: { ...(d as RpgHeroDoc), hero: h.hero },
+    gearMoved: h.gearMoved,
+  };
 }
 
 /** A DG vencida pelo grupo fica concluída para o herói (uma vez; ids canônicos). */

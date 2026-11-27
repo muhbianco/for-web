@@ -1771,8 +1771,11 @@ export class RpgService {
       });
       throw new Error(`rpg hero ${userId} invalid: ${checked.reason}`);
     }
-    // Primeiro a regra de tier pelo job (D51), depois as DGs concluídas: cada um grava com CAS.
-    let doc = await this.fitSkills(checked.doc);
+    // Primeiro a regra de item (27/11/2026) e a de tier pelo job (D51), depois as DGs concluídas: cada
+    // um grava com CAS.
+    let doc = checked.doc;
+    if (checked.gearMoved > 0) doc = await this.saveGearFit(doc, checked.gearMoved);
+    doc = await this.fitSkills(doc);
     if (doc.cleared === undefined) doc = await this.backfillCleared(doc);
     this.keep(doc);
     if (doc.outbox.length > 0) this.deliver(doc);
@@ -1837,6 +1840,19 @@ export class RpgService {
       saved,
     });
     return saved ? next : { ...doc, hero: fit.hero };
+  }
+
+  /**
+   * O herói lido com peça vestida que a regra de item de agora não deixa (27/11/2026: o mago sem
+   * adaga; a aljava com arma de longe…): `checkHeroDoc` já tirou a peça para a mochila ou o cofre;
+   * aqui grava (CAS) e registra. Se outro processo gravou antes, segue com o herói ajustado no cache
+   * e a próxima gravação leva.
+   */
+  private async saveGearFit(doc: RpgHeroDoc, moved: number): Promise<RpgHeroDoc> {
+    const next: RpgHeroDoc = { ...doc, rev: doc.rev + 1, updated_at: this.now() };
+    const saved = await this.store.save(next, doc.rev);
+    this.log.info("rpg gear fit to rules", { user: doc._id, moved, saved });
+    return saved ? next : doc;
   }
 
   private keep(doc: RpgHeroDoc) {
