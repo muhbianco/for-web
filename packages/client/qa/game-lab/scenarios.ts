@@ -221,8 +221,14 @@ export function mage45Perks(): HeroV5 {
   };
   const anel = h.equipment.anel!;
   const colar = h.equipment.colar!;
+  // Uma armadura média na mochila: um peso acima do mago (a dica mostra a penalidade, 27/11/2026).
+  const heavy = own(
+    generateItem({ slot: "armadura", weight: "media" }, 45, "epico", seeded(77)),
+  );
+  heavy.refine = 7;
   return {
     ...h,
+    bag: [heavy, ...h.bag],
     equipment: {
       ...h.equipment,
       anel: {

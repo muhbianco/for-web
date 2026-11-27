@@ -170,6 +170,13 @@ test("peso de armadura: o da classe e os mais leves; um acima, com penalidade (2
     ) < 1e-9,
     `recarga: ${light.cooldownCut} → ${heavy.cooldownCut}`,
   );
+  // E −7,5% do MATQ por peça (a cura escala com o MATQ): as 4 peças acima, −30%.
+  assert.ok(B.cfg.items.overweightMatk > 0);
+  assert.ok(
+    Math.abs(heavy.matk / light.matk - (1 - 4 * B.cfg.items.overweightMatk)) <
+      1e-9,
+    `MATQ: ${light.matk} → ${heavy.matk}`,
+  );
 });
 
 test("punhal: a segunda lâmina do Assassino, com adaga ou espada (27/11/2026)", () => {

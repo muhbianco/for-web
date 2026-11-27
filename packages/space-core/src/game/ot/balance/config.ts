@@ -594,8 +594,15 @@ export const BALANCE = {
      */
     overweightHaste: 0.04,
     overweightCooldown: 0.04,
-    /** E tira MATQ (a magia e a cura sofrem com a armadura pesada), por peça. */
-    overweightMatk: 0,
+    /**
+     * E tira 7,5% do MATQ por peça (a magia e a cura sofrem com a armadura pesada). Ligado em
+     * 27/11/2026: o druida de cetro e escudo em armadura pesada (um peso acima) caçava sozinho mais
+     * longe e curava o grupo igual (scripts/group-builds.ts). Medido: com 5% por peça o grupo quase não
+     * sente; com 7,5% (−30% com as 4 peças) ele cura menos — farm do paladino com ele 31/37, Região
+     * como cura única 4/10 (natural: 37/37 e 10/10); com 10%, castigo. As referências vestem o peso
+     * natural: a calibração não muda.
+     */
+    overweightMatk: 0.075,
     /** Requisito: nível ≥ iL − 5. */
     requirementSlack: 5,
     /** Afixo de atributo: 1 + iL/40; Precisão, Fuga e crítico: 2 × isso. */

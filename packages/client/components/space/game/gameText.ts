@@ -14,6 +14,8 @@ import type {
   Stat,
 } from "@muchat/space-core/game/ot/balance";
 
+import { balance as B } from "@muchat/space-core/game/ot/balance";
+
 import type { DerivedKey } from "./heroModel";
 
 /**
@@ -142,6 +144,20 @@ export function sizeName(s: PotionSize): string {
 
 export function weightName(w: string): string {
   return w === "leve" ? t`leve` : w === "media" ? t`média` : t`pesada`;
+}
+
+const pctText = (v: number) =>
+  (Math.round(v * 1000) / 10).toLocaleString("pt-BR", {
+    maximumFractionDigits: 1,
+  });
+
+/**
+ * A penalidade da armadura um peso acima do da classe, por peça, com os números do config
+ * (27/11/2026: tem de ficar evidente na dica do item e no Arsenal, não só no Arsenal).
+ */
+export function overweightText(): string {
+  const i = B.cfg.items;
+  return t`−${pctText(i.overweightHaste)}% de velocidade de ataque, −${pctText(i.overweightCooldown)}% de recarga e −${pctText(i.overweightMatk)}% de MATQ (magia e cura) por peça`;
 }
 
 /** O nome da mão secundária (um lugar só: o punhal entrou em 27/11/2026). */

@@ -1,4 +1,11 @@
-import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createSignal,
+  on,
+} from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import {
@@ -7,6 +14,8 @@ import {
   type ItemBase,
   type ItemInstance,
   type RarityId,
+  AFFIXES,
+  AFFIX_IDS,
   ARMOR_SLOTS,
   ARMOR_WEIGHTS,
   balance as B,
@@ -19,8 +28,6 @@ import {
   MATERIALS,
   OFFHAND_IDS,
   RARITY_IDS,
-  AFFIXES,
-  AFFIX_IDS,
   affixCount,
   affixLabel,
   affixRangeText,
@@ -37,6 +44,7 @@ import { styled } from "styled-system/jsx";
 
 import {
   offhandName,
+  overweightText,
   rarityName,
   roleName,
   slotName,
@@ -169,7 +177,7 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
           return t`A segunda lâmina: só com adaga ou espada. Não refina.`;
       }
     if ("weight" in x)
-      return t`Peso ${weightName(x.weight)}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −${heavyPct}% de velocidade de ataque e de recarga por peça.`;
+      return t`Peso ${weightName(x.weight)}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste (◐) com ${overweightText()}.`;
     return t`Todas as classes. Não refina; 1 afixo a mais.`;
   };
 
@@ -187,7 +195,7 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
     {
       id: "armadura" as const,
       title: t`Armaduras`,
-      blurb: t`Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade.`,
+      blurb: t`Cada classe veste o peso dela e os mais leves; um peso acima (◐), com ${overweightText()}.`,
     },
     {
       id: "joia" as const,
@@ -200,7 +208,6 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
   const named = Math.round(B.cfg.loot.namedLegendaryShare * 100);
   const namedCount = LEGENDARIES.filter((l) => l.cls !== null).length;
 
-  const heavyPct = Math.round(B.cfg.items.overweightHaste * 100);
   const Who = (p: {
     classes: readonly ClassId[];
     heavy?: readonly ClassId[] | undefined;
@@ -212,7 +219,11 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
             data-yes={p.classes.includes(c) ? "" : undefined}
             data-heavy={p.heavy?.includes(c) ? "" : undefined}
             data-me={cls() === c ? "" : undefined}
-            title={p.heavy?.includes(c) ? t`Com penalidade` : undefined}
+            title={
+              p.heavy?.includes(c)
+                ? t`Um peso acima: ${overweightText()}`
+                : undefined
+            }
           >
             {title(c)}
             {p.heavy?.includes(c) ? " ◐" : ""}
@@ -474,7 +485,8 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
                         : AFFIXES[ids[0]!].slots
                             .map((s) =>
                               // Afixo de % na mão secundária só sai no escudo (§9.5).
-                              s === "secundaria" && AFFIXES[ids[0]!].scale === "pct"
+                              s === "secundaria" &&
+                              AFFIXES[ids[0]!].scale === "pct"
                                 ? offhandName("escudo")
                                 : slotName(s),
                             )
@@ -498,7 +510,9 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
       <Group>
         <GroupHead>
           <h4>{t`Quem usa o quê`}</h4>
-          <Muted>{t`✓ pode usar · ★ é o lendário com nome da classe.`}</Muted>
+          <Muted>
+            {t`✓ pode usar · ◐ veste um peso acima, com ${overweightText()} · ★ é o lendário com nome da classe.`}
+          </Muted>
         </GroupHead>
         <TableWrap>
           <table>

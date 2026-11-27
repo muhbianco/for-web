@@ -6,11 +6,19 @@ import {
   type HeroV5,
   type ItemInstance,
   CLASSES,
+  armorFit,
   itemTooltip,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
-import { derivedName, errorText, rarityName, slotName } from "./gameText";
+import {
+  derivedName,
+  errorText,
+  overweightText,
+  rarityName,
+  slotName,
+  weightName,
+} from "./gameText";
 import { RARITY } from "./gameTheme";
 import { Btn, Delta, Gold, ItemIcon, Muted } from "./gameUi";
 import {
@@ -63,6 +71,12 @@ export function ItemCard(props: {
   const below = () => !!props.hero && props.hero.level < tip().requiredLevel;
   const blocked = () =>
     !props.hero || isWorn() ? null : cannotWear(props.hero, props.item);
+  // Armadura um peso acima do da classe de quem vê (27/11/2026): veste, com penalidade por peça.
+  const overweight = () => {
+    const it = props.item;
+    if (!props.hero || !("weight" in it) || !it.weight) return null;
+    return armorFit(props.hero.cls, it.weight) === "acima" ? it.weight : null;
+  };
 
   // "Se vestir": o herói com este item no lugar (só itens da mochila; a prévia do núcleo).
   const preview = createMemo(() => {
@@ -116,6 +130,16 @@ export function ItemCard(props: {
       <Show when={blocked()}>
         {(b) => <Blocked role="note">⛔ {errorText(b())}</Blocked>}
       </Show>
+      <Show when={!blocked() && overweight()}>
+        {(w) => (
+          <Heavy role="note">
+            <b>
+              ◐ {t`Armadura ${weightName(w())}: um peso acima do da sua classe`}
+            </b>
+            <span>{overweightText()}.</span>
+          </Heavy>
+        )}
+      </Show>
 
       <Lines>
         <For each={tip().base}>
@@ -136,7 +160,9 @@ export function ItemCard(props: {
             <Line data-affix="">
               <span>
                 {a.text}{" "}
-                <Range title={t`Faixa do sorteio deste afixo no nível e na raridade do item`}>
+                <Range
+                  title={t`Faixa do sorteio deste afixo no nível e na raridade do item`}
+                >
                   ({a.range})
                 </Range>
               </span>
@@ -409,6 +435,21 @@ const Tag = styled("span", {
 });
 const Blocked = styled("div", {
   base: { fontSize: "0.88em", color: "#ffcfc6" },
+});
+/** O aviso do peso acima: âmbar, como a penalidade que é (não o vermelho de "não veste"). */
+const Heavy = styled("div", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "2px",
+    fontSize: "0.86em",
+    padding: "6px 8px",
+    borderRadius: "8px",
+    color: "#ffe1a8",
+    background: "rgba(255, 184, 77, 0.1)",
+    border: "1px solid rgba(255, 184, 77, 0.4)",
+    "& b": { color: "#ffc46b" },
+  },
 });
 const Lines = styled("div", {
   base: { display: "flex", flexDirection: "column", gap: "4px" },

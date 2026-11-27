@@ -1420,6 +1420,13 @@ msgstr "<0>Be careful!</0><1/>This is not the same as the link that was displaye
 msgid "= quase igual"
 msgstr "= quase igual"
 
+#. placeholder {0}: pctText(i.overweightHaste)
+#. placeholder {1}: pctText(i.overweightCooldown)
+#. placeholder {2}: pctText(i.overweightMatk)
+#: components/space/game/gameText.ts
+msgid "−{0}% de velocidade de ataque, −{1}% de recarga e −{2}% de MATQ (magia e cura) por peça"
+msgstr "−{0}% de velocidade de ataque, −{1}% de recarga e −{2}% de MATQ (magia e cura) por peça"
+
 #: components/space/game/heroUi.ts
 #~ msgid "−{pct}% de dano recebido enquanto os monstros estão presos"
 #~ msgstr "−{pct}% de dano recebido enquanto os monstros estão presos"
@@ -1476,9 +1483,14 @@ msgstr "☠ Cataclismo ×{0}"
 msgid "⚠ {0}: {1}{target}"
 msgstr "⚠ {0}: {1}{target}"
 
+#. placeholder {0}: overweightText()
 #: components/space/game/ArsenalView.tsx
-msgid "✓ pode usar · ★ é o lendário com nome da classe."
-msgstr "✓ pode usar · ★ é o lendário com nome da classe."
+msgid "✓ pode usar · ◐ veste um peso acima, com {0} · ★ é o lendário com nome da classe."
+msgstr "✓ pode usar · ◐ veste um peso acima, com {0} · ★ é o lendário com nome da classe."
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "✓ pode usar · ★ é o lendário com nome da classe."
+#~ msgstr "✓ pode usar · ★ é o lendário com nome da classe."
 
 #: components/space/SpacePage.tsx
 msgid "📎 {n} anexos"
@@ -2408,6 +2420,11 @@ msgstr "Armadura"
 #~ msgid "armadura {0}"
 #~ msgstr "armadura {0}"
 
+#. placeholder {0}: weightName(w())
+#: components/space/game/ItemCard.tsx
+msgid "Armadura {0}: um peso acima do da sua classe"
+msgstr "Armadura {0}: um peso acima do da sua classe"
+
 #: components/space/game/itemUi.ts
 #~ msgid "Armadura {a}"
 #~ msgstr "Armadura {a}"
@@ -2989,9 +3006,14 @@ msgstr "Cada avatar é um herói: treina nos dummies das salas e entra em dungeo
 msgid "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 msgstr "Cada canal de voz agora é uma sala. Entre na sala para conversar e saia para parar de ouvir."
 
+#. placeholder {0}: overweightText()
 #: components/space/game/ArsenalView.tsx
-msgid "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
-msgstr "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
+msgid "Cada classe veste o peso dela e os mais leves; um peso acima (◐), com {0}."
+msgstr "Cada classe veste o peso dela e os mais leves; um peso acima (◐), com {0}."
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
+#~ msgstr "Cada classe veste o peso dela e os mais leves; um peso acima, com penalidade."
 
 #: components/space/game/ArsenalView.tsx
 #~ msgid "Cada classe veste o peso dela ou um mais leve."
@@ -3624,8 +3646,8 @@ msgid "Com o mouse em cima ou digitando, ele volta a ficar sólido."
 msgstr "Com o mouse em cima ou digitando, ele volta a ficar sólido."
 
 #: components/space/game/ArsenalView.tsx
-msgid "Com penalidade"
-msgstr "Com penalidade"
+#~ msgid "Com penalidade"
+#~ msgstr "Com penalidade"
 
 #: components/space/game/TrainingDialog.tsx
 #~ msgid "Com um dummy de vocação e um de habilidade perto, dá para treinar nos dois ao mesmo tempo ({pct}% de cada)."
@@ -9693,9 +9715,15 @@ msgstr "pesada"
 #~ msgstr "Peso {0}: quem veste esse peso ou mais pesado."
 
 #. placeholder {0}: weightName(x.weight)
+#. placeholder {1}: overweightText()
 #: components/space/game/ArsenalView.tsx
-msgid "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
-msgstr "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
+msgid "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste (◐) com {1}."
+msgstr "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste (◐) com {1}."
+
+#. placeholder {0}: weightName(x.weight)
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
+#~ msgstr "Peso {0}: sem penalidade para quem é desse peso ou mais pesado; a classe um peso abaixo veste com −{heavyPct}% de velocidade de ataque e de recarga por peça."
 
 #: components/space/game/itemUi.ts
 #~ msgid "Peso {w}"
@@ -12685,6 +12713,11 @@ msgstr "Última: {0} · {1} corridas"
 #: components/space/game/GamePanel.tsx
 #~ msgid "Um herói por conta: ele é o mesmo em todo servidor com o Refúgio ligado."
 #~ msgstr "Um herói por conta: ele é o mesmo em todo servidor com o Refúgio ligado."
+
+#. placeholder {0}: overweightText()
+#: components/space/game/ArsenalView.tsx
+msgid "Um peso acima: {0}"
+msgstr "Um peso acima: {0}"
 
 #: components/space/game/heroUi.ts
 #~ msgid "um segundo golpe com {pct}% do primeiro"
