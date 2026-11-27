@@ -606,6 +606,20 @@ export const BALANCE = {
     ratingAffixMult: 2,
     /** Rolagem dos afixos: ±20% do valor indicado. */
     affixRoll: 0.2,
+    /**
+     * D64 (27/11/2026, o dono: "por que um épico é mais fraco que um raro? o valor de VIT veio muito
+     * pior"): a raridade sobe a faixa do sorteio do afixo. Atributo e rating: raro 80–120% do
+     * indicado, épico 90–130%, lendário 100–140%; afixo de %: a faixa da tabela × (1 + desvio). O nível
+     * do item continua mandando (o raro 30 níveis acima tende a ganhar do épico velho); no mesmo nível
+     * o épico nunca sai no chão do raro.
+     */
+    affixRarityShift: {
+      comum: 0,
+      incomum: 0,
+      raro: 0,
+      epico: 0.1,
+      lendario: 0.2,
+    } as Record<string, number>,
   },
 
   /** §9.6: refino (Ferreiro). Decisão do dono de 25/11/2026: a regra do spec inteira. */

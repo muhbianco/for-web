@@ -5,6 +5,7 @@ import {
   type RpgHeroState,
   type RunSpoils,
   CLEARED_MAX,
+  ITEM_RULES,
   applyRun,
   checkHero,
   createHero,
@@ -12,6 +13,7 @@ import {
   itemTransferFee,
   startDojo,
   stopDojo,
+  upgradeAffixesToD64,
   withCleared,
 } from "@muchat/space-core/game/ot/balance";
 
@@ -102,12 +104,13 @@ export function newRpgHero(
 /**
  * Confere o documento lido do banco; o motivo vai para o log (nada é consertado em silêncio). A única
  * correção é a da regra de item que mudou (27/11/2026): a peça vestida que a classe não usa mais vai
- * para a mochila ou o cofre (`gearMoved`); quem lê grava e registra no log.
+ * para a mochila ou o cofre (`gearMoved`) e o afixo de épico e lendário vai para a faixa da raridade
+ * (D64, `itemsRescaled`, também nos itens da fila de transferência); quem lê grava e registra no log.
  */
 export function checkHeroDoc(
   raw: unknown,
 ):
-  | { ok: true; doc: RpgHeroDoc; gearMoved: number }
+  | { ok: true; doc: RpgHeroDoc; gearMoved: number; itemsRescaled: number }
   | { ok: false; reason: string } {
   const d = raw as Partial<RpgHeroDoc> | null;
   if (!d || typeof d !== "object") return { ok: false, reason: "vazio" };
@@ -115,6 +118,10 @@ export function checkHeroDoc(
     return { ok: false, reason: `versão ${String(d.v)}` };
   if (typeof d._id !== "string" || typeof d.rev !== "number")
     return { ok: false, reason: "cabeçalho" };
+  // A regra de item em que o documento estava antes do ajuste (a fila de transferência acompanha).
+  const oldRules =
+    ((d.hero as { itemRules?: number } | undefined)?.itemRules ?? 0) <
+    ITEM_RULES;
   const h = checkHero(d.hero, undefined, { fitGear: true });
   if (!h.ok) return { ok: false, reason: `herói: ${h.reason}` };
   if (!Array.isArray(d.outbox) || !Array.isArray(d.inbox))
@@ -126,10 +133,22 @@ export function checkHeroDoc(
       d.cleared.some((x) => typeof x !== "string"))
   )
     return { ok: false, reason: "concluídas" };
+  let rescaled = h.itemsRescaled;
+  const outbox = oldRules
+    ? (d.outbox as RpgTransfer[]).map((t) => ({
+        ...t,
+        items: t.items.map((it) => {
+          const up = upgradeAffixesToD64(it);
+          if (up !== it) rescaled++;
+          return up;
+        }),
+      }))
+    : (d.outbox as RpgTransfer[]);
   return {
     ok: true,
-    doc: { ...(d as RpgHeroDoc), hero: h.hero },
+    doc: { ...(d as RpgHeroDoc), hero: h.hero, outbox },
     gearMoved: h.gearMoved,
+    itemsRescaled: rescaled,
   };
 }
 

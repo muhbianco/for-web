@@ -13,11 +13,14 @@ import { compileLoadout } from "../skills/compile.ts";
 import { autoEquip } from "./autoequip.ts";
 import {
   affixCount,
+  affixRange,
   allowedAffixes,
   generateItem,
   itemName,
   materialOf,
   rollAffixes,
+  rollAffixValue,
+  upgradeAffixesToD64,
 } from "./generate.ts";
 import { jobXpBonus, LEGENDARIES, legendaryMods } from "./legendary.ts";
 import { perkMods } from "./perks.ts";
@@ -385,4 +388,49 @@ test("tooltip e visual: base, refino, afixos com diferença para o vestido", () 
     rarityColor: "roxo",
     refineGlow: "particulas",
   });
+});
+
+test("D64: a raridade sobe a faixa do afixo; o raro sorteia igual a antes; o item antigo vai para a faixa nova no mesmo ponto", () => {
+  // Atributo no iL 40: indicado 2,0 → raro 1,6–2,4, épico 1,8–2,6, lendário 2,0–2,8.
+  const near = (a: number, b: number) => assert.ok(Math.abs(a - b) < 1e-9, `${a} ≠ ${b}`);
+  const r = (rar: "raro" | "epico" | "lendario") => affixRange("VIT", 40, rar, B);
+  near(r("raro").min, 1.6);
+  near(r("raro").max, 2.4);
+  near(r("epico").min, 1.8);
+  near(r("epico").max, 2.6);
+  near(r("lendario").min, 2.0);
+  near(r("lendario").max, 2.8);
+  // Afixo de %: a faixa da tabela × (1 + desvio).
+  near(affixRange("mpPct", 40, "epico", B).max, 0.04 * 1.1);
+  // O mesmo número do sorteio: raro igual ao de antes (indicado × (0,8 + 0,4 × u)); épico +10% do indicado.
+  const fixed = (u: number) => ({ next: () => u });
+  assert.equal(rollAffixValue("VIT", 40, fixed(0.25), B), Math.round(2 * (0.8 + 0.4 * 0.25) * 100) / 100);
+  assert.equal(rollAffixValue("VIT", 40, fixed(0.25), B, "epico"), 2);
+  // No mesmo iL, o épico nunca sai abaixo do piso do raro (e tem um afixo a mais).
+  for (let i = 0; i < 200; i++) {
+    const it = generateItem({ slot: "colar" }, 70, "epico", randomSource(new Rng(i + 1)), B);
+    for (const a of it.affixes) {
+      const f = affixRange(a.id, 70, "epico", B);
+      assert.ok(a.value >= f.min - 0.01 && a.value <= f.max + 0.01, `${a.id} ${a.value}`);
+    }
+  }
+  // O colar épico do iL 40 sorteado antes da D64 (VIT 1,7, quase no piso de 1,6–2,4) vai para 1,9
+  // (o mesmo ponto em 1,8–2,6); o % sobe 10%; o raro não muda.
+  const old: ItemInstance = {
+    slot: "colar",
+    ilvl: 40,
+    rarity: "epico",
+    refine: 0,
+    affixes: [
+      { id: "VIT", value: 1.7 },
+      { id: "mpPct", value: 0.032 },
+    ],
+  };
+  const up = upgradeAffixesToD64(old, B);
+  near(up.affixes[0]!.value, 1.9);
+  near(up.affixes[1]!.value, 0.0352);
+  const rare = { ...old, rarity: "raro" as const };
+  assert.equal(upgradeAffixesToD64(rare, B), rare);
+  // A dica mostra a faixa do afixo.
+  assert.equal(itemTooltip(up).affixes[0]!.range, "1,8–2,6");
 });

@@ -1,13 +1,14 @@
 import {
   type AffixId,
   type ClassId,
+  type RarityId,
   AFFIXES,
   FAMILIES,
   RARITIES,
 } from "../content.ts";
 import type { ItemInstance } from "../equipment.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
-import { type Material, itemName, materialOf } from "./generate.ts";
+import { type Material, affixRange, itemName, materialOf } from "./generate.ts";
 import { itemPerks, legendaryOf } from "./legendary.ts";
 import { perkClass, perkText } from "./perks.ts";
 
@@ -42,6 +43,8 @@ export interface ItemTooltip {
     label: string;
     value: number;
     text: string;
+    /** D64: a faixa do sorteio deste afixo no iL e na raridade do item, como texto ("1,6–2,4"). */
+    range: string;
     delta?: number;
   }[];
   /** Os perks do lendário (em laranja): a frase e a classe dona da skill (`null`: vale para todas). */
@@ -72,11 +75,30 @@ const AFFIX_LABEL: Record<AffixId, string> = {
   effectResPct: "Resistência a efeitos",
 };
 
-function affixText(id: AffixId, value: number): string {
-  const pct = AFFIXES[id].scale === "pct";
-  const n = pct
+function affixNumber(id: AffixId, value: number): string {
+  return AFFIXES[id].scale === "pct"
     ? `${(value * 100).toFixed(1).replace(".", ",")}%`
     : value.toFixed(1).replace(".", ",");
+}
+
+/** O nome do afixo como a dica do item mostra ("VIT", "Cura causada"…). */
+export function affixLabel(id: AffixId): string {
+  return AFFIX_LABEL[id];
+}
+
+/** D64: a faixa do sorteio do afixo no iL e na raridade, como texto ("1,6–2,4", "2,2%–4,4%"). */
+export function affixRangeText(
+  id: AffixId,
+  ilvl: number,
+  rarity: RarityId,
+  B: Balance = gameBalance,
+): string {
+  const r = affixRange(id, ilvl, rarity, B);
+  return `${affixNumber(id, r.min)}–${affixNumber(id, r.max)}`;
+}
+
+function affixText(id: AffixId, value: number): string {
+  const n = affixNumber(id, value);
   return id === "cooldownPct"
     ? `−${n} ${AFFIX_LABEL[id]}`
     : `+${n} ${AFFIX_LABEL[id]}`;
@@ -180,6 +202,7 @@ export function itemTooltip(
     label: AFFIX_LABEL[a.id],
     value: a.value,
     text: affixText(a.id, a.value),
+    range: affixRangeText(a.id, item.ilvl, item.rarity, B),
     ...(equipped ? { delta: a.value - (theirs.get(a.id) ?? 0) } : {}),
   }));
   return {

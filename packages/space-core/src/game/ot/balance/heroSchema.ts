@@ -17,6 +17,7 @@ import {
   HERO_VERSION,
   type HeroV5,
   balanceHero,
+  fitItemRules,
   fitWornGear,
 } from "./hero.ts";
 import { MATERIALS } from "./items/generate.ts";
@@ -131,10 +132,18 @@ export const heroV5Schema = z.object({
   }),
   autoEquip: z.boolean(),
   dojo: z.object({ since: z.number().int().min(0) }).nullable(),
+  itemRules: z.number().int().min(0).optional(),
 });
 
 export type HeroCheck =
-  | { ok: true; hero: HeroV5; /** Peças tiradas por `fitGear` (regra de item que mudou). */ gearMoved: number }
+  | {
+      ok: true;
+      hero: HeroV5;
+      /** Peças tiradas por `fitGear` (regra de item que mudou). */
+      gearMoved: number;
+      /** Itens levados para a faixa de afixo de agora por `fitGear` (D64). */
+      itemsRescaled: number;
+    }
   | { ok: false; reason: string };
 
 /** Confere forma e coerência (pontos, slots, cofre, ids únicos, o que está vestido cabe). */
@@ -153,9 +162,12 @@ export function checkHero(
   const p = heroV5Schema.safeParse(doc);
   if (!p.success)
     return { ok: false, reason: `forma: ${p.error.issues[0]?.path.join(".")}` };
+  const rules = opts.fitGear
+    ? fitItemRules(p.data as unknown as HeroV5, B)
+    : { hero: p.data as unknown as HeroV5, rescaled: 0 };
   const fit = opts.fitGear
-    ? fitWornGear(p.data as unknown as HeroV5, B)
-    : { hero: p.data as unknown as HeroV5, moved: [] };
+    ? fitWornGear(rules.hero, B)
+    : { hero: rules.hero, moved: [] };
   const h = fit.hero;
   if (!validAllocation(h.level, h.attrs, B))
     return { ok: false, reason: "atributos acima dos pontos do nível" };
@@ -181,5 +193,10 @@ export function checkHero(
     if (err && err !== "nivel-baixo")
       return { ok: false, reason: `${slot}: ${err}` };
   }
-  return { ok: true, hero: h, gearMoved: fit.moved.length };
+  return {
+    ok: true,
+    hero: h,
+    gearMoved: fit.moved.length,
+    itemsRescaled: rules.rescaled,
+  };
 }

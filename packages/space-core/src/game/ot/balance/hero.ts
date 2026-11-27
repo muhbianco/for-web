@@ -25,6 +25,7 @@ import {
   type Material,
   type RandomSource,
   generateItem,
+  upgradeAffixesToD64,
 } from "./items/generate.ts";
 import { itemPerks } from "./items/legendary.ts";
 import { rollPerk } from "./items/perks.ts";
@@ -113,7 +114,15 @@ export interface HeroV5 {
   autoEquip: boolean;
   /** Treino no Dojô em andamento: desde quando (ms). */
   dojo: { since: number } | null;
+  /**
+   * A versão das regras de item em que os itens do herói estão (D64: a faixa do afixo pela
+   * raridade). Sem o campo, 0: a leitura do servidor leva os itens para a regra de agora uma vez.
+   */
+  itemRules?: number;
 }
+
+/** D64 (27/11/2026): a faixa do afixo sobe com a raridade. */
+export const ITEM_RULES = 1;
 
 export type HeroResult<E extends string, X = object> =
   | ({ ok: true; hero: HeroV5 } & X)
@@ -202,6 +211,38 @@ export function createHero(
     supplies: { hp: 0.5, mp: 0.3 },
     autoEquip: true,
     dojo: null,
+    itemRules: ITEM_RULES,
+  };
+}
+
+/**
+ * Os itens do herói na regra de item de agora (D64): o afixo de épico e de lendário sorteado antes da
+ * faixa por raridade vai para a faixa nova, no mesmo ponto do sorteio. Uma vez por herói
+ * (`itemRules`); o servidor chama ao ler e grava se mudou.
+ */
+export function fitItemRules(
+  h: HeroV5,
+  B: Balance = gameBalance,
+): { hero: HeroV5; rescaled: number } {
+  if ((h.itemRules ?? 0) >= ITEM_RULES) return { hero: h, rescaled: 0 };
+  let rescaled = 0;
+  const up = (it: OwnedItem): OwnedItem => {
+    const next = upgradeAffixesToD64(it, B);
+    if (next !== it) rescaled++;
+    return next;
+  };
+  const equipment = Object.fromEntries(
+    Object.entries(h.equipment).map(([k, it]) => [k, it ? up(it) : it]),
+  ) as OwnedEquipment;
+  return {
+    hero: {
+      ...h,
+      equipment,
+      bag: h.bag.map(up),
+      vault: { ...h.vault, items: h.vault.items.map(up) },
+      itemRules: ITEM_RULES,
+    },
+    rescaled,
   };
 }
 

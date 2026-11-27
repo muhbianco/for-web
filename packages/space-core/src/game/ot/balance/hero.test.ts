@@ -25,6 +25,7 @@ import {
   dismantleItems,
   equipItem,
   evolveTier,
+  fitItemRules,
   fitWornGear,
   heroRunFighter,
   raiseAttributes,
@@ -379,7 +380,11 @@ test("o herói salvo passa na conferência; documento torto volta com o motivo (
   for (const cls of CLASS_IDS) {
     const h = createHero(cls, id);
     const back = JSON.parse(JSON.stringify(h));
-    assert.deepEqual(checkHero(back), { ok: true, hero: back, gearMoved: 0 }, cls);
+    assert.deepEqual(
+      checkHero(back),
+      { ok: true, hero: back, gearMoved: 0, itemsRescaled: 0 },
+      cls,
+    );
   }
   const h = createHero("guerreiro", id);
   const bad = (x: unknown) => {
@@ -446,6 +451,41 @@ test("regra de item que mudou (27/11/2026): a peça que não cabe sai para a moc
     equipment: { ...fine.equipment, arma: { ...fine.equipment.arma!, ilvl: 300 } },
   };
   assert.equal(fitWornGear(high, B).moved.length, 0);
+});
+
+test("D64: o herói de antes da faixa por raridade tem os afixos de épico e lendário levados uma vez; o novo já nasce na regra", () => {
+  const fresh = createHero("guerreiro", id);
+  assert.equal(fresh.itemRules, 1);
+  assert.equal(fitItemRules(fresh, B).hero, fresh);
+  const epic = (uid: string) => ({
+    uid,
+    slot: "colar" as const,
+    ilvl: 40,
+    rarity: "epico" as const,
+    refine: 0,
+    affixes: [{ id: "VIT" as const, value: 1.7 }],
+  });
+  const rare: OwnedItem = { ...epic("raro-1"), rarity: "raro" };
+  const old: HeroV5 = {
+    ...fresh,
+    itemRules: undefined,
+    equipment: { ...fresh.equipment, colar: epic("vestido") },
+    bag: [epic("mochila"), rare],
+    vault: { ...fresh.vault, items: [epic("cofre")] },
+  };
+  const r = fitItemRules(old, B);
+  assert.equal(r.rescaled, 3);
+  assert.equal(r.hero.itemRules, 1);
+  const vit = (it: OwnedItem | undefined) => it!.affixes[0]!.value;
+  assert.equal(vit(r.hero.equipment.colar), 1.9);
+  assert.equal(vit(r.hero.bag[0]), 1.9);
+  assert.equal(vit(r.hero.bag[1]), 1.7, "o raro não muda");
+  assert.equal(vit(r.hero.vault.items[0]), 1.9);
+  // Uma vez só: ler de novo não sobe outra vez.
+  assert.equal(fitItemRules(r.hero, B).rescaled, 0);
+  // A leitura do servidor faz o mesmo (com o ajuste do que está vestido).
+  const read = checkHero(JSON.parse(JSON.stringify(old)), B, { fitGear: true });
+  assert.ok(read.ok && read.itemsRescaled === 3 && read.hero.itemRules === 1);
 });
 
 test("Mestre: trocar de classe zera job e Proficiência; nível, XP, ouro e itens ficam; o que não veste vai para a mochila", () => {

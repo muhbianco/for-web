@@ -90,32 +90,74 @@ export function allowedAffixes(slot: GearSlot, offhand?: OffhandId): AffixId[] {
   });
 }
 
+/** D64: o desvio da faixa do afixo pela raridade (`items.affixRarityShift`). */
+export function affixRarityShift(rarity: RarityId, B: Balance = gameBalance): number {
+  return B.cfg.items.affixRarityShift[rarity] ?? 0;
+}
+
 /**
- * O valor nominal de um afixo no iL: atributo 1 + iL/40, rating 2 × isso; os de % sorteiam dentro da
- * faixa do §9.5. Atributo e rating rolam ±20% em volta do nominal (P47).
+ * A faixa de um afixo no iL e na raridade. Atributo: indicado 1 + iL/40 (rating, 2 × isso), sorteado
+ * de (1 − 20% + desvio) a (1 + 20% + desvio) do indicado (P47 e D64); os de % sorteiam na faixa do
+ * §9.5 × (1 + desvio).
  */
+export function affixRange(
+  id: AffixId,
+  ilvl: number,
+  rarity: RarityId,
+  B: Balance = gameBalance,
+): { min: number; max: number } {
+  const def = AFFIXES[id];
+  const shift = affixRarityShift(rarity, B);
+  if (def.scale === "pct") {
+    const min = def.min ?? 0;
+    const max = def.max ?? min;
+    return { min: min * (1 + shift), max: max * (1 + shift) };
+  }
+  const roll = B.cfg.items.affixRoll;
+  const nominal =
+    def.scale === "atributo" ? B.attributeAffix(ilvl) : B.ratingAffix(ilvl);
+  return {
+    min: nominal * (1 - roll + shift),
+    max: nominal * (1 + roll + shift),
+  };
+}
+
+/** Sorteia o valor dentro da faixa (um número do sorteio, como antes da D64: o raro sai igual). */
 export function rollAffixValue(
   id: AffixId,
   ilvl: number,
   rng: RandomSource,
   B: Balance = gameBalance,
+  rarity: RarityId = "raro",
 ): number {
-  const def = AFFIXES[id];
-  const roll = B.cfg.items.affixRoll;
-  if (def.scale === "pct") {
-    const min = def.min ?? 0;
-    const max = def.max ?? min;
-    return round4(min + (max - min) * rng.next());
-  }
-  const nominal =
-    def.scale === "atributo" ? B.attributeAffix(ilvl) : B.ratingAffix(ilvl);
-  return round2(nominal * (1 - roll + 2 * roll * rng.next()));
+  const r = affixRange(id, ilvl, rarity, B);
+  const v = r.min + (r.max - r.min) * rng.next();
+  return AFFIXES[id].scale === "pct" ? round4(v) : round2(v);
+}
+
+/**
+ * D64: o afixo sorteado antes da faixa por raridade levado para a faixa de agora, no mesmo ponto do
+ * sorteio (atributo: + indicado × desvio; %: × (1 + desvio)). Só épico e lendário mudam.
+ */
+export function upgradeAffixesToD64<T extends ItemInstance>(item: T, B: Balance = gameBalance): T {
+  const shift = affixRarityShift(item.rarity, B);
+  if (shift === 0 || item.affixes.length === 0) return item;
+  return {
+    ...item,
+    affixes: item.affixes.map((a) => {
+      const def = AFFIXES[a.id];
+      if (def.scale === "pct") return { ...a, value: round4(a.value * (1 + shift)) };
+      const nominal =
+        def.scale === "atributo" ? B.attributeAffix(item.ilvl) : B.ratingAffix(item.ilvl);
+      return { ...a, value: round2(a.value + nominal * shift) };
+    }),
+  };
 }
 
 const round2 = (v: number) => Math.round(v * 100) / 100;
 const round4 = (v: number) => Math.round(v * 10_000) / 10_000;
 
-/** Sorteia `count` afixos distintos entre os permitidos no slot. */
+/** Sorteia `count` afixos distintos entre os permitidos no slot (na faixa da raridade, D64). */
 export function rollAffixes(
   slot: GearSlot,
   ilvl: number,
@@ -123,13 +165,14 @@ export function rollAffixes(
   rng: RandomSource,
   offhand?: OffhandId,
   B: Balance = gameBalance,
+  rarity: RarityId = "raro",
 ): Affix[] {
   const pool = allowedAffixes(slot, offhand);
   const out: Affix[] = [];
   for (let i = 0; i < count && pool.length > 0; i++) {
     const k = Math.floor(rng.next() * pool.length);
     const id = pool.splice(k, 1)[0]!;
-    out.push({ id, value: rollAffixValue(id, ilvl, rng, B) });
+    out.push({ id, value: rollAffixValue(id, ilvl, rng, B, rarity) });
   }
   return out;
 }
@@ -156,6 +199,7 @@ export function generateItem(
     rng,
     offhand,
     B,
+    rarity,
   );
   return { ...base, ilvl, rarity, refine: 0, affixes } as ItemInstance;
 }

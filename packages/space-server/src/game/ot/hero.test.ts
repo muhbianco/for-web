@@ -57,6 +57,36 @@ test("jogador novo passa na conferência; documento torto volta com o motivo", (
   assert.equal(look.gear.body, "media");
 });
 
+test("D64: documento de antes da faixa por raridade — épico e lendário da mochila e da fila de transferência sobem uma vez", () => {
+  const d = hero();
+  const epic = (uid: string): OwnedItem => ({
+    uid,
+    slot: "anel",
+    ilvl: 40,
+    rarity: "epico",
+    refine: 0,
+    affixes: [{ id: "VIT", value: 1.7 }],
+  });
+  const old = JSON.parse(
+    JSON.stringify({
+      ...d,
+      hero: { ...d.hero, itemRules: undefined, bag: [epic("mochila")] },
+      outbox: [{ id: "t1", to: "U2", gold: 0, items: [epic("saindo")], at: 1 }],
+    }),
+  );
+  const r = checkHeroDoc(old);
+  assert.ok(r.ok);
+  assert.equal(r.itemsRescaled, 2);
+  assert.equal(r.doc.hero.itemRules, 1);
+  assert.equal(r.doc.hero.bag[0]!.affixes[0]!.value, 1.9);
+  assert.equal(r.doc.outbox[0]!.items[0]!.affixes[0]!.value, 1.9);
+  // Já na regra: nada muda (a fila também não).
+  const again = checkHeroDoc(JSON.parse(JSON.stringify(r.doc)));
+  assert.ok(again.ok);
+  assert.equal(again.itemsRescaled, 0);
+  assert.equal(again.doc.outbox[0]!.items[0]!.affixes[0]!.value, 1.9);
+});
+
 test("Dojô: abre ao lado do boneco, fecha creditando a Proficiência; a corrida fecha o treino", () => {
   const d = hero();
   const where = { instance: "boneco", server: "S1", zone: "z" };

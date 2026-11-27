@@ -1,7 +1,8 @@
-import { For, Show, createMemo, createSignal } from "solid-js";
+import { For, Show, createEffect, createMemo, createSignal, on } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import {
+  type AffixId,
   type ClassId,
   type ItemBase,
   type ItemInstance,
@@ -13,11 +14,17 @@ import {
   CLASS_IDS,
   FAMILIES,
   FAMILY_IDS,
+  GEAR_SLOTS,
   LEGENDARIES,
   MATERIALS,
   OFFHAND_IDS,
   RARITY_IDS,
+  AFFIXES,
+  AFFIX_IDS,
   affixCount,
+  affixLabel,
+  affixRangeText,
+  affixRarityShift,
   armorFit,
   canWearWeight,
   generateItem,
@@ -96,6 +103,18 @@ const baseKeyOf = (b: ItemBase): string =>
         : b.slot;
 
 const MATERIAL_LEVEL = MATERIALS.map((_, i) => (i + 1) * 50);
+
+/**
+ * As linhas da tabela de afixos (27/11/2026, o dono: "coloca os ranges que o reroll de cada atributo
+ * pode vir em cada nível/raridade de item"): os 6 atributos têm a mesma faixa, e Precisão, Fuga e
+ * Crítico também; cada afixo de % tem a sua.
+ */
+const AFFIX_ROWS: AffixId[][] = [
+  AFFIX_IDS.filter((id) => AFFIXES[id].scale === "atributo"),
+  AFFIX_IDS.filter((id) => AFFIXES[id].scale === "rating"),
+  ...AFFIX_IDS.filter((id) => AFFIXES[id].scale === "pct").map((id) => [id]),
+];
+const AFFIX_RARITIES: RarityId[] = ["incomum", "raro", "epico", "lendario"];
 const REFINES = [0, 4, 7, 9, 10] as const;
 const still = { next: () => 0.5 };
 
@@ -111,6 +130,9 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
   const [cls, setCls] = createSignal<ClassId | null>(props.cls ?? null);
   const [ref, setRef] = createSignal<number>(0);
   const ilvl = () => MATERIAL_LEVEL[mat()]!;
+  // O nível do item da tabela de afixos: começa no topo do material e anda pela régua.
+  const [affixIl, setAffixIl] = createSignal(ilvl());
+  createEffect(on(mat, () => setAffixIl(ilvl()), { defer: true }));
   const title = (c: ClassId) => CLASSES[c].titles[1];
 
   const baseName = (b: Base): string => {
@@ -278,6 +300,10 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
                 {RARITY[r].pips || "·"} {rarityName(r)}
               </b>{" "}
               ×{B.rarityMult(r).toFixed(2).replace(".", ",")}
+              <Show when={affixRarityShift(r, B) > 0}>
+                {" "}
+                {t`· afixos +${Math.round(affixRarityShift(r, B) * 100)}%`}
+              </Show>
             </span>
           )}
         </For>
@@ -399,6 +425,74 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
             }}
           </For>
         </Cards>
+      </Group>
+
+      <Group>
+        <GroupHead>
+          <h4>{t`Afixos: a faixa de cada um`}</h4>
+          <Muted>
+            {t`O valor de cada afixo sai sorteado dentro da faixa. Os de atributo, Precisão, Fuga e Crítico crescem com o nível do item; a raridade sobe a faixa (Épico +10%, Lendário +20%). Afixos por item: Incomum 1, Raro 2, Épico 3, Lendário 3, e +1 em colar e anel.`}
+          </Muted>
+        </GroupHead>
+        <FilterRow>
+          <Lbl>{t`Nível do item`}</Lbl>
+          <input
+            type="range"
+            min={1}
+            max={500}
+            value={affixIl()}
+            aria-label={t`Nível do item`}
+            onInput={(e) => setAffixIl(Number(e.currentTarget.value))}
+          />
+          <span>
+            {t`iL ${affixIl()} · pede nível ${Math.max(1, affixIl() - B.cfg.items.requirementSlack)}`}
+          </span>
+        </FilterRow>
+        <TableWrap>
+          <table>
+            <thead>
+              <tr>
+                <th>{t`Afixo`}</th>
+                <th>{t`Sai em`}</th>
+                <For each={AFFIX_RARITIES}>
+                  {(r) => (
+                    <th style={{ color: RARITY[r].color }}>
+                      {RARITY[r].pips} {rarityName(r)}
+                    </th>
+                  )}
+                </For>
+              </tr>
+            </thead>
+            <tbody>
+              <For each={AFFIX_ROWS}>
+                {(ids) => (
+                  <tr>
+                    <td>{ids.map(affixLabel).join(", ")}</td>
+                    <td>
+                      {AFFIXES[ids[0]!].slots.length === GEAR_SLOTS.length
+                        ? t`qualquer peça`
+                        : AFFIXES[ids[0]!].slots
+                            .map((s) =>
+                              // Afixo de % na mão secundária só sai no escudo (§9.5).
+                              s === "secundaria" && AFFIXES[ids[0]!].scale === "pct"
+                                ? offhandName("escudo")
+                                : slotName(s),
+                            )
+                            .join(", ")}
+                    </td>
+                    <For each={AFFIX_RARITIES}>
+                      {(r) => (
+                        <td data-yes="">
+                          {affixRangeText(ids[0]!, affixIl(), r, B)}
+                        </td>
+                      )}
+                    </For>
+                  </tr>
+                )}
+              </For>
+            </tbody>
+          </table>
+        </TableWrap>
       </Group>
 
       <Group>

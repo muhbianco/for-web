@@ -79,6 +79,11 @@ msgstr ""
 msgid "— skill de {0}: não vale para você."
 msgstr ""
 
+#. placeholder {0}: Math.round(affixRarityShift(r, B) * 100)
+#: components/space/game/ArsenalView.tsx
+msgid "· afixos +{0}%"
+msgstr ""
+
 #: components/space/game/NpcDialog.tsx
 #~ msgid "\"O que não serve\": o que sua vocação ou level não usa, o que é pior que o vestido e os frascos vazios. Confira antes de vender: a venda não volta."
 #~ msgstr ""
@@ -2050,8 +2055,16 @@ msgstr ""
 #~ msgid "Afiar: +{0}% de dano"
 #~ msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Afixo"
+msgstr ""
+
 #: components/space/game/SmithPanel.tsx
 msgid "Afixos novos"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Afixos: a faixa de cada um"
 msgstr ""
 
 #: components/space/game/heroUi.ts
@@ -6020,6 +6033,10 @@ msgstr "Lähettäminen epäonnistui"
 msgid "Failed to verify!"
 msgstr "Vahistus epäonnistui!"
 
+#: components/space/game/ItemCard.tsx
+msgid "Faixa do sorteio deste afixo no nível e na raridade do item"
+msgstr ""
+
 #: components/space/AudioCheck.tsx
 msgid "Fale algo: a barra deve se mexer."
 msgstr ""
@@ -6733,6 +6750,12 @@ msgstr ""
 #: components/space/game/NpcDialog.tsx
 #~ msgid "igual ao que você veste"
 #~ msgstr ""
+
+#. placeholder {0}: affixIl()
+#. placeholder {1}: Math.max(1, affixIl() - B.cfg.items.requirementSlack)
+#: components/space/game/ArsenalView.tsx
+msgid "iL {0} · pede nível {1}"
+msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Illegal hacking or cracking"
@@ -8584,6 +8607,7 @@ msgstr ""
 msgid "Nível do herói"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/BankPanel.tsx
 msgid "Nível do item"
 msgstr ""
@@ -9086,6 +9110,10 @@ msgstr ""
 #: components/space/game/rpgUi.ts
 #~ msgid "O tempo do grupo acabou. Monte de novo."
 #~ msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "O valor de cada afixo sai sorteado dentro da faixa. Os de atributo, Precisão, Fuga e Crítico crescem com o nível do item; a raridade sobe a faixa (Épico +10%, Lendário +20%). Afixos por item: Incomum 1, Raro 2, Épico 3, Lendário 3, e +1 em colar e anel."
+msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "O vídeo ou a música da sala, para todos"
@@ -10072,6 +10100,10 @@ msgstr ""
 msgid "Quality"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "qualquer peça"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Quando a cura rende"
 msgstr ""
@@ -10862,6 +10894,10 @@ msgstr ""
 
 #: components/space/game/skillText.ts
 msgid "Sai de novo logo depois, com {p} do dano."
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Sai em"
 msgstr ""
 
 #: components/space/game/LobbyChip.tsx

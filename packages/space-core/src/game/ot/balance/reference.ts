@@ -4,7 +4,6 @@ import {
   type RarityId,
   type Stat,
   type Stats,
-  AFFIXES,
   ARMOR_SLOTS,
   CLASSES,
   JEWEL_EXTRA_AFFIXES,
@@ -23,6 +22,7 @@ import {
   type Tier,
   balance as gameBalance,
 } from "./formulas.ts";
+import { affixRange } from "./items/generate.ts";
 
 /**
  * O perfil de referência (spec §9.4 e §11.2): cada classe no nível L com a build de referência,
@@ -65,11 +65,15 @@ export interface ReferenceVersus {
 export type ReferenceProfile = "referencia" | "limite";
 
 /** Valor nominal de um afixo no iL (o meio da rolagem; nos de %, o meio da faixa). */
-export function affixNominal(id: AffixId, ilvl: number, B: Balance): number {
-  const a = AFFIXES[id];
-  if (a.scale === "atributo") return B.attributeAffix(ilvl);
-  if (a.scale === "rating") return B.ratingAffix(ilvl);
-  return ((a.min ?? 0) + (a.max ?? 0)) / 2;
+/** O centro da faixa do afixo no iL e na raridade (sem a raridade, o do raro: o indicado). */
+export function affixNominal(
+  id: AffixId,
+  ilvl: number,
+  B: Balance,
+  rarity: RarityId = "raro",
+): number {
+  const r = affixRange(id, ilvl, rarity, B);
+  return (r.min + r.max) / 2;
 }
 
 export function createReference(
@@ -139,6 +143,8 @@ export function createReference(
         for (const id of (plan[it.slot] ?? []).slice(0, n))
           it.affixes.push({
             id: id as AffixId,
+            // D64: a referência fica no indicado (o centro da faixa do raro); o épico e o lendário de
+            // verdade sorteiam acima disso, e a calibração (monstros, aperto, jornada) não se mexe.
             value: affixNominal(id as AffixId, it.ilvl, B),
           });
       }

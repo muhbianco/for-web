@@ -119,6 +119,7 @@ export function reforge(
     rng,
     offhand,
     B,
+    item.rarity,
   );
   return { ...item, affixes };
 }

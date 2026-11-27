@@ -134,7 +134,12 @@ export function ItemCard(props: {
         <For each={tip().affixes}>
           {(a) => (
             <Line data-affix="">
-              <span>{a.text}</span>
+              <span>
+                {a.text}{" "}
+                <Range title={t`Faixa do sorteio deste afixo no nível e na raridade do item`}>
+                  ({a.range})
+                </Range>
+              </span>
               <Show when={a.delta !== undefined && Math.abs(a.delta) > 1e-9}>
                 <Diff data-up={a.delta! > 0 ? "" : undefined}>
                   {a.delta! > 0 ? "▲" : "▼"} {t`vs vestido`}
@@ -425,6 +430,14 @@ const Line = styled("div", {
       borderTop: "1px solid var(--md-sys-color-outline-variant)",
       color: "var(--md-sys-color-on-surface-variant)",
     },
+  },
+});
+/** D64: a faixa do sorteio do afixo, discreta ao lado do valor. */
+const Range = styled("span", {
+  base: {
+    fontSize: "0.85em",
+    color: "var(--md-sys-color-on-surface-variant)",
+    whiteSpace: "nowrap",
   },
 });
 const Diff = styled("span", {
