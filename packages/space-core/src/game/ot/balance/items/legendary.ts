@@ -1,5 +1,6 @@
 import type { ClassId } from "../content.ts";
 import type { Equipment, ItemInstance } from "../equipment.ts";
+import { type Balance, balance as gameBalance } from "../formulas.ts";
 import type { MechanicMod } from "../skills/schema.ts";
 import type { ItemBase } from "./generate.ts";
 import { type ItemPerk, JOB_XP_PERK, perkMods, perkText } from "./perks.ts";
@@ -122,4 +123,16 @@ export function jobXpBonus(eq: Equipment): number {
     for (const p of it ? itemPerks(it) : [])
       if (p.skill === JOB_XP_PERK) n += p.value;
   return n;
+}
+
+/**
+ * O XP de job de um XP ganho na corrida: a fração do config (§13) com o +x% dos perks de XP de job
+ * que o herói veste (a Coroa do Mentor; até 27/11/2026 o bônus não era aplicado em lugar nenhum).
+ */
+export function jobXpOf(
+  xp: number,
+  eq: Equipment,
+  B: Balance = gameBalance,
+): number {
+  return Math.floor(xp * B.cfg.xp.jobShare * (1 + jobXpBonus(eq)));
 }

@@ -353,6 +353,12 @@ export const BALANCE = {
     huntGroupFrom: 4,
     huntDropBase: 3,
     huntLegendary: { 4: 0.01, 5: 0.02 } as Record<number, number>,
+    /**
+     * Lendário que sai é, nesta fração, um dos de qualquer classe (a Coroa do Mentor); no resto, o da
+     * classe de quem recebe (27/11/2026, pedido do dono: "1 em cada 5"). Antes a Coroa nunca caía:
+     * toda classe tem o seu, e o de qualquer classe só entrava sem ele.
+     */
+    sharedLegendaryShare: 0.2,
   },
 
   /**

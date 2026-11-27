@@ -26,6 +26,7 @@ import {
   LEGENDARIES,
   itemPerks,
   jobXpBonus,
+  jobXpOf,
   legendaryMods,
 } from "./legendary.ts";
 import {
@@ -366,4 +367,18 @@ test("luta de verdade: todas as 42 skills com o perk no máximo rodam na Masmorr
       assert.notEqual(r.outcome, "travada", `${g.join("+")} ${i}`);
     }
   }
+});
+
+test("Coroa do Mentor vestida: o XP de job da corrida ganha +5%; rolada para skill, perde", () => {
+  const crown = legendaryItem("coroa-do-mentor");
+  const xp = 100_000;
+  const base = Math.floor(xp * B.cfg.xp.jobShare);
+  assert.equal(jobXpOf(xp, {} as Equipment), base);
+  assert.equal(
+    jobXpOf(xp, { elmo: crown } as Equipment),
+    Math.floor(xp * B.cfg.xp.jobShare * 1.05),
+  );
+  // Na mochila não conta: só vestida.
+  const rolled = { ...crown, perks: [{ skill: "curar", value: 0.15 }] };
+  assert.equal(jobXpOf(xp, { elmo: rolled } as Equipment), base);
 });

@@ -8,7 +8,13 @@ import {
 import { type Balance, balance as gameBalance } from "../formulas.ts";
 import { type Material, materialOf } from "../items/generate.ts";
 import { type Monsters, createMonsters } from "../monsters/generate.ts";
-import { type LootSlot, legendaryPool, lootSlots, lootSource } from "./loot.ts";
+import {
+  type LootSlot,
+  legendaryChoices,
+  legendaryPool,
+  lootSlots,
+  lootSource,
+} from "./loot.ts";
 
 /**
  * As chances de drop de uma DG, em números para a tela (a TV): saem das mesmas peças que o sorteio
@@ -167,6 +173,6 @@ export function dungeonLootOdds(
     },
     protectionStone: 1 - stoneMiss,
     slots: cls ? lootSlots(cls) : [],
-    legendaries: cls ? legendaryPool(cls).map((l) => l.id) : [],
+    legendaries: cls ? legendaryChoices(cls).map((l) => l.id) : [],
   };
 }

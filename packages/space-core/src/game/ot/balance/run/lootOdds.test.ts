@@ -125,7 +125,8 @@ test("nível e material dos itens, minério da região e Pedra só na Masmorra",
 test("com a classe: os lugares que caem e o lendário dela", () => {
   const mago = dungeonLootOdds(dg("masmorra-40"), 1, "mago");
   assert.ok(mago.slots.includes("arma") && mago.slots.includes("anel"));
-  assert.deepEqual(mago.legendaries, ["cetro-das-cinzas"]);
+  // O da classe e a Coroa do Mentor (de qualquer classe; 1 em cada 5 lendários, 27/11/2026).
+  assert.deepEqual(mago.legendaries, ["cetro-das-cinzas", "coroa-do-mentor"]);
   assert.ok(mago.perHero.atLeastOne.lendario > 0);
   const semClasse = dungeonLootOdds(dg("masmorra-40"), 1);
   assert.deepEqual(semClasse.slots, []);

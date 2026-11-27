@@ -51,6 +51,7 @@ import {
   reforgeItem,
   rerollPerk,
   imbuePerk,
+  jobXpOf,
   respecAttributes,
   respecSkills,
   runLoot,
@@ -1227,7 +1228,8 @@ export class RpgService {
       const xp = Math.floor(rewards.heroes[i]!.xp * xpMult[i]!);
       return {
         xp,
-        jobXp: Math.floor(xp * gameBalance.cfg.xp.jobShare),
+        // A Coroa do Mentor vestida na largada soma o bônus dela (jobXpOf).
+        jobXp: jobXpOf(xp, heroes[i]!.equipment),
         gold: rewards.heroes[i]!.gold,
         items: loot.items
           .filter((x) => x.hero === i)

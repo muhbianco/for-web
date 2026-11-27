@@ -18,6 +18,7 @@ import {
   sellItem,
   spendSkillPoint,
 } from "../hero.ts";
+import { jobXpOf } from "../items/legendary.ts";
 import { createMonsters } from "../monsters/generate.ts";
 import { potionPrice } from "../npcs/merchant.ts";
 import { runLoot } from "../run/loot.ts";
@@ -279,7 +280,7 @@ export function simulateJourney(
       h,
       {
         xp: rw.xp,
-        jobXp: rw.jobXp,
+        jobXp: jobXpOf(rw.xp, h.equipment, B),
         gold: rw.gold,
         items,
         ores: loot.ores[0] ?? {},

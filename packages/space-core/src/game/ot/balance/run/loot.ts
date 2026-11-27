@@ -100,9 +100,20 @@ export function legendaryPool(cls: ClassId): LegendaryDef[] {
   return own.length > 0 ? own : LEGENDARIES.filter((l) => wearable(cls, l));
 }
 
+/** Os lendários de qualquer classe (a Coroa do Mentor) que a classe veste. */
+export function sharedLegendaries(cls: ClassId): LegendaryDef[] {
+  return LEGENDARIES.filter((l) => l.cls === null && wearable(cls, l));
+}
+
+/** Tudo o que pode sair como Lendário para a classe: os dela e os de qualquer classe (a lista da TV). */
+export function legendaryChoices(cls: ClassId): LegendaryDef[] {
+  return [...new Set([...legendaryPool(cls), ...sharedLegendaries(cls)])];
+}
+
 /**
  * Um lendário para a classe: os dela primeiro, senão um que ela veste. Com só 8 lendários no conteúdo
- * (P49), pode não haver nenhum: aí sai um Épico.
+ * (P49), pode não haver nenhum: aí sai um Épico. Quem tem lendário próprio tira, em
+ * `loot.sharedLegendaryShare` das vezes, um de qualquer classe (a Coroa do Mentor, 27/11/2026).
  */
 export function rollItem(
   cls: ClassId,
@@ -114,7 +125,14 @@ export function rollItem(
   if (rarity === "lendario") {
     const pool = legendaryPool(cls);
     if (pool.length > 0) {
-      const l = pick(pool, rng);
+      const shared = sharedLegendaries(cls);
+      const ownClass = pool.some((l) => l.cls === cls);
+      const l =
+        ownClass &&
+        shared.length > 0 &&
+        rng.next() < B.cfg.loot.sharedLegendaryShare
+          ? pick(shared, rng)
+          : pick(pool, rng);
       return {
         ...generateItem(l.base, ilvl, "lendario", rng, B),
         legendary: l.id,

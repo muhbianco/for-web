@@ -111,20 +111,23 @@ test("o item que cai é de uma base que a classe de quem recebe veste", () => {
   }
 });
 
-test("o Lendário que cai é um dos lendários de efeito único, da classe quando há", () => {
+test("o Lendário que cai é o da classe, ou a Coroa do Mentor em 1 de cada 5 (27/11/2026)", () => {
   const r = rng(5);
+  const n = 4000;
   for (const cls of CLASS_IDS) {
-    const item = rollItem(cls, 200, "lendario", r);
-    const own = LEGENDARIES.filter((l) => l.cls === cls);
-    assert.ok(item.rarity === "lendario" || item.rarity === "epico");
-    if (item.rarity === "lendario") {
-      assert.ok(item.legendary, cls);
-      if (own.length > 0)
-        assert.ok(
-          own.some((l) => l.id === item.legendary),
-          cls,
-        );
+    const own = LEGENDARIES.filter((l) => l.cls === cls).map((l) => l.id);
+    let crown = 0;
+    for (let i = 0; i < n; i++) {
+      const item = rollItem(cls, 200, "lendario", r);
+      assert.equal(item.rarity, "lendario", cls);
+      if (item.legendary === "coroa-do-mentor") crown++;
+      else assert.ok(own.includes(item.legendary!), `${cls} ${item.legendary}`);
     }
+    const share = crown / n;
+    assert.ok(
+      Math.abs(share - B.cfg.loot.sharedLegendaryShare) < 0.025,
+      `${cls}: Coroa em ${(share * 100).toFixed(1)}%`,
+    );
   }
 });
 

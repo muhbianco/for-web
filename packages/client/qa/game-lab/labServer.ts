@@ -30,6 +30,7 @@ import {
   heroDerived,
   heroRunFighter,
   imbuePerk,
+  jobXpOf,
   planTransfer,
   raiseAttributes,
   refineItem,
@@ -647,7 +648,7 @@ export class LabServer implements TvLink {
           retreated: false,
           reward: {
             xp: rewards.heroes[i]!.xp,
-            job_xp: rewards.heroes[i]!.jobXp,
+            job_xp: jobXpOf(rewards.heroes[i]!.xp, heroes[i]!.equipment),
             gold: rewards.heroes[i]!.gold,
             items,
             ores: loot.ores[i] ?? {},
