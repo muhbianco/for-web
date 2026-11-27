@@ -80,7 +80,27 @@ export function createMonsters(
   const cache = new Map<number, MonsterRow>();
 
   function row(m: number): MonsterRow {
-    const lv = Math.max(1, Math.min(cfg.levels.maxLevel, Math.round(m)));
+    const top = cfg.levels.maxLevel;
+    const lv = Math.max(
+      1,
+      Math.min(cfg.levels.maxDungeonLevel ?? top, Math.round(m)),
+    );
+    // Acima do teto do herói (o fim de jogo, 501–600): o mesmo ritmo de crescimento do 400 ao 500,
+    // coluna por coluna (nenhum herói de referência existe lá para calcular a linha).
+    if (lv > top) {
+      const a = row(top - 100);
+      const b = row(top);
+      const k = (lv - top) / 100;
+      const grow = (x: number, y: number) => y * (y / x) ** k;
+      return {
+        soloDps: grow(a.soloDps, b.soloDps),
+        partyDps: grow(a.partyDps, b.partyDps),
+        lacaioHit: grow(a.lacaioHit, b.lacaioHit),
+        menorHit: grow(a.menorHit, b.menorHit),
+        bossHit: grow(a.bossHit, b.bossHit),
+        pulse: grow(a.pulse, b.pulse),
+      };
+    }
     const fromTable = table?.[lv];
     if (fromTable) return fromTable;
     let r = cache.get(lv);

@@ -242,9 +242,10 @@ export function lootFor(
     for (const i of receivers)
       items.push({
         hero: i,
+        // O item nunca passa do teto do herói (o fim de jogo, 501–600, não deixa ninguém mais forte).
         item: rollItem(
           classes[i]!,
-          k.level,
+          Math.min(B.cfg.levels.maxLevel, k.level),
           rollRarity(src.rarity, rng),
           rng,
           B,

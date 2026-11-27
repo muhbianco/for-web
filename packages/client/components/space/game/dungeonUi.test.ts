@@ -34,11 +34,9 @@ test("recomendadas: a mais alta de cada tipo que o nível já entra", () => {
   assert.deepEqual(ids(recommendedDungeons(44)), ["cacada-40", "masmorra-40"]);
 });
 
-test("trava: o nível primeiro; o chefe pede o resto da região", () => {
-  assert.deepEqual(dungeonLock(dg("masmorra-40"), 30, []), {
-    why: "level",
-    level: 35,
-  });
+test("trava: o nível não trava (27/11/2026); o chefe pede o resto da região", () => {
+  assert.equal(dungeonLock(dg("masmorra-40"), 30, []), null);
+  assert.equal(dungeonLock(dg("masmorra-590"), 1, []), null);
   assert.equal(dungeonLock(dg("masmorra-40"), 35, []), null);
   const boss = dungeonLock(dg("regiao-1"), 45, ["cacada-1", "cacada-10"]);
   assert.equal(boss?.why, "region");
@@ -50,16 +48,15 @@ test("trava: o nível primeiro; o chefe pede o resto da região", () => {
   ]);
   const all = ids(bossPrereqs(dg("regiao-1")));
   assert.equal(dungeonLock(dg("regiao-1"), 45, all), null);
-  // Abaixo do nível, a trava é o nível mesmo com a região concluída.
-  assert.deepEqual(dungeonLock(dg("regiao-1"), 40, all), {
-    why: "level",
-    level: 45,
-  });
+  // Abaixo do nível recomendado, com a região concluída, o chefe abre.
+  assert.equal(dungeonLock(dg("regiao-1"), 40, all), null);
 });
 
 test("catálogo: concluídas por região, filtro por tipo, a região do nível marcada", () => {
   const g = dungeonCatalog(45, ["toca", "cacada-10", "masmorra-40"], "todas");
-  assert.equal(g.length, 10);
+  // As 10 regiões calibradas e as 2 do fim de jogo (501–600).
+  assert.equal(g.length, 12);
+  assert.equal(g.at(-1)!.rows.at(-1)!.def.id, "regiao-12");
   const r1 = g[0]!;
   assert.equal(r1.current, true);
   assert.deepEqual([r1.done, r1.total], [3, 7]);

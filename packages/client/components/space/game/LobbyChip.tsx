@@ -10,7 +10,6 @@ import { styled } from "styled-system/jsx";
 import { gameChip } from "./gameTheme";
 import { type GameLink, useCommands } from "./gameUi";
 import {
-  belowLevel,
   dungeonName,
   loopStopText,
   myLobby,
@@ -43,8 +42,7 @@ export default function LobbyChip(props: {
       !!x &&
       !!d &&
       x.state !== "running" &&
-      x.members.length >= d.party.min &&
-      belowLevel(x.members, d.minLevel).length === 0
+      x.members.length >= d.party.min
     );
   };
   return (

@@ -10,10 +10,10 @@ import {
   balance as B,
   bossMissing,
   dungeonLootOdds,
-  DUNGEONS,
+  ALL_DUNGEONS,
   normalizeCleared,
   RARITY_IDS,
-  REGIONS,
+  ALL_REGIONS,
 } from "@muchat/space-core/game/ot/balance";
 
 /**
@@ -29,7 +29,6 @@ export const KINDS: DungeonKind[] = ["cacada", "masmorra", "regional"];
 
 /** O que impede o herói de entrar: o nível, ou o resto da região (o chefe). */
 export type DungeonLock =
-  | { why: "level"; level: number }
   | { why: "region"; missing: DungeonDef[] };
 
 export interface DungeonRow {
@@ -49,13 +48,16 @@ export interface RegionGroup {
   total: number;
 }
 
-/** A trava do herói para a DG: o nível primeiro, depois o resto da região (só o chefe). */
+/**
+ * A trava do herói para a DG: só o chefe de Região, que pede o resto da região. Desde 27/11/2026 o
+ * nível não trava (o dono: "não vamos mais impedir ninguém de entrar em DG de level mais alto"): o
+ * nível mínimo é só a recomendação.
+ */
 export function dungeonLock(
   d: DungeonDef,
-  level: number,
+  _level: number,
   cleared: readonly string[],
 ): DungeonLock | null {
-  if (level < d.minLevel) return { why: "level", level: d.minLevel };
   const missing = bossMissing(d, cleared);
   return missing.length > 0 ? { why: "region", missing } : null;
 }
@@ -63,7 +65,7 @@ export function dungeonLock(
 /** As recomendadas pelo nível: a mais alta de cada tipo em que o herói já entra (o selo "Recomendada"). */
 export function recommendedDungeons(level: number): DungeonDef[] {
   const best = new Map<DungeonKind, DungeonDef>();
-  for (const d of DUNGEONS) if (d.minLevel <= level) best.set(d.kind, d);
+  for (const d of ALL_DUNGEONS) if (d.minLevel <= level) best.set(d.kind, d);
   return KINDS.flatMap((k) => (best.has(k) ? [best.get(k)!] : []));
 }
 
@@ -89,8 +91,8 @@ export function dungeonCatalog(
 ): RegionGroup[] {
   const done = new Set(normalizeCleared(cleared));
   const rec = new Set(recommendedDungeons(level).map((d) => d.id));
-  return REGIONS.map((region) => {
-    const all = DUNGEONS.filter((d) => d.region.index === region.index);
+  return ALL_REGIONS.map((region) => {
+    const all = ALL_DUNGEONS.filter((d) => d.region.index === region.index);
     return {
       region,
       current: level >= region.from && level <= region.to,
@@ -174,7 +176,7 @@ export function bossLoot(kind: DungeonKind): {
 
 /** O tamanho de grupo do tipo (todas as DGs do tipo pedem o mesmo; a primeira serve). */
 export function kindParty(kind: DungeonKind): { min: number; max: number } {
-  return DUNGEONS.find((d) => d.kind === kind)!.party;
+  return ALL_DUNGEONS.find((d) => d.kind === kind)!.party;
 }
 
 /** Quem do grupo ainda não pode enfrentar o chefe (o servidor manda as regiões de cada um). */

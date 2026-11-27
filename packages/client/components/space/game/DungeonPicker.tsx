@@ -237,7 +237,7 @@ function DungeonLine(props: {
           when={r().lock}
           fallback={
             <Muted>
-              {t`Monstros ${lv()} · entra no ${r().def.minLevel} · ${r().def.party.min}–${r().def.party.max} heróis`}
+              {t`Monstros ${lv()} · recomendado a partir do ${r().def.minLevel} · ${r().def.party.min}–${r().def.party.max} heróis`}
             </Muted>
           }
         >

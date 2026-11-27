@@ -107,7 +107,7 @@ export function loopStopText(l: RpgLobbyView): string | null {
   return null;
 }
 
-/** Quem do grupo não tem o nível da DG (vazio: todos entram). */
+/** Quem do grupo está abaixo do nível recomendado da DG (só aviso: o nível não trava desde 27/11/2026). */
 export function belowLevel(
   members: readonly RpgLobbyMember[],
   minLevel: number,

@@ -284,11 +284,9 @@ export default function TvMenu(props: {
                             })
                           }
                         >
-                          {lock()?.why === "level"
-                            ? t`Entra a partir do nível ${d()?.minLevel}`
-                            : lock()?.why === "region"
-                              ? t`Conclua a região antes`
-                              : t`Entrar no grupo`}
+                          {lock()?.why === "region"
+                            ? t`Conclua a região antes`
+                            : t`Entrar no grupo`}
                         </Btn>
                         <Show when={d()}>
                           {(def) => (
@@ -451,9 +449,9 @@ function MyGroup(props: {
         <Show when={low().length > 0}>
           <Muted role="note">
             ⚠{" "}
-            {t`Ainda sem o nível ${d()?.minLevel}: ${low()
+            {t`Abaixo do nível recomendado (${d()?.minLevel}): ${low()
               .map((m) => m.name)
-              .join(", ")}.`}
+              .join(", ")}. Entra, mas a DG vai pesar.`}
           </Muted>
         </Show>
         <Show when={noRegion().length > 0}>
@@ -483,7 +481,6 @@ function MyGroup(props: {
               disabled={
                 props.busy ||
                 props.lobby.state === "running" ||
-                low().length > 0 ||
                 noRegion().length > 0 ||
                 few()
               }

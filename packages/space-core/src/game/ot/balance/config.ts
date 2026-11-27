@@ -10,6 +10,14 @@ export const BALANCE = {
   levels: {
     /** Nível do herói (DGs). */
     maxLevel: 500,
+    /**
+     * Nível dos monstros e das DGs (27/11/2026, o dono: "criar DGs seguindo a mesma progressão de
+     * dificuldade até a 600; não vamos recalibrar nada, a ideia é trazer mais dificuldade sem alterar
+     * o herói; o grupo deve ficar travado antes de zerar o jogo, mesmo acima do limite com perks").
+     * Do 501 ao 600 a tabela de monstros continua no ritmo do 400 ao 500 (monsters/generate.ts) e o
+     * herói continua com teto no 500: as regiões 11 e 12 são o fim de jogo.
+     */
+    maxDungeonLevel: 600,
     /** Nível de job (30% da experiência do nível). */
     maxJob: 150,
     /** Proficiência, o nível base do Dojô. */

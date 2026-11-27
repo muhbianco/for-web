@@ -23,6 +23,7 @@ export interface Region {
   bossName: string;
 }
 
+/** As 10 regiões calibradas (até o 500, o teto do herói). */
 export const REGIONS: Region[] = [
   {
     index: 1,
@@ -126,6 +127,38 @@ export const REGIONS: Region[] = [
   },
 ];
 
+/**
+ * O fim de jogo (27/11/2026): do 501 ao 600, acima do teto do herói (500), na mesma progressão de
+ * dificuldade (a tabela de monstros segue o ritmo do 400 ao 500 e o aperto repete o da região
+ * anterior). Sem calibração: é para o grupo travar antes de zerar, mesmo acima do limite com perks.
+ * O drop fica no iL 500 (run/loot.ts): nada aqui deixa o herói mais forte.
+ */
+export const ENDGAME_REGIONS: Region[] = [
+  {
+    index: 11,
+    from: 501,
+    to: 550,
+    name: "Fenda Abissal",
+    material: "Vazio",
+    families: ["aberracao", "elemental"],
+    magicShare: 0.5,
+    bossName: "Arauto da Fenda",
+  },
+  {
+    index: 12,
+    from: 551,
+    to: 600,
+    name: "Trono do Fim",
+    material: "Vazio",
+    families: ["sombrio", "morto-vivo"],
+    magicShare: 0.4,
+    bossName: "O Último Rei",
+  },
+];
+
+/** Todas as regiões do jogo: as calibradas e as do fim de jogo. */
+export const ALL_REGIONS: Region[] = [...REGIONS, ...ENDGAME_REGIONS];
+
 export type DungeonKind = "cacada" | "masmorra" | "regional";
 
 export interface DungeonDef {
@@ -148,9 +181,9 @@ const KIND_NAME: Record<DungeonKind, string> = {
 };
 
 export function regionOf(level: number): Region {
-  return REGIONS[
+  return ALL_REGIONS[
     Math.min(
-      REGIONS.length - 1,
+      ALL_REGIONS.length - 1,
       Math.max(0, Math.floor((Math.max(1, level) - 1) / 50)),
     )
   ]!;
@@ -162,7 +195,7 @@ function dungeon(
   aliases: string[] = [],
 ): DungeonDef {
   const region =
-    kind === "regional" ? REGIONS[level / 50 - 1]! : regionOf(level);
+    kind === "regional" ? ALL_REGIONS[level / 50 - 1]! : regionOf(level);
   return {
     id: kind === "regional" ? `regiao-${region.index}` : `${kind}-${level}`,
     name:
@@ -181,10 +214,10 @@ function dungeon(
   };
 }
 
-/** As ~99 DGs do catálogo, por nível. A "Toca dos Javalis" de hoje vira a Caçada de nível 1 (§12.2). */
-export const DUNGEONS: DungeonDef[] = (() => {
+/** As DGs de uma lista de regiões, por nível. */
+function dungeonsOf(regions: Region[]): DungeonDef[] {
   const out: DungeonDef[] = [];
-  for (const r of REGIONS) {
+  for (const r of regions) {
     const X = r.from - 1;
     for (const off of [1, 10, 20, 30, 40])
       out.push(
@@ -196,10 +229,42 @@ export const DUNGEONS: DungeonDef[] = (() => {
     out.push(dungeon("regional", X + 50));
   }
   return out.sort((a, b) => a.level - b.level || a.kind.localeCompare(b.kind));
-})();
+}
+
+/**
+ * As ~99 DGs calibradas, por nível (até o 500). A "Toca dos Javalis" de hoje vira a Caçada de nível 1
+ * (§12.2). É a lista da calibração (relatório, aperto, jornada); o jogo usa `ALL_DUNGEONS`.
+ */
+export const DUNGEONS: DungeonDef[] = dungeonsOf(REGIONS);
+
+/** As DGs do fim de jogo (501–600), fora da calibração. */
+export const ENDGAME_DUNGEONS: DungeonDef[] = dungeonsOf(ENDGAME_REGIONS);
+
+/** Todas as DGs que o jogo oferece. */
+export const ALL_DUNGEONS: DungeonDef[] = [...DUNGEONS, ...ENDGAME_DUNGEONS];
 
 export function dungeonById(id: string): DungeonDef | undefined {
-  return DUNGEONS.find((d) => d.id === id || d.aliases.includes(id));
+  return ALL_DUNGEONS.find((d) => d.id === id || d.aliases.includes(id));
+}
+
+/**
+ * O aperto da DG (D41). As do fim de jogo não têm calibração: repetem o da DG equivalente da região
+ * anterior (a Masmorra 510 usa o da 460; a Região 11, o da 10), e a dificuldade sobe pela tabela.
+ */
+export function edgeOf(d: DungeonDef) {
+  let id = d.id;
+  let level = d.level;
+  for (let k = 0; k < 4; k++) {
+    const e = DUNGEON_EDGE[id];
+    if (e) return e;
+    level -= 50;
+    if (level < 1) return undefined;
+    id =
+      d.kind === "regional"
+        ? `regiao-${level / 50}`
+        : `${d.kind}-${level}`;
+  }
+  return undefined;
 }
 
 /** Tipo de DG para escala e XP (o Regional é uma Masmorra com recompensa ×2). */
@@ -221,7 +286,7 @@ export function dungeonRooms(
   M: Monsters,
 ): EnemyInput[][] {
   const type = dungeonType(d);
-  const edge = DUNGEON_EDGE[d.id];
+  const edge = edgeOf(d);
   const o = { partySize, type, ...(edge ? { edge } : {}) };
   const R = d.level;
   let k = 0;

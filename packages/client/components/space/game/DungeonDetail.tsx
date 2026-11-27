@@ -29,15 +29,11 @@ export function KindChip(props: { kind: DungeonDef["kind"] }) {
   return <Kind data-kind={props.kind}>{kindName(props.kind)}</Kind>;
 }
 
-/** A trava em palavras: o nível que falta, ou o que falta concluir na região. */
+/** A trava em palavras: o que falta concluir na região (o nível não trava desde 27/11/2026). */
 export function LockText(props: { lock: DungeonLock }) {
   const { t } = useLingui();
   const text = () => {
     const l = props.lock;
-    if (l.why === "level") {
-      const level = l.level;
-      return t`Entra a partir do nível ${level}`;
-    }
     const list = l.missing.map((d) => dungeonTitle(d)).join(", ");
     return t`Conclua antes: ${list}`;
   };
@@ -127,8 +123,8 @@ export default function DungeonDetail(props: {
             · {props.def.region.families.map((f) => familyName(f)).join(", ")}
           </Muted>
         </dd>
-        <dt>{t`Entrada`}</dt>
-        <dd>{t`A partir do nível ${props.def.minLevel}`}</dd>
+        <dt>{t`Recomendado`}</dt>
+        <dd>{t`A partir do nível ${props.def.minLevel} (qualquer nível entra)`}</dd>
         <dt>{t`Grupo`}</dt>
         <dd>{t`De ${props.def.party.min} a ${props.def.party.max} heróis`}</dd>
         <dt>{t`Salas`}</dt>

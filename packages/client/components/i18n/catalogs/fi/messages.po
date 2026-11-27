@@ -1789,7 +1789,12 @@ msgstr ""
 
 #. placeholder {0}: props.def.minLevel
 #: components/space/game/DungeonDetail.tsx
-msgid "A partir do nível {0}"
+#~ msgid "A partir do nível {0}"
+#~ msgstr ""
+
+#. placeholder {0}: props.def.minLevel
+#: components/space/game/DungeonDetail.tsx
+msgid "A partir do nível {0} (qualquer nível entra)"
 msgstr ""
 
 #: components/space/game/gameText.ts
@@ -1862,6 +1867,12 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Abaixo de R$ 20 o apoio ajuda no servidor, mas não libera o VIP."
+msgstr ""
+
+#. placeholder {0}: d()?.minLevel
+#. placeholder {1}: low() .map((m) => m.name) .join(", ")
+#: components/space/game/TvMenu.tsx
+msgid "Abaixo do nível recomendado ({0}): {1}. Entra, mas a DG vai pesar."
 msgstr ""
 
 #: components/space/game/GamePanel.tsx
@@ -2126,8 +2137,8 @@ msgstr ""
 #. placeholder {0}: d()?.minLevel
 #. placeholder {1}: low() .map((m) => m.name) .join(", ")
 #: components/space/game/TvMenu.tsx
-msgid "Ainda sem o nível {0}: {1}."
-msgstr ""
+#~ msgid "Ainda sem o nível {0}: {1}."
+#~ msgstr ""
 
 #: components/space/game/labels.ts
 #~ msgid "Ajudar"
@@ -5446,16 +5457,16 @@ msgstr "Syötä haluamasi käyttäjätunnuksesi."
 
 #. placeholder {0}: d()?.minLevel
 #: components/space/game/TvMenu.tsx
-msgid "Entra a partir do nível {0}"
-msgstr ""
+#~ msgid "Entra a partir do nível {0}"
+#~ msgstr ""
 
 #: components/space/game/DungeonDetail.tsx
-msgid "Entra a partir do nível {level}"
-msgstr ""
+#~ msgid "Entra a partir do nível {level}"
+#~ msgstr ""
 
 #: components/space/game/DungeonDetail.tsx
-msgid "Entrada"
-msgstr ""
+#~ msgid "Entrada"
+#~ msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Entrar no espaço"
@@ -8058,7 +8069,15 @@ msgstr ""
 #. placeholder {2}: r().def.party.min
 #. placeholder {3}: r().def.party.max
 #: components/space/game/DungeonPicker.tsx
-msgid "Monstros {0} · entra no {1} · {2}–{3} heróis"
+#~ msgid "Monstros {0} · entra no {1} · {2}–{3} heróis"
+#~ msgstr ""
+
+#. placeholder {0}: lv()
+#. placeholder {1}: r().def.minLevel
+#. placeholder {2}: r().def.party.min
+#. placeholder {3}: r().def.party.max
+#: components/space/game/DungeonPicker.tsx
+msgid "Monstros {0} · recomendado a partir do {1} · {2}–{3} heróis"
 msgstr ""
 
 #: components/space/game/DungeonDetail.tsx
@@ -10433,6 +10452,10 @@ msgstr ""
 #. placeholder {0}: props.level
 #: components/space/game/DungeonPicker.tsx
 msgid "Recomendadas para o seu nível ({0})"
+msgstr ""
+
+#: components/space/game/DungeonDetail.tsx
+msgid "Recomendado"
 msgstr ""
 
 #: components/space/SpacePage.tsx

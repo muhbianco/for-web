@@ -51,17 +51,13 @@ test("grupo na TV: cria, entra até 5 (D41), vários grupos por TV e um por pess
   });
 });
 
-test("level mínimo da dungeon vale para criar e para entrar", () => {
+test("sem trava de nível (27/11/2026): nível baixo cria, entra e troca para DG mais alta", () => {
   const hub = new LobbyHub();
-  assert.deepEqual(hub.create("tv1", "R1", "masmorra-70", m("A", 5), 0), {
-    ok: false,
-    reason: "level",
-  });
-  assert.equal(
-    hub.create("tv1", "R1", "masmorra-70", m("A", 66), 0).ok,
-    true,
-  );
-  assert.deepEqual(hub.join("tv1", undefined, m("B", 7)), { ok: false, reason: "level" });
+  assert.equal(hub.create("tv1", "R1", "masmorra-70", m("A", 5), 0).ok, true);
+  assert.equal(hub.join("tv1", undefined, m("B", 7)).ok, true);
+  assert.equal(hub.setDungeon("A", "masmorra-490").ok, true);
+  // O fim de jogo (501–600) existe e também entra.
+  assert.equal(hub.setDungeon("A", "masmorra-590").ok, true);
 });
 
 test("sair: membro sai e o grupo segue; o líder saindo passa a liderança; o último fecha; desfazer solta todos", () => {
@@ -163,13 +159,12 @@ test("loop: depois de cada vitória a próxima fica marcada; derrota, retirada e
   assert.deepEqual(hub.expire(30_000 + LOBBY.idleMs).map((x) => x.tv), ["tv1"]);
 });
 
-test("trocar a dungeon: só o líder, fora da corrida, e todos com o level dela", () => {
+test("trocar a dungeon: só o líder e fora da corrida", () => {
   const hub = new LobbyHub();
   hub.create("tv1", "R1", "masmorra-40", m("A", 70), 0);
   hub.join("tv1", undefined, m("B", 66));
   assert.deepEqual(hub.setDungeon("B", "masmorra-40"), { ok: false, reason: "not_leader" });
   assert.deepEqual(hub.setDungeon("A", "nada"), { ok: false, reason: "unknown_dungeon" });
-  assert.deepEqual(hub.setDungeon("A", "masmorra-110"), { ok: false, reason: "level" });
   assert.equal(hub.setDungeon("A", "masmorra-70").ok, true);
   assert.equal(hub.atTv("tv1")[0]!.dungeon, "masmorra-70");
   hub.start("A", 1);

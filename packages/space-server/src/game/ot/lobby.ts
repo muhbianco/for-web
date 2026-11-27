@@ -143,7 +143,8 @@ export class LobbyHub {
   ): LobbyResult {
     const d = dungeonById(dungeon);
     if (!d) return { ok: false, reason: "unknown_dungeon" };
-    if (leader.level < d.minLevel) return { ok: false, reason: "level" };
+    // Sem trava de nível desde 27/11/2026 (o dono: "não vamos mais impedir ninguém de entrar em DG de
+    // level mais alto"): o nível mínimo virou só recomendação. O chefe de Região continua trancado.
     if (bossLocked(d, leader)) return { ok: false, reason: "region" };
     if (this.memberOf.has(leader.user_id))
       return { ok: false, reason: "in_lobby" };
@@ -197,7 +198,6 @@ export class LobbyHub {
     if (lobby.members.length >= maxOf(lobby.dungeon))
       return { ok: false, reason: "full" };
     const d = dungeonById(lobby.dungeon);
-    if (d && member.level < d.minLevel) return { ok: false, reason: "level" };
     if (d && bossLocked(d, member)) return { ok: false, reason: "region" };
     lobby.members.push(member);
     this.memberOf.set(member.user_id, lobby.id);
@@ -390,8 +390,6 @@ export class LobbyHub {
     if (lobby.state === "running") return { ok: false, reason: "in_run" };
     const d = dungeonById(dungeon);
     if (!d) return { ok: false, reason: "unknown_dungeon" };
-    if (lobby.members.some((m) => m.level < d.minLevel))
-      return { ok: false, reason: "level" };
     if (lobby.members.some((m) => bossLocked(d, m)))
       return { ok: false, reason: "region" };
     if (lobby.members.length > d.party.max)

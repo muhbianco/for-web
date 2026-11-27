@@ -957,8 +957,6 @@ export class RpgService {
             peek.members.length > dg.party.max
           )
             return fail("rpg_invalid", "party_size");
-          if (peek.members.some((m) => m.level < dg.minLevel))
-            return fail("rpg_invalid", "level");
           if (
             dg.kind === "regional" &&
             peek.members.some((m) => !(m.regions ?? []).includes(dg.region.index))
@@ -1233,9 +1231,7 @@ export class RpgService {
     const now = this.now();
     for (const d of docs) {
       if (!d) return { ok: false, code: "rpg_invalid", reason: "no_hero" };
-      if (d.hero.level < dungeon.minLevel)
-        return { ok: false, code: "rpg_invalid", reason: "level" };
-      // O Chefe de Região só para quem concluiu as Caçadas e Masmorras da região (26/11/2026).
+      // Sem trava de nível (27/11/2026): o nível mínimo é só recomendação. O Chefe de Região só para quem concluiu as Caçadas e Masmorras da região (26/11/2026).
       if (bossMissing(dungeon, d.cleared ?? []).length > 0)
         return { ok: false, code: "rpg_invalid", reason: "region" };
       if (inRun(d, now))

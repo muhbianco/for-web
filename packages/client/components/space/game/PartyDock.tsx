@@ -14,7 +14,6 @@ import { CLASS_ICON } from "./RunHud";
 import { gameChip } from "./gameTheme";
 import { type GameLink, useCommands } from "./gameUi";
 import {
-  belowLevel,
   dungeonName,
   loopStopText,
   outcomeText,
@@ -78,8 +77,7 @@ export default function PartyDock(props: {
       !!d &&
       l().state !== "running" &&
       !l().pending &&
-      l().members.length >= d.party.min &&
-      belowLevel(l().members, d.minLevel).length === 0
+      l().members.length >= d.party.min
     );
   };
   const prepOf = (id: string) => l().prep?.find((p) => p.user_id === id);
