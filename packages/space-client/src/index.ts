@@ -35,3 +35,19 @@ export { floorSwatch } from "./render/floors.ts";
 export { type PlayerEvents, type PlayerState, type TvPlayer, YouTubePlayer, loadYouTubeApi } from "./tv/player.ts";
 export { TvSync } from "./tv/sync.ts";
 export type { RoomTv } from "./view.ts";
+export {
+  BUBBLE,
+  BUBBLE_TEXT_WIDTH,
+  type BubbleColumn,
+  type BubbleLabels,
+  type BubblePlacement,
+  type BubblePlan,
+  bubbleMs,
+  bubbleText,
+  layoutBubbles,
+  type Measure,
+  planBubble,
+  staticMs,
+  type TickerPlan,
+} from "./chat/bubbles.ts";
+export type { HeadAnchor } from "./render/renderer.ts";

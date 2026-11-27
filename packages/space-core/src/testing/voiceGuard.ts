@@ -13,6 +13,9 @@ export const GAME_DIRS = [
   "packages/space-server/src/game",
   "packages/space-client/src/game",
   "packages/client/components/space/game",
+  // O chat do Espaço (balões sobre os avatares, 27/11/2026): a mesma regra, balão não faz som.
+  "packages/space-client/src/chat",
+  "packages/client/components/space/chat",
 ];
 
 const FORBIDDEN: { re: RegExp; why: string }[] = [

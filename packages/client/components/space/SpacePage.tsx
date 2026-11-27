@@ -42,6 +42,10 @@ import { Symbol } from "@revolt/ui/components/utils/Symbol";
 import { reloadForUpdate, staleBuild } from "../../src/staleBuild";
 
 import { audioCheckedHere, markAudioCheckedHere } from "./AudioCheck";
+import { BubbleLayer } from "./chat/BubbleLayer";
+import { ChatDock } from "./chat/ChatDock";
+import { ChatPanel } from "./chat/ChatPanel";
+import { createSpaceChat } from "./chat/spaceChat";
 import { clientKind, sessionToken } from "./config";
 import { DecorPanel } from "./DecorPanel";
 import { InteractionDialog } from "./InteractionDialog";
@@ -161,7 +165,7 @@ function ServerSpace(props: { serverId: string }) {
   /** A touch screen (phone or tablet): the map comes first, bigger targets. */
   const touch = matchMedia("(pointer: coarse)").matches;
   // On a touch screen the map comes first: the room list opens from its button.
-  const [panel, setPanel] = createSignal<"rooms" | "decor" | null>(
+  const [panel, setPanel] = createSignal<"rooms" | "decor" | "chat" | null>(
     compact() || touch ? null : "rooms",
   );
   // The width left for the space (the app's sidebar takes its part on tablets):
@@ -297,6 +301,11 @@ function ServerSpace(props: { serverId: string }) {
   // What covers the map (a sheet, the dock, the run panel) moves the camera: you
   // stay in the part you can see. Measured after every layout change and resize.
   let mapAreaEl: HTMLDivElement | undefined;
+  /** O que cobre a borda direita e o pé do mapa agora (px): a câmera e os balões evitam. */
+  const [mapInsets, setMapInsets] = createSignal(
+    { right: 0, bottom: 0 },
+    { equals: (a, b) => a.right === b.right && a.bottom === b.bottom },
+  );
   const measureInsets = () => {
     const v = view();
     const area = mapAreaEl?.getBoundingClientRect();
@@ -312,14 +321,23 @@ function ServerSpace(props: { serverId: string }) {
       if (r.width === 0 || r.height === 0) continue;
       if (r.right < area.left || r.left > area.right) continue;
       if (r.bottom < area.top || r.top > area.bottom) continue;
-      // Along the right edge (taller than half the map): covers a column.
-      if (r.right >= area.right - 2 && r.height > area.height / 2)
+      // Along the right edge (taller than half the map): covers a column. A phone's sheet
+      // spans the whole width from below: it is a band, even when taller than half (the
+      // chat's sheet is; counted as a column, the camera left you under it, 27/11/2026).
+      const sheetFromBelow =
+        r.left <= area.left + 2 && r.top > area.top + 2;
+      if (
+        r.right >= area.right - 2 &&
+        r.height > area.height / 2 &&
+        !sheetFromBelow
+      )
         right = Math.max(right, area.right - r.left);
       // Along the bottom edge (wider than half): covers a band.
       else if (r.bottom >= area.bottom - 2 && r.width > area.width / 2)
         bottom = Math.max(bottom, area.bottom - r.top);
     }
     v.setInsets(right, bottom);
+    setMapInsets({ right: Math.round(right), bottom: Math.round(bottom) });
   };
   const remeasure = () =>
     requestAnimationFrame(() => requestAnimationFrame(measureInsets));
@@ -414,6 +432,77 @@ function ServerSpace(props: { serverId: string }) {
   };
 
   const serverId = props.serverId;
+
+  // ---- Chat do Espaço (27/11/2026): balões sobre as cabeças, o campo no mapa, o canal no painel ----
+  const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const chat = createSpaceChat({
+    serverId,
+    client,
+    view,
+    tick: ui,
+    labels: {
+      code: t`[código]`,
+      spoiler: t`[spoiler]`,
+      attachment: t`📎 anexo`,
+      attachments: (n) => t`📎 ${n} anexos`,
+    },
+  });
+  /** O painel mostra outra sala (aberta pela lista); null = segue você. */
+  const [chatPinned, setChatPinned] = createSignal<string | null>(null);
+  const chatChannel = () => {
+    const pinned = chatPinned();
+    return pinned ? client().channels.get(pinned) : chat.hereChannel();
+  };
+  const chatFollowing = () => !chatPinned() || chatPinned() === chat.hereChannelId();
+  // Chegou à sala que estava lendo: o painel volta a seguir você.
+  createEffect(() => {
+    if (chatPinned() && chatPinned() === chat.hereChannelId()) setChatPinned(null);
+  });
+  /** A mensagem em destaque no painel (o balão clicado). */
+  const [chatHighlight, setChatHighlight] = createSignal<string>();
+  const [dockFocus, setDockFocus] = createSignal(0);
+  const [panelFocus, setPanelFocus] = createSignal(0);
+
+  /** Nome de um canal em palavras: a sala do mapa, ou "#canal" (o do saguão). */
+  function placeOf(channelId: string): string {
+    for (const w of ui()?.list ?? [])
+      for (const r of w.rooms) if (r.roomId === channelId) return r.title;
+    const ch = client().channels.get(channelId);
+    return ch ? `#${ch.name}` : t`chat`;
+  }
+
+  /** O campo sobre o mapa aparece: computador, ninguém cobrindo o pé do mapa, um destino. */
+  const dockShown = () =>
+    !compact() &&
+    !!view() &&
+    !!chat.hereChannel() &&
+    panel() !== "chat" &&
+    !ui()?.runOpen &&
+    !ui()?.editor.enabled &&
+    !!profile() &&
+    profile()!.onboarding_version >= ONBOARDING_VERSION &&
+    audioChecked();
+
+  /** Abre o painel do chat: o de onde você está, ou o de outra sala (a lista, um balão). */
+  function openChat(channelId?: string, messageId?: string, focus = false) {
+    if (panel() === "decor") openDecor(false);
+    const here = chat.hereChannelId();
+    setChatPinned(channelId && channelId !== here ? channelId : null);
+    setChatHighlight(messageId);
+    setPanel("chat");
+    if (focus) queueMicrotask(() => setPanelFocus((n) => n + 1));
+  }
+
+  /** Enter no mapa: o campo que estiver à vista ganha o foco (o painel, se aberto). */
+  function focusChat() {
+    if (panel() === "chat") setPanelFocus((n) => n + 1);
+    else if (dockShown()) setDockFocus((n) => n + 1);
+    else openChat(undefined, undefined, true);
+  }
+
+  function leaveChat() {
+    host?.focus();
+  }
 
   /** Roles of this Stoat server, for "who may decorate". */
   const roles = () =>
@@ -667,9 +756,16 @@ function ServerSpace(props: { serverId: string }) {
 
   /** Width of the side column (wide screens); 0 with no panel open. */
   const sideWidth = () =>
-    panel() === "rooms" ? 280 : panel() === "decor" ? 340 : 0;
+    panel() === "rooms"
+      ? 280
+      : panel() === "decor"
+        ? 340
+        : panel() === "chat"
+          ? 360
+          : 0;
   /** Share of the page height the panel row takes (narrow screens), in %. */
-  const panelRowPct = () => (!panel() ? 0 : panel() === "decor" ? 55 : 40);
+  const panelRowPct = () =>
+    !panel() ? 0 : panel() === "decor" || panel() === "chat" ? 55 : 40;
 
   /** Grid of the page: map, stage (beside it or in focus), side panel. */
   const gridStyle = () => {
@@ -729,6 +825,12 @@ function ServerSpace(props: { serverId: string }) {
     const el = e.target as HTMLElement | null;
     if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    // Enter no mapa abre a conversa (só no mapa: num botão, Enter é o clique do botão).
+    if (e.key === "Enter" && !e.shiftKey && el === host) {
+      e.preventDefault();
+      focusChat();
+      return;
+    }
     if (e.code === "KeyF" && !e.shiftKey && stageVisible()) {
       e.preventDefault();
       setStageMode(stageMode() === "focus" ? "side" : "focus");
@@ -838,6 +940,16 @@ function ServerSpace(props: { serverId: string }) {
         <PromptChip type="button" onClick={reloadForUpdate}>
           <Symbol size={16}>refresh</Symbol>
           {t`Versão nova do Muchat · Recarregar`}
+        </PromptChip>
+      </Show>
+      {/* No celular o campo de conversa não cabe sobre o mapa: o chip abre o chat com o teclado. */}
+      <Show when={compact() && chat.hereChannel()}>
+        <PromptChip
+          type="button"
+          onClick={() => openChat(undefined, undefined, true)}
+        >
+          <Symbol size={16}>forum</Symbol>
+          {t`Conversar`}
         </PromptChip>
       </Show>
       <Show when={view() && ui()?.rpg}>
@@ -1000,6 +1112,47 @@ function ServerSpace(props: { serverId: string }) {
             </span>
           </Show>
         </Show>
+        <Show when={chat.hereChannel() || chatPinned()}>
+          <Show
+            when={compact()}
+            fallback={
+              <Button
+                data-chat-toggle=""
+                variant={panel() === "chat" ? "filled" : "tonal"}
+                onPress={() => (panel() === "chat" ? setPanel(null) : openChat())}
+                aria-pressed={panel() === "chat"}
+                use:floating={{
+                  tooltip: {
+                    placement: "bottom",
+                    content: t`O chat de texto de onde você está (Enter escreve no mapa)`,
+                  },
+                }}
+              >
+                <Symbol size={18}>forum</Symbol> {t`Chat`}
+                <Show when={panel() !== "chat" && chat.hereChannel()?.unread}>
+                  <LiveDot data-tone="unread" aria-label={t`Mensagens novas`} />
+                </Show>
+              </Button>
+            }
+          >
+            <span class={badged}>
+              <IconButton
+                data-chat-toggle=""
+                variant={panel() === "chat" ? "filled" : "tonal"}
+                aria-label={t`Chat`}
+                aria-pressed={panel() === "chat"}
+                onPress={() =>
+                  panel() === "chat" ? setPanel(null) : openChat(undefined, undefined, true)
+                }
+              >
+                <Symbol>forum</Symbol>
+              </IconButton>
+              <Show when={panel() !== "chat" && chat.hereChannel()?.unread}>
+                <LiveDot data-tone="unread" aria-label={t`Mensagens novas`} />
+              </Show>
+            </span>
+          </Show>
+        </Show>
         <Show when={ui()?.rights.can_edit}>
           <Show
             when={compact()}
@@ -1055,6 +1208,12 @@ function ServerSpace(props: { serverId: string }) {
       </Bar>
       <Body
         ref={bodyEl}
+        // A folha e o painel entram animados: mede de novo quando param (no celular a medida
+        // pegava a folha no meio do caminho e a câmera deixava você embaixo dela).
+        onAnimationEnd={(e) => {
+          if (e.target instanceof HTMLElement && e.target.tagName === "ASIDE")
+            remeasure();
+        }}
         style={gridStyle()}
         data-compact={compact() ? "" : undefined}
         data-sheets={sheets() && !compact() ? "" : undefined}
@@ -1072,8 +1231,34 @@ function ServerSpace(props: { serverId: string }) {
             class={mapCanvas}
             tabIndex={0}
             role="application"
-            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações.`}
+            aria-label={t`Mapa do espaço. Setas ou W A S D para andar, clique para ir até um ponto, E usa o objeto ao lado, Enter abre a conversa, + e − para o zoom. Numa sala: P abre o palco, F amplia o palco, M liga e desliga o microfone, Shift+D ensurdece, Shift+S compartilha a tela. A lista de salas tem as mesmas informações.`}
           />
+          {/* Os balões de conversa: acima do canvas, abaixo de tudo o que o app põe no mapa. */}
+          <Show when={view()}>
+            {(v) => (
+              <BubbleLayer
+                chat={chat}
+                view={v()}
+                reducedMotion={reducedMotion}
+                placeOf={placeOf}
+                insets={mapInsets()}
+                onOpen={(channelId, messageId) => openChat(channelId, messageId)}
+              />
+            )}
+          </Show>
+          <Show when={dockShown() && chat.hereChannel()}>
+            {(ch) => (
+              <ChatDock
+                chat={chat}
+                channel={ch()}
+                place={placeOf(ch().id)}
+                focusRequest={dockFocus}
+                onLeave={leaveChat}
+                onOpenPanel={(channelId, messageId) => openChat(channelId, messageId)}
+                touch={touch}
+              />
+            )}
+          </Show>
           <Switch>
             <Match when={failed()}>{(msg) => <Notice>{msg()}</Notice>}</Match>
             <Match
@@ -1420,6 +1605,31 @@ function ServerSpace(props: { serverId: string }) {
             />
           </div>
         </Show>
+        <Show when={panel() === "chat" ? chatChannel() : undefined}>
+          {(ch) => (
+            <ChatPanel
+              channel={ch()}
+              following={chatFollowing()}
+              place={placeOf(ch().id)}
+              herePlace={(() => {
+                const id = chat.hereChannelId();
+                return id ? placeOf(id) : null;
+              })()}
+              onFollow={() => setChatPinned(null)}
+              onClose={() => {
+                setPanel(null);
+                host?.focus();
+              }}
+              focusRequest={panelFocus}
+              onLeave={leaveChat}
+              highlight={chatHighlight}
+              clearHighlight={() => setChatHighlight(undefined)}
+              serverId={serverId}
+              touch={touch}
+              sheet={compact()}
+            />
+          )}
+        </Show>
         <Show when={panel() === "decor" && view() && ui()}>
           <DecorPanel
             view={view()!}
@@ -1453,10 +1663,12 @@ function ServerSpace(props: { serverId: string }) {
                             <Muted>{room.status}</Muted>
                           </RoomButton>
                           <Show when={room.canView}>
+                            {/* O chat da sala abre aqui, ao lado do mapa (antes saía do Espaço). */}
                             <ChatLink
-                              href={`/server/${serverId}/channel/${room.roomId}`}
+                              type="button"
+                              onClick={() => openChat(room.roomId)}
                               aria-label={t`Chat de ${room.title}`}
-                              title={t`Chat da sala`}
+                              title={t`Ler o chat da sala sem sair do mapa`}
                             >
                               <Symbol size={18}>chat</Symbol>
                             </ChatLink>
@@ -1784,6 +1996,8 @@ const LiveDot = styled("span", {
     borderRadius: "50%",
     background: "var(--md-sys-color-error)",
     marginInlineStart: "2px",
+    // Mensagem nova no chat: a cor de destaque, não o vermelho de "ao vivo".
+    "&[data-tone=unread]": { background: "var(--md-sys-color-primary)" },
   },
 });
 
@@ -1916,15 +2130,20 @@ const RoomButton = styled("button", {
   },
 });
 
-const ChatLink = styled("a", {
+const ChatLink = styled("button", {
   base: {
     display: "grid",
     placeItems: "center",
     width: "32px",
     height: "32px",
+    padding: 0,
+    border: "none",
     borderRadius: "8px",
+    background: "transparent",
     color: "var(--md-sys-color-on-surface-variant)",
+    cursor: "pointer",
     "&:hover": { background: "var(--md-sys-color-surface-container-high)" },
+    "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
     "@media (pointer: coarse)": { width: "44px", height: "44px" },
   },
 });
