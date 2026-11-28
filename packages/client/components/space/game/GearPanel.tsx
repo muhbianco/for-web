@@ -7,13 +7,13 @@ import {
   type OwnedItem,
   type PotionSize,
   type RpgHeroState,
-  BAG_SLOTS,
   FAMILIES,
   MATERIALS,
   buyBackPrice,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
+import { Search, searchText } from "./BankPanel";
 import { ItemCard, TouchHint } from "./ItemCard";
 import { ItemTip } from "./ItemTip";
 import { rarityName, sizeName, slotName } from "./gameText";
@@ -84,8 +84,8 @@ const MARK_RANK: Record<BagMark, number> = {
 };
 
 /**
- * Equipamento e mochila (§9, D36): o que veste nos 8 lugares, a mochila de 40 espaços (sem peso)
- * com ▲/▼ pela nota do papel, o detalhe com antes/depois e as ações; "escolher o melhor sozinho"
+ * Equipamento e mochila (§9, D36): o que veste nos 8 lugares, a mochila sem limite (28/11/2026;
+ * busca e páginas de 60) com ▲/▼ pela nota do papel, o detalhe com antes/depois e as ações; "escolher o melhor sozinho"
  * com a prévia do que vai trocar e a confirmação, um a um, do que esbarra num item +7 (§9.8); o
  * cinto com os 3 tamanhos de poção (D35) e quando beber.
  */
@@ -99,12 +99,18 @@ export function GearPanel(props: {
   const h = () => props.state.hero;
   const [sel, setSel] = createSignal<string | null>(null);
   const [sort, setSort] = createSignal<Sort>("melhor");
+  // A mochila não tem limite (28/11/2026): busca pelo nome e páginas de 60.
+  const [query, setQuery] = createSignal("");
+  const [shown, setShown] = createSignal(BAG_PAGE);
   const [plan, setPlan] = createSignal(false);
   const [ok, setOk] = createSignal<string | null>(null);
 
   const marks = createMemo(() => bagMarks(h()));
   const bag = createMemo(() => {
-    const list = [...h().bag];
+    const q = query().trim().toLocaleLowerCase("pt-BR");
+    const list = q
+      ? h().bag.filter((x) => searchText(x).includes(q))
+      : [...h().bag];
     const m = marks();
     if (sort() === "melhor")
       list.sort(
@@ -123,7 +129,7 @@ export function GearPanel(props: {
     return uid ? findItem(h(), uid) : null;
   });
   const auto = createMemo(() => (plan() ? autoPlan(h()) : null));
-  const full = () => h().bag.length >= BAG_SLOTS;
+  const visible = createMemo(() => bag().slice(0, shown()));
 
   const act = async (
     type: string,
@@ -192,10 +198,12 @@ export function GearPanel(props: {
             <BagHead>
               <h3>
                 {t`Mochila`}{" "}
-                <Count
-                  data-full={h().bag.length >= BAG_SLOTS - 4 ? "" : undefined}
-                >
-                  {h().bag.length}/{BAG_SLOTS}
+                <Count>
+                  {query().trim()
+                    ? t`${bag().length} de ${h().bag.length}`
+                    : h().bag.length === 1
+                      ? t`1 item`
+                      : t`${h().bag.length} itens`}
                 </Count>
               </h3>
               <Row>
@@ -212,13 +220,20 @@ export function GearPanel(props: {
                 </label>
               </Row>
             </BagHead>
-            <Show when={h().bag.length >= BAG_SLOTS - 4}>
-              <Muted role="note">
-                {t`Quase cheia: o que cair na dungeon e não couber vai para o cofre do Banqueiro.`}
-              </Muted>
+            <Show when={h().bag.length > BAG_PAGE}>
+              <Search
+                type="search"
+                value={query()}
+                placeholder={t`Buscar na mochila (nome, lugar, perk…)`}
+                aria-label={t`Buscar na mochila`}
+                onInput={(e) => {
+                  setQuery(e.currentTarget.value);
+                  setShown(BAG_PAGE);
+                }}
+              />
             </Show>
             <Grid role="list">
-              <For each={bag()}>
+              <For each={visible()}>
                 {(it) => (
                   <ItemTip item={it} hero={h()} price={buyBackPrice(it)}>
                     {(bind) => (
@@ -245,14 +260,16 @@ export function GearPanel(props: {
                   </ItemTip>
                 )}
               </For>
-              <For
-                each={Array.from({
-                  length: Math.max(0, BAG_SLOTS - h().bag.length),
-                })}
-              >
-                {() => <Hole aria-hidden="true" />}
-              </For>
             </Grid>
+            <Show when={bag().length > visible().length}>
+              <Btn
+                type="button"
+                data-tone="quiet"
+                onClick={() => setShown(shown() + BAG_PAGE)}
+              >
+                {t`Mostrar mais (${bag().length - visible().length})`}
+              </Btn>
+            </Show>
             <Legend>
               <span>
                 <b style={{ color: "#7ee08a" }}>▲</b>{" "}
@@ -285,8 +302,7 @@ export function GearPanel(props: {
                       fallback={
                         <Btn
                           type="button"
-                          disabled={props.locked || cmd.busy() || full()}
-                          title={full() ? t`A mochila está cheia.` : undefined}
+                          disabled={props.locked || cmd.busy()}
                           onClick={() =>
                             act(
                               "rpg.unequip",
@@ -663,6 +679,9 @@ const Empty = styled("span", {
     padding: "2px",
   },
 });
+/** Itens por página na mochila (sem limite desde 28/11/2026). */
+const BAG_PAGE = 60;
+
 const BagHead = styled("div", {
   base: {
     display: "flex",
@@ -720,14 +739,6 @@ const Cell = styled("button", {
     },
     "&[data-blocked] > span": { opacity: 0.45, filter: "grayscale(0.6)" },
     "&:focus-visible": { outline: "2px solid var(--md-sys-color-primary)" },
-  },
-});
-const Hole = styled("span", {
-  base: {
-    aspectRatio: "1",
-    minHeight: "48px",
-    borderRadius: "8px",
-    border: "1px dashed rgba(255,255,255,0.07)",
   },
 });
 const Legend = styled("div", {

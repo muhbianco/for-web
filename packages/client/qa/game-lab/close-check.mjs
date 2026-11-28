@@ -21,22 +21,24 @@ const CASES = [
   { id: "mercador", act: async () => {} },
   { id: "ferreiro", act: async () => {} },
   { id: "mestre", act: async () => {} },
+  // A Mula (antes o Banqueiro, 28/11/2026): só a transferência.
+  { id: "banqueiro", act: async () => {} },
   {
-    id: "banqueiro",
-    // Para em cima de um item (abre a dica), clique duplo (vai para o cofre) e troca de aba.
+    id: "bau",
+    // O baú compartilhado: para em cima de um item (abre a dica), clique duplo (vai para o baú) e
+    // troca de aba.
     act: async (p) => {
       const cell = p
         .locator('[aria-label="Itens da mochila"] [role=option]')
-        .first();
+        .nth(2);
       await cell.hover();
       await p.waitForTimeout(450);
       await cell.dblclick();
       await p.waitForTimeout(300);
-      await p.locator('[role=dialog] [data-tab="ouro"]').first().click();
-      await p.locator('[role=dialog] [data-tab="cofre"]').first().click();
+      await p.locator('[role=dialog] [data-tab="historico"]').first().click();
+      await p.locator('[role=dialog] [data-tab="bau"]').first().click();
     },
   },
-  { id: "banqueiro-cheio", act: async () => {} },
 ];
 
 const browser = await chromium.launch();

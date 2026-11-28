@@ -1,21 +1,11 @@
-import {
-  For,
-  Show,
-  createEffect,
-  createMemo,
-  createSignal,
-  on,
-  untrack,
-} from "solid-js";
+import { For, Show, createMemo, createSignal } from "solid-js";
 
 import { useLingui } from "@lingui/solid/macro";
 import {
   type GearSlot,
   type HeroV5,
   type OwnedItem,
-  type RarityId,
   type RpgHeroState,
-  BAG_SLOTS,
   buyBackPrice,
   itemTooltip,
   planTransfer,
@@ -41,19 +31,22 @@ import {
 } from "./gameUi";
 import { type BagMark, bagMarks, cannotWear, gold } from "./heroModel";
 
-type Tab = "cofre" | "ouro" | "transferir";
+type RunFn = (
+  type: string,
+  d: Record<string, unknown>,
+  done: string,
+) => Promise<boolean>;
 
 /**
- * O Banqueiro (§10, D36; redesenho de 27/11/2026): o cofre de itens sem limite (o que não cabe na
- * mochila no fim da corrida vem para cá), o ouro guardado e a transferência para outra pessoa.
+ * A Mula (28/11/2026, antes o Banqueiro): leva ouro e itens da mochila para outra pessoa do Espaço,
+ * com taxa e registro. O cofre de ouro e de itens saiu (a mochila não tem limite; o que estava
+ * guardado foi para a mochila e para a mão na primeira leitura do herói). O NPC segue o mesmo no mapa
+ * (`npc-banqueiro`, tipo `banqueiro`): só o nome, o desenho e o painel mudaram.
  *
- * O cofre é um baú de duas colunas (cofre | mochila, empilhadas no celular): filtros com a contagem
- * de cada um (tipo, raridade, "serve em mim", novos), busca pelo nome, ordem, seleção de vários
- * (Shift amplia, clique duplo move na hora), atalhos ("guardar o que não dá para vestir", "trazer as
- * melhorias"), a barra de mover com o efeito escrito antes ("cabem 3") e o Desfazer depois. O selo
- * NOVO marca o que chegou desde a última visita (guardado só neste navegador).
+ * As peças da grade (`Stash`, `marksOf`, `searchText` e os estilos) ficam aqui: o baú compartilhado
+ * e a mochila da ficha usam as mesmas.
  */
-export function BankPanel(props: {
+export function MulePanel(props: {
   link: GameLink;
   npc: string;
   state: RpgHeroState;
@@ -61,10 +54,8 @@ export function BankPanel(props: {
 }) {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
-  const [tab, setTab] = createSignal<Tab>("cofre");
   const [ok, setOk] = createSignal<string | null>(null);
   const h = () => props.state.hero;
-  const seen = useSeen(() => h().vault.items);
   const run = async (
     type: string,
     d: Record<string, unknown>,
@@ -75,174 +66,38 @@ export function BankPanel(props: {
     if (r?.ok) setOk(done);
     return !!r?.ok;
   };
-  const room = () => BAG_SLOTS - h().bag.length;
   return (
     <Wrap>
-      <Ledger aria-label={t`Resumo do Banqueiro`}>
+      <Ledger aria-label={t`Resumo da Mula`}>
         <Stat>
           <small>{t`Ouro na mão`}</small>
           <Gold n={gold(h().gold)} />
         </Stat>
         <Stat>
-          <small>{t`Ouro no cofre`}</small>
-          <Gold n={gold(h().vault.gold)} />
-        </Stat>
-        <Stat>
-          <small>{t`Itens no cofre`}</small>
-          <strong>
-            {h().vault.items.length} <Muted>· {t`sem limite`}</Muted>
-          </strong>
-        </Stat>
-        <Stat data-warn={room() <= 4 ? "" : undefined}>
           <small>{t`Mochila`}</small>
           <strong>
-            {h().bag.length}/{BAG_SLOTS}
+            {h().bag.length === 1 ? t`1 item` : t`${h().bag.length} itens`}
           </strong>
-          <Meter aria-hidden="true">
-            <span style={{ width: `${(h().bag.length / BAG_SLOTS) * 100}%` }} />
-          </Meter>
         </Stat>
       </Ledger>
-      <Tabs
-        label={t`Banqueiro`}
-        value={tab()}
-        onChange={(v) => {
-          setOk(null);
-          setTab(v);
-        }}
-        items={[
-          {
-            id: "cofre",
-            label: t`Cofre de itens`,
-            badge: seen.count() || null,
-          },
-          { id: "ouro", label: t`Ouro` },
-          { id: "transferir", label: t`Transferir` },
-        ]}
+      <Notice error={cmd.error()} ok={ok()} />
+      <TransferBox
+        state={props.state}
+        people={props.people}
+        busy={cmd.busy()}
+        run={run}
       />
-      <Show when={tab() === "cofre"}>
-        <VaultBox
-          state={props.state}
-          npc={props.npc}
-          link={props.link}
-          isNew={seen.isNew}
-          onMoved={seen.mark}
-        />
-      </Show>
-      <Show when={tab() === "ouro"}>
-        <Notice error={cmd.error()} ok={ok()} />
-        <GoldBox state={props.state} busy={cmd.busy()} run={run} />
-      </Show>
-      <Show when={tab() === "transferir"}>
-        <Notice error={cmd.error()} ok={ok()} />
-        <TransferBox
-          state={props.state}
-          people={props.people}
-          busy={cmd.busy()}
-          run={run}
-        />
-      </Show>
     </Wrap>
   );
 }
 
-type RunFn = (
-  type: string,
-  d: Record<string, unknown>,
-  done: string,
-) => Promise<boolean>;
-
-// ------------------------------------------------------------ o selo NOVO
-
-const SEEN_KEY = "muchat:idle:vault-seen:v1";
-
-function readSeen(): Set<string> | null {
-  try {
-    const raw = localStorage.getItem(SEEN_KEY);
-    if (!raw) return null;
-    const list: unknown = JSON.parse(raw);
-    return Array.isArray(list)
-      ? new Set(list.filter((x): x is string => typeof x === "string"))
-      : null;
-  } catch {
-    // Sem armazenamento (janela privada, bloqueado): o selo vale só para o que chega com ela aberta.
-    return null;
-  }
-}
-
-function writeSeen(uids: string[]) {
-  try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify(uids));
-  } catch {
-    // Idem: sem armazenamento, a próxima visita começa sem selo.
-  }
-}
-
-/**
- * O que chegou ao cofre desde a última visita (neste navegador): o loot que não coube na mochila.
- * Na primeira visita tudo conta como visto (sem uma enxurrada de selos); o que a pessoa guarda com
- * a janela aberta não ganha selo. `known` é o retrato da abertura (o selo vale até a próxima
- * visita); o que está no cofre vira visto para a próxima a cada mudança, num efeito.
- *
- * Nada de ler estado reativo numa limpeza (onCleanup): fechar a janela muda o `ui()` do app, e ler
- * o herói enquanto a janela é descartada fazia o Solid recalcular ali o Switch que a contém e
- * limpá-lo duas vezes ("Cannot read properties of null (reading '0')" no cleanNode). A reatividade
- * do app parava e a tela congelava (27/11/2026; regressão em qa/game-lab/close-check.mjs).
- */
-function useSeen(items: () => OwnedItem[]) {
-  const known = readSeen() ?? new Set(untrack(items).map((x) => x.uid));
-  const [mine, setMine] = createSignal<ReadonlySet<string>>(new Set());
-  const isNew = (uid: string) => !known.has(uid) && !mine().has(uid);
-  const count = createMemo(() => items().filter((x) => isNew(x.uid)).length);
-  createEffect(on(items, (list) => writeSeen(list.map((x) => x.uid))));
-  return {
-    isNew,
-    count,
-    mark: (uids: readonly string[]) => setMine(new Set([...mine(), ...uids])),
-  };
-}
-
-// ------------------------------------------------------------ cofre de itens
-
-type Cat = "todos" | "armas" | "armaduras" | "joias";
-type Sort = "novos" | "raridade" | "nivel" | "lugar";
-
-const CAT_OF: Record<GearSlot, Exclude<Cat, "todos">> = {
-  arma: "armas",
-  secundaria: "armas",
-  elmo: "armaduras",
-  armadura: "armaduras",
-  calcas: "armaduras",
-  botas: "armaduras",
-  colar: "joias",
-  anel: "joias",
-};
-const SLOT_ORDER: GearSlot[] = [
-  "arma",
-  "secundaria",
-  "elmo",
-  "armadura",
-  "calcas",
-  "botas",
-  "colar",
-  "anel",
-];
-const RARITIES: RarityId[] = ["lendario", "epico", "raro", "incomum", "comum"];
-const RANK: Record<RarityId, number> = {
-  comum: 0,
-  incomum: 1,
-  raro: 2,
-  epico: 3,
-  lendario: 4,
-};
-/** Quantos itens do cofre aparecem por vez (o cofre não tem fim; o resto vem com "mostrar mais"). */
-const PAGE = 48;
+// ------------------------------------------------------------ a grade (o baú e a mochila usam)
 
 export type Marks = Record<string, { mark: BagMark; score: number }>;
 
 /**
- * ▲/▼ de itens fora da mochila pela mesma nota da mochila: em pedaços de 32, para a troca (o vestido
- * volta para a "mochila" da conta) nunca passar dos 40 espaços. ~0,5 ms por item: só o que aparece.
+ * ▲/▼ de itens fora da mochila (o baú) pela mesma nota da mochila, em pedaços de 32. ~0,5 ms por
+ * item: só o que aparece.
  */
 export function marksOf(h: HeroV5, items: OwnedItem[]): Marks {
   const out: Marks = {};
@@ -270,529 +125,6 @@ export function searchText(it: OwnedItem): string {
   return s;
 }
 
-function VaultBox(props: {
-  state: RpgHeroState;
-  npc: string;
-  link: GameLink;
-  isNew: (uid: string) => boolean;
-  onMoved: (uids: readonly string[]) => void;
-}) {
-  const { t } = useLingui();
-  const cmd = useCommands(() => props.link);
-  const h = () => props.state.hero;
-
-  const [query, setQuery] = createSignal("");
-  const [cat, setCat] = createSignal<Cat>("todos");
-  const [rar, setRar] = createSignal<RarityId[]>([]);
-  const [mineOnly, setMineOnly] = createSignal(false);
-  const [newOnly, setNewOnly] = createSignal(false);
-  const [sort, setSort] = createSignal<Sort>("novos");
-  const [shown, setShown] = createSignal(PAGE);
-  const [pickVault, setPickVault] = createSignal<string[]>([]);
-  const [pickBag, setPickBag] = createSignal<string[]>([]);
-  const [done, setDone] = createSignal<{
-    action: "guardar" | "retirar";
-    uids: string[];
-  } | null>(null);
-
-  // Filtro novo volta para a 1ª página.
-  createEffect(
-    on([query, cat, rar, mineOnly, newOnly, sort], () => setShown(PAGE), {
-      defer: true,
-    }),
-  );
-
-  const wearable = createMemo(() => {
-    const hero = h();
-    const ok = new Set<string>();
-    if (mineOnly())
-      for (const it of hero.vault.items)
-        if (!cannotWear(hero, it)) ok.add(it.uid);
-    return ok;
-  });
-
-  /** Tudo menos o filtro `skip` (para a contagem de cada opção daquele filtro). */
-  const filtered = (skip: "cat" | "rar" | null) => {
-    const q = query().trim().toLocaleLowerCase("pt-BR");
-    return h().vault.items.filter(
-      (it) =>
-        (skip === "cat" ||
-          cat() === "todos" ||
-          CAT_OF[it.slot as GearSlot] === cat()) &&
-        (skip === "rar" || rar().length === 0 || rar().includes(it.rarity)) &&
-        (!mineOnly() || wearable().has(it.uid)) &&
-        (!newOnly() || props.isNew(it.uid)) &&
-        (!q || searchText(it).includes(q)),
-    );
-  };
-  const catCount = createMemo(() => {
-    const n: Record<Cat, number> = {
-      todos: 0,
-      armas: 0,
-      armaduras: 0,
-      joias: 0,
-    };
-    for (const it of filtered("cat")) {
-      n.todos++;
-      n[CAT_OF[it.slot as GearSlot]]++;
-    }
-    return n;
-  });
-  const rarCount = createMemo(() => {
-    const n: Partial<Record<RarityId, number>> = {};
-    for (const it of filtered("rar")) n[it.rarity] = (n[it.rarity] ?? 0) + 1;
-    return n;
-  });
-  const list = createMemo(() => {
-    const items = filtered(null);
-    const order = new Map(h().vault.items.map((x, i) => [x.uid, i]));
-    const age = (x: OwnedItem) => order.get(x.uid) ?? 0;
-    const s = sort();
-    return [...items].sort((a, b) =>
-      s === "novos"
-        ? age(b) - age(a)
-        : s === "raridade"
-          ? RANK[b.rarity] - RANK[a.rarity] || b.ilvl - a.ilvl
-          : s === "nivel"
-            ? b.ilvl - a.ilvl || RANK[b.rarity] - RANK[a.rarity]
-            : SLOT_ORDER.indexOf(a.slot as GearSlot) -
-                SLOT_ORDER.indexOf(b.slot as GearSlot) || b.ilvl - a.ilvl,
-    );
-  });
-  const visible = createMemo(() => list().slice(0, shown()));
-  const vaultMarks = createMemo(() => marksOf(h(), visible()));
-  const bagMarksNow = createMemo(() => bagMarks(h()));
-  const newCount = createMemo(
-    () => h().vault.items.filter((x) => props.isNew(x.uid)).length,
-  );
-  const filtering = () =>
-    !!query().trim() ||
-    cat() !== "todos" ||
-    rar().length > 0 ||
-    mineOnly() ||
-    newOnly();
-  const clearFilters = () => {
-    setQuery("");
-    setCat("todos");
-    setRar([]);
-    setMineOnly(false);
-    setNewOnly(false);
-  };
-
-  // O que está escolhido e ainda existe (um item pode sair por outro caminho).
-  const vaultSel = createMemo(() => {
-    const has = new Set(h().vault.items.map((x) => x.uid));
-    return pickVault().filter((u) => has.has(u));
-  });
-  const bagSel = createMemo(() => {
-    const has = new Set(h().bag.map((x) => x.uid));
-    return pickBag().filter((u) => has.has(u));
-  });
-  const room = () => BAG_SLOTS - h().bag.length;
-
-  const move = async (action: "guardar" | "retirar", uids: string[]) => {
-    if (uids.length === 0) return false;
-    setDone(null);
-    const r = await cmd.run("rpg.vault.many", {
-      npc: props.npc,
-      action,
-      uids,
-    });
-    if (!r?.ok) return false;
-    if (action === "guardar") {
-      props.onMoved(uids);
-      setPickBag([]);
-    } else setPickVault([]);
-    setDone({ action, uids });
-    return true;
-  };
-  const undo = () => {
-    const d = done();
-    if (!d) return;
-    void move(d.action === "guardar" ? "retirar" : "guardar", d.uids).then(
-      (o) => o && setDone(null),
-    );
-  };
-
-  /** As melhorias do cofre (dentro do filtro), da maior para a menor, até onde a mochila cabe. */
-  const pickUpgrades = () => {
-    const m = marksOf(h(), list());
-    const ups = list()
-      .filter((x) => m[x.uid]?.mark === "up")
-      .sort((a, b) => (m[b.uid]?.score ?? 0) - (m[a.uid]?.score ?? 0))
-      .slice(0, Math.max(0, room()))
-      .map((x) => x.uid);
-    setPickVault(ups);
-    // O escolhido fica à vista: a página abre até o último deles.
-    const last = Math.max(
-      -1,
-      ...ups.map((u) => list().findIndex((x) => x.uid === u)),
-    );
-    if (last >= shown()) setShown(Math.ceil((last + 1) / PAGE) * PAGE);
-    return ups.length;
-  };
-  const [noUps, setNoUps] = createSignal(false);
-
-  return (
-    <>
-      <Panes>
-        <Pane aria-label={t`Cofre`}>
-          <PaneHead>
-            <h3>
-              {t`Cofre`}{" "}
-              <Muted>
-                {filtering()
-                  ? t`${list().length} de ${h().vault.items.length}`
-                  : h().vault.items.length === 1
-                    ? t`1 item`
-                    : t`${h().vault.items.length} itens`}
-              </Muted>
-            </h3>
-            <Select
-              value={sort()}
-              aria-label={t`Ordem do cofre`}
-              onChange={(e) => setSort(e.currentTarget.value as Sort)}
-            >
-              <option value="novos">{t`Mais novos`}</option>
-              <option value="raridade">{t`Raridade`}</option>
-              <option value="nivel">{t`Nível do item`}</option>
-              <option value="lugar">{t`Lugar`}</option>
-            </Select>
-          </PaneHead>
-          <Search
-            type="search"
-            value={query()}
-            placeholder={t`Buscar no cofre (nome, lugar, perk…)`}
-            aria-label={t`Buscar no cofre`}
-            onInput={(e) => setQuery(e.currentTarget.value)}
-          />
-          <Chips role="group" aria-label={t`Tipo`}>
-            <For
-              each={
-                [
-                  ["todos", t`Tudo`],
-                  ["armas", t`Armas`],
-                  ["armaduras", t`Armaduras`],
-                  ["joias", t`Joias`],
-                ] as [Cat, string][]
-              }
-            >
-              {([id, label]) => (
-                <Chip
-                  type="button"
-                  aria-pressed={cat() === id}
-                  onClick={() => setCat(id)}
-                >
-                  {label} <small>{catCount()[id]}</small>
-                </Chip>
-              )}
-            </For>
-          </Chips>
-          <Chips role="group" aria-label={t`Raridade e atalhos`}>
-            <For each={RARITIES}>
-              {(r) => (
-                <Chip
-                  type="button"
-                  style={{ "--rc": RARITY[r].color }}
-                  data-rarity=""
-                  aria-pressed={rar().includes(r)}
-                  aria-label={t`${rarityName(r)}: ${rarCount()[r] ?? 0}`}
-                  title={rarityName(r)}
-                  onClick={() =>
-                    setRar(
-                      rar().includes(r)
-                        ? rar().filter((x) => x !== r)
-                        : [...rar(), r],
-                    )
-                  }
-                >
-                  <b>{RARITY[r].pips || "●"}</b>{" "}
-                  <small>{rarCount()[r] ?? 0}</small>
-                </Chip>
-              )}
-            </For>
-            <Chip
-              type="button"
-              aria-pressed={mineOnly()}
-              onClick={() => setMineOnly(!mineOnly())}
-            >
-              {t`Serve em mim`}
-            </Chip>
-            <Show when={newCount() > 0}>
-              <Chip
-                type="button"
-                data-new=""
-                aria-pressed={newOnly()}
-                onClick={() => setNewOnly(!newOnly())}
-              >
-                {t`Novos`} <small>{newCount()}</small>
-              </Chip>
-            </Show>
-          </Chips>
-
-          <Show
-            when={h().vault.items.length > 0}
-            fallback={
-              <Empty>
-                <strong>{t`O cofre está vazio.`}</strong>
-                <Muted>{t`O que não couber na mochila no fim da corrida vem para cá. Guarde aqui o que quiser poupar: não tem limite.`}</Muted>
-              </Empty>
-            }
-          >
-            <Show
-              when={list().length > 0}
-              fallback={
-                <Empty>
-                  <Muted>{t`Nada no cofre com esses filtros.`}</Muted>
-                  <Btn type="button" data-size="sm" onClick={clearFilters}>
-                    {t`Limpar filtros`}
-                  </Btn>
-                </Empty>
-              }
-            >
-              <Stash
-                label={t`Itens no cofre`}
-                items={visible()}
-                selected={vaultSel()}
-                onSelect={setPickVault}
-                onQuick={(u) => void move("retirar", [u])}
-                marks={vaultMarks()}
-                isNew={props.isNew}
-                hero={h()}
-              />
-              <Show when={list().length > visible().length}>
-                <Btn
-                  type="button"
-                  data-tone="quiet"
-                  onClick={() => setShown(shown() + PAGE)}
-                >
-                  {t`Mostrar mais (${list().length - visible().length})`}
-                </Btn>
-              </Show>
-            </Show>
-          </Show>
-          <Row>
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              disabled={list().length === 0 || room() <= 0}
-              onClick={() => setNoUps(pickUpgrades() === 0)}
-              title={t`Escolhe os itens do cofre melhores que o vestido (pela nota do seu papel), até onde a mochila cabe.`}
-            >
-              ▲ {t`Trazer as melhorias`}
-            </Btn>
-            <Show when={visible().length > 0}>
-              <Btn
-                type="button"
-                data-size="sm"
-                data-tone="quiet"
-                onClick={() => setPickVault(visible().map((x) => x.uid))}
-              >
-                {t`Escolher os que aparecem`}
-              </Btn>
-            </Show>
-            <Show when={vaultSel().length > 0}>
-              <Btn
-                type="button"
-                data-size="sm"
-                data-tone="quiet"
-                onClick={() => setPickVault([])}
-              >
-                {t`Limpar`}
-              </Btn>
-            </Show>
-          </Row>
-          <Show when={noUps()}>
-            <Muted role="note">{t`Nada no cofre melhora o que você veste.`}</Muted>
-          </Show>
-        </Pane>
-
-        <Pane aria-label={t`Mochila`}>
-          <PaneHead>
-            <h3>
-              {t`Mochila`}{" "}
-              <Count data-full={room() <= 4 ? "" : undefined}>
-                {h().bag.length}/{BAG_SLOTS}
-              </Count>
-            </h3>
-          </PaneHead>
-          <Show
-            when={h().bag.length > 0}
-            fallback={
-              <Empty>
-                <Muted>{t`A mochila está vazia.`}</Muted>
-              </Empty>
-            }
-          >
-            <Stash
-              label={t`Itens da mochila`}
-              items={h().bag}
-              selected={bagSel()}
-              onSelect={setPickBag}
-              onQuick={(u) => void move("guardar", [u])}
-              marks={bagMarksNow()}
-              hero={h()}
-            />
-          </Show>
-          <Row>
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              disabled={h().bag.length === 0}
-              onClick={() =>
-                setPickBag(
-                  h()
-                    .bag.filter((x) => bagMarksNow()[x.uid]?.mark === "blocked")
-                    .map((x) => x.uid),
-                )
-              }
-            >
-              {t`Escolher o que não dá para vestir`}
-            </Btn>
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              disabled={h().bag.length === 0}
-              onClick={() =>
-                setPickBag(
-                  h()
-                    .bag.filter((x) => bagMarksNow()[x.uid]?.mark !== "up")
-                    .map((x) => x.uid),
-                )
-              }
-            >
-              {t`Tudo menos as melhorias`}
-            </Btn>
-            <Show when={bagSel().length > 0}>
-              <Btn
-                type="button"
-                data-size="sm"
-                data-tone="quiet"
-                onClick={() => setPickBag([])}
-              >
-                {t`Limpar`}
-              </Btn>
-            </Show>
-          </Row>
-          <Tip>{t`Clique duplo num item move na hora; Shift + clique escolhe um trecho.`}</Tip>
-        </Pane>
-      </Panes>
-
-      <MoveBar
-        aria-label={t`Mover itens`}
-        data-idle={
-          bagSel().length === 0 &&
-          vaultSel().length === 0 &&
-          !done() &&
-          !cmd.error()
-            ? ""
-            : undefined
-        }
-      >
-        {/* A linha de estado tem altura fixa: o aviso e o Desfazer não empurram a tela. */}
-        <Status
-          role="status"
-          data-kind={
-            cmd.error()
-              ? "error"
-              : done()
-                ? "ok"
-                : vaultSel().length > room()
-                  ? "warn"
-                  : undefined
-          }
-        >
-          <Show
-            when={cmd.error()}
-            fallback={
-              <Show
-                when={done()}
-                fallback={
-                  <span>
-                    {vaultSel().length > room()
-                      ? room() > 0
-                        ? t`Cabem só ${room()} na mochila: tire ${vaultSel().length - room()} da escolha.`
-                        : t`A mochila está cheia: guarde, venda ou desmonte algo antes.`
-                      : t`Escolha itens no cofre ou na mochila para mover.`}
-                  </span>
-                }
-              >
-                {(d) => (
-                  <>
-                    <span>
-                      {d().uids.length === 1
-                        ? d().action === "guardar"
-                          ? t`1 item guardado no cofre.`
-                          : t`1 item de volta na mochila.`
-                        : d().action === "guardar"
-                          ? t`${d().uids.length} itens guardados no cofre.`
-                          : t`${d().uids.length} itens de volta na mochila.`}
-                    </span>
-                    <Btn
-                      type="button"
-                      data-size="sm"
-                      data-tone="quiet"
-                      disabled={cmd.busy()}
-                      onClick={undo}
-                    >
-                      ↶ {t`Desfazer`}
-                    </Btn>
-                  </>
-                )}
-              </Show>
-            }
-          >
-            {(e) => <span>⚠ {e()}</span>}
-          </Show>
-        </Status>
-        <Btn
-          type="button"
-          data-tone={bagSel().length > 0 ? "primary" : undefined}
-          disabled={cmd.busy() || bagSel().length === 0}
-          onClick={() => void move("guardar", bagSel())}
-        >
-          ←{" "}
-          <Long>
-            {bagSel().length > 0
-              ? t`Guardar ${bagSel().length} no cofre`
-              : t`Guardar no cofre`}
-          </Long>
-          <Short>
-            {bagSel().length > 0 ? t`Guardar ${bagSel().length}` : t`Guardar`}
-          </Short>
-        </Btn>
-        <Btn
-          type="button"
-          data-tone={
-            vaultSel().length > 0 && vaultSel().length <= room()
-              ? "primary"
-              : undefined
-          }
-          disabled={
-            cmd.busy() || vaultSel().length === 0 || vaultSel().length > room()
-          }
-          onClick={() => void move("retirar", vaultSel())}
-        >
-          <Long>
-            {vaultSel().length > 0
-              ? t`Retirar ${vaultSel().length} para a mochila`
-              : t`Retirar para a mochila`}
-          </Long>
-          <Short>
-            {vaultSel().length > 0
-              ? t`Retirar ${vaultSel().length}`
-              : t`Retirar`}
-          </Short>{" "}
-          →
-        </Btn>
-      </MoveBar>
-    </>
-  );
-}
-
 /**
  * A grade do baú: toque escolhe (vários), Shift + clique escolhe o trecho desde o último, clique
  * duplo move na hora. ▲/▼ e o selo NOVO no canto; o detalhe ao parar em cima (ou toque longo).
@@ -805,6 +137,8 @@ export function Stash(props: {
   onQuick: (uid: string) => void;
   marks?: Marks;
   isNew?: (uid: string) => boolean;
+  /** Um selo curto no canto de baixo (o baú: quanto falta para o item sumir). */
+  tag?: (uid: string) => string | undefined;
   hero: HeroV5;
 }) {
   const { t } = useLingui();
@@ -865,6 +199,9 @@ export function Stash(props: {
                   <Show when={props.selected.includes(it.uid)}>
                     <Check aria-hidden="true">✓</Check>
                   </Show>
+                  <Show when={props.tag?.(it.uid)}>
+                    {(tag) => <Corner aria-hidden="true">{tag()}</Corner>}
+                  </Show>
                 </Cell>
               )}
             </ItemTip>
@@ -872,140 +209,6 @@ export function Stash(props: {
         }}
       </For>
     </StashGrid>
-  );
-}
-
-// ------------------------------------------------------------ ouro
-
-function GoldBox(props: { state: RpgHeroState; busy: boolean; run: RunFn }) {
-  const { t } = useLingui();
-  const h = () => props.state.hero;
-  const [dir, setDir] = createSignal<"depositar" | "sacar">("depositar");
-  const [amount, setAmount] = createSignal(0);
-  const source = () => (dir() === "depositar" ? h().gold : h().vault.gold);
-  const valid = () =>
-    Number.isInteger(amount()) && amount() > 0 && amount() <= source();
-  const hand = () => h().gold + (dir() === "depositar" ? -amount() : amount());
-  const vault = () =>
-    h().vault.gold + (dir() === "depositar" ? amount() : -amount());
-  const quick = [1_000, 10_000, 100_000];
-  return (
-    <Panel>
-      <Row role="group" aria-label={t`O que fazer`}>
-        <Btn
-          type="button"
-          aria-pressed={dir() === "depositar"}
-          onClick={() => {
-            setDir("depositar");
-            setAmount(0);
-          }}
-        >
-          {t`Depositar`} →
-        </Btn>
-        <Btn
-          type="button"
-          aria-pressed={dir() === "sacar"}
-          onClick={() => {
-            setDir("sacar");
-            setAmount(0);
-          }}
-        >
-          ← {t`Sacar`}
-        </Btn>
-      </Row>
-      <Muted>
-        {dir() === "depositar"
-          ? t`O ouro no cofre não se gasta sem querer nem vai para a corrida.`
-          : t`O ouro sacado vai para a mão: é com ele que se compra e refina.`}
-      </Muted>
-      <Row>
-        <Input
-          type="number"
-          inputMode="numeric"
-          min={1}
-          max={source()}
-          value={amount() || ""}
-          placeholder={t`Quanto`}
-          aria-label={t`Quanto ouro`}
-          onInput={(e) =>
-            setAmount(
-              Math.max(0, Math.floor(Number(e.currentTarget.value)) || 0),
-            )
-          }
-        />
-        <For each={quick}>
-          {(n) => (
-            <Btn
-              type="button"
-              data-size="sm"
-              data-tone="quiet"
-              disabled={n > source()}
-              onClick={() => setAmount(Math.min(source(), amount() + n))}
-            >
-              +{gold(n)}
-            </Btn>
-          )}
-        </For>
-        <Btn
-          type="button"
-          data-size="sm"
-          data-tone="quiet"
-          disabled={source() < 2}
-          onClick={() => setAmount(Math.floor(source() / 2))}
-        >
-          {t`Metade`}
-        </Btn>
-        <Btn
-          type="button"
-          data-size="sm"
-          data-tone="quiet"
-          disabled={source() === 0}
-          onClick={() => setAmount(source())}
-        >
-          {t`Tudo`}
-        </Btn>
-      </Row>
-      <Show when={amount() > 0}>
-        <Summary data-bad={valid() ? undefined : ""}>
-          <Show
-            when={valid()}
-            fallback={
-              <span>
-                {dir() === "depositar"
-                  ? t`Você tem só ${gold(h().gold)} na mão.`
-                  : t`O cofre tem só ${gold(h().vault.gold)}.`}
-              </span>
-            }
-          >
-            <span>
-              {t`Fica na mão`}: <Gold n={gold(hand())} />
-            </span>
-            <span>
-              {t`Fica no cofre`}: <Gold n={gold(vault())} />
-            </span>
-          </Show>
-        </Summary>
-      </Show>
-      <Btn
-        type="button"
-        data-tone="primary"
-        disabled={props.busy || !valid()}
-        onClick={() =>
-          void props
-            .run(
-              "rpg.bank",
-              { gold: dir() === "depositar" ? amount() : -amount() },
-              dir() === "depositar" ? t`Depositado.` : t`Sacado.`,
-            )
-            .then((o) => o && setAmount(0))
-        }
-      >
-        {dir() === "depositar" ? t`Depositar` : t`Sacar`}{" "}
-        <Show when={amount() > 0}>
-          <Gold n={gold(amount())} />
-        </Show>
-      </Btn>
-    </Panel>
   );
 }
 
@@ -1150,7 +353,7 @@ function TransferBox(props: {
           <Show
             when={props.state.run}
             fallback={
-              <Muted>{t`Para mandar algo do cofre, retire para a mochila antes. Fica tudo no registro de transferências.`}</Muted>
+              <Muted>{t`Fica tudo no registro de transferências.`}</Muted>
             }
           >
             <Muted role="note">{t`Transferir fica para quando a corrida acabar.`}</Muted>
@@ -1401,6 +604,22 @@ const Check = styled("span", {
     pointerEvents: "none",
   },
 });
+const Corner = styled("span", {
+  base: {
+    position: "absolute",
+    left: "2px",
+    bottom: "2px",
+    padding: "0 3px",
+    borderRadius: "4px",
+    fontSize: "10px",
+    lineHeight: "14px",
+    fontWeight: 700,
+    background: "rgba(10, 10, 16, 0.78)",
+    color: "#ffd27a",
+    pointerEvents: "none",
+  },
+});
+
 export const Empty = styled("div", {
   base: {
     display: "flex",
@@ -1449,7 +668,7 @@ export const Short = styled("span", {
     "@container (max-width: 600px)": { display: "inline" },
   },
 });
-const Input = styled("input", {
+export const Input = styled("input", {
   base: {
     width: "10em",
     minHeight: "40px",

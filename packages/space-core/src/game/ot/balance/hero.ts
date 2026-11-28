@@ -84,8 +84,13 @@ export const POTION_SIZES: PotionSize[] = ["pequena", "media", "grande"];
 type PotionStock = Record<PotionSize, number>;
 const noPotions = (): PotionStock => ({ pequena: 0, media: 0, grande: 0 });
 
-/** Espaços da mochila (P78: itens não têm peso; poção, munição e minério não ocupam espaço). */
-export const BAG_SLOTS = 40;
+/**
+ * A mochila não tem limite (28/11/2026, o dono: "pode deixar a mochila do herói infinita"): o cofre do
+ * Banqueiro saiu e o que estava nele veio para ela (`mergeVault`). O teto de verdade é o do documento
+ * do herói no servidor (RPG_DOC_MAX_BYTES). `BATCH_MAX` é quantos itens um comando leva de uma vez (o
+ * quadro do protocolo tem 4 KB): o app manda listas maiores em pedaços.
+ */
+export const BATCH_MAX = 40;
 
 export interface HeroV5 {
   v: typeof HERO_VERSION;
@@ -113,7 +118,8 @@ export interface HeroV5 {
   ores: Partial<Record<Material, number>>;
   essence: number;
   stones: number;
-  vault: { gold: number; items: OwnedItem[]; expansions: number };
+  /** Legado: o cofre do Banqueiro de antes de 28/11/2026. Só existe no que vem do banco; `mergeVault` o esvazia na mochila. */
+  vault?: { gold: number; items: OwnedItem[]; expansions: number };
   /** Quando beber: vida e mana abaixo destas frações. */
   supplies: { hp: number; mp: number };
   autoEquip: boolean;
@@ -212,7 +218,6 @@ export function createHero(
     ores: {},
     essence: 0,
     stones: 0,
-    vault: { gold: 0, items: [], expansions: 0 },
     supplies: { hp: 0.5, mp: 0.3 },
     autoEquip: true,
     dojo: null,
@@ -244,7 +249,7 @@ export function fitItemRules(
       ...h,
       equipment,
       bag: h.bag.map(up),
-      vault: { ...h.vault, items: h.vault.items.map(up) },
+      ...(h.vault ? { vault: { ...h.vault, items: h.vault.items.map(up) } } : {}),
       itemRules: ITEM_RULES,
     },
     rescaled,
@@ -337,18 +342,11 @@ export function fitWornGear(
     else worn[slot] = it;
   }
   if (moved.length === 0) return { hero: h, moved };
-  const room = Math.max(0, BAG_SLOTS - h.bag.length);
-  const toBag = moved.slice(0, room);
-  const toVault = moved.slice(room);
   return {
     hero: {
       ...h,
       equipment: worn as OwnedEquipment,
-      bag: [...h.bag, ...toBag],
-      vault:
-        toVault.length > 0
-          ? { ...h.vault, items: [...h.vault.items, ...toVault] }
-          : h.vault,
+      bag: [...h.bag, ...moved],
     },
     moved,
   };
@@ -418,7 +416,6 @@ export function changeClass(
       off++;
     } else worn[slot] = it;
   }
-  if (bag.length > BAG_SLOTS) return fail("mochila-cheia" as const);
   const next: HeroV5 = { ...base, equipment: worn as OwnedEquipment, bag };
   if (!next.autoEquip || off === 0) return done(next, { unequipped: off });
   const auto = autoEquipBag(next, B);
@@ -460,7 +457,6 @@ export function equipItem(h: HeroV5, uid: string, B: Balance = gameBalance) {
       delete out.secundaria;
     }
   }
-  if (bag.length > BAG_SLOTS) return fail("mochila-cheia" as const);
   return done({ ...h, equipment: out as OwnedEquipment, bag });
 }
 
@@ -468,7 +464,6 @@ export function unequipItem(h: HeroV5, slot: GearSlot) {
   const out = { ...h.equipment } as Record<string, OwnedItem | undefined>;
   const it = out[slot];
   if (!it) return fail("slot-vazio" as const);
-  if (h.bag.length >= BAG_SLOTS) return fail("mochila-cheia" as const);
   delete out[slot];
   return done({ ...h, equipment: out as OwnedEquipment, bag: [...h.bag, it] });
 }
@@ -484,7 +479,6 @@ export function autoEquipBag(h: HeroV5, B: Balance = gameBalance) {
   const worn = new Set(Object.values(equipment));
   const all = [...h.bag, ...(Object.values(h.equipment) as OwnedItem[])];
   const bag = all.filter((x) => x && !worn.has(x));
-  if (bag.length > BAG_SLOTS) return fail("mochila-cheia" as const);
   return done(
     { ...h, equipment: equipment as OwnedEquipment, bag },
     {
@@ -553,6 +547,26 @@ export function buyAmmo(
   );
 }
 
+/**
+ * O cofre do Banqueiro saiu (28/11/2026: mochila sem limite; o Banqueiro virou a Mula, só de
+ * transferência): os itens guardados vêm para a mochila e o ouro guardado para a mão. Uma vez por
+ * herói, na leitura do servidor, que grava quando havia algo guardado.
+ */
+export function mergeVault(h: HeroV5): {
+  hero: HeroV5;
+  items: number;
+  gold: number;
+} {
+  const v = h.vault;
+  if (!v) return { hero: h, items: 0, gold: 0 };
+  const { vault: _old, ...rest } = h;
+  return {
+    hero: { ...rest, bag: [...h.bag, ...v.items], gold: h.gold + v.gold },
+    items: v.items.length,
+    gold: v.gold,
+  };
+}
+
 /** Equipamento Comum do tier do herói (qualquer base: o Mercador vende para todo mundo). */
 export function buyCommonItem(
   h: HeroV5,
@@ -561,7 +575,6 @@ export function buyCommonItem(
   rng: RandomSource,
   B: Balance = gameBalance,
 ) {
-  if (h.bag.length >= BAG_SLOTS) return fail("mochila-cheia" as const);
   const p = commonItemPrice(h.level, B);
   if (p.gold > h.gold) return fail("sem-ouro" as const);
   const item: OwnedItem = {
@@ -783,74 +796,10 @@ export function dismantleItems(h: HeroV5, uids: string[]) {
   return r.ok ? done(r.hero) : r;
 }
 
-// ------------------------------------------------------------ Banqueiro (o cofre do próprio herói)
-
-export function bankGold(h: HeroV5, amount: number) {
-  if (!Number.isInteger(amount) || amount === 0)
-    return fail("valor-invalido" as const);
-  if (amount > 0 && amount > h.gold) return fail("sem-ouro" as const);
-  if (amount < 0 && -amount > h.vault.gold) return fail("sem-ouro" as const);
-  return done({
-    ...h,
-    gold: h.gold - amount,
-    vault: { ...h.vault, gold: h.vault.gold + amount },
-  });
-}
-
-/** Guarda no cofre (sem limite desde 27/11/2026: o Banqueiro guarda tudo). */
-export function vaultPut(h: HeroV5, uid: string) {
-  const got = takeFromBag(h, uid);
-  if (!got) return fail("item-nao-encontrado" as const);
-  return done({
-    ...h,
-    bag: got.bag,
-    vault: { ...h.vault, items: [...h.vault.items, got.item] },
-  });
-}
-
-export function vaultTake(h: HeroV5, uid: string) {
-  const i = h.vault.items.findIndex((x) => x.uid === uid);
-  if (i < 0) return fail("item-nao-encontrado" as const);
-  if (h.bag.length >= BAG_SLOTS) return fail("mochila-cheia" as const);
-  const item = h.vault.items[i]!;
-  return done({
-    ...h,
-    bag: [...h.bag, item],
-    vault: {
-      ...h.vault,
-      items: [...h.vault.items.slice(0, i), ...h.vault.items.slice(i + 1)],
-    },
-  });
-}
-
-/**
- * Vários itens de uma vez entre a mochila e o cofre, tudo ou nada, numa gravação só (item a item,
- * uma mochila inteira passava do limite de comandos por segundo). Retirar pede espaço para todos.
- */
-export function vaultMoveMany(
-  h: HeroV5,
-  action: "guardar" | "retirar",
-  uids: readonly string[],
-) {
-  const want = new Set(uids);
-  if (uids.length === 0 || want.size !== uids.length)
-    return fail("lista-invalida" as const);
-  const from = action === "guardar" ? h.bag : h.vault.items;
-  const moving = from.filter((x) => want.has(x.uid));
-  if (moving.length !== want.size) return fail("item-nao-encontrado" as const);
-  const rest = from.filter((x) => !want.has(x.uid));
-  if (action === "guardar")
-    return done(
-      { ...h, bag: rest, vault: { ...h.vault, items: [...h.vault.items, ...moving] } },
-      { moved: moving.length },
-    );
-  if (h.bag.length + moving.length > BAG_SLOTS)
-    return fail("mochila-cheia" as const);
-  return done(
-    { ...h, bag: [...h.bag, ...moving], vault: { ...h.vault, items: rest } },
-    { moved: moving.length },
-  );
-}
+// ------------------------------------------------------------ Mula (antes Banqueiro)
+//
+// O cofre de ouro e de itens saiu em 28/11/2026 (mochila sem limite; `mergeVault` traz o que estava
+// guardado). Do Banqueiro ficou só a transferência para outra pessoa, agora com a Mula (npcs/bank.ts).
 
 // ------------------------------------------------------------ Dojô
 
@@ -913,15 +862,11 @@ export interface RunSpoils {
 
 /**
  * Fecha a corrida no herói: XP, job, ouro, minério, pedras; gasta poções e munição; os itens entram na
- * mochila até encher e o resto vai para o cofre do Banqueiro, que não tem limite (27/11/2026, o dono
- * perdeu um escudo lendário com a mochila cheia: "mão cheia, os itens começam a ir pro banqueiro").
- * `toVault` são os que foram para o cofre; `left` fica vazio (nada mais se perde na dungeon).
+ * mochila, que não tem limite desde 28/11/2026. `left` fica vazio aqui; o servidor só o usa quando o
+ * documento do herói não comporta mais itens (XP e ouro entram assim mesmo).
  */
 export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
   const g = gainXp(h, s.xp, s.jobXp, B);
-  const room = Math.max(0, BAG_SLOTS - h.bag.length);
-  const kept = s.items.slice(0, room);
-  const toVault = s.items.slice(room);
   const left: OwnedItem[] = [];
   const ores = { ...h.ores };
   for (const [m, n] of Object.entries(s.ores))
@@ -943,11 +888,7 @@ export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
       job: g.hero.job,
       jobXp: g.hero.jobXp,
       gold: h.gold + s.gold,
-      bag: [...h.bag, ...kept],
-      vault:
-        toVault.length > 0
-          ? { ...h.vault, items: [...h.vault.items, ...toVault] }
-          : h.vault,
+      bag: [...h.bag, ...s.items],
       ores,
       stones: h.stones + s.stones,
       potions: {
@@ -962,6 +903,6 @@ export function applyRun(h: HeroV5, s: RunSpoils, B: Balance = gameBalance) {
       },
       ammo,
     },
-    { left, toVault, levelsGained: g.levelsGained, jobsGained: g.jobsGained },
+    { left, levelsGained: g.levelsGained, jobsGained: g.jobsGained },
   );
 }

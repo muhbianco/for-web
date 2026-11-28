@@ -86,7 +86,7 @@ const PartyDock = lazy(() => import("./game/PartyDock"));
 const RunMeter = lazy(() => import("./game/RunMeter"));
 
 /** O que segura a largada do grupo (a ficha e os NPCs; o Mercador não, ele vende na corrida). */
-// O Banqueiro não segura (27/11/2026): o cofre e o ouro valem na corrida, como o Mercador.
+// A Mula (antes o Banqueiro) não segura: transferir só fora da corrida, e o cofre saiu em 28/11/2026.
 const HOLDS = new Set(["ferreiro", "mestre"]);
 
 const STAGE_MODE_KEY = "muchat.space.stageMode";

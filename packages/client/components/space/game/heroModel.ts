@@ -224,13 +224,12 @@ export function equippedIn(h: HeroV5, slot: GearSlot): OwnedItem | undefined {
 export function findItem(
   h: HeroV5,
   uid: string,
-): { item: OwnedItem; where: "bag" | "equip" | "vault" } | null {
+): { item: OwnedItem; where: "bag" | "equip" } | null {
   const b = h.bag.find((x) => x.uid === uid);
   if (b) return { item: b, where: "bag" };
   for (const x of Object.values(h.equipment))
     if (x?.uid === uid) return { item: x as OwnedItem, where: "equip" };
-  const v = h.vault.items.find((x) => x.uid === uid);
-  return v ? { item: v, where: "vault" } : null;
+  return null;
 }
 
 export type BagMark = "up" | "down" | "same" | "blocked";

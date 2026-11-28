@@ -35,7 +35,7 @@ export function prepText(what: RpgPrepKind): string {
     case "ferreiro":
       return t`no Ferreiro`;
     case "banqueiro":
-      return t`no Banqueiro`;
+      return t`na Mula`;
     case "mestre":
       return t`no Mestre da evolução`;
   }
@@ -49,7 +49,7 @@ export function prepShort(what: RpgPrepKind): string {
     case "ferreiro":
       return t`Ferreiro`;
     case "banqueiro":
-      return t`Banqueiro`;
+      return t`Mula`;
     case "mestre":
       return t`Mestre`;
   }

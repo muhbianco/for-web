@@ -383,7 +383,7 @@ export function errorText(code?: string, reason?: string): string {
     case "sem-ouro":
       return t`Ouro insuficiente.`;
     case "mochila-cheia":
-      return t`A mochila está cheia (40 espaços). Venda, guarde no cofre ou desmonte algo.`;
+      return t`O herói já guarda itens demais. Venda ou desmonte algo da mochila.`;
     case "sem-minerio":
       return t`Faltam minérios da região do item.`;
     case "sem-pedra":
@@ -486,13 +486,15 @@ export function errorText(code?: string, reason?: string): string {
       return t`Essa corrida já acabou.`;
     case "chest_full":
       return t`O baú está cheio (100 itens). Alguém precisa pegar algo antes.`;
+    case "chest_sem_ouro":
+      return t`O baú não tem esse ouro todo (alguém pegou antes?).`;
     case "chest_gone":
-      return t`Alguém pegou esse item antes de você.`;
+      return t`Esse item não está mais no baú: alguém pegou antes, ou ele passou de 5 dias.`;
     case "chest_busy":
     case "outbox_full":
       return t`O baú está ocupado agora. Tente de novo num instante.`;
     case "too_large":
-      return t`Seu herói já guarda itens demais: venda ou desmonte algo do cofre antes.`;
+      return t`Seu herói já guarda itens demais: venda ou desmonte algo da mochila antes.`;
     case "too_far":
       return t`Chegue mais perto.`;
     default:

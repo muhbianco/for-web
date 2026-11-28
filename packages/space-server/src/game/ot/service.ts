@@ -29,7 +29,6 @@ import {
   GAIN_MAX_RUNS,
   Rng,
   autoEquipBag,
-  bankGold,
   buyAmmo,
   buyCommonItem,
   buyPotions,
@@ -70,9 +69,6 @@ import {
   simulateRun,
   spendSkillPoint,
   unequipItem,
-  vaultMoveMany,
-  vaultPut,
-  vaultTake,
   balance as gameBalance,
 } from "@muchat/space-core/game/ot/balance";
 
@@ -89,6 +85,8 @@ import {
   chestCredit,
   chestDebit,
   chestEvent,
+  chestExpire,
+  chestExpired,
   chestSettled,
   newChest,
 } from "./chest.ts";
@@ -110,6 +108,7 @@ import {
   openDojo,
   rpgDocBytes,
   rpgHeroState,
+  settleRunFitting,
   settleRunHero,
   transferIn,
   transferOut,
@@ -873,39 +872,7 @@ export class RpgService {
           "rpg smith",
         );
       }
-      // O Banqueiro vale na corrida (27/11/2026): no loop o herói passa quase o tempo todo numa, e o
-      // cofre ficava mudo. Ouro e cofre não mexem no que a corrida usa (ela saiu calculada com o
-      // herói da largada; o que vem no fim cai na mochila ou, sem espaço, no cofre). Transferir, não.
-      case "rpg.bank": {
-        if (!near(cmd.d.npc, "banqueiro")) return;
-        return act(
-          (d) => apply(d, bankGold(d.hero, cmd.d.gold)),
-          undefined,
-          true,
-        );
-      }
-      case "rpg.vault": {
-        if (!near(cmd.d.npc, "banqueiro")) return;
-        return act(
-          (d) =>
-            apply(
-              d,
-              cmd.d.action === "guardar"
-                ? vaultPut(d.hero, cmd.d.uid)
-                : vaultTake(d.hero, cmd.d.uid),
-            ),
-          undefined,
-          true,
-        );
-      }
-      case "rpg.vault.many": {
-        if (!near(cmd.d.npc, "banqueiro")) return;
-        return act(
-          (d) => apply(d, vaultMoveMany(d.hero, cmd.d.action, cmd.d.uids)),
-          undefined,
-          true,
-        );
-      }
+      // O cofre do Banqueiro saiu em 28/11/2026 (mochila sem limite); ficou a transferência, com a Mula.
       case "rpg.bank.transfer": {
         if (!near(cmd.d.npc, "banqueiro")) return;
         // Para quem está neste Espaço agora e já tem herói.
@@ -1079,7 +1046,8 @@ export class RpgService {
       // valem na corrida, como vender: só mexem na mochila, e a corrida saiu com o herói da largada.
       case "rpg.chest":
       case "rpg.chest.put":
-      case "rpg.chest.take": {
+      case "rpg.chest.take":
+      case "rpg.chest.gold": {
         const spot = host.chestSpot(session.viewer, cmd.d.chest);
         if (!spot.ok) return fail(spot.code, spot.reason);
         if (cmd.t === "rpg.chest") {
@@ -1089,12 +1057,17 @@ export class RpgService {
           return session.send(
             chestEvent(
               c ?? newChest(host.serverId, now),
+              this.now(),
               cmd.id,
             ) as unknown as Record<string, unknown>,
           );
         }
         if (this.starting.has(userId))
           return fail("rpg_invalid", "run_starting");
+        if (cmd.t === "rpg.chest.gold")
+          return cmd.d.gold > 0
+            ? this.chestPut(session, host, cmd.id, [], false, cmd.d.gold)
+            : this.chestTake(session, host, cmd.id, [], -cmd.d.gold);
         return cmd.t === "rpg.chest.put"
           ? this.chestPut(session, host, cmd.id, cmd.d.uids, cmd.d.confirm ?? false)
           : this.chestTake(session, host, cmd.id, cmd.d.uids);
@@ -1710,9 +1683,14 @@ export class RpgService {
           jobs_gained: 0,
         };
         await this.inQueue(m.userId, async () => {
+          // A mochila não tem limite (28/11/2026), mas o documento do herói tem: sem espaço nele, os
+          // itens desta corrida ficam para trás e XP, ouro e minério entram (`settleRunFitting`). Antes,
+          // a gravação recusada perdia a recompensa inteira sem aviso.
+          let dropped = 0;
           const out = await this.mutate(m.userId, null, (d) => {
-            const r = settleRunHero(d, doc._id, m.spoils, m.spoils);
+            const r = settleRunFitting(d, doc._id, m.spoils);
             if (!r.ok) return r;
+            dropped = r.dropped.length;
             // A vitória do grupo conclui a DG para quem ficou até o fim (vivo ou não; 26/11/2026).
             if (doc.outcome === "vitoria") markCleared(d, doc.dungeon);
             end = {
@@ -1721,17 +1699,22 @@ export class RpgService {
                 xp: m.spoils.xp,
                 job_xp: m.spoils.jobXp,
                 gold: m.spoils.gold,
-                items: m.spoils.items,
+                items: r.dropped.length > 0 ? [] : m.spoils.items,
                 ores: m.spoils.ores,
                 stones: m.spoils.stones,
               },
-              left: r.settled.left,
-              to_vault: r.settled.toVault,
+              left: [...r.settled.left, ...r.dropped],
               levels_gained: r.settled.levelsGained,
               jobs_gained: r.settled.jobsGained,
             };
             return { ok: true };
           });
+          if (dropped > 0)
+            this.log.warn("rpg run items left: hero too large", {
+              run: doc._id,
+              user: m.userId,
+              items: dropped,
+            });
           if (out && "doc" in out) {
             levels[m.userId] = out.doc.hero.level;
             regions[m.userId] = bossRegions(out.doc.cleared ?? []);
@@ -1889,6 +1872,9 @@ export class RpgService {
       const cur = await this.loadChest(serverId, attempt > 0);
       const now = this.now();
       const next = cur ? structuredClone(cur) : newChest(serverId, now);
+      const gone = chestExpire(next, now);
+      if (gone > 0)
+        this.log.info("rpg chest expired", { server: serverId, items: gone });
       const out = fn(next);
       if (!out.ok) return { reason: out.reason };
       next.updated_at = now;
@@ -1923,6 +1909,7 @@ export class RpgService {
     re: string,
     uids: string[],
     confirm: boolean,
+    gold = 0,
   ): Promise<void> {
     const userId = session.viewer.user._id;
     const server = host.serverId;
@@ -1931,8 +1918,11 @@ export class RpgService {
     const before = await this.inQueue(chestKey(server), () =>
       this.loadChest(server),
     );
-    if ((before?.items.length ?? 0) + uids.length > CHEST_SLOTS)
-      return fail("chest_full");
+    // Conta só o que não passou de 5 dias (a gravação tira o resto antes de creditar).
+    const inChest = before
+      ? before.items.filter((x) => !chestExpired(before, x.uid, this.now())).length
+      : 0;
+    if (inChest + uids.length > CHEST_SLOTS) return fail("chest_full");
     const t = {
       id: randomUUID(),
       to: chestKey(server),
@@ -1944,7 +1934,7 @@ export class RpgService {
     let retry: RpgHeroDoc | null = null;
     try {
       const out = await this.mutate(userId, null, (d) =>
-        chestOut(d, t, uids, confirm),
+        chestOut(d, t, uids, confirm, gold),
       );
       if (!out) return fail("no_hero");
       if ("reason" in out) return fail(out.reason);
@@ -1970,12 +1960,15 @@ export class RpgService {
         return fail("chest_full");
       }
       this.push(session, doc, re, host);
-      session.send(chestEvent(got.doc) as unknown as Record<string, unknown>);
+      session.send(
+        chestEvent(got.doc, this.now()) as unknown as Record<string, unknown>,
+      );
       this.chestChanged(host, got.doc);
       this.log.info("rpg chest put", {
         server,
         user: userId,
         items: sent.items.length,
+        gold: sent.gold,
       });
     } finally {
       this.delivering.delete(t.id);
@@ -1993,6 +1986,7 @@ export class RpgService {
     host: RpgHost,
     re: string,
     uids: string[],
+    gold = 0,
   ): Promise<void> {
     const userId = session.viewer.user._id;
     const server = host.serverId;
@@ -2011,6 +2005,7 @@ export class RpgService {
             { user: userId, name: host.displayName(userId) },
             id,
             this.now(),
+            gold,
           ),
         ),
       );
@@ -2025,7 +2020,7 @@ export class RpgService {
       }
       const refund = "reason" in got;
       const settled = await this.inQueue(chestKey(server), () =>
-        this.mutateChest(server, (c) => chestSettled(c, id, refund)),
+        this.mutateChest(server, (c) => chestSettled(c, id, refund, this.now())),
       );
       if (!settled) pending = taken.doc;
       const chest = settled && "doc" in settled ? settled.doc : taken.doc;
@@ -2036,12 +2031,15 @@ export class RpgService {
       }
       this.remember(userId, re);
       this.push(session, got.doc, re, host);
-      session.send(chestEvent(chest) as unknown as Record<string, unknown>);
+      session.send(
+        chestEvent(chest, this.now()) as unknown as Record<string, unknown>,
+      );
       this.chestChanged(host, chest);
       this.log.info("rpg chest take", {
         server,
         user: userId,
         items: t.items.length,
+        gold: t.gold,
       });
     } finally {
       this.delivering.delete(id);
@@ -2117,7 +2115,7 @@ export class RpgService {
             chestKey(server),
             async () => {
               const out = await this.mutateChest(server, (x) =>
-                chestSettled(x, t.id, refund),
+                chestSettled(x, t.id, refund, this.now()),
               );
               done();
               if (out && "doc" in out && refund)
@@ -2207,8 +2205,13 @@ export class RpgService {
     // Primeiro a regra de item (27/11/2026) e a de tier pelo job (D51), depois as DGs concluídas: cada
     // um grava com CAS.
     let doc = checked.doc;
-    if (checked.gearMoved > 0 || checked.itemsRescaled > 0)
-      doc = await this.saveGearFit(doc, checked.gearMoved, checked.itemsRescaled);
+    if (
+      checked.gearMoved > 0 ||
+      checked.itemsRescaled > 0 ||
+      checked.vaultItems > 0 ||
+      checked.vaultGold > 0
+    )
+      doc = await this.saveGearFit(doc, checked);
     doc = await this.fitSkills(doc);
     if (doc.cleared === undefined) doc = await this.backfillCleared(doc);
     this.keep(doc);
@@ -2284,12 +2287,23 @@ export class RpgService {
    */
   private async saveGearFit(
     doc: RpgHeroDoc,
-    moved: number,
-    rescaled: number,
+    fit: {
+      gearMoved: number;
+      itemsRescaled: number;
+      vaultItems: number;
+      vaultGold: number;
+    },
   ): Promise<RpgHeroDoc> {
     const next: RpgHeroDoc = { ...doc, rev: doc.rev + 1, updated_at: this.now() };
     const saved = await this.store.save(next, doc.rev);
-    this.log.info("rpg gear fit to rules", { user: doc._id, moved, rescaled, saved });
+    this.log.info("rpg gear fit to rules", {
+      user: doc._id,
+      moved: fit.gearMoved,
+      rescaled: fit.itemsRescaled,
+      vault_items: fit.vaultItems,
+      vault_gold: fit.vaultGold,
+      saved,
+    });
     return saved ? next : doc;
   }
 

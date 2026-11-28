@@ -197,11 +197,6 @@ export function mage45(): HeroV5 {
     ores: { Ferro: 22 },
     stones: 2,
     essence: 1,
-    vault: {
-      gold: 120_000,
-      items: stuffBag(h, 6, 99).bag,
-      expansions: 0,
-    },
     attrResets: 1,
   };
 }

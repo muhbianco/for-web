@@ -277,6 +277,28 @@ const NOTICE_BOARD_X = 9;
  */
 export const arsenalMark = (zoneKey: string) => `${zoneKey}:arsenal`;
 
+/**
+ * Marca em `furnished`: o baú compartilhado (28/11/2026) já foi para o lado da Mula desta zona (o
+ * antigo Banqueiro, `npc-banqueiro`), ou a zona já tinha um baú. Tirado depois da marca, não volta.
+ */
+export const chestMark = (zoneKey: string) => `${zoneKey}:chest`;
+
+/** Em volta da Mula, nesta ordem: embaixo, em cima, à esquerda, à direita, as diagonais e a 2 casas. */
+const BESIDE: [number, number][] = [
+  [0, 1],
+  [0, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [1, 1],
+  [-1, -1],
+  [1, -1],
+  [0, 2],
+  [0, -2],
+  [-2, 0],
+  [2, 0],
+];
+
 export interface ThemeOptions {
   serverName?: string;
   catalog?: Catalog;
@@ -355,7 +377,40 @@ export function furnish(ix: MapIndex, state: DecorState, opts: ThemeOptions = {}
       next = { ...next, furnished: [...furnished] };
     }
   }
+  // O baú compartilhado (28/11/2026, o dono: "coloca também o baú ao lado da mula"): vai uma vez
+  // para o lado de cada Mula, na primeira vaga em volta dela que a validação aceita (não fecha
+  // porta nem caminho). Sem vaga, tenta de novo na próxima carga.
+  for (const mule of items.filter((i) => i.item === "npc-banqueiro")) {
+    const key = mule.zone;
+    if (!furnished.has(key) || furnished.has(chestMark(key))) continue;
+    if (ensureChestBeside(mule)) {
+      furnished.add(chestMark(key));
+      next = { ...next, furnished: [...furnished] };
+    }
+  }
   return next;
+
+  /** O baú ao lado da Mula `mule` (ou a zona já tem um). */
+  function ensureChestBeside(mule: DecorInstance): boolean {
+    const key = mule.zone;
+    if (items.some((i) => i.zone === key && i.item === "chest-shared")) return true;
+    for (const [dx, dy] of BESIDE) {
+      const inst: DecorInstance = {
+        id: `t-${hash(key).toString(36)}-chest`,
+        item: "chest-shared",
+        zone: key,
+        x: mule.x + dx,
+        y: mule.y + dy,
+        rot: 0,
+        variant: "madeira",
+      };
+      if (validatePlacement(ctx(), inst) !== null) continue;
+      items.push(inst);
+      next = { ...next, items: [...items] };
+      return true;
+    }
+    return false;
+  }
 
   /** A estante do Arsenal na zona: os lugares de preferência (no hall, embaixo do quadro de avisos e ao lado do Mercador) e depois qualquer um livre. */
   function ensureArsenal(key: string): boolean {

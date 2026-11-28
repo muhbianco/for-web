@@ -16,7 +16,7 @@ import {
   OFFHAND_IDS,
   STATS,
 } from "./content.ts";
-import { type HeroV5, type OwnedItem, BAG_SLOTS } from "./hero.ts";
+import { type HeroV5, type OwnedItem, BATCH_MAX } from "./hero.ts";
 import type { Material } from "./items/generate.ts";
 import type { RunMeter } from "./run/meter.ts";
 import type { RunFrame, RunOutcome } from "./run/simulate.ts";
@@ -226,7 +226,7 @@ export const RpgShopSellManyCmd = cmd(
   z
     .object({
       npc,
-      uids: z.array(ref).min(1).max(BAG_SLOTS),
+      uids: z.array(ref).min(1).max(BATCH_MAX),
       confirm: z.boolean().optional(),
     })
     .strict(),
@@ -246,7 +246,7 @@ export const RpgSmithCmd = cmd(
 /** Ferreiro: desmonta vários itens da mochila numa gravação só (tudo ou nada). */
 export const RpgSmithDismantleManyCmd = cmd(
   "rpg.smith.dismantle.many",
-  z.object({ npc, uids: z.array(ref).min(1).max(BAG_SLOTS) }).strict(),
+  z.object({ npc, uids: z.array(ref).min(1).max(BATCH_MAX) }).strict(),
 );
 /**
  * Ferreiro: o perk do lendário (27/11/2026): rolar o perk `slot` (1 Essência; o `slot` 1 só na Arma
@@ -273,28 +273,10 @@ export const RpgSmithSupremeCmd = cmd(
     .object({ npc, base: ref, uids: z.array(ref).length(4) })
     .strict(),
 );
-/** Banqueiro: ouro no cofre (positivo deposita, negativo saca). */
-export const RpgBankCmd = cmd(
-  "rpg.bank",
-  z.object({ npc, gold: z.number().int().min(-1e12).max(1e12) }).strict(),
-);
-/** Banqueiro: guardar um item da mochila no cofre ou retirar. */
-export const RpgVaultCmd = cmd(
-  "rpg.vault",
-  z.object({ npc, action: z.enum(["guardar", "retirar"]), uid: ref }).strict(),
-);
-/** Banqueiro: vários itens de uma vez (tudo ou nada; 27/11/2026, no lugar da ampliação do cofre). */
-export const RpgVaultManyCmd = cmd(
-  "rpg.vault.many",
-  z
-    .object({
-      npc,
-      action: z.enum(["guardar", "retirar"]),
-      uids: z.array(ref).min(1).max(BAG_SLOTS),
-    })
-    .strict(),
-);
 /**
+ * O cofre do Banqueiro (`rpg.bank`, `rpg.vault`, `rpg.vault.many`) saiu em 28/11/2026: a mochila não
+ * tem limite e o Banqueiro virou a Mula, só de transferência.
+ *
  * Transferência para outro jogador (taxa de 2% no ouro, 5 × ouro do lacaio por item; item do +7 pede
  * `confirmations: 2`). `to` é o id da pessoa.
  */
@@ -377,20 +359,37 @@ export const RpgRankCmd = cmd("rpg.rank", empty);
 export const CHEST_SLOTS = 100;
 /** Quantas linhas do histórico do baú o servidor guarda (e manda). */
 export const CHEST_LOG_KEEP = 40;
+/** Item que passa 5 dias no baú some (28/11/2026, o dono). O ouro não some. */
+export const CHEST_ITEM_TTL_MS = 5 * 24 * 60 * 60_000;
 export const RpgChestCmd = cmd("rpg.chest", z.object({ chest: ref }).strict());
 export const RpgChestPutCmd = cmd(
   "rpg.chest.put",
   z
     .object({
       chest: ref,
-      uids: z.array(ref).min(1).max(BAG_SLOTS),
+      uids: z.array(ref).min(1).max(BATCH_MAX),
       confirm: z.boolean().optional(),
     })
     .strict(),
 );
 export const RpgChestTakeCmd = cmd(
   "rpg.chest.take",
-  z.object({ chest: ref, uids: z.array(ref).min(1).max(BAG_SLOTS) }).strict(),
+  z.object({ chest: ref, uids: z.array(ref).min(1).max(BATCH_MAX) }).strict(),
+);
+/** O ouro do baú (28/11/2026): positivo põe da mão, negativo pega para a mão. */
+export const RpgChestGoldCmd = cmd(
+  "rpg.chest.gold",
+  z
+    .object({
+      chest: ref,
+      gold: z
+        .number()
+        .int()
+        .min(-1e12)
+        .max(1e12)
+        .refine((x) => x !== 0),
+    })
+    .strict(),
 );
 
 export const RpgCommand = z.discriminatedUnion("t", [
@@ -418,9 +417,6 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgSmithDismantleManyCmd,
   RpgSmithPerkCmd,
   RpgSmithSupremeCmd,
-  RpgBankCmd,
-  RpgVaultCmd,
-  RpgVaultManyCmd,
   RpgTransferCmd,
   RpgLobbyCreateCmd,
   RpgLobbyJoinCmd,
@@ -436,6 +432,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgChestCmd,
   RpgChestPutCmd,
   RpgChestTakeCmd,
+  RpgChestGoldCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -622,10 +619,11 @@ export interface RpgRunMemberEnd {
     ores: Partial<Record<Material, number>>;
     stones: number;
   } | null;
-  /** Itens perdidos na dungeon (vazio desde 27/11/2026: o que não cabe vai para o cofre). */
+  /**
+   * Itens que ficaram para trás: só quando o herói já guarda tantos itens que o documento dele não
+   * comporta mais (a mochila não tem limite desde 28/11/2026; XP e ouro entram assim mesmo).
+   */
   left: OwnedItem[];
-  /** Itens que não couberam na mochila e foram para o cofre do Banqueiro (27/11/2026). */
-  to_vault?: OwnedItem[];
   potions_used: { hp: number; mp: number };
   ammo_used: number;
   levels_gained: number;
@@ -735,17 +733,25 @@ export interface RpgRankEvent {
   d: { solo: RpgRankRow[]; grupo: RpgRankRow[] };
 }
 
-/** Uma linha do histórico do baú: quem pôs ou pegou o quê (os 3 primeiros itens e o total). */
+/**
+ * Uma linha do histórico do baú: quem pôs ou pegou o quê (os 3 primeiros itens e o total, ou o ouro).
+ * `sumiu`: itens que passaram de 5 dias no baú (sem pessoa: `user_id` e `name` vazios).
+ */
 export interface RpgChestLogRow {
   at: number;
   user_id: string;
   name: string;
-  action: "pos" | "pegou";
+  action: "pos" | "pegou" | "sumiu";
   items: { name: string; rarity: RarityId; refine: number }[];
   count: number;
+  /** Ouro posto ou pego (sem itens). */
+  gold?: number;
 }
 
-/** O baú do servidor: os itens (o mais antigo primeiro) e o histórico (o mais novo primeiro). */
+/**
+ * O baú do servidor: os itens (o mais antigo primeiro), quando cada um entrou (`put_at`, pelo uid; some
+ * em `put_at + ttl_ms`), o ouro e o histórico (o mais novo primeiro).
+ */
 export interface RpgChestEvent {
   v: 1;
   t: "rpg.chest";
@@ -754,6 +760,9 @@ export interface RpgChestEvent {
     rev: number;
     slots: number;
     items: OwnedItem[];
+    put_at: Record<string, number>;
+    ttl_ms: number;
+    gold: number;
     log: RpgChestLogRow[];
   };
 }

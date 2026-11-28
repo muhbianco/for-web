@@ -56,9 +56,10 @@ test("os comandos novos passam com os dados certos", () => {
     ["rpg.smith.dismantle.many", { npc: "f", uids: ["i1"] }],
     ["rpg.master.class", { npc: "mestre-1", cls: "mago" }],
     ["rpg.smith", { npc: "f", action: "refinar", uid: "i1", protect: true }],
-    ["rpg.bank", { npc: "b", gold: -500 }],
-    ["rpg.vault", { npc: "b", action: "guardar", uid: "i1" }],
-    ["rpg.vault.many", { npc: "b", action: "retirar", uids: ["i1", "i2"] }],
+    ["rpg.chest", { chest: "bau-1" }],
+    ["rpg.chest.put", { chest: "bau-1", uids: ["i1"], confirm: true }],
+    ["rpg.chest.take", { chest: "bau-1", uids: ["i1", "i2"] }],
+    ["rpg.chest.gold", { chest: "bau-1", gold: -500 }],
     [
       "rpg.bank.transfer",
       { npc: "b", to: "u2", gold: 100, uids: [], confirmations: 1 },
@@ -98,6 +99,15 @@ test("dados errados e comandos antigos são recusados; o que não é rpg. passa 
     ["rpg.stats", {}],
     // Os do modelo antigo (D2: sem renascimento; vocação e treino OT saíram).
     ["rpg.vocation", { vocation: 1 }],
+    // O cofre do Banqueiro saiu em 28/11/2026 (mochila sem limite).
+    ["rpg.bank", { npc: "b", gold: -500 }],
+    ["rpg.vault.many", { npc: "b", action: "retirar", uids: ["i1"] }],
+    // O baú: ouro zero e mais de 40 itens num comando.
+    ["rpg.chest.gold", { chest: "bau-1", gold: 0 }],
+    [
+      "rpg.chest.put",
+      { chest: "bau-1", uids: Array.from({ length: 41 }, (_, i) => `i${i}`) },
+    ],
     ["rpg.rebirth", {}],
     ["rpg.train.start", { instance: "x", skill: "espada" }],
   ];

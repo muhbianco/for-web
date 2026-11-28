@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
-  BAG_SLOTS,
+  CHEST_ITEM_TTL_MS,
   CHEST_SLOTS,
   type RpgChestEvent,
   type RpgCommand,
@@ -686,27 +686,19 @@ test("Mercador na corrida: vende da mochila e compra poção e munição; item n
   assert.deepEqual(t.s.errors(item), [
     { code: "rpg_invalid", reason: "in_run_item" },
   ]);
-  // O Banqueiro vale na corrida (27/11/2026): ouro e cofre; transferir, não.
+  // O baú vale na corrida (28/11/2026), como vender: ouro e itens da mochila.
   const gold = t.s.hero()!.hero.gold;
-  const bank = await t.send("rpg.bank", { npc: "banqueiro-1", gold: 100 });
-  assert.deepEqual(t.s.errors(bank), []);
+  const coins = await t.send("rpg.chest.gold", { chest: "bau-1", gold: 100 });
+  assert.deepEqual(t.s.errors(coins), []);
   assert.equal(t.s.hero()!.hero.gold, gold - 100);
-  assert.equal(t.s.hero()!.hero.vault.gold, 100);
-  const put = await t.send("rpg.vault.many", {
-    npc: "banqueiro-1",
-    action: "guardar",
+  const put = await t.send("rpg.chest.put", {
+    chest: "bau-1",
     uids: [ring.uid],
+    confirm: true,
   });
   assert.deepEqual(t.s.errors(put), []);
-  assert.deepEqual(
-    t.s.hero()!.hero.vault.items.map((x) => x.uid),
-    [ring.uid],
-  );
-  const back = await t.send("rpg.vault", {
-    npc: "banqueiro-1",
-    action: "retirar",
-    uid: ring.uid,
-  });
+  assert.ok(!t.s.hero()!.hero.bag.some((x) => x.uid === ring.uid));
+  const back = await t.send("rpg.chest.take", { chest: "bau-1", uids: [ring.uid] });
   assert.deepEqual(t.s.errors(back), []);
   assert.ok(t.s.hero()!.hero.bag.some((x) => x.uid === ring.uid));
   assert.ok(t.s.hero()!.run, "segue na corrida");
@@ -1233,19 +1225,118 @@ test("baú: entrega do baú sem baixa (queda); quem abre o baú depois faz o her
   assert.equal(t.chests.docs.get("S1")!.outbox.length, 0);
 });
 
-test("baú: pegar com a mochila cheia manda o resto para o cofre", async () => {
+test("baú: pegar com 300 itens na mochila põe na mochila (sem limite desde 28/11/2026)", async () => {
   const t = setup();
   const { bia, item } = await chestPair(t);
   await t.send("rpg.chest.put", { chest: "bau-1", uids: [item.uid] });
   await settle(t, "U1");
   edit(t, "U2", (h) => ({
     ...h,
-    bag: Array.from({ length: BAG_SLOTS }, (_, i) => ({ ...item, uid: `b-${i}` })),
+    bag: Array.from({ length: 300 }, (_, i) => ({ ...item, uid: `b-${i}` })),
   }));
   const take = await t.sendAs(bia, "rpg.chest.take", { chest: "bau-1", uids: [item.uid] });
   await settle(t, "U1", "U2");
   assert.deepEqual(bia.errors(take), []);
   const h = t.store.docs.get("U2")!.hero;
-  assert.equal(h.bag.length, BAG_SLOTS);
-  assert.ok(h.vault.items.some((x) => x.uid === item.uid));
+  assert.equal(h.bag.length, 301);
+  assert.ok(h.bag.some((x) => x.uid === item.uid));
+});
+
+test("baú: ouro, Ana põe 500 e Bia pega 200; mais do que há ou do que se tem é recusado (28/11/2026)", async () => {
+  const t = setup();
+  const { bia } = await chestPair(t);
+  edit(t, "U1", (h) => ({ ...h, gold: 1000 }));
+  const put = await t.send("rpg.chest.gold", { chest: "bau-1", gold: 500 });
+  await settle(t, "U1");
+  assert.deepEqual(t.s.errors(put), []);
+  assert.equal(t.s.hero()!.hero.gold, 500);
+  assert.equal(t.chests.docs.get("S1")!.gold, 500);
+  const take = await t.sendAs(bia, "rpg.chest.gold", { chest: "bau-2", gold: -200 });
+  await settle(t, "U1", "U2");
+  assert.deepEqual(bia.errors(take), []);
+  assert.equal(bia.hero()!.hero.gold, 200);
+  const c = t.chests.docs.get("S1")!;
+  assert.equal(c.gold, 300);
+  assert.deepEqual(
+    c.log.map((r) => [r.action, r.name, r.gold]),
+    [
+      ["pegou", "Bia", 200],
+      ["pos", "Ana", 500],
+    ],
+  );
+  const greedy = await t.sendAs(bia, "rpg.chest.gold", { chest: "bau-2", gold: -301 });
+  assert.deepEqual(bia.errors(greedy), [
+    { code: "rpg_invalid", reason: "chest_sem_ouro" },
+  ]);
+  const broke = await t.send("rpg.chest.gold", { chest: "bau-1", gold: 501 });
+  assert.deepEqual(t.s.errors(broke), [
+    { code: "rpg_invalid", reason: "sem-ouro" },
+  ]);
+  assert.equal(t.chests.docs.get("S1")!.gold, 300);
+  assert.equal(t.store.docs.get("U1")!.hero.gold, 500);
+});
+
+test("baú: item que passa 5 dias some; o ouro fica; o histórico diz o que sumiu (28/11/2026)", async () => {
+  const t = setup();
+  const { bia, item } = await chestPair(t);
+  edit(t, "U1", (h) => ({ ...h, gold: 100 }));
+  await t.send("rpg.chest.put", { chest: "bau-1", uids: [item.uid] });
+  await t.send("rpg.chest.gold", { chest: "bau-1", gold: 100 });
+  await settle(t, "U1");
+  // Um minuto antes dos 5 dias: ainda está lá.
+  t.clock.advance(CHEST_ITEM_TTL_MS - 60_000);
+  const early = await t.sendAs(bia, "rpg.chest", { chest: "bau-1" });
+  const seen = bia.of<RpgChestEvent>("rpg.chest").find((e) => e.re === early)!;
+  assert.deepEqual(
+    seen.d.items.map((x) => x.uid),
+    [item.uid],
+  );
+  assert.equal(seen.d.ttl_ms, CHEST_ITEM_TTL_MS);
+  assert.ok(seen.d.put_at[item.uid]! > 0);
+  // Passou dos 5 dias: some da vista, ninguém pega, e a próxima mudança tira e registra.
+  t.clock.advance(120_000);
+  const late = await t.sendAs(bia, "rpg.chest", { chest: "bau-1" });
+  const gone = bia.of<RpgChestEvent>("rpg.chest").find((e) => e.re === late)!;
+  assert.deepEqual(gone.d.items, []);
+  assert.equal(gone.d.gold, 100);
+  const take = await t.sendAs(bia, "rpg.chest.take", { chest: "bau-1", uids: [item.uid] });
+  assert.deepEqual(bia.errors(take), [
+    { code: "rpg_invalid", reason: "chest_gone" },
+  ]);
+  const coins = await t.sendAs(bia, "rpg.chest.gold", { chest: "bau-1", gold: -100 });
+  await settle(t, "U1", "U2");
+  assert.deepEqual(bia.errors(coins), []);
+  const c = t.chests.docs.get("S1")!;
+  assert.deepEqual(c.items, []);
+  assert.deepEqual(c.put_at, {});
+  assert.deepEqual(
+    c.log.slice(0, 2).map((r) => [r.action, r.count]),
+    [
+      ["pegou", 0],
+      ["sumiu", 1],
+    ],
+  );
+  assert.ok(!bia.hero()!.hero.bag.some((x) => x.uid === item.uid));
+});
+
+test("o cofre que saiu (28/11/2026): ao abrir o jogo, os itens e o ouro guardados vêm para a mochila e a mão, gravados uma vez", async () => {
+  const t = setup();
+  await t.send("rpg.class", { cls: "guerreiro" });
+  const elmo = t.store.docs.get("U1")!.hero.equipment.elmo!;
+  const d = t.store.docs.get("U1")!;
+  const { elmo: _e, ...rest } = d.hero.equipment;
+  d.hero = {
+    ...d.hero,
+    gold: 10,
+    equipment: rest,
+    vault: { gold: 90, items: [elmo], expansions: 0 },
+  } as typeof d.hero;
+  const t2 = setup({ store: t.store, runStore: t.runStore });
+  await t2.send("rpg.open");
+  const h = t2.s.hero()!.hero;
+  assert.equal(h.gold, 100);
+  assert.ok(h.bag.some((x) => x.uid === elmo.uid));
+  const stored = t.store.docs.get("U1")!;
+  assert.equal("vault" in stored.hero, false);
+  assert.ok(stored.hero.bag.some((x) => x.uid === elmo.uid));
 });

@@ -10,11 +10,9 @@ import { balance as B } from "./formulas.ts";
 import {
   type HeroV5,
   type OwnedItem,
-  BAG_SLOTS,
   applyRun,
   autoEquipBag,
   balanceHero,
-  bankGold,
   buyAmmo,
   buyCommonItem,
   buyPotions,
@@ -26,6 +24,7 @@ import {
   equipItem,
   evolveTier,
   fitItemRules,
+  mergeVault,
   fitWornGear,
   heroRunFighter,
   raiseAttributes,
@@ -38,9 +37,6 @@ import {
   startDojo,
   stopDojo,
   unequipItem,
-  vaultPut,
-  vaultMoveMany,
-  vaultTake,
 } from "./hero.ts";
 import { generateItem, materialOf } from "./items/generate.ts";
 import { stoneMatters } from "./items/smith.ts";
@@ -131,14 +127,12 @@ test("equipar troca com a mochila; a mochila tem teto; a arma de 2 mãos devolve
     "arma",
     "secundaria",
   ]);
+  // A mochila não tem limite (28/11/2026): desvestir com 300 itens na mochila vai.
   const full: HeroV5 = {
     ...h,
-    bag: Array.from({ length: BAG_SLOTS }, () => own({ slot: "anel" })),
+    bag: Array.from({ length: 300 }, () => own({ slot: "anel" })),
   };
-  assert.deepEqual(unequipItem(full, "elmo"), {
-    ok: false,
-    error: "mochila-cheia",
-  });
+  assert.equal(ok(unequipItem(full, "elmo")).hero.bag.length, 301);
   assert.equal(equipItem(h, "nao-existe").ok, false);
   const wrong = own({ slot: "arma", family: "cajado" });
   assert.deepEqual(equipItem({ ...h, bag: [wrong] }, wrong.uid), {
@@ -229,57 +223,41 @@ test("Ferreiro: refino cobra ouro e minério, a Pedra só se gasta no +8 a +10; 
   assert.equal(ok(discardItem({ ...h }, sword.uid)).hero.bag.length, 0);
 });
 
-test("Banqueiro: ouro e itens no cofre, com teto e expansão", () => {
+test("o cofre saiu (28/11/2026): a leitura traz os itens para a mochila e o ouro para a mão, uma vez", () => {
   const ring = own({ slot: "anel" });
-  let h: HeroV5 = {
+  const kept = own({ slot: "anel" }, 50, "raro");
+  const old = {
     ...createHero("mago", id),
-    level: 50,
-    gold: 1e6,
+    gold: 1000,
     bag: [ring],
+    vault: { gold: 500, items: [kept], expansions: 2 },
+  } as HeroV5;
+  const m = mergeVault(old);
+  assert.deepEqual([m.items, m.gold], [1, 500]);
+  assert.equal(m.hero.gold, 1500);
+  assert.deepEqual(
+    m.hero.bag.map((x) => x.uid),
+    [ring.uid, kept.uid],
+  );
+  assert.equal("vault" in m.hero, false);
+  // Uma vez só: sem cofre, nada muda.
+  assert.deepEqual(mergeVault(m.hero), { hero: m.hero, items: 0, gold: 0 });
+  // A leitura do servidor faz o mesmo e conta.
+  const read = checkHero(JSON.parse(JSON.stringify(old)), B, { fitGear: true });
+  assert.ok(read.ok && read.vaultItems === 1 && read.vaultGold === 500);
+  assert.ok(read.ok && read.hero.bag.length === 2 && !("vault" in read.hero));
+  // A mochila não tem limite: 300 itens passam no esquema.
+  const big: HeroV5 = {
+    ...m.hero,
+    bag: Array.from({ length: 300 }, () => own({ slot: "anel" }, 50, "raro")),
   };
-  h = ok(bankGold(h, 500)).hero;
-  assert.deepEqual([h.gold, h.vault.gold], [1e6 - 500, 500]);
-  h = ok(bankGold(h, -200)).hero;
-  assert.equal(h.vault.gold, 300);
-  assert.equal(bankGold(h, -301).ok, false);
-  h = ok(vaultPut(h, ring.uid)).hero;
-  assert.equal(h.vault.items.length, 1);
-  h = ok(vaultTake(h, ring.uid)).hero;
-  assert.equal(h.bag.length, 1);
-  // O cofre não tem limite (27/11/2026): guarda muito além dos 60 de antes.
-  let big: HeroV5 = { ...h, bag: Array.from({ length: 40 }, () => own({ slot: "anel" }, 50, "raro")) };
-  for (let i = 0; i < 3; i++) {
-    big = { ...big, vault: { ...big.vault, items: [...big.vault.items, ...big.bag.map((x) => ({ ...x, uid: id() }))] } };
-  }
-  assert.ok(big.vault.items.length >= 120);
-  assert.ok(ok(vaultPut(big, big.bag[0]!.uid)).hero.vault.items.length > 120);
   assert.equal(checkHero(big).ok, true);
-});
-
-test("Banqueiro: vários itens de uma vez, tudo ou nada; retirar pede espaço para todos", () => {
-  const bag = Array.from({ length: 5 }, () => own({ slot: "anel" }));
-  const h: HeroV5 = { ...createHero("mago", id), bag };
-  const two = [bag[0]!.uid, bag[3]!.uid];
-  const put = ok(vaultMoveMany(h, "guardar", two));
-  assert.equal(put.moved, 2);
-  assert.deepEqual(put.hero.vault.items.map((x) => x.uid), two);
-  assert.equal(put.hero.bag.length, 3);
-  // Tudo ou nada: um uid de fora derruba a lista inteira.
-  assert.equal(vaultMoveMany(h, "guardar", [bag[0]!.uid, "nao-existe"]).ok, false);
-  assert.equal(vaultMoveMany(h, "guardar", [bag[0]!.uid, bag[0]!.uid]).ok, false);
-  assert.equal(vaultMoveMany(h, "guardar", []).ok, false);
-  const back = ok(vaultMoveMany(put.hero, "retirar", two));
-  assert.equal(back.hero.bag.length, 5);
-  assert.equal(back.hero.vault.items.length, 0);
-  // Mochila com 39: cabe 1, retirar 2 não vai.
-  const full: HeroV5 = {
-    ...put.hero,
-    bag: Array.from({ length: BAG_SLOTS - 1 }, () => own({ slot: "anel" })),
-  };
-  const r = vaultMoveMany(full, "retirar", two);
-  assert.equal(r.ok, false);
-  assert.equal(!r.ok && r.error, "mochila-cheia");
-  assert.equal(ok(vaultMoveMany(full, "retirar", [two[0]!])).hero.bag.length, BAG_SLOTS);
+  // O mesmo item na mochila e no cofre antigo: recusa (nada é consertado em silêncio).
+  const dup = { ...old, vault: { gold: 0, items: [ring], expansions: 0 } };
+  assert.match(
+    (checkHero(JSON.parse(JSON.stringify(dup)), B, { fitGear: true }) as { reason: string }).reason,
+    /item repetido/,
+  );
 });
 
 test("Dojô: o tempo vira Proficiência ao parar; não começa duas vezes", () => {
@@ -301,7 +279,7 @@ test("Mestre: evolui no marco com os pontos gastos", () => {
   else assert.equal(r.hero.skills.tier, 2);
 });
 
-test("a corrida fecha no herói: XP, ouro, itens até encher a mochila (o resto vai ao cofre), poções e munição gastas", () => {
+test("a corrida fecha no herói: XP, ouro, todos os itens na mochila (sem limite), poções e munição gastas", () => {
   const h: HeroV5 = {
     ...createHero("cacador", id),
     potions: {
@@ -309,7 +287,7 @@ test("a corrida fecha no herói: XP, ouro, itens até encher a mochila (o resto 
       mp: { pequena: 5, media: 0, grande: 0 },
     },
     ammo: { comum: 50, afiada: 30 },
-    bag: Array.from({ length: BAG_SLOTS - 1 }, () => own({ slot: "anel" })),
+    bag: Array.from({ length: 39 }, () => own({ slot: "anel" })),
   };
   const loot = [own({ slot: "colar" }), own({ slot: "colar" })];
   const r = ok(
@@ -326,16 +304,12 @@ test("a corrida fecha no herói: XP, ouro, itens até encher a mochila (o resto 
   );
   assert.equal(r.hero.level, 5);
   assert.equal(r.hero.gold, 1234);
-  assert.equal(r.hero.bag.length, BAG_SLOTS);
-  // Nada se perde (27/11/2026): o que não cabe na mochila vai para o cofre do Banqueiro.
+  // A mochila não tem limite (28/11/2026): os 2 itens entram nos 39 que havia.
+  assert.equal(r.hero.bag.length, 41);
   assert.deepEqual(r.left, []);
   assert.deepEqual(
-    r.toVault.map((x) => x.uid),
-    [loot[1]!.uid],
-  );
-  assert.deepEqual(
-    r.hero.vault.items.map((x) => x.uid),
-    [loot[1]!.uid],
+    r.hero.bag.slice(-2).map((x) => x.uid),
+    loot.map((x) => x.uid),
   );
   assert.deepEqual(r.hero.potions.hp.pequena, 7);
   assert.deepEqual(r.hero.potions.mp.pequena, 4);
@@ -382,7 +356,14 @@ test("o herói salvo passa na conferência; documento torto volta com o motivo (
     const back = JSON.parse(JSON.stringify(h));
     assert.deepEqual(
       checkHero(back),
-      { ok: true, hero: back, gearMoved: 0, itemsRescaled: 0 },
+      {
+        ok: true,
+        hero: back,
+        gearMoved: 0,
+        itemsRescaled: 0,
+        vaultItems: 0,
+        vaultGold: 0,
+      },
       cls,
     );
   }
@@ -406,16 +387,17 @@ test("o herói salvo passa na conferência; documento torto volta com o motivo (
     }),
     /arma: classe-nao-usa/,
   );
-  assert.match(
-    bad({
+  // A mochila não tem limite (28/11/2026): 41 itens passam.
+  assert.equal(
+    checkHero({
       ...h,
-      bag: Array.from({ length: BAG_SLOTS + 1 }, () => own({ slot: "anel" })),
-    }),
-    /forma: bag/,
+      bag: Array.from({ length: 41 }, () => own({ slot: "anel" })),
+    }).ok,
+    true,
   );
 });
 
-test("regra de item que mudou (27/11/2026): a peça que não cabe sai para a mochila e, cheia, para o cofre; a arma fica e o escudo sai; nível baixo continua vestido", () => {
+test("regra de item que mudou (27/11/2026): a peça que não cabe sai para a mochila (sem limite); a arma fica e o escudo sai; nível baixo continua vestido", () => {
   const mage = createHero("mago", id);
   const dagger: OwnedItem = { ...mage.equipment.arma!, uid: "adaga", family: "adaga" };
   // O mago gravado com adaga (antes de 27/11/2026): a leitura sem ajuste recusa o herói.
@@ -427,14 +409,14 @@ test("regra de item que mudou (27/11/2026): a peça que não cabe sai para a moc
   assert.ok(fit.hero.bag.some((x) => x.uid === "adaga"));
   const read = checkHero(old, B, { fitGear: true });
   assert.ok(read.ok && read.gearMoved === 1 && !read.hero.equipment.arma);
-  // Mochila cheia: vai para o cofre (sem limite, D58).
+  // Com a mochila grande (40 e mais), a peça entra nela (a mochila não tem limite desde 28/11/2026).
   const full: HeroV5 = {
     ...old,
-    bag: Array.from({ length: BAG_SLOTS }, () => own({ slot: "anel" })),
+    bag: Array.from({ length: 40 }, () => own({ slot: "anel" })),
   };
-  const toVault = fitWornGear(full, B).hero;
-  assert.equal(toVault.bag.length, BAG_SLOTS);
-  assert.ok(toVault.vault.items.some((x) => x.uid === "adaga"));
+  const moved = fitWornGear(full, B).hero;
+  assert.equal(moved.bag.length, 41);
+  assert.ok(moved.bag.some((x) => x.uid === "adaga"));
   // Arma de 2 mãos com escudo: confere na ordem de vestir; sai o escudo, a arma fica.
   const w = createHero("guerreiro", id);
   const axe: OwnedItem = { ...w.equipment.arma!, uid: "machado", family: "machado" };
@@ -471,7 +453,7 @@ test("D64: o herói de antes da faixa por raridade tem os afixos de épico e len
     itemRules: undefined,
     equipment: { ...fresh.equipment, colar: epic("vestido") },
     bag: [epic("mochila"), rare],
-    vault: { ...fresh.vault, items: [epic("cofre")] },
+    vault: { gold: 0, expansions: 0, items: [epic("cofre")] },
   };
   const r = fitItemRules(old, B);
   assert.equal(r.rescaled, 3);
@@ -480,7 +462,7 @@ test("D64: o herói de antes da faixa por raridade tem os afixos de épico e len
   assert.equal(vit(r.hero.equipment.colar), 1.9);
   assert.equal(vit(r.hero.bag[0]), 1.9);
   assert.equal(vit(r.hero.bag[1]), 1.7, "o raro não muda");
-  assert.equal(vit(r.hero.vault.items[0]), 1.9);
+  assert.equal(vit(r.hero.vault!.items[0]), 1.9);
   // Uma vez só: ler de novo não sobe outra vez.
   assert.equal(fitItemRules(r.hero, B).rescaled, 0);
   // A leitura do servidor faz o mesmo (com o ajuste do que está vestido).
@@ -532,14 +514,12 @@ test("Mestre: trocar de classe zera job e Proficiência; nível, XP, ouro e iten
     ok: false,
     error: "treinando",
   });
+  // A mochila não tem limite (28/11/2026): trocar de classe com 300 itens nela vai.
   const full: HeroV5 = {
     ...g,
-    bag: Array.from({ length: BAG_SLOTS }, () => own({ slot: "anel" })),
+    bag: Array.from({ length: 300 }, () => own({ slot: "anel" })),
   };
-  assert.deepEqual(changeClass(full, "mago"), {
-    ok: false,
-    error: "mochila-cheia",
-  });
+  assert.equal(changeClass(full, "mago").ok, true);
 });
 
 test("venda e desmanche em lote: a soma dos itens, numa gravação só, tudo ou nada", () => {

@@ -662,10 +662,10 @@ async function fullFlow(step, device) {
   await step("mercador-fechar", "Fechar o mercador", shut("closeNpcRequest"));
   await step(
     "banqueiro",
-    "Banqueiro",
+    "Mula",
     game("npcRequest", {
       instance: "lab-banqueiro",
-      title: "Banqueiro",
+      title: "Mula",
       npc: "banqueiro",
     }),
   );

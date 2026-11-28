@@ -34,7 +34,7 @@ export type Rotation = 0 | 1 | 2 | 3;
  * configuration (and performs `teleport`, which moves the avatar).
  */
 /** `train`: dummy de treino do jogo idle (docs/espaco/jogo/ot): o herói treina ao lado dele. */
-/** `npc`: NPC do jogo idle (etapa O8): mercador, banqueiro ou mestre das vocações. */
+/** `npc`: NPC do jogo idle (etapa O8): mercador, banqueiro (a Mula desde 28/11/2026, só transfere) ou mestre das vocações. */
 /** `news`: o quadro de avisos (25/11/2026): abre as novidades do produto, que vêm do servidor. */
 /** `arsenal`: a estante do Arsenal (27/11/2026): abre todos os itens do jogo idle. */
 export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc" | "news" | "arsenal" | "chest";

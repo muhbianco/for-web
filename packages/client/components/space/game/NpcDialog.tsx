@@ -4,7 +4,7 @@ import { useLingui } from "@lingui/solid/macro";
 import type { NpcKind } from "@muchat/space-core";
 import type { RpgHeroState } from "@muchat/space-core/game/ot/balance";
 
-import { BankPanel } from "./BankPanel";
+import { MulePanel } from "./BankPanel";
 import { ClassPicker } from "./ClassPicker";
 import { MasterPanel } from "./MasterPanel";
 import { MerchantPanel } from "./MerchantPanel";
@@ -12,8 +12,8 @@ import { SmithPanel } from "./SmithPanel";
 import { type GameLink, GameDialog, Muted } from "./gameUi";
 
 /**
- * Os NPCs do Idle Hunt (§10): Mercador, Ferreiro, Banqueiro e Mestre da evolução, cada um no seu
- * painel. O servidor confere que o herói está perto (`not_near`) e fora da corrida.
+ * Os NPCs do Idle Hunt (§10): Mercador, Ferreiro, Mula (o antigo Banqueiro, só de transferência
+ * desde 28/11/2026) e Mestre da evolução, cada um no seu painel. O servidor confere que o herói está perto (`not_near`) e fora da corrida.
  */
 export default function NpcDialog(props: {
   link: GameLink;
@@ -33,7 +33,7 @@ export default function NpcDialog(props: {
       case "ferreiro":
         return t`Ferreiro`;
       case "banqueiro":
-        return t`Banqueiro`;
+        return t`Mula`;
       case "mestre":
         return t`Mestre da evolução`;
     }
@@ -44,7 +44,6 @@ export default function NpcDialog(props: {
       title={props.request.title || role()}
       subtitle={props.request.title ? role() : undefined}
       onClose={props.onClose}
-      wide={props.request.npc === "banqueiro"}
     >
       <Show when={state()} fallback={<ClassPicker link={props.link} />}>
         {(s) => (
@@ -55,9 +54,7 @@ export default function NpcDialog(props: {
                   ? t`Seu herói está numa dungeon. Dá para vender da mochila (abre espaço para o loot) e comprar poção e munição: elas valem a partir da próxima corrida, porque esta já saiu calculada.`
                   : props.request.npc === "ferreiro"
                     ? t`Seu herói está numa dungeon. Dá para desmontar da mochila (abre espaço para o loot); refinar e reforjar, só quando a corrida acabar.`
-                    : props.request.npc === "banqueiro"
-                      ? t`Seu herói está numa dungeon. O cofre e o ouro funcionam normalmente; transferir, só quando a corrida acabar.`
-                      : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
+                    : t`Seu herói está numa dungeon: volte quando a corrida acabar.`}
               </Muted>
             </Show>
             <Show
@@ -88,7 +85,7 @@ export default function NpcDialog(props: {
                 />
               </Match>
               <Match when={props.request.npc === "banqueiro"}>
-                <BankPanel
+                <MulePanel
                   link={props.link}
                   npc={props.request.instance}
                   state={s()}

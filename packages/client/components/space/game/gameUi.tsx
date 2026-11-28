@@ -10,7 +10,7 @@ import {
 import { useLingui } from "@lingui/solid/macro";
 import type { GameWireEvent } from "@muchat/space-client";
 import type { ItemInstance } from "@muchat/space-core/game/ot/balance";
-import { itemVisual } from "@muchat/space-core/game/ot/balance";
+import { BATCH_MAX, itemVisual } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
@@ -129,6 +129,18 @@ export function useCommands(link: () => GameLink) {
     return last;
   }
   return { run, runAll, busy, error, setError };
+}
+
+/**
+ * Uma lista de itens maior do que um comando leva (`BATCH_MAX`, o quadro do protocolo tem 4 KB) vai
+ * em pedaços, um depois do outro, com `runAll` (28/11/2026: a mochila não tem limite). Cada pedaço é
+ * tudo ou nada; um erro no meio para ali, e o que já foi fica feito.
+ */
+export function batches(uids: readonly string[]): string[][] {
+  const out: string[][] = [];
+  for (let i = 0; i < uids.length; i += BATCH_MAX)
+    out.push(uids.slice(i, i + BATCH_MAX));
+  return out;
 }
 
 // ------------------------------------------------------------ diálogo

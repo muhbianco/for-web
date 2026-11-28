@@ -168,7 +168,7 @@ const ITEMS: DecorItem[] = [
   def({ id: "dummy-mannequin", name: "Manequim de combate", category: "equipment", rotations: 4, interaction: "train", description: "Manequim de armadura para treinar golpes.", tags: ["treino", "dummy", "manequim", "jogo"] }),
   // NPCs do jogo idle (etapa O8): o herói fala com eles ao lado, como no OT.
   def({ id: "npc-mercador", name: "Mercador", category: "equipment", interaction: "npc", npc: "mercador", description: "Compra o loot e vende munição, mochilas, anéis e colares.", tags: ["npc", "loja", "jogo"] }),
-  def({ id: "npc-banqueiro", name: "Banqueiro", category: "equipment", interaction: "npc", npc: "banqueiro", description: "Guarda as moedas sem peso, devolve quando você pede e transfere para outra pessoa.", tags: ["npc", "banco", "jogo"] }),
+  def({ id: "npc-banqueiro", name: "Mula", category: "equipment", interaction: "npc", npc: "banqueiro", description: "Leva ouro e itens da sua mochila para outra pessoa do Espaço, com uma taxa. (Era o Banqueiro: o cofre saiu em 28/11/2026, a mochila não tem limite.)", tags: ["npc", "mula", "transferir", "banqueiro", "jogo"] }),
   def({ id: "npc-ferreiro", name: "Ferreiro", category: "equipment", interaction: "npc", npc: "ferreiro", description: "Refina a arma que o herói empunha (até +10): cada nível dá dano; acima do +4 pode falhar.", tags: ["npc", "refino", "arma", "jogo"] }),
   def({ id: "npc-mestre", name: "Mestre de evolução", category: "equipment", interaction: "npc", npc: "mestre", description: "Evolui a classe do herói (job 20, 40 e 70) e redistribui atributos e habilidades.", tags: ["npc", "evolução", "classe", "jogo"] }),
 

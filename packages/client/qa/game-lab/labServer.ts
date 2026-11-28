@@ -11,14 +11,13 @@ import {
   type RpgRunView,
   type RunFrame,
   type RunResult,
-  BAG_SLOTS,
+  CHEST_ITEM_TTL_MS,
   CHEST_SLOTS,
   applyRun,
   autoEquipBag,
   chestNeedsConfirm,
   itemTooltip,
   balanceHero,
-  bankGold,
   bossMissing,
   bossRegions,
   buyAmmo,
@@ -56,9 +55,6 @@ import {
   startDojo,
   stopDojo,
   unequipItem,
-  vaultMoveMany,
-  vaultPut,
-  vaultTake,
   withCleared,
 } from "@muchat/space-core/game/ot/balance";
 
@@ -90,6 +86,22 @@ type Done = { ok: true; hero: HeroV5 };
  * fazer; responde com `rpg.state` (com o `re`) ou `error` (code "refused" e o motivo do núcleo). A
  * corrida roda no simulador com `record` e solta um quadro por "segundo" (acelerável).
  */
+/** O baú do laboratório (28/11/2026): itens, quando entraram, ouro e histórico. */
+export interface LabChest {
+  rev: number;
+  items: OwnedItem[];
+  put_at: Record<string, number>;
+  gold: number;
+  log: RpgChestLogRow[];
+}
+export const emptyChest = (): LabChest => ({
+  rev: 0,
+  items: [],
+  put_at: {},
+  gold: 0,
+  log: [],
+});
+
 export class LabServer implements TvLink {
   private seq = 0;
   private readonly listeners = new Set<(e: GameWireEvent) => void>();
@@ -111,18 +123,23 @@ export class LabServer implements TvLink {
   }
 
   /** O baú compartilhado do laboratório (28/11/2026): o conteúdo e quem mexeu. */
-  chest: { rev: number; items: OwnedItem[]; log: RpgChestLogRow[] } = {
-    rev: 0,
-    items: [],
-    log: [],
-  };
+  chest: LabChest = emptyChest();
   /** `&longe=1`: o servidor diz que a pessoa saiu de perto do baú. */
   chestFar = false;
   private chestView() {
+    const now = Date.now();
+    const items = this.chest.items.filter(
+      (x) => (this.chest.put_at[x.uid] ?? now) + CHEST_ITEM_TTL_MS > now,
+    );
     return {
       rev: this.chest.rev,
       slots: CHEST_SLOTS,
-      items: this.chest.items,
+      items,
+      put_at: Object.fromEntries(
+        items.map((x) => [x.uid, this.chest.put_at[x.uid] ?? now]),
+      ),
+      ttl_ms: CHEST_ITEM_TTL_MS,
+      gold: this.chest.gold,
       log: this.chest.log,
     };
   }
@@ -131,8 +148,10 @@ export class LabServer implements TvLink {
     action: RpgChestLogRow["action"],
     items: OwnedItem[],
     at = Date.now(),
+    gold = 0,
   ): RpgChestLogRow {
     return {
+      ...(gold > 0 ? { gold } : {}),
       at,
       user_id: name === "Ana" ? "u-ana" : `u-${name.toLowerCase()}`,
       name,
@@ -154,6 +173,7 @@ export class LabServer implements TvLink {
     const it = this.chest.items.at(-1);
     if (!it) return null;
     this.chest = {
+      ...this.chest,
       rev: this.chest.rev + 1,
       items: this.chest.items.slice(0, -1),
       log: [this.chestLog("Bia", "pegou", [it]), ...this.chest.log].slice(0, 40),
@@ -265,9 +285,7 @@ export class LabServer implements TvLink {
     // O que o servidor libera na corrida (26/11/2026): vender e comprar consumível no Mercador,
     // desmontar no Ferreiro; e (27/11/2026) o ouro e o cofre do Banqueiro.
     const duringRun =
-      t === "rpg.bank" ||
-      t === "rpg.vault" ||
-      t === "rpg.vault.many" ||
+      t === "rpg.chest.gold" ||
       t === "rpg.chest.put" ||
       t === "rpg.chest.take" ||
       t === "rpg.shop.sell" ||
@@ -396,8 +414,23 @@ export class LabServer implements TvLink {
             next: Math.random,
           }),
         );
-      case "rpg.bank":
-        return this.apply(re, bankGold(h, Number(d.gold)));
+      case "rpg.chest.gold": {
+        const g = Number(d.gold);
+        if (g > 0 && g > h.gold) return this.refuse(re, "sem-ouro", "rpg_invalid");
+        if (g < 0 && -g > this.chest.gold)
+          return this.refuse(re, "chest_sem_ouro", "rpg_invalid");
+        this.chest = {
+          ...this.chest,
+          rev: this.chest.rev + 1,
+          gold: this.chest.gold + g,
+          log: [
+            this.chestLog("Ana", g > 0 ? "pos" : "pegou", [], Date.now(), Math.abs(g)),
+            ...this.chest.log,
+          ].slice(0, 40),
+        };
+        this.save(re, { ...h, gold: h.gold - g });
+        return this.chestChanged();
+      }
       case "rpg.chest":
         if (this.chestFar) return this.refuse(re, "too_far", "not_allowed");
         return this.emit({ t: "rpg.chest", re, d: this.chestView() });
@@ -411,8 +444,13 @@ export class LabServer implements TvLink {
         if (this.chest.items.length + items.length > CHEST_SLOTS)
           return this.refuse(re, "chest_full", "rpg_invalid");
         this.chest = {
+          ...this.chest,
           rev: this.chest.rev + 1,
           items: [...this.chest.items, ...items],
+          put_at: {
+            ...this.chest.put_at,
+            ...Object.fromEntries(items.map((x) => [x.uid, Date.now()])),
+          },
           log: [this.chestLog("Ana", "pos", items), ...this.chest.log].slice(0, 40),
         };
         this.save(re, { ...h, bag: h.bag.filter((x) => !uids.includes(x.uid)) });
@@ -423,35 +461,15 @@ export class LabServer implements TvLink {
         const items = this.chest.items.filter((x) => uids.includes(x.uid));
         if (items.length !== uids.length)
           return this.refuse(re, "chest_gone", "rpg_invalid");
-        const room = Math.max(0, BAG_SLOTS - h.bag.length);
         this.chest = {
+          ...this.chest,
           rev: this.chest.rev + 1,
           items: this.chest.items.filter((x) => !uids.includes(x.uid)),
           log: [this.chestLog("Ana", "pegou", items), ...this.chest.log].slice(0, 40),
         };
-        this.save(re, {
-          ...h,
-          bag: [...h.bag, ...items.slice(0, room)],
-          vault: { ...h.vault, items: [...h.vault.items, ...items.slice(room)] },
-        });
+        this.save(re, { ...h, bag: [...h.bag, ...items] });
         return this.chestChanged();
       }
-      case "rpg.vault":
-        return this.apply(
-          re,
-          d.action === "guardar"
-            ? vaultPut(h, String(d.uid))
-            : vaultTake(h, String(d.uid)),
-        );
-      case "rpg.vault.many":
-        return this.apply(
-          re,
-          vaultMoveMany(
-            h,
-            d.action === "retirar" ? "retirar" : "guardar",
-            (d.uids as string[]) ?? [],
-          ),
-        );
       case "rpg.bank.transfer": {
         const uids = (d.uids as string[]) ?? [];
         const items = h.bag.filter((x) => uids.includes(x.uid));
@@ -863,7 +881,6 @@ export class LabServer implements TvLink {
         mine.levels_gained = r.levelsGained;
         mine.jobs_gained = r.jobsGained;
         mine.left = r.left;
-        mine.to_vault = r.toVault;
       }
     }
     const cur = this.world.runs[view.id];

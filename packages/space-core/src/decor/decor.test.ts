@@ -16,7 +16,7 @@ import {
   validateConfig,
   validatePlacement,
 } from "./placement.ts";
-import { arsenalMark, defaultDecor, furnish, NOTICE_BOARD_MARK } from "./theme.ts";
+import { arsenalMark, chestMark, defaultDecor, furnish, NOTICE_BOARD_MARK } from "./theme.ts";
 import { type DecorInstance, emptyDecor } from "./types.ts";
 import { roomZoneKey, wingZoneKey, zonesOf } from "./zones.ts";
 
@@ -375,4 +375,55 @@ test("Arsenal (27/11/2026): uma estante no hall e em cada sala do jogo, uma vez;
   assert.equal(furnish(ix, removed).items.filter((i) => i.item === "arsenal").length, 0);
   // A estante só aceita título.
   assert.equal(itemOf(CATALOG, "arsenal")?.interaction, "arsenal");
+});
+
+test("baú compartilhado (28/11/2026): vai uma vez para o lado da Mula da sala do jogo; não volta se tirarem", () => {
+  const map = generateLayout({
+    templateVersion: 2,
+    wings: [
+      {
+        index: 0,
+        title: "Geral",
+        slots: [
+          { roomId: fakeUlid(1), label: "Café", size: "S" },
+          { roomId: fakeUlid(2), label: "Idle Hunt", size: "M" },
+        ],
+      },
+    ],
+  });
+  const ix = indexMap(map);
+  const zones = zonesOf(map);
+  const game = roomZoneKey(fakeUlid(2));
+  const fresh = defaultDecor(ix, { serverName: "Novo" });
+  const mule = fresh.items.find((i) => i.item === "npc-banqueiro")!;
+  assert.equal(mule.zone, game);
+  const chests = fresh.items.filter((i) => i.item === "chest-shared");
+  assert.equal(chests.length, 1);
+  const chest = chests[0]!;
+  assert.equal(chest.zone, game);
+  assert.ok(Math.abs(chest.x - mule.x) <= 2 && Math.abs(chest.y - mule.y) <= 2, "ao lado da Mula");
+  assert.ok(fresh.furnished.includes(chestMark(game)));
+  const others = { ...fresh, items: fresh.items.filter((i) => i.id !== chest.id) };
+  assert.equal(validatePlacement({ ix, zones, catalog: CATALOG, state: others }, chest), null);
+  // O servidor de antes (como o Alopa): a Mula já estava lá; o baú entra uma vez, e tirado não volta.
+  const old = {
+    ...fresh,
+    items: fresh.items.filter((i) => i.item !== "chest-shared"),
+    furnished: fresh.furnished.filter((k) => !k.endsWith(":chest")),
+  };
+  const migrated = furnish(ix, old);
+  assert.deepEqual(
+    migrated.items.filter((i) => i.item === "chest-shared").map((i) => [i.zone, i.x, i.y]),
+    [[chest.zone, chest.x, chest.y]],
+  );
+  assert.equal(furnish(ix, migrated).items.length, migrated.items.length);
+  const removed = { ...migrated, items: migrated.items.filter((i) => i.item !== "chest-shared") };
+  assert.equal(furnish(ix, removed).items.filter((i) => i.item === "chest-shared").length, 0);
+  // Quem já tinha posto um baú na sala não ganha outro.
+  const own = { ...old, items: [...old.items, { ...chest, id: "meu-bau", x: 0, y: 0 }] };
+  const kept = furnish(ix, own);
+  assert.deepEqual(
+    kept.items.filter((i) => i.item === "chest-shared").map((i) => i.id),
+    ["meu-bau"],
+  );
 });

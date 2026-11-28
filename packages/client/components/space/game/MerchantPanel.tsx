@@ -8,7 +8,6 @@ import {
   type RpgHeroState,
   AMMO_GRADES,
   ARMOR_SLOTS,
-  BAG_SLOTS,
   CLASSES,
   FAMILIES,
   OFFHAND_IDS,
@@ -23,6 +22,7 @@ import { styled } from "styled-system/jsx";
 import { ItemCard, ItemGrid } from "./ItemCard";
 import { offhandName, sizeName, slotName, weightName } from "./gameText";
 import {
+  batches,
   type GameLink,
   Btn,
   Confirm,
@@ -68,7 +68,11 @@ export function MerchantPanel(props: {
     <Wrap>
       <Row>
         <Gold n={gold(h().gold)} />
-        <Muted>{t`Mochila ${h().bag.length}/${BAG_SLOTS}`}</Muted>
+        <Muted>
+          {h().bag.length === 1
+            ? t`Mochila: 1 item`
+            : t`Mochila: ${h().bag.length} itens`}
+        </Muted>
       </Row>
       <Tabs
         label={t`Mercador`}
@@ -335,11 +339,7 @@ function Commons(props: { state: RpgHeroState; busy: boolean; onBuy: BuyFn }) {
             <Btn
               type="button"
               data-tone="primary"
-              disabled={
-                props.busy ||
-                price().gold > h().gold ||
-                h().bag.length >= BAG_SLOTS
-              }
+              disabled={props.busy || price().gold > h().gold}
               onClick={() =>
                 props.onBuy(
                   { kind: "item", base: base() },
@@ -384,11 +384,17 @@ function Sell(props: {
   const sell = async () => {
     const list = chosen();
     const g = total();
-    const r = await cmd.run("rpg.shop.sell.many", {
-      npc: props.npc,
-      uids: list.map((x) => x.uid),
-      ...(risky().length > 0 ? { confirm: true } : {}),
-    });
+    // Mais de 40 de uma vez (a mochila não tem limite): em pedaços de 40.
+    const r = await cmd.runAll(
+      batches(list.map((x) => x.uid)).map((uids) => [
+        "rpg.shop.sell.many",
+        {
+          npc: props.npc,
+          uids,
+          ...(risky().length > 0 ? { confirm: true } : {}),
+        },
+      ]),
+    );
     setSel([]);
     if (r?.ok) props.onDone(list.length, g);
   };

@@ -453,7 +453,7 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
         <GroupHead>
           <h4>{t`Lendários`}</h4>
           <Muted>
-            {t`Quando cai um Lendário: ${shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa tem ${usableExtra} a mais de chance. O que ela não usa, passe para outro jogador pelo Banqueiro. Numa base que tem lendário com nome, ${named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo.`}
+            {t`Quando cai um Lendário: ${shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa tem ${usableExtra} a mais de chance. O que ela não usa, passe para outro jogador pela Mula ou pelo baú compartilhado. Numa base que tem lendário com nome, ${named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo.`}
           </Muted>
           <Show when={legendaryFor()}>
             {(o) => (

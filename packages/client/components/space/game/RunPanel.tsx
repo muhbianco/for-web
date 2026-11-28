@@ -844,16 +844,10 @@ function EndCard(props: {
                   </>
                 )}
               </Show>
-              <Show when={(m.to_vault?.length ?? 0) > 0}>
-                <small>
-                  🏦{" "}
-                  {t`${m.to_vault!.length} itens não couberam na mochila e foram para o cofre do Banqueiro.`}
-                </small>
-              </Show>
               <Show when={m.left.length > 0}>
                 <small>
                   ⚠{" "}
-                  {t`${m.left.length} itens ficaram na dungeon: a mochila estava cheia.`}
+                  {t`${m.left.length} itens ficaram na dungeon: o herói já guarda itens demais. Venda ou desmonte algo da mochila.`}
                 </small>
               </Show>
               <small>

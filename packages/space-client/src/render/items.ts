@@ -1459,13 +1459,49 @@ export const ART: Record<string, ArtDef> = {
     },
   },
   "npc-banqueiro": {
+    // A Mula (28/11/2026, antes o Banqueiro): de frente, orelhas compridas, focinho claro e os
+    // alforjes de couro com a moeda de quem leva as coisas para os outros.
     tall: 1,
     draw(g) {
-      npcFigure(g, "#2f4f8f", "#e7c39a");
-      // A moeda de ouro no peito.
-      disc(g, 8, g.top + 4, 2, OUTLINE);
-      disc(g, 8, g.top + 4, 1, "#f4c542");
-      dot(g, 8, g.top + 4, "#fff2b0");
+      const t = g.top;
+      const coat = "#7a5a3e";
+      const muzzle = "#d8c3a5";
+      const leather = "#5b3a22";
+      // O corpo atrás da cabeça e as patas da frente.
+      rect(g, 2, t - 1, 12, 11, OUTLINE);
+      rect(g, 3, t, 10, 9, shade(coat, -0.12));
+      for (const x of [4, 10]) {
+        rect(g, x, t + 9, 3, 5, OUTLINE);
+        rect(g, x + 1, t + 9, 1, 3, coat);
+        rect(g, x + 1, t + 12, 1, 1, DARKER);
+      }
+      // Os alforjes nos dois lados, com a fivela e a moeda.
+      for (const x of [0, 12]) {
+        rect(g, x, t + 1, 4, 7, OUTLINE);
+        rect(g, x + 1, t + 2, 2, 5, leather);
+        rect(g, x + 1, t + 2, 2, 1, shade(leather, 0.25));
+        dot(g, x + 2, t + 4, METAL);
+      }
+      disc(g, 2, t + 9, 1, OUTLINE);
+      dot(g, 2, t + 9, "#f4c542");
+      // As orelhas.
+      for (const x of [4, 10]) {
+        rect(g, x, t - 14, 3, 7, OUTLINE);
+        rect(g, x + 1, t - 13, 1, 6, coat);
+      }
+      dot(g, 5, t - 12, "#c99a86");
+      dot(g, 11, t - 12, "#c99a86");
+      // A cabeça comprida e o focinho.
+      rect(g, 4, t - 8, 9, 11, OUTLINE);
+      rect(g, 5, t - 7, 7, 9, coat);
+      rect(g, 5, t - 7, 1, 9, shade(coat, 0.2));
+      rect(g, 5, t - 1, 7, 3, muzzle);
+      dot(g, 6, t, DARKER);
+      dot(g, 10, t, DARKER);
+      dot(g, 6, t - 5, DARKER);
+      dot(g, 10, t - 5, DARKER);
+      // A crina entre as orelhas.
+      rect(g, 7, t - 9, 3, 2, shade(coat, -0.4));
     },
   },
   "npc-ferreiro": {

@@ -42,7 +42,7 @@ import TrainingChip from "../../components/space/game/TrainingChip";
 import TrainingDialog from "../../components/space/game/TrainingDialog";
 import TvMenu from "../../components/space/game/TvMenu";
 import { myLobby } from "../../components/space/game/partyUi";
-import { type LabWorld, LabServer } from "./labServer";
+import { type LabWorld, LabServer, emptyChest } from "./labServer";
 import {
   CLEARED_REGION1,
   CLEARED_SOME,
@@ -316,9 +316,16 @@ const SCENARIOS: Scenario[] = [
     chest: (srv) => {
       const items = stuffBag(mage45(), 18, 31).bag.slice(-18);
       const t0 = Date.now() - 3 * 3600_000;
+      // Idades variadas: o selo do canto mostra 4d, 1d, horas e minutos até sumir.
+      const day = 24 * 3600_000;
+      const ages = [10 * 60_000, 2 * 3600_000, 20 * 3600_000, 2 * day, 4 * day + 23 * 3600_000];
       srv.chest = {
         rev: 3,
         items,
+        put_at: Object.fromEntries(
+          items.map((x, i) => [x.uid, Date.now() - ages[i % ages.length]!]),
+        ),
+        gold: 12_500,
         log: [
           srv.chestLog("Caio", "pegou", items.slice(0, 1), t0 + 2 * 3600_000),
           srv.chestLog("Bia", "pos", items.slice(10, 18), t0 + 3600_000),
@@ -333,31 +340,22 @@ const SCENARIOS: Scenario[] = [
     screen: "bau",
     build: () => world(stateOf(mage45())),
     chest: (srv) => {
-      srv.chest = { rev: 0, items: [], log: [] };
+      srv.chest = emptyChest();
     },
   },
   {
     id: "banqueiro",
-    label: "Banqueiro",
+    label: "Mula (antes Banqueiro)",
     screen: "npc",
     npc: "banqueiro",
     build: () => world(stateOf(mage45())),
   },
   {
-    id: "banqueiro-cheio",
-    label: "Banqueiro (mochila cheia, cofre com 150)",
-    screen: "npc",
-    npc: "banqueiro",
-    // O cofre sem limite (27/11/2026): filtros, páginas e "cabem N" com a mochila cheia.
-    build: () => {
-      const h = stuffBag(mage45(), 39, 5);
-      return world(
-        stateOf({
-          ...h,
-          vault: { ...h.vault, items: stuffBag(h, 149, 77).bag },
-        }),
-      );
-    },
+    id: "mochila-300",
+    label: "Mochila com 300 itens (sem limite)",
+    screen: "hero",
+    // A mochila não tem limite (28/11/2026): busca e páginas de 60 na ficha.
+    build: () => world(stateOf(stuffBag(mage45(), 300, 5))),
   },
   {
     id: "mestre",
@@ -637,7 +635,7 @@ function Lab() {
     const sc = SCENARIOS.find((x) => x.id === s) ?? SCENARIOS[2]!;
     server.speed = speed;
     server.load(sc.build());
-    server.chest = { rev: 0, items: [], log: [] };
+    server.chest = emptyChest();
     sc.chest?.(server);
     server.chestFar = new URLSearchParams(location.hash.slice(1)).get("longe") === "1";
     setScreen(sc.screen);

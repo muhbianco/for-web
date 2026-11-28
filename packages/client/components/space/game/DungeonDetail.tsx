@@ -170,7 +170,7 @@ export default function DungeonDetail(props: {
             when={legend().length > 0 && odds().perHero.atLeastOne.lendario > 0}
           >
             <li>
-              {t`Lendário: qualquer item do jogo, com o perk numa habilidade da sua classe (o que não servir, dá para passar a outro jogador pelo Banqueiro). Às vezes vem um com nome: ${legend().join(", ")}.`}
+              {t`Lendário: qualquer item do jogo, com o perk numa habilidade da sua classe (o que não servir, dá para passar a outro jogador pela Mula ou pelo baú compartilhado). Às vezes vem um com nome: ${legend().join(", ")}.`}
             </li>
           </Show>
           <li>

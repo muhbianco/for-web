@@ -13,13 +13,13 @@ import {
 import { cannotEquip } from "./equipment.ts";
 import { type Balance, balance as gameBalance } from "./formulas.ts";
 import {
-  BAG_SLOTS,
   HERO_VERSION,
   type HeroV5,
   type OwnedItem,
   balanceHero,
   fitItemRules,
   fitWornGear,
+  mergeVault,
 } from "./hero.ts";
 import { MATERIALS } from "./items/generate.ts";
 import { LEGENDARIES } from "./items/legendary.ts";
@@ -122,7 +122,8 @@ export const heroV5Schema = z.object({
     resets: z.number().int().min(0),
   }),
   equipment: z.record(z.string(), item),
-  bag: z.array(item).max(BAG_SLOTS),
+  // Sem teto desde 28/11/2026 (mochila sem limite): o limite físico é o do documento no servidor.
+  bag: z.array(item),
   gold: count,
   potions: z.object({
     hp: z.object({ pequena: count, media: count, grande: count }),
@@ -136,13 +137,14 @@ export const heroV5Schema = z.object({
   ores: materials,
   essence: count,
   stones: count,
-  vault: z.object({
-    gold: count,
-    // Sem teto desde 27/11/2026 (o Banqueiro guarda tudo): um teto aqui tornaria o herói ilegível
-    // no dia em que o cofre passasse dele. O limite físico é o do documento no Mongo.
-    items: z.array(item),
-    expansions: z.number().int().min(0).max(100),
-  }),
+  // Legado (o cofre saiu em 28/11/2026): só o herói gravado antes traz; a leitura junta na mochila.
+  vault: z
+    .object({
+      gold: count,
+      items: z.array(item),
+      expansions: z.number().int().min(0).max(100),
+    })
+    .optional(),
   supplies: z.object({
     hp: z.number().min(0).max(1),
     mp: z.number().min(0).max(1),
@@ -160,6 +162,9 @@ export type HeroCheck =
       gearMoved: number;
       /** Itens levados para a faixa de afixo de agora por `fitGear` (D64). */
       itemsRescaled: number;
+      /** O que veio do cofre que saiu (28/11/2026): itens e ouro. */
+      vaultItems: number;
+      vaultGold: number;
     }
   | { ok: false; reason: string };
 
@@ -179,9 +184,13 @@ export function checkHero(
   const p = heroV5Schema.safeParse(doc);
   if (!p.success)
     return { ok: false, reason: `forma: ${p.error.issues[0]?.path.join(".")}` };
+  // O cofre que saiu (28/11/2026) vem para a mochila antes das outras correções de leitura.
+  const merged = opts.fitGear
+    ? mergeVault(p.data as unknown as HeroV5)
+    : { hero: p.data as unknown as HeroV5, items: 0, gold: 0 };
   const rules = opts.fitGear
-    ? fitItemRules(p.data as unknown as HeroV5, B)
-    : { hero: p.data as unknown as HeroV5, rescaled: 0 };
+    ? fitItemRules(merged.hero, B)
+    : { hero: merged.hero, rescaled: 0 };
   const fit = opts.fitGear
     ? fitWornGear(rules.hero, B)
     : { hero: rules.hero, moved: [] };
@@ -193,7 +202,6 @@ export function checkHero(
   const uids = [
     ...Object.values(h.equipment).map((x) => x!.uid),
     ...h.bag.map((x) => x.uid),
-    ...h.vault.items.map((x) => x.uid),
   ];
   if (new Set(uids).size !== uids.length)
     return { ok: false, reason: "item repetido" };
@@ -215,5 +223,7 @@ export function checkHero(
     hero: h,
     gearMoved: fit.moved.length,
     itemsRescaled: rules.rescaled,
+    vaultItems: merged.items,
+    vaultGold: merged.gold,
   };
 }

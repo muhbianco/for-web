@@ -32,6 +32,7 @@ import { styled } from "styled-system/jsx";
 
 import { ItemCard, ItemGrid } from "./ItemCard";
 import {
+  batches,
   type GameLink,
   Btn,
   Confirm,
@@ -388,10 +389,13 @@ export function SmithPanel(props: {
             const list = chosen();
             const sum = dismantleTotals(list);
             setBroke(null);
-            const r = await cmd.run("rpg.smith.dismantle.many", {
-              npc: props.npc,
-              uids: list.map((x) => x.uid),
-            });
+            // Mais de 40 de uma vez (a mochila não tem limite): em pedaços de 40.
+            const r = await cmd.runAll(
+              batches(list.map((x) => x.uid)).map((uids) => [
+                "rpg.smith.dismantle.many",
+                { npc: props.npc, uids },
+              ]),
+            );
             if (!r?.ok) return;
             setMany([]);
             const n = list.length;

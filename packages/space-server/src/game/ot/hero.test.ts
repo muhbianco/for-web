@@ -17,6 +17,8 @@ import {
   markRun,
   newRpgHero,
   openDojo,
+  rpgDocBytes,
+  settleRunFitting,
   settleRunHero,
   transferIn,
   transferOut,
@@ -172,4 +174,63 @@ test("transferência: sai com a taxa, entra uma vez só, volta inteira se o dest
   transferOut(c, { id: "t3", to: "X", gold: 1000, items: [], at: 0 }, 0);
   transferSettled(c, "t3", true);
   assert.equal(c.hero.gold, 5000 - 20);
+});
+
+test("o cofre que saiu (28/11/2026): a leitura traz os itens para a mochila e o ouro para a mão e conta", () => {
+  const d = hero();
+  const kept = ring();
+  const old = JSON.parse(
+    JSON.stringify({
+      ...d,
+      hero: {
+        ...d.hero,
+        gold: 100,
+        vault: { gold: 900, items: [kept], expansions: 0 },
+      },
+    }),
+  );
+  const r = checkHeroDoc(old);
+  assert.ok(r.ok);
+  assert.deepEqual([r.vaultItems, r.vaultGold], [1, 900]);
+  assert.equal(r.doc.hero.gold, 1000);
+  assert.ok(r.doc.hero.bag.some((x) => x.uid === kept.uid));
+  assert.equal("vault" in r.doc.hero, false);
+  const again = checkHeroDoc(JSON.parse(JSON.stringify(r.doc)));
+  assert.ok(again.ok && again.vaultItems === 0 && again.vaultGold === 0);
+});
+
+test("fim da corrida com o documento cheio (28/11/2026): os itens ficam para trás, XP e ouro entram", () => {
+  const d = hero("mago");
+  markRun(d, { id: "r1", dungeon: "cacada-1", ends_at: 10_000 }, 0);
+  const loot = [ring(), ring()];
+  const spoils = {
+    xp: B.xpTotalAt(3),
+    jobXp: 10,
+    gold: 50,
+    items: loot,
+    ores: { [materialOf(1)]: 4 },
+    stones: 0,
+    potionsUsed: { hp: 2, mp: 0 },
+    ammoUsed: 0,
+  };
+  // Com folga: tudo entra.
+  const roomy = structuredClone(d);
+  const a = settleRunFitting(roomy, "r1", spoils, 1 << 20);
+  assert.ok(a.ok && a.dropped.length === 0);
+  assert.equal(roomy.hero.bag.length, 2);
+  // Sem espaço para os itens (o teto bate antes da folga de 1 KB): XP, ouro e minério entram.
+  const tight = structuredClone(d);
+  const b = settleRunFitting(tight, "r1", spoils, rpgDocBytes(d) + 1024 + 100);
+  assert.ok(b.ok);
+  assert.deepEqual(
+    b.dropped.map((x) => x.uid),
+    loot.map((x) => x.uid),
+  );
+  assert.equal(tight.hero.bag.length, 0);
+  assert.equal(tight.hero.level, 3);
+  assert.equal(tight.hero.gold, 50);
+  assert.equal(tight.hero.ores[materialOf(1)], 4);
+  assert.equal(tight.run, null);
+  // Fechada uma vez só.
+  assert.equal(settleRunFitting(tight, "r1", spoils).ok, false);
 });

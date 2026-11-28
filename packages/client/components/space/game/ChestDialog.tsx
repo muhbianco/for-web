@@ -13,7 +13,6 @@ import {
   type RpgChestEvent,
   type RpgChestLogRow,
   type RpgHeroState,
-  BAG_SLOTS,
   CHEST_SLOTS,
   chestNeedsConfirm,
 } from "@muchat/space-core/game/ot/balance";
@@ -22,6 +21,7 @@ import { styled } from "styled-system/jsx";
 import {
   Count,
   Empty,
+  Input,
   Ledger,
   Long,
   Meter,
@@ -48,12 +48,14 @@ import {
   Btn,
   Confirm,
   GameDialog,
+  Gold,
   Muted,
   Row,
   Tabs,
+  batches,
   useCommands,
 } from "./gameUi";
-import { bagMarks } from "./heroModel";
+import { bagMarks, gold } from "./heroModel";
 
 type Chest = RpgChestEvent["d"];
 type Sort = "novos" | "raridade" | "nivel";
@@ -75,9 +77,12 @@ const when = new Intl.DateTimeFormat("pt-BR", {
 
 /**
  * O baú compartilhado (28/11/2026, o dono: "um baú compartilhado; todos podem pôr/pegar item de lá"):
- * um por servidor, o mesmo em qualquer baú do mapa. Duas colunas como o cofre do Banqueiro (baú |
- * mochila): escolher vários, clique duplo move na hora, e a barra diz o efeito antes. O histórico
- * mostra quem pôs e quem pegou. Quando outra pessoa mexe, o servidor avisa e a janela pede de novo.
+ * um por servidor, o mesmo em qualquer baú do mapa. Duas colunas (baú | mochila): escolher vários,
+ * clique duplo move na hora, e a barra diz o efeito antes. O histórico mostra quem pôs e quem pegou.
+ * Quando outra pessoa mexe, o servidor avisa e a janela pede de novo.
+ *
+ * Desde 28/11/2026 (o dono): o baú guarda ouro também, e item que passa 5 dias nele some (o selo no
+ * canto diz quanto falta). A mochila não tem limite: listas acima de 40 vão em pedaços.
  */
 export default function ChestDialog(props: {
   link: GameLink;
@@ -130,6 +135,11 @@ function ChestPanel(props: {
   const [done, setDone] = createSignal<string | null>(null);
   /** A leitura do baú falhou (longe, jogo desligado…): o motivo fica até a próxima tentativa. */
   const [loadError, setLoadError] = createSignal<string | null>(null);
+  const [coins, setCoins] = createSignal(0);
+  // O relógio do selo "some em": um tique por minuto basta.
+  const [now, setNow] = createSignal(Date.now());
+  const tick = setInterval(() => setNow(Date.now()), 60_000);
+  onCleanup(() => clearInterval(tick));
 
   const accept = (d: Chest) => {
     const cur = chest();
@@ -193,8 +203,21 @@ function ChestPanel(props: {
     const has = new Set(h().bag.map((x) => x.uid));
     return pickBag().filter((u) => has.has(u));
   });
-  const bagRoom = () => Math.max(0, BAG_SLOTS - h().bag.length);
   const chestRoom = () => Math.max(0, slots() - items().length);
+  /** Quanto falta para o item sumir do baú (5 dias desde que entrou). */
+  const left = (uid: string) => {
+    const c = chest();
+    const at = c?.put_at[uid];
+    if (!c || at === undefined) return undefined;
+    const ms = at + c.ttl_ms - now();
+    if (ms <= 0) return t`0m`;
+    const hours = Math.floor(ms / 3_600_000);
+    return hours >= 24
+      ? t`${Math.floor(hours / 24)}d`
+      : hours >= 1
+        ? t`${hours}h`
+        : t`${Math.max(1, Math.floor(ms / 60_000))}m`;
+  };
   /** Algum escolhido da mochila é +7 ou Lendário: pôr pede a segunda confirmação. */
   const precious = createMemo(() => {
     const sel = new Set(bagSel());
@@ -204,11 +227,12 @@ function ChestPanel(props: {
   const put = async (uids: string[], confirm = false) => {
     if (uids.length === 0) return;
     setDone(null);
-    const r = await cmd.run("rpg.chest.put", {
-      chest: props.chest,
-      uids,
-      ...(confirm ? { confirm: true } : {}),
-    });
+    const r = await cmd.runAll(
+      batches(uids).map((part) => [
+        "rpg.chest.put",
+        { chest: props.chest, uids: part, ...(confirm ? { confirm: true } : {}) },
+      ]),
+    );
     if (!r?.ok) return;
     setPickBag([]);
     setDone(
@@ -220,16 +244,34 @@ function ChestPanel(props: {
   const take = async (uids: string[]) => {
     if (uids.length === 0) return;
     setDone(null);
-    const vault = Math.max(0, uids.length - bagRoom());
-    const r = await cmd.run("rpg.chest.take", { chest: props.chest, uids });
+    const r = await cmd.runAll(
+      batches(uids).map((part) => [
+        "rpg.chest.take",
+        { chest: props.chest, uids: part },
+      ]),
+    );
     if (!r?.ok) return;
     setPickChest([]);
     setDone(
-      vault > 0
-        ? t`Pegou ${uids.length}: ${vault} foram para o cofre (a mochila encheu).`
-        : uids.length === 1
-          ? t`1 item na sua mochila.`
-          : t`${uids.length} itens na sua mochila.`,
+      uids.length === 1
+        ? t`1 item na sua mochila.`
+        : t`${uids.length} itens na sua mochila.`,
+    );
+  };
+  /** O ouro: positivo põe da mão, negativo pega do baú. */
+  const moveGold = async (amount: number) => {
+    if (amount === 0) return;
+    setDone(null);
+    const r = await cmd.run("rpg.chest.gold", {
+      chest: props.chest,
+      gold: amount,
+    });
+    if (!r?.ok) return;
+    setCoins(0);
+    setDone(
+      amount > 0
+        ? t`${gold(amount)} de ouro no baú.`
+        : t`${gold(-amount)} de ouro na sua mão.`,
     );
   };
   /** Clique duplo na mochila: +7 e Lendário não vão sem a confirmação da barra. */
@@ -243,11 +285,7 @@ function ChestPanel(props: {
   };
 
   const hint = () =>
-    chestSel().length > 0 && chestSel().length > bagRoom()
-      ? bagRoom() > 0
-        ? t`Cabem ${bagRoom()} na mochila; o resto vai para o cofre.`
-        : t`A mochila está cheia: o que você pegar vai para o cofre.`
-      : bagSel().length > chestRoom()
+    bagSel().length > chestRoom()
         ? chestRoom() > 0
           ? t`Cabem só ${chestRoom()} no baú: tire ${bagSel().length - chestRoom()} da escolha.`
           : t`O baú está cheio (${slots()} itens).`
@@ -267,20 +305,46 @@ function ChestPanel(props: {
             <span style={{ width: `${(items().length / slots()) * 100}%` }} />
           </Meter>
         </Stat>
-        <Stat data-warn={bagRoom() <= 4 ? "" : undefined}>
-          <small>{t`Mochila`}</small>
-          <strong>
-            {h().bag.length}/{BAG_SLOTS}
-          </strong>
-          <Meter aria-hidden="true">
-            <span style={{ width: `${(h().bag.length / BAG_SLOTS) * 100}%` }} />
-          </Meter>
+        <Stat>
+          <small>{t`Ouro no baú`}</small>
+          <Gold n={gold(chest()?.gold ?? 0)} />
         </Stat>
         <Stat>
-          <small>{t`Quem usa`}</small>
-          <strong>{t`Todo o servidor`}</strong>
+          <small>{t`Ouro na mão`}</small>
+          <Gold n={gold(h().gold)} />
         </Stat>
       </Ledger>
+      <GoldRow aria-label={t`Ouro do baú`}>
+        <Input
+          type="number"
+          inputMode="numeric"
+          min={0}
+          value={coins() || ""}
+          placeholder={t`Ouro`}
+          aria-label={t`Quanto ouro`}
+          onInput={(e) =>
+            setCoins(Math.max(0, Math.floor(Number(e.currentTarget.value)) || 0))
+          }
+        />
+        <Btn
+          type="button"
+          data-size="sm"
+          disabled={cmd.busy() || coins() <= 0 || coins() > h().gold}
+          onClick={() => void moveGold(coins())}
+        >
+          ← {t`Pôr no baú`}
+        </Btn>
+        <Btn
+          type="button"
+          data-size="sm"
+          disabled={
+            cmd.busy() || coins() <= 0 || coins() > (chest()?.gold ?? 0)
+          }
+          onClick={() => void moveGold(-coins())}
+        >
+          {t`Pegar do baú`} →
+        </Btn>
+      </GoldRow>
       <Tabs
         label={t`Baú compartilhado`}
         value={tab()}
@@ -367,6 +431,7 @@ function ChestPanel(props: {
                     onSelect={setPickChest}
                     onQuick={(u) => void take([u])}
                     marks={chestMarks()}
+                    tag={left}
                     hero={h()}
                   />
                 </Show>
@@ -384,14 +449,17 @@ function ChestPanel(props: {
                 </Btn>
               </Row>
             </Show>
+            <Tip>{t`O item some 5 dias depois de entrar no baú (o canto diz quanto falta). O ouro não some.`}</Tip>
           </Pane>
 
           <Pane aria-label={t`Mochila`}>
             <PaneHead>
               <h3>
                 {t`Mochila`}{" "}
-                <Count data-full={bagRoom() <= 4 ? "" : undefined}>
-                  {h().bag.length}/{BAG_SLOTS}
+                <Count>
+                  {h().bag.length === 1
+                    ? t`1 item`
+                    : t`${h().bag.length} itens`}
                 </Count>
               </h3>
             </PaneHead>
@@ -549,12 +617,28 @@ function ChestPanel(props: {
 function LogLine(props: { row: RpgChestLogRow }) {
   const { t } = useLingui();
   const more = () => props.row.count - props.row.items.length;
+  const coins = () => props.row.gold ?? 0;
   return (
     <li>
       <time>{when.format(props.row.at)}</time>
       <span>
-        <b>{props.row.name || t`Alguém`}</b>{" "}
-        {props.row.action === "pos" ? t`pôs` : t`pegou`}{" "}
+        <Show
+          when={props.row.action !== "sumiu"}
+          fallback={
+            <>
+              {props.row.count === 1
+                ? t`1 item sumiu (5 dias no baú):`
+                : t`${props.row.count} itens sumiram (5 dias no baú):`}{" "}
+            </>
+          }
+        >
+          <b>{props.row.name || t`Alguém`}</b>{" "}
+          {props.row.action === "pos" ? t`pôs` : t`pegou`}{" "}
+          <Show when={coins() > 0}>
+            <Gold n={gold(coins())} />
+            {props.row.count > 0 ? " + " : ""}
+          </Show>
+        </Show>
         <For each={props.row.items}>
           {(it, i) => (
             <>
@@ -574,6 +658,16 @@ function LogLine(props: { row: RpgChestLogRow }) {
     </li>
   );
 }
+
+const GoldRow = styled("div", {
+  base: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    alignItems: "center",
+    "& input": { width: "9em" },
+  },
+});
 
 const Log = styled("ul", {
   base: {

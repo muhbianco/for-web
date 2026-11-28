@@ -175,13 +175,12 @@ const SHOTS = [
     s: "ferreiro",
     act: seq(tab("desmontar"), first("[role=dialog] [role=option]")),
   },
-  { name: "17-banqueiro-ouro", s: "banqueiro" },
-  { name: "18-banqueiro-cofre", s: "banqueiro", act: tab("cofre") },
+  { name: "17-mula", s: "banqueiro" },
+  { name: "18-bau", s: "bau" },
   {
-    name: "19-banqueiro-transferir",
+    name: "19-mula-transferir",
     s: "banqueiro",
     act: seq(
-      tab("transferir"),
       (p) =>
         p.locator("[role=dialog] select").first().selectOption({ index: 1 }),
       first("[role=dialog] [role=option]"),
@@ -209,19 +208,19 @@ const SHOTS = [
   { name: "34-janela-avisos-arrastada", s: "avisos", act: drag(300, 200) },
   // O detalhe do item ao parar em cima (25/11/2026): cada tela que mostra item.
   {
-    name: "35-tip-cofre",
-    s: "banqueiro",
-    act: seq(tab("cofre"), tipOn("[role=dialog] [role=option]", 0)),
+    name: "35-tip-bau",
+    s: "bau",
+    act: tipOn("[role=dialog] [role=option]", 0),
   },
   {
-    name: "36-tip-cofre-mochila",
-    s: "banqueiro",
-    act: seq(tab("cofre"), tipOn("[role=dialog] [role=option]", 12)),
+    name: "36-tip-bau-mochila",
+    s: "bau",
+    act: tipOn("[role=dialog] [role=option]", 22),
   },
   {
     name: "37-tip-transferir",
     s: "banqueiro",
-    act: seq(tab("transferir"), tipOn("[role=dialog] [role=option]", 3)),
+    act: tipOn("[role=dialog] [role=option]", 3),
   },
   {
     name: "38-tip-ficha-mochila",

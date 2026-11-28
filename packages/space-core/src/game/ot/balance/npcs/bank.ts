@@ -2,10 +2,9 @@ import type { ItemInstance } from "../equipment.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
 
 /**
- * O Banqueiro (spec §10): cofre de ouro e de itens, os dois sem limite (o de itens desde 27/11/2026:
- * o que não cabe na mochila no fim da corrida vai para ele; antes eram 60 espaços, +20 por expansão), e a
- * transferência de ouro e itens para outro jogador, com taxa e log. Só as regras: quem guarda o saldo,
- * o cofre e o log é o servidor (virada da Fase 8).
+ * A Mula (antes o Banqueiro, spec §10): a transferência de ouro e itens para outro jogador, com taxa e
+ * log. O cofre de ouro e de itens saiu em 28/11/2026 (mochila sem limite; o que estava guardado foi
+ * para a mochila e para a mão). Só as regras: quem guarda o saldo e o log é o servidor.
  */
 
 export function goldTransferFee(

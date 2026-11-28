@@ -6,7 +6,6 @@ import {
   type RunSpoils,
   CLEARED_MAX,
   ITEM_RULES,
-  BAG_SLOTS,
   applyRun,
   chestNeedsConfirm,
   checkHero,
@@ -113,13 +112,21 @@ export function newRpgHero(
 /**
  * Confere o documento lido do banco; o motivo vai para o log (nada é consertado em silêncio). A única
  * correção é a da regra de item que mudou (27/11/2026): a peça vestida que a classe não usa mais vai
- * para a mochila ou o cofre (`gearMoved`) e o afixo de épico e lendário vai para a faixa da raridade
- * (D64, `itemsRescaled`, também nos itens da fila de transferência); quem lê grava e registra no log.
+ * para a mochila (`gearMoved`) e o afixo de épico e lendário vai para a faixa da raridade (D64,
+ * `itemsRescaled`, também nos itens da fila de transferência). E o cofre que saiu em 28/11/2026 vem
+ * para a mochila e para a mão (`vaultItems`, `vaultGold`). Quem lê grava e registra no log.
  */
 export function checkHeroDoc(
   raw: unknown,
 ):
-  | { ok: true; doc: RpgHeroDoc; gearMoved: number; itemsRescaled: number }
+  | {
+      ok: true;
+      doc: RpgHeroDoc;
+      gearMoved: number;
+      itemsRescaled: number;
+      vaultItems: number;
+      vaultGold: number;
+    }
   | { ok: false; reason: string } {
   const d = raw as Partial<RpgHeroDoc> | null;
   if (!d || typeof d !== "object") return { ok: false, reason: "vazio" };
@@ -158,6 +165,8 @@ export function checkHeroDoc(
     doc: { ...(d as RpgHeroDoc), hero: h.hero, outbox },
     gearMoved: h.gearMoved,
     itemsRescaled: rescaled,
+    vaultItems: h.vaultItems,
+    vaultGold: h.vaultGold,
   };
 }
 
@@ -247,9 +256,8 @@ export function markRun(
 }
 
 export interface SettledHero {
+  /** Itens que ficaram para trás (só quando o documento do herói não comporta mais; ver o serviço). */
   left: OwnedItem[];
-  /** O que não coube na mochila e foi para o cofre do Banqueiro (27/11/2026). */
-  toVault: OwnedItem[];
   levelsGained: number;
   jobsGained: number;
 }
@@ -283,11 +291,35 @@ export function settleRunHero(
     ok: true,
     settled: {
       left: r.left,
-      toVault: r.toVault,
       levelsGained: r.levelsGained,
       jobsGained: r.jobsGained,
     },
   };
+}
+
+/**
+ * O fim da corrida que cabe no documento (28/11/2026): a mochila não tem limite, mas o documento do
+ * herói tem (`maxBytes`). Sem espaço, os itens desta corrida ficam para trás (`dropped`) e XP, ouro,
+ * minério e pedras entram; antes, a gravação recusada perdia a recompensa inteira sem aviso. Uma folga
+ * de 1 KB cobre o que muda depois daqui (a DG concluída).
+ */
+export function settleRunFitting(
+  d: RpgHeroDoc,
+  runId: string,
+  spoils: RunSpoils | null,
+  maxBytes: number = RPG_DOC_MAX_BYTES,
+):
+  | { ok: true; settled: SettledHero; dropped: OwnedItem[] }
+  | { ok: false; reason: string } {
+  const before = { hero: d.hero, run: d.run };
+  const spent = spoils ?? { potionsUsed: { hp: 0, mp: 0 }, ammoUsed: 0 };
+  const r = settleRunHero(d, runId, spoils, spent);
+  if (!r.ok || !spoils || spoils.items.length === 0) return r.ok ? { ...r, dropped: [] } : r;
+  if (rpgDocBytes(d) <= maxBytes - 1024) return { ...r, dropped: [] };
+  d.hero = before.hero;
+  d.run = before.run;
+  const lean = settleRunHero(d, runId, { ...spoils, items: [] }, spent);
+  return lean.ok ? { ...lean, dropped: spoils.items } : lean;
 }
 
 // ------------------------------------------------------------ transferência (Banqueiro)
@@ -318,7 +350,7 @@ export function transferOut(
 }
 
 /**
- * Credita no destino (uma vez por id; itens que não cabem na mochila vão para o cofre). Um item que o
+ * Credita no destino (uma vez por id), tudo na mochila (sem limite desde 28/11/2026). Um item que o
  * herói já tem (mesmo uid) não entra de novo: repetido, o documento inteiro seria recusado na leitura.
  */
 export function transferIn(d: RpgHeroDoc, t: RpgTransfer): RpgOutcome {
@@ -326,17 +358,12 @@ export function transferIn(d: RpgHeroDoc, t: RpgTransfer): RpgOutcome {
   const owned = new Set([
     ...Object.values(d.hero.equipment).map((x) => x?.uid),
     ...d.hero.bag.map((x) => x.uid),
-    ...d.hero.vault.items.map((x) => x.uid),
   ]);
   const fresh = t.items.filter((x) => !owned.has(x.uid));
-  const room = Math.max(0, BAG_SLOTS - d.hero.bag.length);
-  const toBag = fresh.slice(0, room);
-  const toVault = fresh.slice(room);
   d.hero = {
     ...d.hero,
     gold: d.hero.gold + t.gold,
-    bag: [...d.hero.bag, ...toBag],
-    vault: { ...d.hero.vault, items: [...d.hero.vault.items, ...toVault] },
+    bag: [...d.hero.bag, ...fresh],
   };
   d.inbox.push(t.id);
   while (d.inbox.length > INBOX_KEEP) d.inbox.shift();
@@ -344,7 +371,7 @@ export function transferIn(d: RpgHeroDoc, t: RpgTransfer): RpgOutcome {
 }
 
 /**
- * Põe itens da mochila no baú do servidor (28/11/2026): saem da mochila para a fila de saída, sem
+ * Põe itens da mochila e ouro da mão no baú do servidor (28/11/2026): saem para a fila de saída, sem
  * taxa, e o baú credita pelo id. Vale na corrida, como vender: o que está vestido não sai, e a corrida
  * usa a cópia do herói da largada. +7 e Lendário pedem `confirmed`.
  */
@@ -353,18 +380,25 @@ export function chestOut(
   t: Omit<RpgTransfer, "items" | "gold">,
   uids: readonly string[],
   confirmed: boolean,
+  gold = 0,
 ): RpgOutcome {
   if (!t.to.startsWith(CHEST_PREFIX)) return no("lista-invalida");
   if (d.outbox.length >= OUTBOX_MAX) return no("outbox_full");
-  if (uids.length === 0 || new Set(uids).size !== uids.length)
+  if (!Number.isInteger(gold) || gold < 0) return no("valor-invalido");
+  if (new Set(uids).size !== uids.length || (uids.length === 0 && gold === 0))
     return no("lista-invalida");
   const want = new Set(uids);
   const items = d.hero.bag.filter((x) => want.has(x.uid));
   if (items.length !== want.size) return no("item-nao-encontrado");
   if (!confirmed && items.some((x) => chestNeedsConfirm(x)))
     return no("confirmacao");
-  d.hero = { ...d.hero, bag: d.hero.bag.filter((x) => !want.has(x.uid)) };
-  d.outbox.push({ ...t, gold: 0, items });
+  if (gold > d.hero.gold) return no("sem-ouro");
+  d.hero = {
+    ...d.hero,
+    gold: d.hero.gold - gold,
+    bag: d.hero.bag.filter((x) => !want.has(x.uid)),
+  };
+  d.outbox.push({ ...t, gold, items });
   return yes;
 }
 
@@ -378,18 +412,12 @@ export function transferSettled(
   if (i < 0) return yes;
   const t = d.outbox[i]!;
   d.outbox.splice(i, 1);
-  if (refund) {
-    const room = Math.max(0, BAG_SLOTS - d.hero.bag.length);
+  if (refund)
     d.hero = {
       ...d.hero,
       gold: d.hero.gold + t.gold,
-      bag: [...d.hero.bag, ...t.items.slice(0, room)],
-      vault: {
-        ...d.hero.vault,
-        items: [...d.hero.vault.items, ...t.items.slice(room)],
-      },
+      bag: [...d.hero.bag, ...t.items],
     };
-  }
   return yes;
 }
 
@@ -408,7 +436,12 @@ export function rpgHeroState(
   };
 }
 
-export const RPG_DOC_MAX_BYTES = 64 * 1024;
+/**
+ * O teto do documento do herói. Era 64 KB; com a mochila sem limite (28/11/2026) subiu para 256 KB:
+ * um item ocupa ~190 bytes (medido), então cabem ~1.200 itens. O app recebe o herói inteiro a cada
+ * mudança, por isso o teto não some.
+ */
+export const RPG_DOC_MAX_BYTES = 256 * 1024;
 export function rpgDocBytes(d: RpgHeroDoc): number {
   return Buffer.byteLength(JSON.stringify(d), "utf8");
 }
