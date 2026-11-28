@@ -3,7 +3,6 @@ import {
   TrackReference,
   useEnsureParticipant,
   useIsMuted,
-  useIsSpeaking,
   useTrackRefContext,
   VideoTrack,
 } from "solid-livekit-components";
@@ -14,7 +13,7 @@ import { styled } from "styled-system/jsx";
 
 import { UserContextMenu } from "@revolt/app";
 import { useUser } from "@revolt/markdown/users";
-import { useIsDeafened, useVoice } from "@revolt/rtc";
+import { useIsDeafened, useSpeakingShown, useVoice } from "@revolt/rtc";
 import { useState } from "@revolt/state";
 import { Avatar } from "@revolt/ui/components/design";
 import { Row } from "@revolt/ui/components/layout";
@@ -72,7 +71,8 @@ export function ParticipantTile(props: TileProps) {
 
   const isVideo = () => !isVideoMuted();
   const isScreenShare = () => track.source === Track.Source.ScreenShare;
-  const isSpeaking = useIsSpeaking(participant);
+  // Never "speaking" while muted or deafened (the server lags the mute).
+  const isSpeaking = useSpeakingShown(participant);
   const isDeafened = useIsDeafened(participant);
 
   const getHeight = () => {

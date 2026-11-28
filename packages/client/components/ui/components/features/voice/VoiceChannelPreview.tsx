@@ -4,7 +4,6 @@ import {
   TrackLoop,
   useEnsureParticipant,
   useIsMuted,
-  useIsSpeaking,
   useTracks,
 } from "solid-livekit-components";
 
@@ -18,7 +17,7 @@ import { styled } from "styled-system/jsx";
 import { UserContextMenu } from "@revolt/app";
 import { useClient } from "@revolt/client";
 import { useUser } from "@revolt/markdown/users";
-import { InRoom, useIsDeafened } from "@revolt/rtc";
+import { InRoom, useIsDeafened, useSpeakingShown } from "@revolt/rtc";
 import { isSpaceServer } from "@revolt/space/config";
 import { useSpacePresence } from "@revolt/space/presence";
 
@@ -149,7 +148,7 @@ function ParticipantLive(props: { channel: Channel }) {
     source: Track.Source.Microphone,
   });
 
-  const isSpeaking = useIsSpeaking(participant);
+  const isSpeaking = useSpeakingShown(participant);
   const isDeafened = useIsDeafened(participant);
 
   return (

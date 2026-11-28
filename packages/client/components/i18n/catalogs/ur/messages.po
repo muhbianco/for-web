@@ -6197,6 +6197,10 @@ msgstr ""
 msgid "Ninguém escreveu aqui ainda. Diga oi!"
 msgstr ""
 
+#: components/ui/components/features/voice/SpeakingWhileMutedHint.tsx
+msgid "Ninguém está te ouvindo."
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Ninguém no Espaço agora para receber. A pessoa precisa estar aqui."
 msgstr ""
@@ -9903,6 +9907,10 @@ msgstr ""
 
 #: components/space/chat/ChatPanel.tsx
 msgid "Você está lendo outra sala. O que você escrever aqui vai para ela, sem balão no mapa."
+msgstr ""
+
+#: components/ui/components/features/voice/SpeakingWhileMutedHint.tsx
+msgid "Você está mutado"
 msgstr ""
 
 #. placeholder {0}: CLASSES[h().cls].titles[3]

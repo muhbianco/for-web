@@ -1,4 +1,4 @@
-import { createEffect, createRoot, on, onCleanup } from "solid-js";
+import { createEffect, createRoot, on, onCleanup, untrack } from "solid-js";
 
 import {
   type MediaGrant,
@@ -12,6 +12,7 @@ import type { Client } from "stoat.js";
 
 import type { useVoice } from "@revolt/rtc";
 import { participantUserId } from "@revolt/rtc/identity";
+import { audibleSpeakers } from "@revolt/rtc/speakingShown";
 
 import { type SpaceTtsDeps, attachSpaceTts } from "./spaceTts";
 
@@ -173,19 +174,33 @@ export function openSpace(
       });
       // Who speaks in our room's call: LiveKit already tells every participant
       // (read-only; nothing in the call changes). Drawn as a ring on the map.
+      // Never on someone muted: the server's speaker list lags a mute by up to
+      // ~1 s and the ring sat next to the muted badge (speakingShown.ts).
       createEffect(() => {
         const room = voice.room();
         if (!room) {
           view.setSpeakers(new Set());
           return;
         }
-        const update = (speakers: Participant[]) =>
+        const update = () =>
           view.setSpeakers(
-            new Set(speakers.map((p) => participantUserId(p.identity))),
+            new Set(
+              audibleSpeakers(
+                room.activeSpeakers,
+                untrack(() => voice.microphone()),
+              ).map((p: Participant) => participantUserId(p.identity)),
+            ),
           );
-        update(room.activeSpeakers);
+        update();
         room.on(RoomEvent.ActiveSpeakersChanged, update);
-        onCleanup(() => room.off(RoomEvent.ActiveSpeakersChanged, update));
+        room.on(RoomEvent.TrackMuted, update);
+        room.on(RoomEvent.TrackUnmuted, update);
+        createEffect(on(() => voice.microphone(), update, { defer: true }));
+        onCleanup(() => {
+          room.off(RoomEvent.ActiveSpeakersChanged, update);
+          room.off(RoomEvent.TrackMuted, update);
+          room.off(RoomEvent.TrackUnmuted, update);
+        });
       });
       return disposeRoot;
     });

@@ -110,6 +110,26 @@ export interface AvatarIndicators {
   speaking: boolean;
 }
 
+/**
+ * The call indicators from someone's presence voice state and whether our
+ * room's LiveKit lists them as a speaker. The ring never sits next to the muted
+ * badge: LiveKit's speaker list lags a mute by up to ~1 s (measured in the full
+ * lab, qa/full-lab/mute-lab.mjs), the presence badge does not.
+ */
+export function avatarIndicators(
+  voice: { connected?: boolean; mic?: boolean; deaf?: boolean; screen?: boolean } | null | undefined,
+  speaker: boolean,
+): AvatarIndicators {
+  const muted = Boolean(voice?.connected && !voice.mic);
+  const deaf = Boolean(voice?.deaf);
+  return {
+    muted,
+    deaf,
+    screen: Boolean(voice?.screen),
+    speaking: speaker && !muted && !deaf,
+  };
+}
+
 function indicatorsKey(i: AvatarIndicators): string {
   return `${+i.muted}${+i.deaf}${+i.screen}${+i.speaking}`;
 }
@@ -974,13 +994,7 @@ export class Renderer {
 
   /** Call indicators of someone, from the server presence and our room's speakers. */
   private indicatorsOf(world: World, userId: string): AvatarIndicators {
-    const v = world.voiceOf(userId);
-    return {
-      muted: Boolean(v?.connected && !v.mic),
-      deaf: Boolean(v?.deaf),
-      screen: Boolean(v?.screen),
-      speaking: world.speakers.has(userId),
-    };
+    return avatarIndicators(world.voiceOf(userId), world.speakers.has(userId));
   }
 
   private indicate(a: AvatarSprite, i: AvatarIndicators, visible: boolean) {

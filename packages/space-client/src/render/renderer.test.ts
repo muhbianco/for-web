@@ -3,7 +3,7 @@ import { test } from "node:test";
 
 import { Graphics } from "pixi.js";
 
-import { Renderer } from "./renderer.ts";
+import { Renderer, avatarIndicators } from "./renderer.ts";
 
 // 14/11/2026: closing one space (`app.destroy(true, { texture: true, … })`)
 // released PixiJS's module-wide batch pool and the shared decoration textures.
@@ -163,4 +163,28 @@ test("reduced motion: the sharer is one still picture, drawn once", () => {
   oneSecond(i);
   assert.equal(renders() - before, 1);
   assert.equal(a.liveStill, true);
+});
+
+// 28/11/2026: after a mute the avatar showed the muted badge AND the green
+// "speaking" ring for 0.5–1.2 s (LiveKit's speaker list lags the mute). The
+// audio had already stopped; the ring made people doubt the mute worked.
+test("the speaking ring never shows on a muted or deafened avatar", () => {
+  const open = { connected: true, mic: true, deaf: false, screen: false };
+  assert.equal(avatarIndicators(open, true).speaking, true);
+  assert.equal(avatarIndicators(open, false).speaking, false);
+
+  const muted = { ...open, mic: false };
+  assert.deepEqual(avatarIndicators(muted, true), {
+    muted: true,
+    deaf: false,
+    screen: false,
+    speaking: false,
+  });
+
+  const deaf = { ...open, mic: false, deaf: true };
+  assert.equal(avatarIndicators(deaf, true).speaking, false);
+  assert.equal(avatarIndicators(deaf, true).deaf, true);
+
+  // No presence yet (someone we cannot see): LiveKit alone decides.
+  assert.equal(avatarIndicators(null, true).speaking, true);
 });

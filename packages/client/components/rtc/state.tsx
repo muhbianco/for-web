@@ -86,6 +86,10 @@ import {
 import { type MicHealReason, decideMicHeal, micBlocked } from "./micHealth";
 import { isCurrentRoom } from "./currentRoom";
 import { VoiceProcessor } from "./VoiceProcessor";
+import {
+  SWM_SHOW_MS,
+  shouldShowSpeakingWhileMuted,
+} from "./speakingWhileMuted";
 import { participantUserId } from "./identity";
 
 /**
@@ -180,6 +184,15 @@ class Voice {
    * "limbo", docs/voz/10). The UI warns; healMicrophone tries to fix it.
    */
   micBlocked: Accessor<boolean>;
+  /**
+   * "Você está mutado": the person talked with the mic muted (Discord's
+   * SpeakingWhileMuted, speakingWhileMuted.ts). True for a couple of seconds,
+   * at most once every 2 min, and never with the mic open.
+   */
+  speakingWhileMuted: Accessor<boolean>;
+  #setSpeakingWhileMuted: Setter<boolean>;
+  #speakingWhileMutedAt?: number;
+  #speakingWhileMutedTimer?: ReturnType<typeof setTimeout>;
   #upstreamPausedSince?: number;
   #lastMicRestartAt = 0;
   #healing = false;
@@ -278,6 +291,11 @@ class Voice {
       if (bw) void this.applyAudioBitrateCap(bw);
     });
 
+    const [speakingWhileMuted, setSpeakingWhileMuted] = createSignal(false);
+    this.speakingWhileMuted = () =>
+      speakingWhileMuted() && !this.microphone();
+    this.#setSpeakingWhileMuted = setSpeakingWhileMuted;
+
     this.micBlocked = () => {
       const status = this.engineStatus();
       return micBlocked({
@@ -374,10 +392,46 @@ class Voice {
       this.voiceProcessor = new VoiceProcessor(
         this.#settings,
         () => this.syncEngineStatus(),
-        (kind, detail) => this.#recorder.event(kind, detail),
+        (kind, detail) =>
+          kind === "speakingWhileMuted"
+            ? this.noticeSpeakingWhileMuted()
+            : this.#recorder.event(kind, detail),
       );
       await track.setProcessor(this.voiceProcessor);
     }
+  }
+
+  /**
+   * The processor heard speech on the muted capture. Discord's policy: show
+   * "Você está mutado" for 2.5 s, at most once every 2 min (speakingWhileMuted.ts).
+   */
+  private noticeSpeakingWhileMuted() {
+    const now = Date.now();
+    if (
+      !shouldShowSpeakingWhileMuted({
+        now,
+        lastShownAt: this.#speakingWhileMutedAt,
+        muted: !this.microphone(),
+        inCall: this.state() === "CONNECTED",
+        canSpeak: this.speakingPermission,
+      })
+    )
+      return;
+    this.#speakingWhileMutedAt = now;
+    this.#recorder.event("speakingWhileMuted");
+    this.#setSpeakingWhileMuted(true);
+    clearTimeout(this.#speakingWhileMutedTimer);
+    this.#speakingWhileMutedTimer = setTimeout(
+      () => this.#setSpeakingWhileMuted(false),
+      SWM_SHOW_MS,
+    );
+  }
+
+  /** Closes the "Você está mutado" notice (clicked, or the mic opened). */
+  dismissSpeakingWhileMuted() {
+    clearTimeout(this.#speakingWhileMutedTimer);
+    this.#speakingWhileMutedTimer = undefined;
+    this.#setSpeakingWhileMuted(false);
   }
 
   /**
@@ -990,6 +1044,7 @@ class Voice {
       this.#setShowBar(true);
       this.vidTracks = () => [];
       this.#setEngineStatus(IDLE_VOICE_ENGINE_STATUS);
+      this.dismissSpeakingWhileMuted();
     });
     this.voiceProcessor = undefined;
     this.screenShareTracks = new Set();
@@ -1042,6 +1097,7 @@ class Voice {
       this.#settings.micOn = room.localParticipant.isMicrophoneEnabled;
 
       if (this.#settings.micOn) {
+        this.dismissSpeakingWhileMuted();
         this.sound.playSound("unmute");
         // livekit's unmute does not resume an upstream it paused while the
         // OS had the device muted: the limbo (docs/voz/10).

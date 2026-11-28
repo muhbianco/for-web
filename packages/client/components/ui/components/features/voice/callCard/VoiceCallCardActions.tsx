@@ -11,6 +11,8 @@ import { useState } from "@revolt/state";
 import { Button, IconButton } from "@revolt/ui/components/design";
 import { Symbol } from "@revolt/ui/components/utils/Symbol";
 
+import { MicSlot, SpeakingWhileMutedHint } from "../SpeakingWhileMutedHint";
+
 export function VoiceCallCardActions(props: { size: "xs" | "sm" }) {
   const voice = useVoice();
   const state = useState();
@@ -65,30 +67,33 @@ export function VoiceCallCardActions(props: { size: "xs" | "sm" }) {
           <Symbol>unfold_more</Symbol>
         </IconButton>
       </Show>
-      <IconButton
-        size={props.size}
-        variant={voice.microphone() ? "filled" : "tonal"}
-        onPress={() => voice.toggleMute()}
-        use:floating={{
-          tooltip: {
-            placement: "top",
-            content: voice.speakingPermission
-              ? voice.micBlocked()
-                ? t`O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo`
-                : voice.microphone()
-                  ? t`Mute`
-                  : t`Unmute`
-              : t`Missing permission`,
-          },
-        }}
-        isDisabled={!voice.speakingPermission}
-      >
-        <Show when={voice.microphone()} fallback={<Symbol>mic_off</Symbol>}>
-          <Show when={voice.micBlocked()} fallback={<Symbol>mic</Symbol>}>
-            <Symbol>warning</Symbol>
+      <MicSlot>
+        <SpeakingWhileMutedHint />
+        <IconButton
+          size={props.size}
+          variant={voice.microphone() ? "filled" : "tonal"}
+          onPress={() => voice.toggleMute()}
+          use:floating={{
+            tooltip: {
+              placement: "top",
+              content: voice.speakingPermission
+                ? voice.micBlocked()
+                  ? t`O Windows ou o headset está silenciando o seu microfone: ninguém está te ouvindo`
+                  : voice.microphone()
+                    ? t`Mute`
+                    : t`Unmute`
+                : t`Missing permission`,
+            },
+          }}
+          isDisabled={!voice.speakingPermission}
+        >
+          <Show when={voice.microphone()} fallback={<Symbol>mic_off</Symbol>}>
+            <Show when={voice.micBlocked()} fallback={<Symbol>mic</Symbol>}>
+              <Symbol>warning</Symbol>
+            </Show>
           </Show>
-        </Show>
-      </IconButton>
+        </IconButton>
+      </MicSlot>
       <IconButton
         size={props.size}
         variant={voice.deafen() || !voice.listenPermission ? "tonal" : "filled"}
