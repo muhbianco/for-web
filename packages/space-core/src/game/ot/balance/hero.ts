@@ -29,7 +29,11 @@ import {
 } from "./items/generate.ts";
 import { itemPerks } from "./items/legendary.ts";
 import { rollPerk } from "./items/perks.ts";
-import { rollSupremePower, supremeRecipeError } from "./items/supreme.ts";
+import {
+  rollSupremePower,
+  supremeRecipeError,
+  supremeRefine,
+} from "./items/supreme.ts";
 import {
   dismantle,
   refineAttempt,
@@ -719,8 +723,9 @@ export function rerollPerk(
 
 /**
  * D68 Forjar a Arma Suprema (27/11/2026; items/supreme.ts): a base (vestida ou na mochila) e as outras
- * `supreme.inputs − 1` lendárias da mesma família e iL, na mochila. A base fica com afixos, refino,
- * nome e o 1º perk; ganha o poder sorteado e o 2º perk (numa skill diferente do 1º). As outras somem.
+ * `supreme.inputs − 1` lendárias da mesma família e iL, na mochila. A base fica com afixos, nome e o
+ * 1º perk; o refino é o maior das 5 menos 30%; ganha o poder sorteado e o 2º perk (numa skill diferente
+ * do 1º). As outras somem.
  * Sem custo além das armas. Tudo ou nada.
  */
 export function forgeSupreme(
@@ -749,7 +754,8 @@ export function forgeSupreme(
   while (perks.length < B.cfg.supreme.maxPerks)
     perks.push(rollPerk(h.cls, perks.map((p) => p.skill), rng));
   const gone = new Set(uids);
-  const next: OwnedItem = { ...base, supreme: { power }, perks };
+  const refine = supremeRefine([base, ...others], B);
+  const next: OwnedItem = { ...base, refine, supreme: { power }, perks };
   return done(
     replaceItem({ ...h, bag: h.bag.filter((x) => !gone.has(x.uid)) }, baseUid, next),
     { power, perk: perks[perks.length - 1]! },

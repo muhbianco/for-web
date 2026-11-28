@@ -28,7 +28,7 @@ const sword = (ilvl = 200, seed = 1, rarity: "lendario" | "epico" = "lendario"):
   ({ ...generateItem({ slot: "arma", family: "espada" }, ilvl, rarity, rng(seed), B), uid: id() }) as OwnedItem;
 const hero = (bag: OwnedItem[]): HeroV5 => ({ ...createHero("guerreiro", id), level: 200, bag });
 
-test("Suprema: a base fica (afixos, refino, 1º perk), ganha o poder e o 2º perk; as outras 4 somem", () => {
+test("Suprema: a base fica (afixos, 1º perk), ganha o poder e o 2º perk; as outras 4 somem", () => {
   const five = [1, 2, 3, 4, 5].map((s) => sword(200, s));
   const base = { ...five[0]!, refine: 7, perks: [{ skill: "grito-de-guerra", value: 0.5 }] } as OwnedItem;
   const h = hero([base, ...five.slice(1), sword(200, 9, "epico")]);
@@ -37,7 +37,8 @@ test("Suprema: a base fica (afixos, refino, 1º perk), ganha o poder e o 2º per
   const got = r.hero.bag.find((x) => x.uid === base.uid)! as WeaponItem;
   assert.ok(isSupreme(got));
   assert.deepEqual(got.affixes, base.affixes);
-  assert.equal(got.refine, 7);
+  // O refino: o maior das 5 (+7, a base) menos 30%, para baixo: +4.
+  assert.equal(got.refine, 4);
   const p = itemPerks(got);
   assert.equal(p.length, 2);
   assert.deepEqual(p[0], itemPerks(base)[0]);
@@ -45,9 +46,11 @@ test("Suprema: a base fica (afixos, refino, 1º perk), ganha o poder e o 2º per
   assert.ok(got.supreme!.power >= 0.1 && got.supreme!.power <= 0.2);
   // O poder entra no dano base da arma (o que a dica mostra como ATQ).
   const eq = (w: ItemInstance) => heroLoadout({ ...h, equipment: { arma: w as WeaponItem } } as never, B).weaponBase;
-  assert.ok(Math.abs(eq(got) / eq(base) - (1 + got.supreme!.power)) < 1e-9);
+  // Contra a base no mesmo refino (o da Suprema): só o poder muda.
+  const same = { ...base, refine: got.refine } as OwnedItem;
+  assert.ok(Math.abs(eq(got) / eq(same) - (1 + got.supreme!.power)) < 1e-9);
   const atq = (w: ItemInstance) => itemTooltip(w).base.find((x) => x.label === "ATQ")!.value;
-  assert.ok(Math.abs(atq(got) / atq(base) - (1 + got.supreme!.power)) < 0.01);
+  assert.ok(Math.abs(atq(got) / atq(same) - (1 + got.supreme!.power)) < 0.01);
   // O herói forjado passa no esquema; o 2º perk rola no Ferreiro como o 1º.
   const check = checkHero(r.hero);
   assert.ok(check.ok, check.ok ? "" : check.reason);
@@ -55,6 +58,20 @@ test("Suprema: a base fica (afixos, refino, 1º perk), ganha o poder e o 2º per
   const again = itemPerks(rolled.hero.bag.find((x) => x.uid === base.uid)!);
   assert.deepEqual(again[0], p[0]);
   assert.notEqual(again[1]!.skill, again[0]!.skill);
+});
+
+test("Suprema: o refino é o maior das 5 menos 30% (+10 → +7, +9 → +6), venha da base ou das que somem", () => {
+  const five = [1, 2, 3, 4, 5].map((s) => sword(200, s));
+  const forge = (refines: number[]) => {
+    const items = five.map((x, i) => ({ ...x, refine: refines[i]! }) as OwnedItem);
+    const r = ok(forgeSupreme(hero(items), items[0]!.uid, items.slice(1).map((x) => x.uid), rng(9)));
+    return r.hero.bag.find((x) => x.uid === items[0]!.uid)!.refine;
+  };
+  assert.equal(forge([0, 10, 0, 0, 0]), 7, "a de +10 era das que somem");
+  assert.equal(forge([10, 0, 0, 0, 0]), 7, "a de +10 era a base");
+  assert.equal(forge([2, 9, 9, 3, 0]), 6);
+  assert.equal(forge([0, 0, 0, 0, 0]), 0);
+  assert.equal(forge([1, 1, 1, 1, 1]), 0);
 });
 
 test("Suprema: a base pode estar vestida; as outras, só da mochila", () => {

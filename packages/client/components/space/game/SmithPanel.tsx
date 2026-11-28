@@ -26,6 +26,7 @@ import {
   stoneMatters,
   supremeIngredient,
   supremeKey,
+  supremeRefine,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
@@ -238,7 +239,9 @@ export function SmithPanel(props: {
           onForge={forge}
         />
         {/* A recompensa: a carta da arma que acabou de sair, com a moldura de sangue e fogo. */}
-        <Show when={forgedUid() && findItem(h(), forgedUid()!)?.item}>
+        <Show
+          when={forgedUid() ? findItem(h(), forgedUid()!)?.item : undefined}
+        >
           {(it) => <ItemCard hero={h()} item={it()} compare={false} />}
         </Show>
       </Show>
@@ -655,10 +658,11 @@ function PerkBox(props: {
 
 /**
  * D68 A forja da Arma Suprema: as armas Lendárias (vestida e mochila) agrupadas por família e iL, com
- * o quanto falta para 5. No grupo escolhido, a base (fica, com afixos, refino, nome e o 1º perk) e as
- * 4 que somem ficam em grades separadas, para não haver dúvida de qual é qual. A escolha começa pronta
- * (base: a vestida, senão a de mais refino; somem: as de menos refino) e o aviso aponta o que se perde
- * de valor (refino alto, lendário com nome). Forjar pede o segundo toque.
+ * o quanto falta para 5. No grupo escolhido, a base (fica, com afixos, nome e o 1º perk) e as 4 que
+ * somem ficam em grades separadas, para não haver dúvida de qual é qual. O refino da Suprema é o maior
+ * das 5 menos 30% (+10 → +7): a prévia mostra o número antes de forjar. A escolha começa pronta (base:
+ * a vestida, senão a de mais refino; a de mais refino do grupo sempre entra; o resto, as de menos
+ * refino) e o aviso aponta lendário com nome entre as que somem. Forjar pede o segundo toque.
  */
 function SupremeForge(props: {
   hero: HeroV5;
@@ -694,7 +698,10 @@ function SupremeForge(props: {
   const group = () => groups().find((g) => g.key === key()) ?? null;
   const wornUid = () => props.hero.equipment.arma?.uid;
   const inBag = (uid: string) => props.hero.bag.some((x) => x.uid === uid);
-  /** A escolha pronta do grupo: a base vestida (ou a de mais refino); somem as de menos refino. */
+  /**
+   * A escolha pronta do grupo: a base vestida (ou a de mais refino). Das que somem, a de mais refino do
+   * grupo entra sempre (o refino da Suprema sai dela); o resto, as de menos refino.
+   */
   const choose = (k: string) => {
     setKey(k);
     const g = groups().find((x) => x.key === k);
@@ -702,13 +709,14 @@ function SupremeForge(props: {
     const worn = g.items.find((x) => x.uid === wornUid());
     const b = worn ?? [...g.items].sort((a, c) => c.refine - a.refine)[0]!;
     setBase(b.uid);
-    setEat(
-      g.items
-        .filter((x) => x.uid !== b.uid && inBag(x.uid))
-        .sort((a, c) => a.refine - c.refine)
-        .slice(0, need - 1)
-        .map((x) => x.uid),
-    );
+    const rest = g.items.filter((x) => x.uid !== b.uid && inBag(x.uid));
+    const top = [...rest].sort((a, c) => c.refine - a.refine)[0];
+    const keep = top && top.refine > b.refine ? [top] : [];
+    const low = rest
+      .filter((x) => !keep.includes(x))
+      .sort((a, c) => a.refine - c.refine)
+      .slice(0, need - 1 - keep.length);
+    setEat([...keep, ...low].map((x) => x.uid));
   };
   const pickBase = (uid: string) => {
     setBase(uid);
@@ -724,18 +732,25 @@ function SupremeForge(props: {
     !!group()?.items.some((x) => x.uid === base()) && eat().length === need - 1;
   const loss = () => {
     const out = new Set<string>();
-    for (const x of eaten()) {
-      if (x.refine >= 7) out.add(t`uma das que somem é +${x.refine}`);
+    for (const x of eaten())
       if (x.legendary) out.add(t`uma das que somem é um lendário com nome`);
-    }
     return [...out];
+  };
+  /** O refino que a Suprema vai ter (o maior das 5 escolhidas menos 30%) e o maior delas. */
+  const refineOut = () => {
+    const b = group()?.items.find((x) => x.uid === base());
+    const five = [...(b ? [b] : []), ...eaten()];
+    return {
+      top: Math.max(0, ...five.map((x) => x.refine)),
+      out: supremeRefine(five),
+    };
   };
   const range = () => `${pct(p.min)} a +${pct(p.max)}`;
   return (
     <Panel>
       <strong>{t`Arma Suprema`}</strong>
       <Muted>
-        {t`Junte ${need} armas Lendárias da mesma família e do mesmo nível de item. A base fica (afixos, refino, nome e o 1º perk) e ganha de +${range()} de poder no dano da arma, mais um 2º perk sorteado, que depois rola como o 1º. As outras ${need - 1} somem.`}
+        {t`Junte ${need} armas Lendárias da mesma família e do mesmo nível de item. A base fica (afixos, nome e o 1º perk) e ganha de +${range()} de poder no dano da arma, mais um 2º perk sorteado, que depois rola como o 1º. O refino é o maior das ${need} menos 30% (+10 vira +7). As outras ${need - 1} somem.`}
       </Muted>
       <Show
         when={groups().length > 0}
@@ -803,6 +818,13 @@ function SupremeForge(props: {
                 {t`Faltam ${need - g().items.length} para ${need}. A arma vestida só entra como base.`}
               </Muted>
             </Show>
+            <Show when={ready()}>
+              <RefinePreview>
+                {refineOut().top > 0
+                  ? t`Refino da Suprema: +${refineOut().out} (o maior das ${need} é +${refineOut().top}, menos 30%)`
+                  : t`Refino da Suprema: +0 (nenhuma das ${need} tem refino)`}
+              </RefinePreview>
+            </Show>
             <Show when={loss().length > 0}>
               <Muted role="note">{t`Atenção: ${loss().join("; ")}.`}</Muted>
             </Show>
@@ -831,6 +853,9 @@ function SupremeForge(props: {
   );
 }
 
+const RefinePreview = styled("span", {
+  base: { fontWeight: 700, color: "#ff9a5a" },
+});
 const GroupList = styled("div", {
   base: {
     display: "grid",

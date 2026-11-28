@@ -426,6 +426,12 @@ export const BALANCE = {
     inputs: 5,
     power: { min: 0.1, max: 0.2, step: 0.01 },
     maxPerks: 2,
+    /**
+     * O refino da Suprema (27/11/2026, o dono: "o refino maior entre as armas consumidas deve ser
+     * levado para a suprema, mas com uma punição de 30%: +10 volta pra +7"): o maior das 5 × isto,
+     * para baixo.
+     */
+    refineKeep: 0.7,
   },
 
   /** §10: Mercador. */

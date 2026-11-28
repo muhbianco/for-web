@@ -1082,10 +1082,6 @@ msgstr ""
 msgid "24 hours"
 msgstr "24 години"
 
-#: components/space/game/SmithPanel.tsx
-#~ msgid "2º perk"
-#~ msgstr ""
-
 #: components/space/game/GainTab.tsx
 msgid "7 dias"
 msgstr ""
@@ -4552,11 +4548,6 @@ msgstr ""
 msgid "Ganho"
 msgstr ""
 
-#. placeholder {0}: cfg.imbueEssence
-#: components/space/game/SmithPanel.tsx
-#~ msgid "Gastar {0} Essências? Toque de novo"
-#~ msgstr ""
-
 #. placeholder {0}: ev().pointsLeft
 #: components/space/game/MasterPanel.tsx
 msgid "Gaste mais {0} pontos de habilidade (aba Habilidades da ficha)"
@@ -4854,15 +4845,6 @@ msgstr ""
 msgid "Illegal hacking or cracking"
 msgstr "Невідповідне законодавству хакерство і взлом ПЗ"
 
-#: components/space/game/SmithPanel.tsx
-#~ msgid "Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola."
-#~ msgstr ""
-
-#. placeholder {0}: cfg.imbueEssence
-#: components/space/game/SmithPanel.tsx
-#~ msgid "Imbuir o 2º perk ({0} Essências)"
-#~ msgstr ""
-
 #: components/modal/modals/ReportContent.tsx
 msgid "Impersonation"
 msgstr "Видання себе за іншу особу"
@@ -5100,7 +5082,7 @@ msgstr "Перейти до початку"
 #. placeholder {0}: range()
 #. placeholder {1}: need - 1
 #: components/space/game/SmithPanel.tsx
-msgid "Junte {need} armas Lendárias da mesma família e do mesmo nível de item. A base fica (afixos, refino, nome e o 1º perk) e ganha de +{0} de poder no dano da arma, mais um 2º perk sorteado, que depois rola como o 1º. As outras {1} somem."
+msgid "Junte {need} armas Lendárias da mesma família e do mesmo nível de item. A base fica (afixos, nome e o 1º perk) e ganha de +{0} de poder no dano da arma, mais um 2º perk sorteado, que depois rola como o 1º. O refino é o maior das {need} menos 30% (+10 vira +7). As outras {1} somem."
 msgstr ""
 
 #: components/modal/modals/ChannelToggleMature.tsx
@@ -6314,11 +6296,12 @@ msgid "no Ferreiro"
 msgstr ""
 
 #. placeholder {0}: B.cfg.supreme.inputs
-#. placeholder {1}: Math.round(B.cfg.supreme.power.min * 100)
-#. placeholder {2}: Math.round(B.cfg.supreme.power.max * 100)
-#. placeholder {3}: B.cfg.supreme.inputs
+#. placeholder {1}: B.cfg.supreme.inputs
+#. placeholder {2}: Math.round(B.cfg.supreme.power.min * 100)
+#. placeholder {3}: Math.round(B.cfg.supreme.power.max * 100)
+#. placeholder {4}: B.cfg.supreme.inputs
 #: components/space/game/ArsenalView.tsx
-msgid "No Ferreiro, {0} armas Lendárias da mesma família e do mesmo nível de item viram uma Arma Suprema: a base fica (afixos, refino, nome e o 1º perk), ganha de +{1}% a +{2}% de poder no dano da arma (média de 15%) e um 2º perk sorteado, que rola como o 1º. É o único item com 2 perks. Desmontar ou vender rende as {3} lendárias."
+msgid "No Ferreiro, {0} armas Lendárias da mesma família e do mesmo nível de item viram uma Arma Suprema: a base fica (afixos, nome e o 1º perk), o refino é o maior das {1} menos 30% (+10 vira +7), ganha de +{2}% a +{3}% de poder no dano da arma (média de 15%) e um 2º perk sorteado, que rola como o 1º. É o único item com 2 perks. Desmontar ou vender rende as {4} lendárias."
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -7724,6 +7707,16 @@ msgstr ""
 
 #: components/space/game/ArsenalView.tsx
 msgid "Refino"
+msgstr ""
+
+#. placeholder {0}: refineOut().out
+#. placeholder {1}: refineOut().top
+#: components/space/game/SmithPanel.tsx
+msgid "Refino da Suprema: +{0} (o maior das {need} é +{1}, menos 30%)"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Refino da Suprema: +0 (nenhuma das {need} tem refino)"
 msgstr ""
 
 #: components/space/game/SmithPanel.tsx
@@ -9424,11 +9417,6 @@ msgstr ""
 #. placeholder {0}: Math.round(props.tv.cooldownS / 60)
 #: components/space/SmartTv.tsx
 msgid "Um vídeo por vez; intervalo de {0} min entre vídeos nesta sala."
-msgstr ""
-
-#. placeholder {0}: x.refine
-#: components/space/game/SmithPanel.tsx
-msgid "uma das que somem é +{0}"
 msgstr ""
 
 #: components/space/game/SmithPanel.tsx

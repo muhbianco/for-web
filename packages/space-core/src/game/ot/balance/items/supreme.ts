@@ -7,7 +7,8 @@ import type { RandomSource } from "./generate.ts";
  * suprema… criada com 5 armas iguais e do mesmo level no ferreiro… dá em média 15% a mais de poder, e
  * nela sim vem o segundo perk, que também pode ser roletado"):
  *   - receita: `supreme.inputs` armas Lendárias da mesma família e do mesmo iL, nenhuma Suprema;
- *   - a base escolhida fica (afixos, refino, nome, 1º perk); as outras são consumidas;
+ *   - a base escolhida fica (afixos, nome, 1º perk); as outras são consumidas; o refino é o maior das
+ *     5 menos 30% (`supremeRefine`);
  *   - `power`: o a mais no dano base da arma (ATQ/MATQ), sorteado em `supreme.power` (média 15%);
  *   - 2 perks (o 2º sorteado na forja, e rolável no Ferreiro como o 1º).
  * Fora do limite (o perfil de calibragem continua o Lendário) e fora do drop: só sai da forja.
@@ -33,6 +34,15 @@ export function rollSupremePower(rng: RandomSource, B: Balance = gameBalance): n
   const steps = Math.round((p.max - p.min) / p.step);
   const k = Math.min(steps, Math.floor(rng.next() * (steps + 1)));
   return Math.round((p.min + k * p.step) * 1e6) / 1e6;
+}
+
+/** O refino da Suprema: o maior entre as armas da forja, menos 30% (para baixo): +10 → +7, +9 → +6. */
+export function supremeRefine(
+  items: readonly ItemInstance[],
+  B: Balance = gameBalance,
+): number {
+  const top = Math.max(0, ...items.map((x) => x.refine));
+  return Math.floor(top * B.cfg.supreme.refineKeep + 1e-9);
 }
 
 /** A arma serve de ingrediente: Lendária, não Suprema. */
