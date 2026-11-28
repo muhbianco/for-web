@@ -16,6 +16,7 @@ import {
   BAG_SLOTS,
   HERO_VERSION,
   type HeroV5,
+  type OwnedItem,
   balanceHero,
   fitItemRules,
   fitWornGear,
@@ -75,6 +76,16 @@ const item = z.union([
   }),
   z.object({ ...common, slot: z.enum(["colar", "anel"]) }),
 ]);
+const itemList = z.array(item);
+/** Confere uma lista de itens lida do banco com o esquema do herói (o baú compartilhado, 28/11/2026). */
+export function checkItems(
+  raw: unknown,
+): { ok: true; items: OwnedItem[] } | { ok: false; reason: string } {
+  const p = itemList.safeParse(raw);
+  return p.success
+    ? { ok: true, items: p.data as unknown as OwnedItem[] }
+    : { ok: false, reason: `item ${p.error.issues[0]?.path.join(".") ?? "?"}` };
+}
 const stats = z.object({
   FOR: z.number().int().min(1),
   AGI: z.number().int().min(1),

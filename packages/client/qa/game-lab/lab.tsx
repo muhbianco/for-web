@@ -33,6 +33,7 @@ import {
 import { I18nProvider } from "../../components/i18n";
 import HeroSheet from "../../components/space/game/HeroSheet";
 import LobbyChip from "../../components/space/game/LobbyChip";
+import ChestDialog from "../../components/space/game/ChestDialog";
 import NpcDialog from "../../components/space/game/NpcDialog";
 import RunChip from "../../components/space/game/RunChip";
 import RunMeter from "../../components/space/game/RunMeter";
@@ -73,7 +74,8 @@ type Screen =
   | "run"
   | "map"
   | "news"
-  | "arsenal";
+  | "arsenal"
+  | "bau";
 
 /** O quadro de avisos sem o space-server: só o que o painel lê da vista. */
 const NEWS: NewsWire = {
@@ -125,6 +127,8 @@ interface Scenario {
   screen: Screen;
   npc?: NpcKind;
   build: () => LabWorld;
+  /** O baú compartilhado (`screen: "bau"`): o que já está nele e o histórico. */
+  chest?: (srv: LabServer) => void;
   run?: { dungeon: string; seek?: number | "chefe" | "fim" };
 }
 
@@ -296,6 +300,41 @@ const SCENARIOS: Scenario[] = [
           },
         }),
       ),
+  },
+  {
+    id: "bau",
+    label: "Baú compartilhado (com itens)",
+    screen: "bau",
+    // O baú do servidor (28/11/2026): itens de outras classes, um +7 e um Lendário na mochila de Ana.
+    build: () => {
+      const h = mage45();
+      const bag = h.bag.map((x, i) =>
+        i === 0 ? { ...x, refine: 7 } : i === 1 ? { ...x, rarity: "lendario" as const } : x,
+      );
+      return world(stateOf({ ...h, bag }));
+    },
+    chest: (srv) => {
+      const items = stuffBag(mage45(), 18, 31).bag.slice(-18);
+      const t0 = Date.now() - 3 * 3600_000;
+      srv.chest = {
+        rev: 3,
+        items,
+        log: [
+          srv.chestLog("Caio", "pegou", items.slice(0, 1), t0 + 2 * 3600_000),
+          srv.chestLog("Bia", "pos", items.slice(10, 18), t0 + 3600_000),
+          srv.chestLog("Caio", "pos", items.slice(0, 10), t0),
+        ],
+      };
+    },
+  },
+  {
+    id: "bau-vazio",
+    label: "Baú compartilhado (vazio)",
+    screen: "bau",
+    build: () => world(stateOf(mage45())),
+    chest: (srv) => {
+      srv.chest = { rev: 0, items: [], log: [] };
+    },
   },
   {
     id: "banqueiro",
@@ -591,11 +630,16 @@ function Lab() {
     setNpcReq({ instance: `npc-${kind}`, title: "", npc: kind });
   const [meter, setMeter] = createSignal(false);
   const server = new LabServer(w(), setW, params().speed);
+  // Para os testes pelo navegador: `labServer.chestOther()` simula outra pessoa pegando do baú.
+  (globalThis as { labServer?: LabServer }).labServer = server;
   const load = () => {
     const { s, speed } = params();
     const sc = SCENARIOS.find((x) => x.id === s) ?? SCENARIOS[2]!;
     server.speed = speed;
     server.load(sc.build());
+    server.chest = { rev: 0, items: [], log: [] };
+    sc.chest?.(server);
+    server.chestFar = new URLSearchParams(location.hash.slice(1)).get("longe") === "1";
     setScreen(sc.screen);
     if (sc.npc) setNpc(sc.npc);
     setOpen(true);
@@ -689,6 +733,14 @@ function Lab() {
                   onClose={() => setNpcReq(null)}
                 />
               )}
+            </Match>
+            <Match when={screen() === "bau" && open()}>
+              <ChestDialog
+                link={server}
+                request={{ instance: "bau-1", title: "Baú compartilhado" }}
+                rpg={w().rpg}
+                onClose={() => setOpen(false)}
+              />
             </Match>
             <Match when={screen() === "dojo"}>
               <TrainingDialog

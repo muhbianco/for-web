@@ -1043,6 +1043,32 @@ export const ART: Record<string, ArtDef> = {
       rect(g, 5, g.top + 8, 6, 1, shade(c, -0.5));
     },
   },
+  "chest-shared": {
+    // O baú compartilhado (28/11/2026): tampa vista de cima, cintas e a fechadura dourada na frente.
+    tall: 1,
+    draw(g) {
+      const iron = g.variant === "ferro";
+      const body = iron ? "#5b6170" : WOOD.mel!;
+      const band = iron ? "#d9b45a" : METAL;
+      const gold = "#f4c542";
+      const t = g.top;
+      block(g, 1, t - 1, 14, 6, 9, body);
+      // As tábuas da frente (na madeira) e as cintas por cima da tampa e da frente.
+      if (!iron)
+        for (const y of [t + 8, t + 11]) rect(g, 2, y, 12, 1, shade(body, -0.25));
+      for (const x of [3, 11]) {
+        rect(g, x, t, 2, 13, shade(band, -0.15));
+        rect(g, x, t, 1, 13, shade(band, 0.25));
+      }
+      // A borda da tampa.
+      rect(g, 2, t + 4, 12, 1, shade(body, -0.45));
+      // A fechadura: a placa e o buraco da chave.
+      rect(g, 6, t + 3, 4, 5, OUTLINE);
+      rect(g, 7, t + 4, 2, 3, gold);
+      dot(g, 7, t + 4, "#fff2b0");
+      dot(g, 8, t + 6, OUTLINE);
+    },
+  },
   "vending-machine": {
     tall: 1,
     draw(g) {

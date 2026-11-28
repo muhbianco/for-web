@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import {
+  BAG_SLOTS,
+  CHEST_SLOTS,
+  type RpgChestEvent,
   type RpgCommand,
   type RpgHeroState,
   type RpgRankEvent,
@@ -12,6 +15,7 @@ import {
 
 import { silentLog } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
+import { MemoryChestStore, newChest } from "./chest.ts";
 import { LOBBY, LobbyHub } from "./lobby.ts";
 import { MemoryRecordStore } from "./records.ts";
 import { MemoryRunStore } from "./runs.ts";
@@ -52,6 +56,8 @@ class FakeHost implements RpgHost {
   readonly looks = new Map<string, unknown>();
   readonly lobbies = new LobbyHub();
   readonly sends: Array<Record<string, unknown>> = [];
+  /** O que foi para o Espaço todo (`notifyAll`). */
+  readonly notices: Array<Record<string, unknown>> = [];
   now: () => number = () => 1;
   gameAccess() {
     return "ok" as const;
@@ -68,6 +74,17 @@ class FakeHost implements RpgHost {
     if (instanceId.endsWith("longe"))
       return { ok: false as const, code: "not_allowed", reason: "too_far" };
     return { ok: true as const };
+  }
+  /** Baús: o id começa com "bau"; "longe" no fim = longe. */
+  chestSpot(_v: Viewer, instanceId: string) {
+    if (!instanceId.startsWith("bau"))
+      return { ok: false as const, code: "not_found" };
+    if (instanceId.endsWith("longe"))
+      return { ok: false as const, code: "not_allowed", reason: "too_far" };
+    return { ok: true as const };
+  }
+  notifyAll(ev: Record<string, unknown>) {
+    this.notices.push(ev);
   }
   isTrainingAt(u: string, i: string) {
     return this.training.get(u) === i;
@@ -168,15 +185,21 @@ class FakeHost implements RpgHost {
   }
 }
 
-function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
+function setup(stores?: {
+  store: MemoryRpgStore;
+  runStore: MemoryRunStore;
+  chests?: MemoryChestStore;
+}) {
   let now = 1_000_000;
   const store = stores?.store ?? new MemoryRpgStore();
   const runStore = stores?.runStore ?? new MemoryRunStore();
   const records = new MemoryRecordStore();
+  const chests = stores?.chests ?? new MemoryChestStore();
   const svc = new RpgService({
     store,
     runStore,
     records,
+    chests,
     log: silentLog,
     now: () => now,
     autoTick: false,
@@ -219,6 +242,7 @@ function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
     store,
     runStore,
     records,
+    chests,
     host,
     s,
     session,
@@ -1003,4 +1027,225 @@ test("ranking (rpg.rank): a vitória que fecha vira recorde solo; a carga das an
   assert.deepEqual(await t.svc.backfillRecords(), { wins: 1, records: 1 });
   assert.equal(await t.svc.backfillRecords(), null);
   assert.equal(t.records.docs.size, 1);
+});
+
+// ------------------------------------------------------------ o baú compartilhado (28/11/2026)
+
+/** As filas do serviço até pararem (o baú entrega em segundo plano por duas filas). */
+async function settle(t: { svc: RpgService }, ...ids: string[]) {
+  for (let i = 0; i < 4; i++)
+    for (const id of [...ids, "chest:S1"]) await t.svc.idle(id);
+}
+
+/** Ana com o elmo na mochila e Bia com herói; devolve o elmo. */
+async function chestPair(t: ReturnType<typeof setup>) {
+  const bia = t.session("U2");
+  await t.send("rpg.class", { cls: "guerreiro" });
+  await t.sendAs(bia, "rpg.class", { cls: "padre" });
+  const item = t.s.hero()!.hero.equipment.elmo!;
+  await t.send("rpg.unequip", { slot: "elmo" });
+  return { bia, item };
+}
+
+test("baú compartilhado: Ana põe, Bia pega em outro baú do mesmo servidor; histórico e aviso ao Espaço", async () => {
+  const t = setup();
+  const { bia, item } = await chestPair(t);
+  const put = await t.send("rpg.chest.put", { chest: "bau-1", uids: [item.uid] });
+  await settle(t, "U1");
+  assert.deepEqual(t.s.errors(put), []);
+  assert.equal(t.s.hero()!.hero.bag.some((x) => x.uid === item.uid), false);
+  assert.equal(t.store.docs.get("U1")!.outbox.length, 0);
+  const mine = t.s.of<RpgChestEvent>("rpg.chest").at(-1)!;
+  assert.deepEqual(
+    mine.d.items.map((x) => x.uid),
+    [item.uid],
+  );
+  assert.equal(mine.d.log[0]!.action, "pos");
+  // O primeiro baú gravado já passa do vazio que a janela mostra antes (rev 0): o aviso é novo.
+  assert.ok(mine.d.rev > 0);
+  assert.deepEqual(
+    t.host.notices.map((e) => (e.d as { rev: number }).rev),
+    [mine.d.rev],
+  );
+  assert.equal(mine.d.log[0]!.name, "Ana");
+  assert.equal(mine.d.slots, CHEST_SLOTS);
+  assert.ok(t.host.notices.some((e) => e.t === "rpg.chest.changed"));
+
+  // Outro baú do mapa abre o mesmo conteúdo.
+  const look = await t.sendAs(bia, "rpg.chest", { chest: "bau-2" });
+  const seen = bia.of<RpgChestEvent>("rpg.chest").find((e) => e.re === look)!;
+  assert.deepEqual(
+    seen.d.items.map((x) => x.uid),
+    [item.uid],
+  );
+
+  const take = await t.sendAs(bia, "rpg.chest.take", {
+    chest: "bau-2",
+    uids: [item.uid],
+  });
+  await settle(t, "U1", "U2");
+  assert.deepEqual(bia.errors(take), []);
+  assert.ok(bia.hero()!.hero.bag.some((x) => x.uid === item.uid));
+  const doc = t.chests.docs.get("S1")!;
+  assert.equal(doc.items.length, 0);
+  assert.equal(doc.outbox.length, 0);
+  assert.deepEqual(
+    doc.log.map((r) => [r.action, r.name, r.count]),
+    [
+      ["pegou", "Bia", 1],
+      ["pos", "Ana", 1],
+    ],
+  );
+
+  // Quem chegou depois não pega o que já saiu.
+  const late = await t.send("rpg.chest.take", { chest: "bau-1", uids: [item.uid] });
+  assert.deepEqual(t.s.errors(late), [
+    { code: "rpg_invalid", reason: "chest_gone" },
+  ]);
+});
+
+test("baú: longe, cheio, +7 sem confirmar e item que não está na mochila são recusados sem mexer em nada", async () => {
+  const t = setup();
+  const { item } = await chestPair(t);
+  const far = await t.send("rpg.chest.put", { chest: "bau-longe", uids: [item.uid] });
+  assert.deepEqual(t.s.errors(far), [
+    { code: "not_allowed", reason: "too_far" },
+  ]);
+  const wrong = await t.send("rpg.chest", { chest: "banqueiro-1" });
+  assert.deepEqual(t.s.errors(wrong), [{ code: "not_found" }]);
+
+  edit(t, "U1", (h) => ({
+    ...h,
+    bag: h.bag.map((x) => (x.uid === item.uid ? { ...x, refine: 7 } : x)),
+  }));
+  const ask = await t.send("rpg.chest.put", { chest: "bau-1", uids: [item.uid] });
+  assert.deepEqual(t.s.errors(ask), [
+    { code: "rpg_invalid", reason: "confirmacao" },
+  ]);
+  const missing = await t.send("rpg.chest.put", { chest: "bau-1", uids: ["nada"] });
+  assert.deepEqual(t.s.errors(missing), [
+    { code: "rpg_invalid", reason: "item-nao-encontrado" },
+  ]);
+
+  // Cheio: 100 itens (cópias com outro uid) já guardados.
+  const full = newChest("S1", 1);
+  full.items = Array.from({ length: CHEST_SLOTS }, (_, i) => ({
+    ...item,
+    uid: `cheio-${i}`,
+  }));
+  t.chests.docs.set("S1", full);
+  const t2 = setup({ store: t.store, runStore: t.runStore, chests: t.chests });
+  const no = await t2.send("rpg.chest.put", {
+    chest: "bau-1",
+    uids: [item.uid],
+    confirm: true,
+  });
+  assert.deepEqual(t2.s.errors(no), [
+    { code: "rpg_invalid", reason: "chest_full" },
+  ]);
+  assert.ok(t.store.docs.get("U1")!.hero.bag.some((x) => x.uid === item.uid));
+  assert.equal(t.chests.docs.get("S1")!.items.length, CHEST_SLOTS);
+
+  // Confirmado e com lugar, o +7 entra.
+  full.items.pop();
+  t.chests.docs.set("S1", full);
+  const t3 = setup({ store: t.store, runStore: t.runStore, chests: t.chests });
+  const yes = await t3.send("rpg.chest.put", {
+    chest: "bau-1",
+    uids: [item.uid],
+    confirm: true,
+  });
+  await settle(t3, "U1");
+  assert.deepEqual(t3.s.errors(yes), []);
+  assert.equal(t.chests.docs.get("S1")!.items.length, CHEST_SLOTS);
+  assert.ok(t.chests.docs.get("S1")!.items.some((x) => x.uid === item.uid));
+});
+
+test("baú: o processo caiu depois do crédito e antes da baixa; a leitura do herói dá baixa sem creditar de novo", async () => {
+  const t = setup();
+  const { item } = await chestPair(t);
+  // Como ficou no banco: o item saiu da mochila para a fila de saída e o baú já creditou o id.
+  const hero = t.store.docs.get("U1")!;
+  const sent = {
+    id: "put-1",
+    to: "chest:S1",
+    gold: 0,
+    items: [hero.hero.bag.find((x) => x.uid === item.uid)!],
+    at: 1,
+    name: "Ana",
+  };
+  hero.hero = { ...hero.hero, bag: hero.hero.bag.filter((x) => x.uid !== item.uid) };
+  hero.outbox = [sent];
+  const chest = newChest("S1", 1);
+  chest.items = [sent.items[0]!];
+  chest.inbox = ["put-1"];
+  t.chests.docs.set("S1", chest);
+
+  const t2 = setup({ store: t.store, runStore: t.runStore, chests: t.chests });
+  await t2.send("rpg.open");
+  await settle(t2, "U1");
+  assert.equal(t.store.docs.get("U1")!.outbox.length, 0);
+  assert.equal(t.chests.docs.get("S1")!.items.length, 1);
+  assert.equal(
+    t.store.docs.get("U1")!.hero.bag.some((x) => x.uid === item.uid),
+    false,
+  );
+
+  // E se o baú ainda não tinha creditado, a mesma leitura credita (uma vez).
+  hero.outbox = [{ ...sent, id: "put-2" }];
+  t.store.docs.set("U1", hero);
+  t.chests.docs.set("S1", newChest("S1", 1));
+  const t3 = setup({ store: t.store, runStore: t.runStore, chests: t.chests });
+  await t3.send("rpg.open");
+  await settle(t3, "U1");
+  assert.deepEqual(
+    t.chests.docs.get("S1")!.items.map((x) => x.uid),
+    [item.uid],
+  );
+  assert.equal(t.store.docs.get("U1")!.outbox.length, 0);
+});
+
+test("baú: entrega do baú sem baixa (queda); quem abre o baú depois faz o herói receber uma vez", async () => {
+  const t = setup();
+  const { item } = await chestPair(t);
+  const hero = t.store.docs.get("U1")!;
+  const it = hero.hero.bag.find((x) => x.uid === item.uid)!;
+  hero.hero = { ...hero.hero, bag: hero.hero.bag.filter((x) => x.uid !== item.uid) };
+  // Bia pegou: o baú tirou o item para a fila de saída e o processo caiu antes do herói dela gravar.
+  const chest = newChest("S1", 1);
+  chest.outbox = [{ id: "take-1", to: "U2", gold: 0, items: [it], at: 1, name: "Bia" }];
+  t.chests.docs.set("S1", chest);
+
+  const t2 = setup({ store: t.store, runStore: t.runStore, chests: t.chests });
+  await t2.send("rpg.chest", { chest: "bau-1" });
+  await settle(t2, "U1", "U2");
+  assert.ok(t.store.docs.get("U2")!.hero.bag.some((x) => x.uid === item.uid));
+  assert.equal(t.chests.docs.get("S1")!.outbox.length, 0);
+
+  // A mesma entrega de novo (o baú voltou do backup com ela) não duplica o item.
+  const again = t.chests.docs.get("S1")!;
+  again.outbox = chest.outbox;
+  const t3 = setup({ store: t.store, runStore: t.runStore, chests: t.chests });
+  await t3.send("rpg.chest", { chest: "bau-1" });
+  await settle(t3, "U1", "U2");
+  const bag = t.store.docs.get("U2")!.hero.bag.filter((x) => x.uid === item.uid);
+  assert.equal(bag.length, 1);
+  assert.equal(t.chests.docs.get("S1")!.outbox.length, 0);
+});
+
+test("baú: pegar com a mochila cheia manda o resto para o cofre", async () => {
+  const t = setup();
+  const { bia, item } = await chestPair(t);
+  await t.send("rpg.chest.put", { chest: "bau-1", uids: [item.uid] });
+  await settle(t, "U1");
+  edit(t, "U2", (h) => ({
+    ...h,
+    bag: Array.from({ length: BAG_SLOTS }, (_, i) => ({ ...item, uid: `b-${i}` })),
+  }));
+  const take = await t.sendAs(bia, "rpg.chest.take", { chest: "bau-1", uids: [item.uid] });
+  await settle(t, "U1", "U2");
+  assert.deepEqual(bia.errors(take), []);
+  const h = t.store.docs.get("U2")!.hero;
+  assert.equal(h.bag.length, BAG_SLOTS);
+  assert.ok(h.vault.items.some((x) => x.uid === item.uid));
 });

@@ -235,8 +235,10 @@ msgstr ""
 #. placeholder {0}: list().length
 #. placeholder {0}: props.value
 #. placeholder {1}: h().vault.items.length
+#. placeholder {1}: items().length
 #. placeholder {1}: props.max
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/SkillsPanel.tsx
 msgid "{0} de {1}"
 msgstr ""
@@ -351,8 +353,10 @@ msgid "{0} item é +7 ou mais."
 msgstr ""
 
 #. placeholder {0}: h().vault.items.length
+#. placeholder {0}: items().length
 #. placeholder {0}: sel().length
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/MerchantPanel.tsx
 msgid "{0} itens"
 msgstr ""
@@ -372,9 +376,19 @@ msgstr ""
 msgid "{0} itens guardados no cofre."
 msgstr ""
 
+#. placeholder {0}: uids.length
+#: components/space/game/ChestDialog.tsx
+msgid "{0} itens na sua mochila."
+msgstr ""
+
 #. placeholder {0}: m.to_vault!.length
 #: components/space/game/RunPanel.tsx
 msgid "{0} itens não couberam na mochila e foram para o cofre do Banqueiro."
+msgstr ""
+
+#. placeholder {0}: uids.length
+#: components/space/game/ChestDialog.tsx
+msgid "{0} itens no baú. Qualquer pessoa do servidor pode pegar."
 msgstr ""
 
 #. placeholder {0}: (message.systemMessage as UserSystemMessage).user?.username
@@ -606,6 +620,11 @@ msgstr ""
 
 #: components/space/game/ArsenalView.tsx
 msgid "{aff} afixos"
+msgstr ""
+
+#. placeholder {0}: Math.round(supremeAvg * 100)
+#: components/space/game/ArsenalView.tsx
+msgid "{aff} afixos + 2 perks · +{supremeMin}% a +{supremeMax}% no dano (média {0}%)"
 msgstr ""
 
 #: components/space/game/ArsenalView.tsx
@@ -1047,6 +1066,7 @@ msgid "1 inimigo"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/DungeonDetail.tsx
 msgid "1 item"
 msgstr ""
@@ -1070,6 +1090,14 @@ msgstr ""
 
 #: components/space/game/BankPanel.tsx
 msgid "1 item guardado no cofre."
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "1 item na sua mochila."
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "1 item no baú. Qualquer pessoa do servidor pode pegar."
 msgstr ""
 
 #: components/space/game/DungeonDetail.tsx
@@ -1181,11 +1209,16 @@ msgstr ""
 msgid "A mochila está cheia: guarde, venda ou desmonte algo antes."
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "A mochila está cheia: o que você pegar vai para o cofre."
+msgstr ""
+
 #: components/space/game/GearPanel.tsx
 msgid "A mochila está cheia."
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/MerchantPanel.tsx
 msgid "A mochila está vazia."
 msgstr ""
@@ -1270,6 +1303,10 @@ msgstr ""
 #. placeholder {1}: m.text
 #: components/space/game/SkillsPanel.tsx
 msgid "Abre no T{0}. {1}"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Abrindo o baú…"
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
@@ -1433,12 +1470,20 @@ msgstr ""
 msgid "Ainda não concluída"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Alguém"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Alguém do grupo ainda não tem o nível desta dungeon."
 msgstr ""
 
 #: components/space/SpacePage.tsx
 msgid "Alguém está apresentando"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Alguém pegou esse item antes de você."
 msgstr ""
 
 #: components/space/game/gameText.ts
@@ -1716,6 +1761,11 @@ msgstr ""
 msgid "As regras mudaram (atributos, habilidades, itens e dungeons novas) e todo mundo começa do zero: nível 1, o mesmo kit inicial e nenhum ouro. Escolha a classe para começar."
 msgstr ""
 
+#. placeholder {0}: chest()?.log.length ?? 0
+#: components/space/game/ChestDialog.tsx
+msgid "As últimas {0} vezes que alguém pôs ou pegou."
+msgstr ""
+
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
 msgid "Assign lower-ranked roles to lower-ranking members"
 msgstr ""
@@ -1933,6 +1983,14 @@ msgstr "jan pi weka suli"
 msgid "Base (fica e vira a Suprema)"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Baú"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Baú compartilhado"
+msgstr ""
+
 #. placeholder {0}: props.below
 #: components/space/game/RunHud.tsx
 msgid "Bebe poção de mana abaixo de {0}%"
@@ -2036,6 +2094,14 @@ msgstr ""
 msgid "Buscar item…"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Buscar no baú"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Buscar no baú (nome, lugar, perk…)"
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Buscar no cofre"
 msgstr ""
@@ -2066,10 +2132,21 @@ msgstr ""
 msgid "Bypasses slowmode in channels"
 msgstr ""
 
+#. placeholder {0}: bagRoom()
+#: components/space/game/ChestDialog.tsx
+msgid "Cabem {0} na mochila; o resto vai para o cofre."
+msgstr ""
+
 #. placeholder {0}: room()
 #. placeholder {1}: vaultSel().length - room()
 #: components/space/game/BankPanel.tsx
 msgid "Cabem só {0} na mochila: tire {1} da escolha."
+msgstr ""
+
+#. placeholder {0}: chestRoom()
+#. placeholder {1}: bagSel().length - chestRoom()
+#: components/space/game/ChestDialog.tsx
+msgid "Cabem só {0} no baú: tire {1} da escolha."
 msgstr ""
 
 #: components/space/game/gameText.ts
@@ -2487,6 +2564,10 @@ msgstr ""
 msgid "Client Settings"
 msgstr "nasin pi ilo sina"
 
+#: components/space/game/ChestDialog.tsx
+msgid "Clique duplo num item move na hora (o +7 e o Lendário pedem confirmação)."
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Clique duplo num item move na hora; Shift + clique escolhe um trecho."
 msgstr ""
@@ -2765,6 +2846,10 @@ msgstr ""
 #: components/space/game/AttributesPanel.tsx
 #: components/space/game/SkillsPanel.tsx
 msgid "Confirmar {0} pontos"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Confirmar: qualquer um pode pegar"
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -3778,6 +3863,11 @@ msgstr ""
 msgid "e até 20 itens da mochila:"
 msgstr ""
 
+#. placeholder {0}: more()
+#: components/space/game/ChestDialog.tsx
+msgid "e mais {0}"
+msgstr ""
+
 #: components/app/interface/settings/user/Support.tsx
 msgid "E-mail (o Mercado Pago exige no mensal)"
 msgstr ""
@@ -4130,6 +4220,10 @@ msgstr ""
 msgid "Escolha como a sua voz chega para os outros. As opções detalhadas abaixo continuam disponíveis."
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Escolha itens no baú ou na mochila para mover."
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Escolha itens no cofre ou na mochila para mover."
 msgstr ""
@@ -4171,6 +4265,7 @@ msgid "Escolher o melhor sozinho"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 msgid "Escolher o que não dá para vestir"
 msgstr ""
 
@@ -4871,6 +4966,14 @@ msgstr ""
 msgid "High Contrast"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Histórico"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Histórico do baú"
+msgstr ""
+
 #: components/app/interface/settings/server/roles/ServerRoleEditor.tsx
 msgid "Hoist Role"
 msgstr ""
@@ -5060,8 +5163,13 @@ msgid "itens"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/MerchantPanel.tsx
 msgid "Itens da mochila"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Itens no baú"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
@@ -5363,6 +5471,7 @@ msgid "limitada por"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/MerchantPanel.tsx
 #: components/space/game/SmithPanel.tsx
 msgid "Limpar"
@@ -5503,6 +5612,7 @@ msgid "mais crítico"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 msgid "Mais novos"
 msgstr ""
 
@@ -5895,6 +6005,7 @@ msgid "Missing permission"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/game/GearPanel.tsx
 #: components/space/game/SmithPanel.tsx
 msgid "Mochila"
@@ -5995,6 +6106,7 @@ msgid "Mover a janela (setas do teclado; Home volta ao lugar)"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 msgid "Mover itens"
 msgstr ""
 
@@ -6115,6 +6227,10 @@ msgstr ""
 
 #: components/space/game/SmithPanel.tsx
 msgid "Nada na mochila serve aqui."
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Nada no baú com essa busca."
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
@@ -6306,6 +6422,10 @@ msgstr ""
 msgid "Ninguém está te ouvindo."
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Ninguém mexeu no baú ainda."
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Ninguém no Espaço agora para receber. A pessoa precisa estar aqui."
 msgstr ""
@@ -6368,6 +6488,7 @@ msgstr ""
 
 #: components/space/game/ArsenalView.tsx
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 msgid "Nível do item"
 msgstr ""
 
@@ -6556,6 +6677,23 @@ msgstr ""
 
 #: components/space/game/skillText.ts
 msgid "o alvo"
+msgstr ""
+
+#. placeholder {0}: slots()
+#: components/space/game/ChestDialog.tsx
+msgid "O baú está cheio ({0} itens)."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "O baú está cheio (100 itens). Alguém precisa pegar algo antes."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "O baú está ocupado agora. Tente de novo num instante."
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "O baú está vazio."
 msgstr ""
 
 #: components/space/SpacePage.tsx
@@ -6887,6 +7025,10 @@ msgstr "o open e nasin"
 msgid "Ordem"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Ordem do baú"
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Ordem do cofre"
 msgstr ""
@@ -7122,6 +7264,33 @@ msgstr ""
 msgid "Pedras de Proteção: {0}"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Pegar"
+msgstr ""
+
+#. placeholder {0}: chestSel().length
+#: components/space/game/ChestDialog.tsx
+msgid "Pegar {0}"
+msgstr ""
+
+#. placeholder {0}: chestSel().length
+#: components/space/game/ChestDialog.tsx
+msgid "Pegar {0} para a mochila"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Pegar para a mochila"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "pegou"
+msgstr ""
+
+#. placeholder {0}: uids.length
+#: components/space/game/ChestDialog.tsx
+msgid "Pegou {0}: {vault} foram para o cofre (a mochila encheu)."
+msgstr ""
+
 #: src/interface/Friends.tsx
 msgid "Pending"
 msgstr ""
@@ -7315,6 +7484,10 @@ msgstr ""
 msgid "Poções no cinto: {0} de vida e {1} de mana"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Ponha aqui o que quiser dividir: qualquer pessoa do servidor pode pegar."
+msgstr ""
+
 #: components/space/game/AttributesPanel.tsx
 #: components/space/game/SkillsPanel.tsx
 msgid "Pontos confirmados."
@@ -7330,6 +7503,20 @@ msgstr ""
 
 #: components/space/game/AttributesPanel.tsx
 msgid "Pontos livres"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Pôr"
+msgstr ""
+
+#. placeholder {0}: bagSel().length
+#: components/space/game/ChestDialog.tsx
+msgid "Pôr {0}"
+msgstr ""
+
+#. placeholder {0}: bagSel().length
+#: components/space/game/ChestDialog.tsx
+msgid "Pôr {0} no baú"
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -7349,6 +7536,10 @@ msgstr ""
 msgid "Por lugar"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Pôr no baú"
+msgstr ""
+
 #: components/space/game/SkillsPanel.tsx
 msgid "Pôr no slot"
 msgstr ""
@@ -7363,6 +7554,10 @@ msgstr ""
 
 #: components/space/game/SkillsPanel.tsx
 msgid "Porcentagem"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "pôs"
 msgstr ""
 
 #: components/space/SmartTv.tsx
@@ -7627,6 +7822,10 @@ msgstr ""
 msgid "Quem pode controlar a TV escolhe um vídeo."
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Quem usa"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Quem usa magia perde mana por alguns segundos."
 msgstr ""
@@ -7661,6 +7860,7 @@ msgid "raridade"
 msgstr ""
 
 #: components/space/game/BankPanel.tsx
+#: components/space/game/ChestDialog.tsx
 msgid "Raridade"
 msgstr ""
 
@@ -8090,6 +8290,10 @@ msgstr ""
 
 #: components/space/game/BankPanel.tsx
 msgid "Resumo do Banqueiro"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Resumo do baú"
 msgstr ""
 
 #: components/space/game/partyUi.ts
@@ -8685,6 +8889,10 @@ msgstr ""
 msgid "Seu herói está numa dungeon. O cofre e o ouro funcionam normalmente; transferir, só quando a corrida acabar."
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "Seu herói já guarda itens demais: venda ou desmonte algo do cofre antes."
+msgstr ""
+
 #. placeholder {0}: level()
 #: components/space/game/TvMenu.tsx
 msgid "Seu herói: nível {0}"
@@ -8798,6 +9006,10 @@ msgstr ""
 
 #: components/space/DecorPanel.tsx
 msgid "Smart TV: intervalo entre vídeos"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "só arma: Lendário com +{supremeMin}% a +{supremeMax}% no dano e 2 perks"
 msgstr ""
 
 #: components/space/game/ArsenalView.tsx
@@ -9050,6 +9262,10 @@ msgstr ""
 msgid "Support the project by donating - thank you!"
 msgstr "sina olin e ilo ni? o pana e mani - pona a!"
 
+#: components/space/game/ArsenalView.tsx
+msgid "Suprema"
+msgstr ""
+
 #: components/ui/components/features/voice/callCard/VoiceCallCardPreview.tsx
 msgid "Switch to this voice channel"
 msgstr ""
@@ -9130,6 +9346,10 @@ msgstr ""
 msgid "Tell us what's wrong with this user"
 msgstr ""
 
+#: components/space/game/ChestDialog.tsx
+msgid "Tem item +7 ou Lendário na escolha: confirme, porque qualquer pessoa pode pegar."
+msgstr ""
+
 #: components/space/game/BankPanel.tsx
 msgid "Tem item +7: confirme mais uma vez"
 msgstr ""
@@ -9144,6 +9364,7 @@ msgid "Temporarily prevent lower-ranking members from interacting"
 msgstr ""
 
 #: components/space/chat/ChatDock.tsx
+#: components/space/game/ChestDialog.tsx
 #: components/space/NewsPanel.tsx
 #: components/space/SpacePage.tsx
 msgid "Tentar de novo"
@@ -9466,6 +9687,10 @@ msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx
 msgid "Todo mês"
+msgstr ""
+
+#: components/space/game/ChestDialog.tsx
+msgid "Todo o servidor"
 msgstr ""
 
 #: components/space/DecorPanel.tsx

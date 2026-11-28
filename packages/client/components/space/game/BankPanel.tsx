@@ -238,13 +238,13 @@ const RANK: Record<RarityId, number> = {
 /** Quantos itens do cofre aparecem por vez (o cofre não tem fim; o resto vem com "mostrar mais"). */
 const PAGE = 48;
 
-type Marks = Record<string, { mark: BagMark; score: number }>;
+export type Marks = Record<string, { mark: BagMark; score: number }>;
 
 /**
  * ▲/▼ de itens fora da mochila pela mesma nota da mochila: em pedaços de 32, para a troca (o vestido
  * volta para a "mochila" da conta) nunca passar dos 40 espaços. ~0,5 ms por item: só o que aparece.
  */
-function marksOf(h: HeroV5, items: OwnedItem[]): Marks {
+export function marksOf(h: HeroV5, items: OwnedItem[]): Marks {
   const out: Marks = {};
   for (let i = 0; i < items.length; i += 32)
     Object.assign(out, bagMarks({ ...h, bag: items.slice(i, i + 32) }));
@@ -252,7 +252,7 @@ function marksOf(h: HeroV5, items: OwnedItem[]): Marks {
 }
 
 const searchCache = new WeakMap<OwnedItem, string>();
-function searchText(it: OwnedItem): string {
+export function searchText(it: OwnedItem): string {
   let s = searchCache.get(it);
   if (s === undefined) {
     const tip = itemTooltip(it);
@@ -797,7 +797,7 @@ function VaultBox(props: {
  * A grade do baú: toque escolhe (vários), Shift + clique escolhe o trecho desde o último, clique
  * duplo move na hora. ▲/▼ e o selo NOVO no canto; o detalhe ao parar em cima (ou toque longo).
  */
-function Stash(props: {
+export function Stash(props: {
   label: string;
   items: OwnedItem[];
   selected: string[];
@@ -1163,10 +1163,10 @@ function TransferBox(props: {
 
 // ------------------------------------------------------------ estilos
 
-const Wrap = styled("div", {
+export const Wrap = styled("div", {
   base: { display: "flex", flexDirection: "column", gap: "12px" },
 });
-const Ledger = styled("div", {
+export const Ledger = styled("div", {
   base: {
     display: "grid",
     gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
@@ -1176,7 +1176,7 @@ const Ledger = styled("div", {
     },
   },
 });
-const Stat = styled("div", {
+export const Stat = styled("div", {
   base: {
     display: "flex",
     flexDirection: "column",
@@ -1197,7 +1197,7 @@ const Stat = styled("div", {
     "&[data-warn] > strong": { color: "#ffb3a8" },
   },
 });
-const Meter = styled("span", {
+export const Meter = styled("span", {
   base: {
     display: "block",
     height: "4px",
@@ -1212,7 +1212,7 @@ const Meter = styled("span", {
   },
 });
 /** A linha de estado da barra de mover: dica, "cabem N", o que foi movido (com Desfazer) ou o erro. */
-const Status = styled("div", {
+export const Status = styled("div", {
   base: {
     flexBasis: "100%",
     display: "flex",
@@ -1243,7 +1243,7 @@ const Status = styled("div", {
     },
   },
 });
-const Panes = styled("div", {
+export const Panes = styled("div", {
   base: {
     display: "grid",
     gridTemplateColumns: "minmax(0, 1fr)",
@@ -1253,7 +1253,7 @@ const Panes = styled("div", {
     },
   },
 });
-const Pane = styled("section", {
+export const Pane = styled("section", {
   base: {
     display: "flex",
     flexDirection: "column",
@@ -1265,7 +1265,7 @@ const Pane = styled("section", {
     border: "1px solid var(--md-sys-color-outline-variant)",
   },
 });
-const PaneHead = styled("div", {
+export const PaneHead = styled("div", {
   base: {
     display: "flex",
     alignItems: "center",
@@ -1280,13 +1280,13 @@ const PaneHead = styled("div", {
     },
   },
 });
-const Count = styled("span", {
+export const Count = styled("span", {
   base: {
     fontVariantNumeric: "tabular-nums",
     "&[data-full]": { color: "#ff8a7a" },
   },
 });
-const Chips = styled("div", {
+export const Chips = styled("div", {
   base: {
     display: "flex",
     gap: "4px",
@@ -1295,7 +1295,7 @@ const Chips = styled("div", {
     paddingBottom: "2px",
   },
 });
-const Chip = styled("button", {
+export const Chip = styled("button", {
   base: {
     flex: "0 0 auto",
     display: "inline-flex",
@@ -1327,7 +1327,7 @@ const Chip = styled("button", {
     "@media (pointer: coarse)": { minHeight: "40px" },
   },
 });
-const Search = styled("input", {
+export const Search = styled("input", {
   base: {
     minHeight: "36px",
     padding: "0 10px",
@@ -1401,7 +1401,7 @@ const Check = styled("span", {
     pointerEvents: "none",
   },
 });
-const Empty = styled("div", {
+export const Empty = styled("div", {
   base: {
     display: "flex",
     flexDirection: "column",
@@ -1410,14 +1410,14 @@ const Empty = styled("div", {
     padding: "16px 4px",
   },
 });
-const Tip = styled("small", {
+export const Tip = styled("small", {
   base: {
     fontSize: "0.75rem",
     color: "var(--md-sys-color-on-surface-variant)",
     "@media (hover: none)": { display: "none" },
   },
 });
-const MoveBar = styled("div", {
+export const MoveBar = styled("div", {
   base: {
     position: "sticky",
     bottom: 0,
@@ -1440,10 +1440,10 @@ const MoveBar = styled("div", {
     },
   },
 });
-const Long = styled("span", {
+export const Long = styled("span", {
   base: { "@container (max-width: 600px)": { display: "none" } },
 });
-const Short = styled("span", {
+export const Short = styled("span", {
   base: {
     display: "none",
     "@container (max-width: 600px)": { display: "inline" },
@@ -1463,7 +1463,7 @@ const Input = styled("input", {
     "@media (pointer: coarse)": { minHeight: "44px" },
   },
 });
-const Select = styled("select", {
+export const Select = styled("select", {
   base: {
     minHeight: "36px",
     borderRadius: "8px",

@@ -4,14 +4,19 @@ import {
   type ClassId,
   type HeroV5,
   type OwnedItem,
+  type RpgChestLogRow,
   type RpgHeroState,
   type RpgLobbyView,
   type RpgRunEndView,
   type RpgRunView,
   type RunFrame,
   type RunResult,
+  BAG_SLOTS,
+  CHEST_SLOTS,
   applyRun,
   autoEquipBag,
+  chestNeedsConfirm,
+  itemTooltip,
   balanceHero,
   bankGold,
   bossMissing,
@@ -103,6 +108,58 @@ export class LabServer implements TvLink {
 
   get me(): string {
     return "u-ana";
+  }
+
+  /** O baú compartilhado do laboratório (28/11/2026): o conteúdo e quem mexeu. */
+  chest: { rev: number; items: OwnedItem[]; log: RpgChestLogRow[] } = {
+    rev: 0,
+    items: [],
+    log: [],
+  };
+  /** `&longe=1`: o servidor diz que a pessoa saiu de perto do baú. */
+  chestFar = false;
+  private chestView() {
+    return {
+      rev: this.chest.rev,
+      slots: CHEST_SLOTS,
+      items: this.chest.items,
+      log: this.chest.log,
+    };
+  }
+  chestLog(
+    name: string,
+    action: RpgChestLogRow["action"],
+    items: OwnedItem[],
+    at = Date.now(),
+  ): RpgChestLogRow {
+    return {
+      at,
+      user_id: name === "Ana" ? "u-ana" : `u-${name.toLowerCase()}`,
+      name,
+      action,
+      items: items.slice(0, 3).map((it) => ({
+        name: itemTooltip(it).name,
+        rarity: it.rarity,
+        refine: it.refine,
+      })),
+      count: items.length,
+    };
+  }
+  private chestChanged() {
+    this.emit({ t: "rpg.chest", d: this.chestView() });
+    this.emit({ t: "rpg.chest.changed", d: { rev: this.chest.rev } });
+  }
+  /** Outra pessoa (Bia) pega o item mais novo do baú: a janela aberta só recebe o aviso e pede de novo. */
+  chestOther(): string | null {
+    const it = this.chest.items.at(-1);
+    if (!it) return null;
+    this.chest = {
+      rev: this.chest.rev + 1,
+      items: this.chest.items.slice(0, -1),
+      log: [this.chestLog("Bia", "pegou", [it]), ...this.chest.log].slice(0, 40),
+    };
+    this.emit({ t: "rpg.chest.changed", d: { rev: this.chest.rev } });
+    return it.uid;
   }
 
   gameSend(t: string, d: Record<string, unknown> = {}): string {
@@ -200,6 +257,7 @@ export class LabServer implements TvLink {
       "rpg.board",
       "rpg.stats",
       "rpg.rank",
+      "rpg.chest",
       "rpg.lobby.leave",
       "rpg.lobby.loop",
       "rpg.run.watch",
@@ -210,6 +268,8 @@ export class LabServer implements TvLink {
       t === "rpg.bank" ||
       t === "rpg.vault" ||
       t === "rpg.vault.many" ||
+      t === "rpg.chest.put" ||
+      t === "rpg.chest.take" ||
       t === "rpg.shop.sell" ||
       t === "rpg.shop.sell.many" ||
       (t === "rpg.shop.buy" &&
@@ -338,6 +398,44 @@ export class LabServer implements TvLink {
         );
       case "rpg.bank":
         return this.apply(re, bankGold(h, Number(d.gold)));
+      case "rpg.chest":
+        if (this.chestFar) return this.refuse(re, "too_far", "not_allowed");
+        return this.emit({ t: "rpg.chest", re, d: this.chestView() });
+      case "rpg.chest.put": {
+        const uids = (d.uids as string[]) ?? [];
+        const items = h.bag.filter((x) => uids.includes(x.uid));
+        if (items.length !== uids.length)
+          return this.refuse(re, "item-nao-encontrado", "rpg_invalid");
+        if (!d.confirm && items.some((x) => chestNeedsConfirm(x)))
+          return this.refuse(re, "confirmacao", "rpg_invalid");
+        if (this.chest.items.length + items.length > CHEST_SLOTS)
+          return this.refuse(re, "chest_full", "rpg_invalid");
+        this.chest = {
+          rev: this.chest.rev + 1,
+          items: [...this.chest.items, ...items],
+          log: [this.chestLog("Ana", "pos", items), ...this.chest.log].slice(0, 40),
+        };
+        this.save(re, { ...h, bag: h.bag.filter((x) => !uids.includes(x.uid)) });
+        return this.chestChanged();
+      }
+      case "rpg.chest.take": {
+        const uids = (d.uids as string[]) ?? [];
+        const items = this.chest.items.filter((x) => uids.includes(x.uid));
+        if (items.length !== uids.length)
+          return this.refuse(re, "chest_gone", "rpg_invalid");
+        const room = Math.max(0, BAG_SLOTS - h.bag.length);
+        this.chest = {
+          rev: this.chest.rev + 1,
+          items: this.chest.items.filter((x) => !uids.includes(x.uid)),
+          log: [this.chestLog("Ana", "pegou", items), ...this.chest.log].slice(0, 40),
+        };
+        this.save(re, {
+          ...h,
+          bag: [...h.bag, ...items.slice(0, room)],
+          vault: { ...h.vault, items: [...h.vault.items, ...items.slice(room)] },
+        });
+        return this.chestChanged();
+      }
       case "rpg.vault":
         return this.apply(
           re,

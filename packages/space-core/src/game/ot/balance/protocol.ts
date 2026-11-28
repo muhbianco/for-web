@@ -7,6 +7,7 @@ import {
 import type { HeroCarry } from "./combat/types.ts";
 import {
   type ClassId,
+  type RarityId,
   ARMOR_SLOTS,
   ARMOR_WEIGHTS,
   CLASS_IDS,
@@ -367,6 +368,31 @@ export const RpgStatsCmd = cmd(
 /** O ranking de todo o Muchat (28/11/2026): o top 10 sozinho e em grupo, pela DG mais difícil vencida. */
 export const RpgRankCmd = cmd("rpg.rank", empty);
 
+/**
+ * O baú compartilhado (28/11/2026, o dono: "um baú compartilhado; todos podem pôr/pegar item de lá"):
+ * um por servidor do Muchat, aberto em qualquer baú do mapa (apagar ou mudar o baú de lugar não perde
+ * nada). `chest` é o baú ao lado do qual a pessoa está: o servidor confere a distância. Pôr sai da
+ * mochila; pegar vai para a mochila e o que não couber, para o cofre. +7 e Lendário pedem `confirm`.
+ */
+export const CHEST_SLOTS = 100;
+/** Quantas linhas do histórico do baú o servidor guarda (e manda). */
+export const CHEST_LOG_KEEP = 40;
+export const RpgChestCmd = cmd("rpg.chest", z.object({ chest: ref }).strict());
+export const RpgChestPutCmd = cmd(
+  "rpg.chest.put",
+  z
+    .object({
+      chest: ref,
+      uids: z.array(ref).min(1).max(BAG_SLOTS),
+      confirm: z.boolean().optional(),
+    })
+    .strict(),
+);
+export const RpgChestTakeCmd = cmd(
+  "rpg.chest.take",
+  z.object({ chest: ref, uids: z.array(ref).min(1).max(BAG_SLOTS) }).strict(),
+);
+
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
   RpgClassCmd,
@@ -407,6 +433,9 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgRunWatchCmd,
   RpgBoardCmd,
   RpgStatsCmd,
+  RpgChestCmd,
+  RpgChestPutCmd,
+  RpgChestTakeCmd,
 ]);
 export type RpgCommand = z.infer<typeof RpgCommand>;
 
@@ -704,6 +733,36 @@ export interface RpgRankEvent {
   t: "rpg.rank";
   re?: string;
   d: { solo: RpgRankRow[]; grupo: RpgRankRow[] };
+}
+
+/** Uma linha do histórico do baú: quem pôs ou pegou o quê (os 3 primeiros itens e o total). */
+export interface RpgChestLogRow {
+  at: number;
+  user_id: string;
+  name: string;
+  action: "pos" | "pegou";
+  items: { name: string; rarity: RarityId; refine: number }[];
+  count: number;
+}
+
+/** O baú do servidor: os itens (o mais antigo primeiro) e o histórico (o mais novo primeiro). */
+export interface RpgChestEvent {
+  v: 1;
+  t: "rpg.chest";
+  re?: string;
+  d: {
+    rev: number;
+    slots: number;
+    items: OwnedItem[];
+    log: RpgChestLogRow[];
+  };
+}
+
+/** Alguém mexeu no baú: quem está com ele aberto pede de novo (`rpg.chest`). Vai para o Espaço todo. */
+export interface RpgChestChangedEvent {
+  v: 1;
+  t: "rpg.chest.changed";
+  d: { rev: number };
 }
 
 /** Os erros que o servidor devolve em `error.d.code` (mais os das ações do herói, em `reason`). */

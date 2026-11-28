@@ -28,6 +28,7 @@ export const VERBS: Record<InteractionKind, string> = {
   npc: "Falar",
   news: "Ler avisos",
   arsenal: "Ver o Arsenal",
+  chest: "Abrir",
 };
 
 /** The closest interactive instance within one tile of us, if any. */

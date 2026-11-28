@@ -77,3 +77,14 @@ export function sellNeedsConfirm(
 ): boolean {
   return item.refine >= B.cfg.bank.confirmRefineFrom;
 }
+
+/**
+ * Pôr no baú compartilhado (28/11/2026) pede confirmação no +7 (como vender) e no Lendário: o que entra
+ * lá qualquer pessoa do servidor pode pegar.
+ */
+export function chestNeedsConfirm(
+  item: ItemInstance,
+  B: Balance = gameBalance,
+): boolean {
+  return sellNeedsConfirm(item, B) || item.rarity === "lendario";
+}

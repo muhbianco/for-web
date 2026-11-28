@@ -37,7 +37,7 @@ export type Rotation = 0 | 1 | 2 | 3;
 /** `npc`: NPC do jogo idle (etapa O8): mercador, banqueiro ou mestre das vocações. */
 /** `news`: o quadro de avisos (25/11/2026): abre as novidades do produto, que vêm do servidor. */
 /** `arsenal`: a estante do Arsenal (27/11/2026): abre todos os itens do jogo idle. */
-export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc" | "news" | "arsenal";
+export type InteractionKind = "link" | "note" | "picture" | "frame" | "teleport" | "tv" | "train" | "npc" | "news" | "arsenal" | "chest";
 
 /** Os NPCs do jogo idle (etapa O8). */
 export type NpcKind = "mercador" | "banqueiro" | "mestre" | "ferreiro";

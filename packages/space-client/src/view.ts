@@ -149,6 +149,8 @@ export interface SpaceUiState {
   newsRequest: { instance: string; title: string; n: number } | null;
   /** Usamos a estante do Arsenal (27/11/2026): o app abre todos os itens do jogo. */
   arsenalRequest: { instance: string; title: string; n: number } | null;
+  /** Usamos um baú compartilhado (28/11/2026): o app abre o baú do servidor. */
+  chestRequest: { instance: string; title: string; n: number } | null;
   /** Someone used a TV with the game on: the app shows "watch" or "dungeon". */
   tvMenu: { instance: string; title: string; n: number } | null;
   /** A moderator took us to a room (27/11/2026): the app says who. `n` grows on every move. */
@@ -178,7 +180,15 @@ export type { RunState } from "./runState.ts";
 
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
-  t: "rpg.state" | "rpg.lobby" | "rpg.run" | "rpg.stats" | "rpg.rank" | "error";
+  t:
+    | "rpg.state"
+    | "rpg.lobby"
+    | "rpg.run"
+    | "rpg.stats"
+    | "rpg.rank"
+    | "rpg.chest"
+    | "rpg.chest.changed"
+    | "error";
   re?: string;
   d: Record<string, unknown>;
 };
@@ -304,6 +314,7 @@ export class SpaceView {
       npcRequest: null,
       newsRequest: null,
       arsenalRequest: null,
+      chestRequest: null,
       tvMenu: null,
       moved: null,
       lobbies: {},
@@ -755,6 +766,19 @@ export class SpaceView {
         const re = typeof e.re === "string" ? e.re : undefined;
         if (re) this.gameCommands.delete(re);
         this.emitGame({ t: "rpg.stats", re, d });
+        return;
+      }
+      case "rpg.chest":
+      case "rpg.chest.changed": {
+        // O baú compartilhado (28/11/2026): a resposta ao pedido, o baú novo de quem mexeu e o aviso
+        // de que alguém mexeu (a janela aberta pede de novo).
+        const re = typeof e.re === "string" ? e.re : undefined;
+        if (re) this.gameCommands.delete(re);
+        this.emitGame({
+          t: e.t === "rpg.chest" ? "rpg.chest" : "rpg.chest.changed",
+          re,
+          d,
+        });
         return;
       }
       case "rpg.rank": {
@@ -1236,6 +1260,17 @@ export class SpaceView {
       });
       return;
     }
+    if (p.item.interaction === "chest") {
+      // O baú compartilhado: o app pede o conteúdo ao servidor (que confere a distância).
+      this.patch({
+        chestRequest: {
+          instance: p.inst.id,
+          title: p.inst.config?.title?.trim() || p.item.name,
+          n: (this.state.chestRequest?.n ?? 0) + 1,
+        },
+      });
+      return;
+    }
     if (p.item.interaction === "news") {
       // O quadro de avisos: o app busca as novidades e abre o painel.
       this.patch({
@@ -1416,6 +1451,10 @@ export class SpaceView {
 
   closeArsenalRequest() {
     if (this.state.arsenalRequest) this.patch({ arsenalRequest: null });
+  }
+
+  closeChestRequest() {
+    if (this.state.chestRequest) this.patch({ chestRequest: null });
   }
 
   /** As novidades do quadro de avisos (o servidor guarda por minutos; o Outline fica atrás dele). */

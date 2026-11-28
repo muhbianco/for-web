@@ -69,6 +69,7 @@ const TrainingDialog = lazy(() => import("./game/TrainingDialog"));
 const TrainingChip = lazy(() => import("./game/TrainingChip"));
 const HeroSheet = lazy(() => import("./game/HeroSheet"));
 const NpcDialog = lazy(() => import("./game/NpcDialog"));
+const ChestDialog = lazy(() => import("./game/ChestDialog"));
 const NewsPanel = lazy(() => import("./NewsPanel"));
 /** O menu da TV com o jogo ligado e a faixa do grupo da dungeon (etapa O4). */
 const TvMenu = lazy(() => import("./game/TvMenu"));
@@ -628,6 +629,7 @@ function ServerSpace(props: { serverId: string }) {
     else if (u.npcRequest) v.closeNpcRequest();
     else if (u.newsRequest) v.closeNewsRequest();
     else if (u.arsenalRequest) v.closeArsenalRequest();
+    else if (u.chestRequest) v.closeChestRequest();
     else if (u.trainRequest) v.closeTrainRequest();
     else if (u.interaction) v.closeInteraction();
     else if (u.runOpen) v.closeRun();
@@ -1410,6 +1412,21 @@ function ServerSpace(props: { serverId: string }) {
                     mode="arsenal"
                     onClose={() => {
                       view()?.closeArsenalRequest();
+                      host?.focus();
+                    }}
+                  />
+                </Suspense>
+              )}
+            </Match>
+            <Match when={view() && ui()?.chestRequest}>
+              {(request) => (
+                <Suspense>
+                  <ChestDialog
+                    link={view()!}
+                    request={request()}
+                    rpg={ui()?.rpg ?? null}
+                    onClose={() => {
+                      view()?.closeChestRequest();
                       host?.focus();
                     }}
                   />

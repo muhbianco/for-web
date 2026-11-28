@@ -826,6 +826,23 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return { ok: true };
   }
 
+  /** The shared chest (28/11/2026): exists, the person may use it and stands next to it. */
+  chestSpot(viewer: Viewer, instanceId: string): { ok: true } | { ok: false; code: string; reason?: string } {
+    const a = this.avatars.get(viewer.user._id);
+    if (!a || !a.session) return { ok: false, code: "not_allowed" };
+    const inst = this.decor.items.find((i) => i.id === instanceId);
+    const item = inst ? itemOf(CATALOG, inst.item) : undefined;
+    if (!inst || !item || item.interaction !== "chest") return { ok: false, code: "not_found" };
+    if (!this.canInteract(viewer, inst.zone)) return { ok: false, code: "not_allowed" };
+    if (!this.besideInstance(a, instanceId, "chest")) return { ok: false, code: "not_allowed", reason: "too_far" };
+    return { ok: true };
+  }
+
+  /** Something everyone in the space hears (the shared chest changed). */
+  notifyAll(event: Record<string, unknown>): void {
+    this.broadcast(event);
+  }
+
   isTrainingAt(userId: string, instanceId: string): boolean {
     return this.trainingAt.get(userId) === instanceId;
   }
@@ -923,11 +940,11 @@ export class SpaceRuntime implements MediaHost, TvHost {
    * The avatar stands within `reach` tiles of the instance (1: the same reach as the prompt).
    * A longer reach also needs the avatar inside the instance's zone (no training through a wall).
    */
-  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" | "npc" = "train", reach = 1): boolean {
+  private besideInstance(a: Avatar, instanceId: string, kind: "train" | "tv" | "npc" | "chest" = "train", reach = 1): boolean {
     return this.nearInstance(a.move.pos, instanceId, kind, reach);
   }
 
-  private nearInstance(pos: { x: number; y: number }, instanceId: string, kind: "train" | "tv" | "npc", reach: number): boolean {
+  private nearInstance(pos: { x: number; y: number }, instanceId: string, kind: "train" | "tv" | "npc" | "chest", reach: number): boolean {
     const inst = this.decor.items.find((i) => i.id === instanceId);
     const item = inst ? itemOf(CATALOG, inst.item) : undefined;
     const zone = inst ? this.zones.byKey.get(inst.zone) : undefined;

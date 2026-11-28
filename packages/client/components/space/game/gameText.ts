@@ -484,6 +484,17 @@ export function errorText(code?: string, reason?: string): string {
       return t`Esse grupo não existe mais.`;
     case "no_run":
       return t`Essa corrida já acabou.`;
+    case "chest_full":
+      return t`O baú está cheio (100 itens). Alguém precisa pegar algo antes.`;
+    case "chest_gone":
+      return t`Alguém pegou esse item antes de você.`;
+    case "chest_busy":
+    case "outbox_full":
+      return t`O baú está ocupado agora. Tente de novo num instante.`;
+    case "too_large":
+      return t`Seu herói já guarda itens demais: venda ou desmonte algo do cofre antes.`;
+    case "too_far":
+      return t`Chegue mais perto.`;
     default:
       return t`Não deu certo agora. Tente de novo.`;
   }

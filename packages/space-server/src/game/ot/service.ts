@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 
 import {
+  CHEST_SLOTS,
   type FighterInput,
   type HeroResult,
   type HeroV5,
@@ -81,11 +82,25 @@ import type { Log } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
 import { TokenBucket } from "../../ws/ratelimit.ts";
 import {
+  type ChestStore,
+  type RpgChestDoc,
+  MemoryChestStore,
+  checkChestDoc,
+  chestCredit,
+  chestDebit,
+  chestEvent,
+  chestSettled,
+  newChest,
+} from "./chest.ts";
+import {
   type RpgHeroDoc,
   type RpgOutcome,
   type RpgTransfer,
+  CHEST_PREFIX,
   RPG_DOC_MAX_BYTES,
   checkHeroDoc,
+  chestKey,
+  chestOut,
   closeDojo,
   heroLook,
   inRun,
@@ -138,6 +153,13 @@ export interface RpgHost {
     instanceId: string,
     kind: NpcKind,
   ): { ok: true } | { ok: false; code: string; reason?: string };
+  /** O baú compartilhado `instanceId` existe, a pessoa pode usá-lo e está ao lado (28/11/2026). */
+  chestSpot(
+    viewer: Viewer,
+    instanceId: string,
+  ): { ok: true } | { ok: false; code: string; reason?: string };
+  /** Um evento para todo mundo no Espaço (o baú mudou). */
+  notifyAll(event: Record<string, unknown>): void;
   isTrainingAt(userId: string, instanceId: string): boolean;
   trainingOf(userId: string): string | null;
   /** Quantos outros treinam na mesma sala (o bônus social do Dojô, §2). */
@@ -293,6 +315,9 @@ export class RpgService {
   private readonly delivering = new Set<string>();
   private readonly runStore: RunStore;
   private readonly records: RecordStore;
+  /** O baú compartilhado de cada servidor (28/11/2026) e o último lido. */
+  private readonly chests: ChestStore;
+  private readonly chestCache = new Map<string, RpgChestDoc>();
   /** O ranking pronto (`rpg.rank`; global, um só para todo mundo). */
   private rank: { at: number; d: RpgRankEvent["d"] } | null = null;
   /** O nome de um servidor do Muchat (o ranking diz de onde é cada herói). */
@@ -320,6 +345,8 @@ export class RpgService {
     runStore?: RunStore;
     /** Os recordes do ranking (28/11/2026). */
     records?: RecordStore;
+    /** O baú compartilhado de cada servidor (28/11/2026). */
+    chests?: ChestStore;
     /** O nome de um servidor (o Stoat); sem ele, o ranking manda só o id. */
     serverName?: (id: string) => string | null;
     /** false nos testes: o teste chama `tickRuns()`. */
@@ -332,6 +359,7 @@ export class RpgService {
     this.cacheMax = deps.cacheMax ?? 500;
     this.runStore = deps.runStore ?? new MemoryRunStore();
     this.records = deps.records ?? new MemoryRecordStore();
+    this.chests = deps.chests ?? new MemoryChestStore();
     this.serverName = deps.serverName ?? (() => null);
     this.autoTick = deps.autoTick ?? true;
   }
@@ -1047,6 +1075,30 @@ export class RpgService {
         return this.sendStats(session, userId, cmd.d.days, cmd.id);
       case "rpg.rank":
         return this.sendRank(session, cmd.id);
+      // O baú compartilhado (28/11/2026): ver, pôr e pegar, ao lado de um baú do mapa. Pôr e pegar
+      // valem na corrida, como vender: só mexem na mochila, e a corrida saiu com o herói da largada.
+      case "rpg.chest":
+      case "rpg.chest.put":
+      case "rpg.chest.take": {
+        const spot = host.chestSpot(session.viewer, cmd.d.chest);
+        if (!spot.ok) return fail(spot.code, spot.reason);
+        if (cmd.t === "rpg.chest") {
+          const c = await this.inQueue(chestKey(host.serverId), () =>
+            this.loadChest(host.serverId),
+          );
+          return session.send(
+            chestEvent(
+              c ?? newChest(host.serverId, now),
+              cmd.id,
+            ) as unknown as Record<string, unknown>,
+          );
+        }
+        if (this.starting.has(userId))
+          return fail("rpg_invalid", "run_starting");
+        return cmd.t === "rpg.chest.put"
+          ? this.chestPut(session, host, cmd.id, cmd.d.uids, cmd.d.confirm ?? false)
+          : this.chestTake(session, host, cmd.id, cmd.d.uids);
+      }
       case "rpg.board": {
         const runs: RpgBoardRun[] = [];
         for (const r of this.active.values()) {
@@ -1745,6 +1797,10 @@ export class RpgService {
       if (this.delivering.has(t.id)) continue;
       this.delivering.add(t.id);
       const done = () => this.delivering.delete(t.id);
+      if (t.to.startsWith(CHEST_PREFIX)) {
+        this.deliverToChest(sender._id, t, done);
+        continue;
+      }
       this.enqueue(
         t.to,
         async () => {
@@ -1770,6 +1826,304 @@ export class RpgService {
               this.log.info("rpg transfer", {
                 id: t.id,
                 gold: t.gold,
+                items: t.items.length,
+                refund,
+              });
+            },
+            done,
+          );
+        },
+        done,
+      );
+    }
+  }
+
+  // ------------------------------------------------------------ o baú compartilhado
+
+  /** Avisa o Espaço que o baú mudou: quem está com ele aberto pede de novo. */
+  private chestChanged(host: RpgHost | null, c: RpgChestDoc): void {
+    host?.notifyAll({ v: 1, t: "rpg.chest.changed", d: { rev: c.rev } });
+  }
+
+  /**
+   * Lê o baú (cache). O documento torto não é consertado: o motivo vai para o log e o comando falha.
+   * Lido do banco com entregas sem baixa (o processo caiu no meio), entrega de novo.
+   */
+  private async loadChest(
+    serverId: string,
+    fresh = false,
+  ): Promise<RpgChestDoc | null> {
+    if (!fresh) {
+      const hit = this.chestCache.get(serverId);
+      if (hit) return structuredClone(hit);
+    }
+    const raw = await this.chests.get(serverId);
+    if (!raw) {
+      this.chestCache.delete(serverId);
+      return null;
+    }
+    const checked = checkChestDoc(raw);
+    if (!checked.ok) {
+      this.log.error("rpg chest invalid", {
+        server: serverId,
+        reason: checked.reason,
+      });
+      throw new Error(`rpg chest ${serverId} invalid: ${checked.reason}`);
+    }
+    if (checked.rescaled > 0)
+      this.log.info("rpg chest items rescaled", {
+        server: serverId,
+        items: checked.rescaled,
+      });
+    this.chestCache.set(serverId, checked.doc);
+    if (checked.doc.outbox.length > 0) this.deliverChest(checked.doc);
+    return structuredClone(checked.doc);
+  }
+
+  /** Muda o baú com CAS (na fila do baú, `chestKey`). null: outro processo gravou duas vezes antes. */
+  private async mutateChest(
+    serverId: string,
+    fn: (c: RpgChestDoc) => RpgOutcome,
+  ): Promise<{ doc: RpgChestDoc } | { reason: string } | null> {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const cur = await this.loadChest(serverId, attempt > 0);
+      const now = this.now();
+      const next = cur ? structuredClone(cur) : newChest(serverId, now);
+      const out = fn(next);
+      if (!out.ok) return { reason: out.reason };
+      next.updated_at = now;
+      if (!cur) {
+        // O baú que a janela mostra antes de existir tem rev 0: o primeiro gravado já é o 1, e quem
+        // está com a janela aberta vê o aviso como novo.
+        next.rev = 1;
+        if (await this.chests.create(next)) {
+          this.chestCache.set(serverId, next);
+          return { doc: structuredClone(next) };
+        }
+      } else {
+        next.rev = cur.rev + 1;
+        if (await this.chests.save(next, cur.rev)) {
+          this.chestCache.set(serverId, next);
+          return { doc: structuredClone(next) };
+        }
+      }
+      this.chestCache.delete(serverId);
+    }
+    return null;
+  }
+
+  /**
+   * Pôr no baú, na fila de quem põe: a mochila vai para a fila de saída do herói, o baú credita e o
+   * herói dá baixa, tudo nesta chamada (a resposta já sai com a mochila e o baú novos). O que falhar
+   * no meio fica na fila de saída e é entregue em segundo plano.
+   */
+  private async chestPut(
+    session: SessionPort,
+    host: RpgHost,
+    re: string,
+    uids: string[],
+    confirm: boolean,
+  ): Promise<void> {
+    const userId = session.viewer.user._id;
+    const server = host.serverId;
+    const fail = (reason: string) =>
+      session.send({ v: 1, t: "error", re, d: { code: "rpg_invalid", reason } });
+    const before = await this.inQueue(chestKey(server), () =>
+      this.loadChest(server),
+    );
+    if ((before?.items.length ?? 0) + uids.length > CHEST_SLOTS)
+      return fail("chest_full");
+    const t = {
+      id: randomUUID(),
+      to: chestKey(server),
+      at: this.now(),
+      name: host.displayName(userId),
+    };
+    // Esta chamada entrega: uma leitura do herói no meio não dispara outra entrega igual.
+    this.delivering.add(t.id);
+    let retry: RpgHeroDoc | null = null;
+    try {
+      const out = await this.mutate(userId, null, (d) =>
+        chestOut(d, t, uids, confirm),
+      );
+      if (!out) return fail("no_hero");
+      if ("reason" in out) return fail(out.reason);
+      this.remember(userId, re);
+      const sent = out.doc.outbox.find((x) => x.id === t.id)!;
+      const got = await this.inQueue(chestKey(server), () =>
+        this.mutateChest(server, (c) =>
+          chestCredit(c, sent, userId, this.now()),
+        ),
+      );
+      if (got === null) {
+        retry = out.doc;
+        return this.push(session, out.doc, re, host);
+      }
+      const refund = "reason" in got;
+      const settled = await this.mutate(userId, null, (d) =>
+        transferSettled(d, t.id, refund),
+      );
+      if (!settled || "reason" in settled) retry = out.doc;
+      const doc = settled && "doc" in settled ? settled.doc : out.doc;
+      if (refund) {
+        this.push(session, doc, undefined, host);
+        return fail("chest_full");
+      }
+      this.push(session, doc, re, host);
+      session.send(chestEvent(got.doc) as unknown as Record<string, unknown>);
+      this.chestChanged(host, got.doc);
+      this.log.info("rpg chest put", {
+        server,
+        user: userId,
+        items: sent.items.length,
+      });
+    } finally {
+      this.delivering.delete(t.id);
+      if (retry) this.deliver(retry, host);
+    }
+  }
+
+  /**
+   * Pegar do baú, na fila de quem pega: o baú tira os itens para a fila de saída dele, o herói credita
+   * (o que não cabe na mochila vai para o cofre) e o baú dá baixa. Outra pessoa pegou antes:
+   * `chest_gone`, nada muda.
+   */
+  private async chestTake(
+    session: SessionPort,
+    host: RpgHost,
+    re: string,
+    uids: string[],
+  ): Promise<void> {
+    const userId = session.viewer.user._id;
+    const server = host.serverId;
+    const fail = (reason: string) =>
+      session.send({ v: 1, t: "error", re, d: { code: "rpg_invalid", reason } });
+    if (!(await this.load(userId))) return fail("no_hero");
+    const id = randomUUID();
+    this.delivering.add(id);
+    let pending: RpgChestDoc | null = null;
+    try {
+      const taken = await this.inQueue(chestKey(server), () =>
+        this.mutateChest(server, (c) =>
+          chestDebit(
+            c,
+            uids,
+            { user: userId, name: host.displayName(userId) },
+            id,
+            this.now(),
+          ),
+        ),
+      );
+      if (!taken) return fail("chest_busy");
+      if ("reason" in taken) return fail(taken.reason);
+      const t = taken.doc.outbox.find((x) => x.id === id)!;
+      const got = await this.mutate(userId, null, (d) => transferIn(d, t));
+      if (!got) {
+        // Não gravou (ou o herói sumiu): a entrega em segundo plano decide, com leitura do banco.
+        pending = taken.doc;
+        return fail("chest_busy");
+      }
+      const refund = "reason" in got;
+      const settled = await this.inQueue(chestKey(server), () =>
+        this.mutateChest(server, (c) => chestSettled(c, id, refund)),
+      );
+      if (!settled) pending = taken.doc;
+      const chest = settled && "doc" in settled ? settled.doc : taken.doc;
+      if ("reason" in got) {
+        // O herói não cabe mais no banco (cofre enorme): tudo volta para o baú.
+        if (settled) this.chestChanged(host, chest);
+        return fail(got.reason);
+      }
+      this.remember(userId, re);
+      this.push(session, got.doc, re, host);
+      session.send(chestEvent(chest) as unknown as Record<string, unknown>);
+      this.chestChanged(host, chest);
+      this.log.info("rpg chest take", {
+        server,
+        user: userId,
+        items: t.items.length,
+      });
+    } finally {
+      this.delivering.delete(id);
+      if (pending) this.deliverChest(pending);
+    }
+  }
+
+  /** A entrega de `deliver` quando o destino é o baú: o baú credita, depois o herói dá baixa. */
+  private deliverToChest(
+    senderId: string,
+    t: RpgTransfer,
+    done: () => void,
+  ): void {
+    const server = t.to.slice(CHEST_PREFIX.length);
+    this.enqueue(
+      t.to,
+      async () => {
+        const got = await this.mutateChest(server, (c) =>
+          chestCredit(c, t, senderId, this.now()),
+        );
+        if (got === null) {
+          done();
+          return;
+        }
+        const refund = "reason" in got;
+        const host = this.hostOf(server);
+        if (!refund) this.chestChanged(host, got.doc);
+        this.enqueue(
+          senderId,
+          async () => {
+            const out = await this.mutate(senderId, null, (d) =>
+              transferSettled(d, t.id, refund),
+            );
+            done();
+            if (out && "doc" in out && host)
+              this.push(host.sessionOf(senderId), out.doc, undefined, host);
+            this.log.info("rpg chest in", {
+              server,
+              items: t.items.length,
+              refund,
+            });
+          },
+          done,
+        );
+      },
+      done,
+    );
+  }
+
+  /**
+   * As entregas do baú sem baixa (o processo caiu, ou o herói não gravou): o herói credita pelo id e
+   * o baú dá baixa. Sem herói (ou herói que não cabe mais no banco), volta para o baú.
+   */
+  private deliverChest(c: RpgChestDoc): void {
+    const server = c._id;
+    for (const t of c.outbox) {
+      if (this.delivering.has(t.id)) continue;
+      this.delivering.add(t.id);
+      const done = () => this.delivering.delete(t.id);
+      this.enqueue(
+        t.to,
+        async () => {
+          const got = await this.mutate(t.to, null, (d) => transferIn(d, t));
+          if (got === null && (await this.load(t.to, true))) {
+            done();
+            return;
+          }
+          const refund = got === null || "reason" in got;
+          const host = this.hostOf(server);
+          if (got && "doc" in got && host)
+            this.push(host.sessionOf(t.to), got.doc, undefined, host);
+          this.enqueue(
+            chestKey(server),
+            async () => {
+              const out = await this.mutateChest(server, (x) =>
+                chestSettled(x, t.id, refund),
+              );
+              done();
+              if (out && "doc" in out && refund)
+                this.chestChanged(host, out.doc);
+              this.log.info("rpg chest out", {
+                server,
                 items: t.items.length,
                 refund,
               });

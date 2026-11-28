@@ -6,6 +6,7 @@
 import { Redis } from "ioredis";
 import { MongoClient } from "mongodb";
 
+import { MongoChestStore } from "./game/ot/chest.ts";
 import { MongoRecordStore } from "./game/ot/records.ts";
 import { MongoRunStore } from "./game/ot/runs.ts";
 import { MongoRpgStore } from "./game/ot/store.ts";
@@ -125,11 +126,14 @@ async function main() {
   void runStore.ensureIndexes().catch((err) => log.warn("rpg runs indexes failed", { err: String(err) }));
   // O ranking (28/11/2026): recordes numa coleção própria (as corridas somem em 30 dias).
   const records = new MongoRecordStore(mongo);
+  // O baú compartilhado de cada servidor (28/11/2026): um documento por servidor, pelo _id.
+  const chests = new MongoChestStore(mongo);
   void records.ensureIndexes().catch((err) => log.warn("rpg records indexes failed", { err: String(err) }));
   const rpg = new RpgService({
     store: new MongoRpgStore(mongo),
     runStore,
     records,
+    chests,
     // O ranking é de todo o Muchat e diz o servidor de cada herói (o nome de agora, do Stoat).
     serverName: (id) => cache.servers.get(id)?.name ?? null,
     log,

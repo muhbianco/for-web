@@ -6,7 +6,9 @@ import {
   type RunSpoils,
   CLEARED_MAX,
   ITEM_RULES,
+  BAG_SLOTS,
   applyRun,
+  chestNeedsConfirm,
   checkHero,
   createHero,
   goldTransferFee,
@@ -45,11 +47,18 @@ export const RUN_STALE_MS = 10 * 60_000;
 /** Uma transferência saindo (o crédito no destino é por `id`, uma vez só). */
 export interface RpgTransfer {
   id: string;
+  /** A pessoa que recebe, ou o baú de um servidor (`chest:<servidor>`, 28/11/2026). */
   to: string;
   gold: number;
   items: OwnedItem[];
   at: number;
+  /** Quem mandou, para o histórico do baú. */
+  name?: string;
 }
+
+/** O destino `to` de um item posto no baú compartilhado do servidor. */
+export const CHEST_PREFIX = "chest:";
+export const chestKey = (serverId: string): string => CHEST_PREFIX + serverId;
 export const INBOX_KEEP = 64;
 export const OUTBOX_MAX = 16;
 
@@ -308,12 +317,21 @@ export function transferOut(
   return yes;
 }
 
-/** Credita no destino (uma vez por id; itens que não cabem na mochila vão para o cofre). */
+/**
+ * Credita no destino (uma vez por id; itens que não cabem na mochila vão para o cofre). Um item que o
+ * herói já tem (mesmo uid) não entra de novo: repetido, o documento inteiro seria recusado na leitura.
+ */
 export function transferIn(d: RpgHeroDoc, t: RpgTransfer): RpgOutcome {
   if (d.inbox.includes(t.id)) return yes;
-  const room = Math.max(0, 40 - d.hero.bag.length);
-  const toBag = t.items.slice(0, room);
-  const toVault = t.items.slice(room);
+  const owned = new Set([
+    ...Object.values(d.hero.equipment).map((x) => x?.uid),
+    ...d.hero.bag.map((x) => x.uid),
+    ...d.hero.vault.items.map((x) => x.uid),
+  ]);
+  const fresh = t.items.filter((x) => !owned.has(x.uid));
+  const room = Math.max(0, BAG_SLOTS - d.hero.bag.length);
+  const toBag = fresh.slice(0, room);
+  const toVault = fresh.slice(room);
   d.hero = {
     ...d.hero,
     gold: d.hero.gold + t.gold,
@@ -322,6 +340,31 @@ export function transferIn(d: RpgHeroDoc, t: RpgTransfer): RpgOutcome {
   };
   d.inbox.push(t.id);
   while (d.inbox.length > INBOX_KEEP) d.inbox.shift();
+  return yes;
+}
+
+/**
+ * Põe itens da mochila no baú do servidor (28/11/2026): saem da mochila para a fila de saída, sem
+ * taxa, e o baú credita pelo id. Vale na corrida, como vender: o que está vestido não sai, e a corrida
+ * usa a cópia do herói da largada. +7 e Lendário pedem `confirmed`.
+ */
+export function chestOut(
+  d: RpgHeroDoc,
+  t: Omit<RpgTransfer, "items" | "gold">,
+  uids: readonly string[],
+  confirmed: boolean,
+): RpgOutcome {
+  if (!t.to.startsWith(CHEST_PREFIX)) return no("lista-invalida");
+  if (d.outbox.length >= OUTBOX_MAX) return no("outbox_full");
+  if (uids.length === 0 || new Set(uids).size !== uids.length)
+    return no("lista-invalida");
+  const want = new Set(uids);
+  const items = d.hero.bag.filter((x) => want.has(x.uid));
+  if (items.length !== want.size) return no("item-nao-encontrado");
+  if (!confirmed && items.some((x) => chestNeedsConfirm(x)))
+    return no("confirmacao");
+  d.hero = { ...d.hero, bag: d.hero.bag.filter((x) => !want.has(x.uid)) };
+  d.outbox.push({ ...t, gold: 0, items });
   return yes;
 }
 
@@ -336,7 +379,7 @@ export function transferSettled(
   const t = d.outbox[i]!;
   d.outbox.splice(i, 1);
   if (refund) {
-    const room = Math.max(0, 40 - d.hero.bag.length);
+    const room = Math.max(0, BAG_SLOTS - d.hero.bag.length);
     d.hero = {
       ...d.hero,
       gold: d.hero.gold + t.gold,
