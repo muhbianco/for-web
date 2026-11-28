@@ -6,6 +6,7 @@
 import { Redis } from "ioredis";
 import { MongoClient } from "mongodb";
 
+import { MongoRecordStore } from "./game/ot/records.ts";
 import { MongoRunStore } from "./game/ot/runs.ts";
 import { MongoRpgStore } from "./game/ot/store.ts";
 import { RpgService, ratesFromEnv } from "./game/ot/service.ts";
@@ -122,7 +123,18 @@ async function main() {
   // Dungeon runs (stage O5) live in rpg_runs; a failed index build is logged, never fatal (voice).
   const runStore = new MongoRunStore(mongo);
   void runStore.ensureIndexes().catch((err) => log.warn("rpg runs indexes failed", { err: String(err) }));
-  const rpg = new RpgService({ store: new MongoRpgStore(mongo), runStore, log, rates: ratesFromEnv(process.env.SPACE_GAME_RATES) });
+  // O ranking (28/11/2026): recordes numa coleção própria (as corridas somem em 30 dias).
+  const records = new MongoRecordStore(mongo);
+  void records.ensureIndexes().catch((err) => log.warn("rpg records indexes failed", { err: String(err) }));
+  const rpg = new RpgService({
+    store: new MongoRpgStore(mongo),
+    runStore,
+    records,
+    // O ranking é de todo o Muchat e diz o servidor de cada herói (o nome de agora, do Stoat).
+    serverName: (id) => cache.servers.get(id)?.name ?? null,
+    log,
+    rates: ratesFromEnv(process.env.SPACE_GAME_RATES),
+  });
   // The sweeper's view of LiveKit feeds presence (ADR 0008); the registry
   // exists only after media starts, hence the late binding.
   let onSnapshot: Parameters<typeof startMedia>[0] = () => undefined;
@@ -174,6 +186,10 @@ async function main() {
   } catch (err) {
     log.error("rpg groups restore failed", { err: String(err) });
   }
+  void rpg
+    .backfillRecords()
+    .then((r) => r && log.info("rpg records backfilled", r))
+    .catch((err) => log.warn("rpg records backfill failed", { err: String(err) }));
   void rpg
     .resumeRuns()
     .then((n) => n > 0 && log.info("rpg runs resumed", { runs: n }))

@@ -18,6 +18,7 @@ import {
   type RpgRunTickEvent,
   type RpgRunView,
   type RpgStateEvent,
+  type RpgRankEvent,
   type RpgStatsEvent,
   type RunFrame,
   type RunResult,
@@ -107,6 +108,13 @@ import {
   MemoryRunStore,
   RUNS_RESUME_LIMIT,
 } from "./runs.ts";
+import {
+  type RecordStore,
+  MemoryRecordStore,
+  RANK_TOP,
+  rankRow,
+  recordOf,
+} from "./records.ts";
 import type { RpgStore } from "./store.ts";
 
 /** Taxas do operador (engine nova): só a de XP (`SPACE_GAME_RATES="exp=2"`). */
@@ -205,6 +213,11 @@ const WATCHERS_MAX = 64;
 /** O ganho por hora fica pronto por isto (abrir e fechar a aba não relê milhares de corridas). */
 const STATS_CACHE_MS = 60_000;
 const STATS_CACHE_MAX = 200;
+/** O ranking de cada espaço fica guardado por isto (todo mundo vê o mesmo; a vitória nova apaga). */
+const RANK_CACHE_MS = 30_000;
+/** A carga das vitórias antigas no ranking: a versão (subir refaz) e o teto da leitura. */
+const RANK_BACKFILL_VERSION = 1;
+const RANK_BACKFILL_MAX = 50_000;
 
 interface ActiveRun {
   doc: RpgRunDoc;
@@ -279,6 +292,11 @@ export class RpgService {
   private readonly recent = new Map<string, string[]>();
   private readonly delivering = new Set<string>();
   private readonly runStore: RunStore;
+  private readonly records: RecordStore;
+  /** O ranking pronto (`rpg.rank`; global, um só para todo mundo). */
+  private rank: { at: number; d: RpgRankEvent["d"] } | null = null;
+  /** O nome de um servidor do Muchat (o ranking diz de onde é cada herói). */
+  private readonly serverName: (id: string) => string | null;
   private readonly autoTick: boolean;
   private readonly active = new Map<string, ActiveRun>();
   /**
@@ -300,6 +318,10 @@ export class RpgService {
     rates?: RpgRates;
     cacheMax?: number;
     runStore?: RunStore;
+    /** Os recordes do ranking (28/11/2026). */
+    records?: RecordStore;
+    /** O nome de um servidor (o Stoat); sem ele, o ranking manda só o id. */
+    serverName?: (id: string) => string | null;
     /** false nos testes: o teste chama `tickRuns()`. */
     autoTick?: boolean;
   }) {
@@ -309,6 +331,8 @@ export class RpgService {
     this.rates = deps.rates ?? DEFAULT_RPG_RATES;
     this.cacheMax = deps.cacheMax ?? 500;
     this.runStore = deps.runStore ?? new MemoryRunStore();
+    this.records = deps.records ?? new MemoryRecordStore();
+    this.serverName = deps.serverName ?? (() => null);
     this.autoTick = deps.autoTick ?? true;
   }
 
@@ -373,6 +397,23 @@ export class RpgService {
       ...running.map((d) => group(d, false)),
       ...ended.map((d) => group(d, true)),
     ];
+  }
+
+  /**
+   * A carga do ranking (uma vez por versão): as vitórias que ainda estão no banco viram recordes. O
+   * recorde só sobe, então repetir não estraga nada; a marca evita reler tudo a cada subida.
+   */
+  async backfillRecords(): Promise<{ wins: number; records: number } | null> {
+    if (await this.records.backfilled(RANK_BACKFILL_VERSION)) return null;
+    const wins = await this.runStore.wins(RANK_BACKFILL_MAX);
+    let records = 0;
+    for (const w of wins) {
+      const rec = recordOf(w);
+      if (rec && (await this.records.offer(rec))) records++;
+    }
+    await this.records.markBackfilled(RANK_BACKFILL_VERSION, this.now());
+    this.rank = null;
+    return { wins: wins.length, records };
   }
 
   /** Corridas em andamento no banco (reinício, redeploy): voltam e fecham na hora certa. */
@@ -622,8 +663,10 @@ export class RpgService {
           server: host.serverId,
           zone: spot.zone,
         };
+        // Troca de boneco: o treino anterior fecha com os colegas dele.
+        const peers = host.trainingPeers(userId);
         const out = await this.mutate(userId, null, (d) =>
-          openDojo(d, where, now),
+          openDojo(d, where, now, peers),
         );
         if (!out) return fail("rpg_invalid", "no_hero");
         if ("reason" in out) return fail("rpg_invalid", out.reason);
@@ -1002,6 +1045,8 @@ export class RpgService {
       }
       case "rpg.stats":
         return this.sendStats(session, userId, cmd.d.days, cmd.id);
+      case "rpg.rank":
+        return this.sendRank(session, cmd.id);
       case "rpg.board": {
         const runs: RpgBoardRun[] = [];
         for (const r of this.active.values()) {
@@ -1089,6 +1134,23 @@ export class RpgService {
       this.stats.set(key, hit);
     }
     const ev: RpgStatsEvent = { v: 1, t: "rpg.stats", re, d: hit.d };
+    session.send(ev as unknown as Record<string, unknown>);
+  }
+
+  /** O ranking de todos os servidores: o top 10 sozinho e em grupo (do cache por `RANK_CACHE_MS`). */
+  private async sendRank(session: SessionPort, re: string): Promise<void> {
+    const now = this.now();
+    let hit = this.rank;
+    if (!hit || now - hit.at > RANK_CACHE_MS) {
+      const [solo, grupo] = await Promise.all([
+        this.records.top("solo", RANK_TOP),
+        this.records.top("grupo", RANK_TOP),
+      ]);
+      const row = (r: (typeof solo)[number]) => rankRow(r, this.serverName);
+      hit = { at: now, d: { solo: solo.map(row), grupo: grupo.map(row) } };
+      this.rank = hit;
+    }
+    const ev: RpgRankEvent = { v: 1, t: "rpg.rank", re, d: hit.d };
     session.send(ev as unknown as Record<string, unknown>);
   }
 
@@ -1308,8 +1370,10 @@ export class RpgService {
     await Promise.all(
       members.map(async (m) => {
         const job = async () => {
+          // O treino que a corrida fecha leva o bônus dos colegas (antes fechava com 0).
+          const peers = host.trainingPeers(m.user_id);
           const out = await this.mutate(m.user_id, null, (d) =>
-            markRun(d, mark, this.now()),
+            markRun(d, mark, this.now(), peers),
           );
           if (out && "doc" in out) {
             host.setTraining(m.user_id, null);
@@ -1630,6 +1694,20 @@ export class RpgService {
         ends.push(end);
       }
       await this.runStore.settle(doc._id, now, [...run.left]);
+      // O ranking (28/11/2026): a vitória pode ser recorde do herói ou do grupo. Falha aqui não
+      // segura o fechamento: o recorde é estatística.
+      if (!abandoned) {
+        const rec = recordOf(doc);
+        if (rec)
+          await this.records
+            .offer(rec)
+            .then((up) => {
+              if (up) this.rank = null;
+            })
+            .catch((err: unknown) =>
+              this.log.warn("rpg record failed", { run: doc._id, err: String(err) }),
+            );
+      }
       for (const m of doc.members) this.forgetStats(m.userId);
       this.active.delete(doc._id);
       const outcome: RpgRunEnd = abandoned ? "retirada" : doc.outcome;

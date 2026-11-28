@@ -1,4 +1,4 @@
-import type { EnemyInput, Family } from "../combat/types.ts";
+import type { BossVariant, EnemyInput, Family } from "../combat/types.ts";
 import type { DungeonType } from "../formulas.ts";
 import type { Monsters } from "../monsters/generate.ts";
 import { DUNGEON_EDGE } from "./edge.generated.ts";
@@ -21,6 +21,8 @@ export interface Region {
   /** Fração dos lacaios com auto-ataque mágico (a partir da região 2, 30% a 50%). */
   magicShare: number;
   bossName: string;
+  /** D71: a variação do Chefe de Região (o tema dele). */
+  bossVariant: BossVariant;
 }
 
 /** As 10 regiões calibradas (até o 500, o teto do herói). */
@@ -34,6 +36,7 @@ export const REGIONS: Region[] = [
     families: ["fera"],
     magicShare: 0,
     bossName: "Rei Javali Presa-de-Ferro",
+    bossVariant: "sanguinario",
   },
   {
     index: 2,
@@ -44,6 +47,7 @@ export const REGIONS: Region[] = [
     families: ["fera", "humanoide"],
     magicShare: 0.3,
     bossName: "Matriarca do Lodo",
+    bossVariant: "peconhento",
   },
   {
     index: 3,
@@ -54,6 +58,7 @@ export const REGIONS: Region[] = [
     families: ["elemental", "humanoide"],
     magicShare: 0.3,
     bossName: "Golem Forjado",
+    bossVariant: "sanguinario",
   },
   {
     index: 4,
@@ -64,6 +69,7 @@ export const REGIONS: Region[] = [
     families: ["morto-vivo", "fera"],
     magicShare: 0.3,
     bossName: "Faraó Esquecido",
+    bossVariant: "arcano",
   },
   {
     index: 5,
@@ -74,6 +80,7 @@ export const REGIONS: Region[] = [
     families: ["elemental"],
     magicShare: 0.5,
     bossName: "Rainha do Inverno",
+    bossVariant: "arcano",
   },
   {
     index: 6,
@@ -84,6 +91,7 @@ export const REGIONS: Region[] = [
     families: ["elemental", "dragao"],
     magicShare: 0.3,
     bossName: "Senhor das Brasas",
+    bossVariant: "arcano",
   },
   {
     index: 7,
@@ -94,6 +102,7 @@ export const REGIONS: Region[] = [
     families: ["aberracao", "humanoide"],
     magicShare: 0.5,
     bossName: "Leviatã Coroado",
+    bossVariant: "peconhento",
   },
   {
     index: 8,
@@ -104,6 +113,7 @@ export const REGIONS: Region[] = [
     families: ["morto-vivo", "sombrio"],
     magicShare: 0.3,
     bossName: "Arquilich",
+    bossVariant: "arcano",
   },
   {
     index: 9,
@@ -114,6 +124,7 @@ export const REGIONS: Region[] = [
     families: ["humanoide", "fera"],
     magicShare: 0.3,
     bossName: "Serafim Partido",
+    bossVariant: "sanguinario",
   },
   {
     index: 10,
@@ -124,6 +135,7 @@ export const REGIONS: Region[] = [
     families: ["aberracao", "sombrio"],
     magicShare: 0.3,
     bossName: "Devorador de Estrelas",
+    bossVariant: "peconhento",
   },
 ];
 
@@ -143,6 +155,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["aberracao", "elemental"],
     magicShare: 0.5,
     bossName: "Arauto da Fenda",
+    bossVariant: "arcano",
   },
   {
     index: 12,
@@ -153,6 +166,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["sombrio", "morto-vivo"],
     magicShare: 0.4,
     bossName: "O Último Rei",
+    bossVariant: "sanguinario",
   },
   // D69 (27/11/2026, o dono: "vamos dar mais DGs, até o 1000, com artes novas, acompanhando a
   // progressão de até agora; dessa forma a gente tem mais folga pra entender até onde os heróis
@@ -166,6 +180,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["dragao", "elemental"],
     magicShare: 0.4,
     bossName: "Wyrm da Brasa Eterna",
+    bossVariant: "arcano",
   },
   {
     index: 14,
@@ -176,6 +191,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["morto-vivo", "humanoide"],
     magicShare: 0.5,
     bossName: "Inquisidor Sem Rosto",
+    bossVariant: "sanguinario",
   },
   {
     index: 15,
@@ -186,6 +202,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["aberracao", "elemental"],
     magicShare: 0.5,
     bossName: "Kraken de Obsidiana",
+    bossVariant: "peconhento",
   },
   {
     index: 16,
@@ -196,6 +213,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["elemental", "humanoide"],
     magicShare: 0.3,
     bossName: "Titã da Bigorna",
+    bossVariant: "sanguinario",
   },
   {
     index: 17,
@@ -206,6 +224,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["sombrio", "fera"],
     magicShare: 0.4,
     bossName: "Jardineira dos Lamentos",
+    bossVariant: "peconhento",
   },
   {
     index: 18,
@@ -216,6 +235,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["humanoide", "sombrio"],
     magicShare: 0.5,
     bossName: "Arquimago do Eclipse",
+    bossVariant: "arcano",
   },
   {
     index: 19,
@@ -226,6 +246,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["aberracao", "dragao"],
     magicShare: 0.4,
     bossName: "O Coração que Pulsa",
+    bossVariant: "peconhento",
   },
   {
     index: 20,
@@ -236,6 +257,7 @@ export const ENDGAME_REGIONS: Region[] = [
     families: ["sombrio", "aberracao"],
     magicShare: 0.5,
     bossName: "Aquele que Apaga o Tempo",
+    bossVariant: "arcano",
   },
 ];
 
@@ -352,6 +374,16 @@ export function edgeOf(d: DungeonDef) {
   return undefined;
 }
 
+/**
+ * D71: a variação do chefe da DG. A de Região é a do tema dela; nas Masmorras, gira pelo nível (a cada
+ * 10), para cada região ter as três.
+ */
+export const BOSS_VARIANTS: readonly BossVariant[] = ["arcano", "sanguinario", "peconhento"];
+export function bossVariantOf(d: DungeonDef): BossVariant {
+  if (d.kind === "regional") return d.region.bossVariant;
+  return BOSS_VARIANTS[Math.round(d.level / 10) % BOSS_VARIANTS.length]!;
+}
+
 /** Tipo de DG para escala e XP (o Regional é uma Masmorra com recompensa ×2). */
 export function dungeonType(d: DungeonDef): DungeonType {
   return d.kind === "cacada"
@@ -389,7 +421,7 @@ export function dungeonRooms(
     ...Array.from({ length: 3 }, nextLacaio),
     M.elite(R, { ...o, family: family() }),
   ];
-  const bossOpts = { ...o, family: family() };
+  const bossOpts = { ...o, family: family(), variant: bossVariantOf(d) };
   const boss =
     d.kind === "cacada"
       ? M.chefeMenor(R, bossOpts)

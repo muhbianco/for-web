@@ -70,6 +70,8 @@ const STEP_MS = 140;
 const LUNGE_MS = 140;
 const DIE_MS = 220;
 const POP_MS = 200;
+/** O clarão do lacaio que o chefe invoca no meio da sala. */
+const SUMMON_FLASH_MS = 450;
 
 export interface DungeonMember {
   userId: string;
@@ -456,13 +458,7 @@ export class DungeonScene {
     // Os invocados (Invocação do chefe, §12.3) chegam depois do elenco da sala.
     this.foes = Array.from({ length: n }, (_, i) => list[i] ?? summonedFoe(run.dungeon));
     const spots = monsterSpots(this.foes.map((f) => f.boss));
-    this.monsters = this.foes.map((f, i) => {
-      const key = f.art;
-      const body = monsterCanvas(key, f.boss);
-      const tex = this.tex(`monstro|${key}|${f.boss ? 1 : 0}`, () => body);
-      const corpse = this.tex(`corpo|${key}|${f.boss ? 1 : 0}`, () => corpseCanvas(key, body));
-      return this.makeUnit(FOE_BASE + i, false, false, f.boss, [tex], monsterSize(key, f.boss), f.name, spots[i]!, Math.max(1, f.hp), corpse);
-    });
+    this.monsters = this.foes.map((f, i) => this.foeUnit(f, i, spots[i]!));
     const now = performance.now();
     let k = 0;
     for (const h of this.heroes) {
@@ -482,12 +478,41 @@ export class DungeonScene {
     this.shownSt = st;
   }
 
+  private foeUnit(f: Foe, i: number, spot: Spot): Unit {
+    const key = f.art;
+    const body = monsterCanvas(key, f.boss);
+    const tex = this.tex(`monstro|${key}|${f.boss ? 1 : 0}`, () => body);
+    const corpse = this.tex(`corpo|${key}|${f.boss ? 1 : 0}`, () => corpseCanvas(key, body));
+    return this.makeUnit(FOE_BASE + i, false, false, f.boss, [tex], monsterSize(key, f.boss), f.name, spot, Math.max(1, f.hp), corpse);
+  }
+
+  /**
+   * Os invocados que chegam com a sala já montada (28/11/2026, o dono: "não vejo invocar nada"): o
+   * quadro traz um inimigo a mais em `x` e a cena só montava os monstros ao entrar na sala, então
+   * os lacaios da Invocação batiam e morriam sem aparecer (só quem abria a corrida depois via). Entram
+   * no fim da fila, nos lugares seguintes (`monsterSpots` não mexe nos de antes), com um clarão.
+   */
+  private growRoom(count: number) {
+    const run = this.run;
+    if (!run || count <= this.monsters.length) return;
+    const from = this.monsters.length;
+    while (this.foes.length < count) this.foes.push(summonedFoe(run.dungeon));
+    const spots = monsterSpots(this.foes.map((f) => f.boss));
+    const now = performance.now();
+    for (let i = from; i < count; i++) {
+      const u = this.foeUnit(this.foes[i]!, i, spots[i]!);
+      if (!this.reduced) u.flashUntil = now + SUMMON_FLASH_MS;
+      this.monsters.push(u);
+    }
+  }
+
   // ---- um segundo da corrida -----------------------------------------------------
 
   private animate(frame: RunFrame) {
     this.finishPlan();
     this.clearFloaters();
     const delay = this.prepareRoom(frame.st, frame.x.length);
+    if (frame.st === this.shownSt) this.growRoom(frame.x.length);
     this.frame = frame;
     this.syncLingers();
     const plan = planSecond({ events: frame.e, gears: this.gears, classes: this.run!.members.map((m) => m.cls), foes: this.foes, delay });
@@ -530,6 +555,7 @@ export class DungeonScene {
     this.finishTransition();
     this.clearFx();
     if (reset ? this.shownSt !== frame.st : frame.st > this.shownSt) this.enterRoom(frame.st, frame.x.length, false);
+    if (frame.st === this.shownSt) this.growRoom(frame.x.length);
     this.frame = frame;
     this.syncLingers();
     if (reset) {

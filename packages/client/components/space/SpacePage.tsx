@@ -994,7 +994,11 @@ function ServerSpace(props: { serverId: string }) {
       <Show when={view() && ui()?.rpg?.hero?.dojo ? ui()!.rpg : null}>
         {(rpg) => (
           <Suspense>
-            <TrainingChip link={view()!} rpg={rpg()} />
+            <TrainingChip
+              link={view()!}
+              rpg={rpg()}
+              peers={ui()?.dojoPeers ?? 0}
+            />
           </Suspense>
         )}
       </Show>
@@ -1419,6 +1423,7 @@ function ServerSpace(props: { serverId: string }) {
                     link={view()!}
                     request={request()}
                     rpg={ui()?.rpg ?? null}
+                    peers={ui()?.dojoPeers ?? 0}
                     onClose={() => {
                       view()?.closeTrainRequest();
                       host?.focus();

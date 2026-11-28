@@ -5,7 +5,7 @@ import { Rng } from "../../../rng.ts";
 import { randomSource } from "../combat/fight.ts";
 import { type FighterInput, FOE_BASE } from "../combat/types.ts";
 import type { ClassId } from "../content.ts";
-import { DUNGEONS, dungeonById } from "../dungeons/catalog.ts";
+import { DUNGEONS, bossVariantOf, dungeonById } from "../dungeons/catalog.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
 import { addFrame, cloneMeter, meterOf } from "./meter.ts";
 import { belowLimitFighter } from "../sim/calibration.ts";
@@ -100,14 +100,13 @@ test("o chefe anuncia as mecânicas e o Cataclismo cresce como buff até o fim",
   assert.equal(r.outcome, "derrota");
   const ev = r.frames!.flatMap((x) => x.e);
   const mech = new Set(ev.flatMap((e) => (e.k === "mecanica" ? [e.s] : [])));
-  for (const m of [
-    "golpe-pesado",
-    "pulso",
-    "maldicao",
-    "invocacao",
-    "dreno",
-    "investida",
-  ])
+  // D71: o Pulso e o DoT seguem a variação do chefe da DG (a 110 é peçonhenta: Talho e Veneno).
+  const own = {
+    arcano: ["pulso", "maldicao"],
+    sanguinario: ["talho", "sangramento"],
+    peconhento: ["talho", "veneno"],
+  }[bossVariantOf(d)];
+  for (const m of ["golpe-pesado", ...own, "invocacao", "dreno", "investida"])
     assert.ok(mech.has(m as "pulso"), m);
   const stacks = ev.flatMap((e) => (e.k === "cataclismo" ? [e.n] : []));
   assert.ok(stacks.length >= 2);

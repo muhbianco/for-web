@@ -357,14 +357,43 @@ export interface EnemyInput {
   magicAuto?: boolean;
   /** Golpe Pesado: múltiplo do golpe, certeiro, no alvo. */
   buster?: { everySeconds: number; mult: number };
-  /** Pulso Sombrio: mágico, em todos. */
-  pulse?: { everySeconds: number; raw: number };
+  /** Pulso Sombrio: mágico, em todos. D71: `magic: false` é o Talho do chefe físico (DEF, esquiva e bloqueio). */
+  pulse?: { everySeconds: number; raw: number; magic?: boolean };
   /** Cataclismo: fração do HP máximo de cada herói, dano verdadeiro. */
   cataclysm?: { atSeconds: number; pct: number; everySeconds: number };
-  /** Maldição (§12.3, desde o 40): um não tanque perde x do HP máx./s até ser purificado (no máx. N s). */
-  curse?: { everySeconds: number; pctPerSecond: number; maxSeconds: number };
-  /** Invocação (desde o 70): `count` lacaios do nível do chefe a cada N s. */
-  summon?: { everySeconds: number; count: number; minion: EnemyInput };
+  /**
+   * Maldição (§12.3, desde o 40) e, desde a D71, o DoT do chefe em geral: a cada N s, `targets` não
+   * tanques (ou o grupo todo) ganham um DoT por até `maxSeconds`, que a purificação tira.
+   * `pctPerSecond`: fração do HP máx./s, dano verdadeiro (a Maldição até a D71). `rawPerSecond`: golpe
+   * bruto por segundo, cortado pela defesa (MDEF no mágico, DEF no físico) e pela diferença de nível —
+   * calibrado na referência do nível, pesa mais em quem está abaixo dela.
+   */
+  curse?: {
+    everySeconds: number;
+    maxSeconds: number;
+    pctPerSecond?: number;
+    rawPerSecond?: number;
+    /** Sem o campo, mágico. */
+    magic?: boolean;
+    /** O nome do DoT (o efeito no herói e a mecânica anunciada); sem o campo, "maldicao". */
+    kind?: BossDot;
+    /** Quantos não tanques pega (sem o campo, 1), ou o grupo inteiro. */
+    targets?: number | "grupo";
+  };
+  /**
+   * Invocação (desde o 70): `count` lacaios do nível do chefe a cada N s. D71: `hunt` — cada um
+   * nasce mirando um não tanque (o tanque tem de puxar); `priority` — os heróis de dano trocam de
+   * alvo para os invocados (o chefe fica para o tanque e o suporte até o campo limpar).
+   */
+  summon?: {
+    everySeconds: number;
+    count: number;
+    minion: EnemyInput;
+    hunt?: boolean;
+    priority?: boolean;
+  };
+  /** D71: a variação do chefe (o que o Pulso e o DoT cobram), para a tela. */
+  variant?: BossVariant;
   /** Drenar Mana (desde o 100): conjuradores perdem x da MP máx./s por N s. */
   manaDrain?: {
     everySeconds: number;
@@ -431,11 +460,25 @@ export interface FighterResult {
 /** Atores nos eventos da tela: heróis pelo índice (0–3), inimigos por 100 + índice na luta. */
 export const FOE_BASE = 100;
 
+/** D71: o DoT de chefe que a purificação tira (a Maldição mágica; o Sangramento e o Veneno físicos). */
+export type BossDot = "maldicao" | "sangramento" | "veneno";
+
+/**
+ * D71 (28/11/2026, o dono: "variações de Bosses… alguns vão dar dano por segundo mágico e outros
+ * sangramentos ou venenos físicos, assim desafiamos todos os tipos de defesas"): arcano — Pulso e
+ * Maldição mágicos (MDEF); sanguinário — Talho físico em todos e Sangramento em dois não tanques (DEF);
+ * peçonhento — Talho físico e Veneno no grupo todo (DEF).
+ */
+export type BossVariant = "arcano" | "sanguinario" | "peconhento";
+
 /** Mecânica de chefe anunciada na tela (§12.3). */
 export type MechanicEvent =
   | "golpe-pesado"
   | "pulso"
+  | "talho"
   | "maldicao"
+  | "sangramento"
+  | "veneno"
   | "invocacao"
   | "dreno"
   | "investida"

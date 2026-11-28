@@ -109,19 +109,34 @@ export function balanceReport(
       B,
       M,
     );
+  // D71 (28/11/2026, o dono aceitou o buff do chefe): o farm vence ~9 em 10 Masmorras do nível. O
+  // grupo com um herói de dano só perde algumas (os invocados tiram ele do chefe); o de 4 e o de 5
+  // seguem vencendo todas.
+  let farmWins = 0;
+  let farmRuns = 0;
   for (const c of FARM_TRIOS) {
     const lost = masmorras
       .filter((d) => runBelow(d, [...c]).outcome !== "vitoria")
       .map((d) => d.level);
+    farmRuns += masmorras.length;
+    farmWins += masmorras.length - lost.length;
     add(
       S1,
       `farm: trio ${short([...c])} abaixo do limite vence a Masmorra do nível`,
-      lost.length === 0 ? "ok" : "falha",
+      lost.length === 0 ? "ok" : singleDps([...c]) ? "aceita" : "falha",
       lost.length === 0
         ? `${masmorras.length}/${masmorras.length}`
-        : `perde em ${lost.join(", ")} (rodar scripts/gen-edge.ts)`,
+        : singleDps([...c])
+          ? `perde em ${lost.join(", ")} (D71: um herói de dano só; os invocados tiram ele do chefe)`
+          : `perde em ${lost.join(", ")} (rodar scripts/gen-edge.ts)`,
     );
   }
+  add(
+    S1,
+    "D71: o farm vence ~9 em 10 Masmorras do nível (todos os grupos de farm somados, ≥ 88%)",
+    farmWins / farmRuns >= 0.88 ? "ok" : "falha",
+    `${farmWins}/${farmRuns} (${pct(farmWins / farmRuns)})`,
+  );
   for (const c of REGION_PARTIES) {
     const lost = regioes
       .filter((d) => stepRun(d, [...c]).outcome !== "vitoria")
@@ -252,15 +267,19 @@ export function balanceReport(
     });
     const bad = rates.filter((x) => (win ? x.rate < WIN : x.rate > 0.05));
     const nearWin = win && bad.every((x) => x.rate >= WIN - 0.05);
+    // D71: com o chefe novo, o grupo de um herói de dano só fica abaixo de 9 em 10 (aceito pelo dono).
+    const d71 = win && bad.length > 0 && singleDps(c);
     // D29 e D33: até o L90 (onde a Consagração do paladino entra, D32) quem devia perder pode
     // vencer às vezes no aleatório; do 100 em diante, não.
     const earlyBand = !win && bad.length > 0 && bad.every((x) => x.L < 100);
     add(
       S9,
       `${what} ${short(c)} ${win ? `vence em ≥ ${pct(WIN)}` : "vence em ≤ 5%"}`,
-      bad.length === 0 ? "ok" : earlyBand || nearWin ? "aceita" : "falha",
+      bad.length === 0 ? "ok" : earlyBand || nearWin || d71 ? "aceita" : "falha",
       rates.map((x) => `L${x.L} ${pct(x.rate)}`).join(" · ") +
-        (bad.length && nearWin
+        (bad.length && d71 && !nearWin
+          ? " (D71: um herói de dano só; os invocados tiram ele do chefe)"
+          : bad.length && nearWin
           ? " (D41: a até 5 p.p. da meta, sorteio)"
           : bad.length && !win
             ? earlyBand
@@ -328,7 +347,7 @@ export function balanceReport(
     SM,
     "Maldição sem purificação mata um alvo de pano em ≤ 15 s",
     "info",
-    `sozinha ela tira ${pct(curseAlone)} (3%/s por no máximo 15 s): só mata somada ao dano do chefe (P71)`,
+    `sozinha ela tira ${pct(curseAlone)} (D71: ${pct(B.cfg.bossMechanics.dots.arcano.pct)} da vida de referência por segundo, na MDEF, por no máximo ${B.cfg.bossMechanics.dots.arcano.maxSeconds} s): só mata somada ao dano do chefe (P71)`,
   );
   // O druida de referência não leva a Canção nos 4 slots: aqui ela entra no lugar de Espinhos.
   const song = compileSkill(skillOf("druida", "cancao-da-floresta")!, {
@@ -521,4 +540,9 @@ export function formatReport(lines: ReportLine[]): string {
     `${count("ok")} ok · ${count("falha")} falha(s) · ${count("aceita")} aceita(s) · ${count("info")} informativa(s)`,
   );
   return out.join("\n");
+}
+
+/** D71: o grupo tem um herói de dano só (os invocados do chefe tiram ele do chefe). */
+function singleDps(c: readonly ClassId[]): boolean {
+  return c.filter((x) => CLASSES[x].role === "dps").length === 1;
 }

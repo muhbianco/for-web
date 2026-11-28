@@ -76,6 +76,13 @@ export default function RunPanel(props: {
 }) {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
+  /**
+   * Onde vai o monstro focado, o chefe ou o meu alvo (28/11/2026, o dono: "aparece muito grande e
+   * oculta muita coisa, principalmente no mobile"; escolhido no teste do laboratório): na janela larga,
+   * uma faixa fina no pé da cena; na tela cheia do celular, fora da cena, entre ela e o grupo. Antes
+   * era um quadro no alto da cena, que tapava heróis.
+   */
+  const layout = () => (wide() ? "faixa" : "abaixo");
   const [sceneFailed, setSceneFailed] = createSignal(false);
   const [confirmLeave, setConfirmLeave] = createSignal(false);
   // O resumo do fim (o loot) fecha sozinho e a tela fica (26/11/2026: fechar o resumo fechava a
@@ -313,6 +320,80 @@ export default function RunPanel(props: {
     }
   };
 
+  // O monstro focado: o chefe na última sala, senão o meu alvo.
+  const bossBuffs = () => (
+    <Buffs>
+      <Show when={st().cataclysm > 0}>
+        <Buff
+          data-kind="cataclismo"
+          style={{ "--n": String(Math.min(10, st().cataclysm)) }}
+          title={t`Cataclismo: a cada pulso o chefe tira 40% da vida máxima de cada herói, até o fim.`}
+        >
+          ☠ {t`Cataclismo`} ×{st().cataclysm}
+        </Buff>
+      </Show>
+      <Show when={phased()}>
+        <Buff data-kind="fase">▲ {t`Fase nova`}</Buff>
+      </Show>
+    </Buffs>
+  );
+  /** A linha compacta: nome, nível, quem ele mira, avisos e efeitos numa linha, a vida embaixo. */
+  const foeStrip = () => {
+    const f = () => {
+      const b = boss();
+      if (b)
+        return {
+          name: b.name,
+          level: b.level,
+          hp: b.hp,
+          max: b.max,
+          aim: aimOf(bossIndex()),
+          statuses: frame()?.u?.x[bossIndex()],
+          boss: true,
+        };
+      const tg = end() ? null : targetView();
+      return tg ? { ...tg, boss: false } : null;
+    };
+    return (
+      <Show when={f()}>
+        {(v) => (
+          <FoeStrip
+            data-boss={v().boss ? "" : undefined}
+            aria-label={v().boss ? v().name : t`Seu alvo: ${v().name}`}
+          >
+            <div>
+              <strong>{v().name}</strong>
+              <small>{t`Nv ${v().level}`}</small>
+              <Show when={v().aim}>
+                {(n) => <Aim>{t`mirando ${n()}`}</Aim>}
+              </Show>
+              <Show when={v().boss}>{bossBuffs()}</Show>
+              <StatusIcons
+                list={v().statuses}
+                members={run().members}
+                own={null}
+                label={t`Efeitos em ${v().name}`}
+                size="sm"
+                max={6}
+              />
+            </div>
+            <Meter
+              data-foe=""
+              data-boss={v().boss ? "" : undefined}
+              role="meter"
+              aria-label={t`Vida de ${v().name}`}
+              aria-valuemin={0}
+              aria-valuemax={v().max}
+              aria-valuenow={v().hp}
+            >
+              <span style={{ width: `${pctOf(v().hp, v().max)}%` }} />
+            </Meter>
+          </FoeStrip>
+        )}
+      </Show>
+    );
+  };
+
   return (
     <Panel
       ref={panel}
@@ -418,86 +499,6 @@ export default function RunPanel(props: {
                     ? t`o chefe`
                     : t`sala ${room() + 1} de 4`}
             </small>
-            <Show when={boss()}>
-              {(b) => (
-                <BossBar>
-                  <div>
-                    <strong>{b().name}</strong>
-                    <Show when={aimOf(bossIndex())}>
-                      {(n) => <Aim>{t`mirando ${n()}`}</Aim>}
-                    </Show>
-                    <small>{t`Nv ${b().level}`}</small>
-                  </div>
-                  <Meter
-                    data-foe=""
-                    data-boss=""
-                    role="meter"
-                    aria-label={t`Vida de ${b().name}`}
-                    aria-valuemin={0}
-                    aria-valuemax={b().max}
-                    aria-valuenow={b().hp}
-                  >
-                    <span style={{ width: `${pctOf(b().hp, b().max)}%` }} />
-                  </Meter>
-                  <Buffs>
-                    <Show when={st().cataclysm > 0}>
-                      <Buff
-                        data-kind="cataclismo"
-                        style={{ "--n": String(Math.min(10, st().cataclysm)) }}
-                        title={t`Cataclismo: a cada pulso o chefe tira 40% da vida máxima de cada herói, até o fim.`}
-                      >
-                        ☠ {t`Cataclismo`} ×{st().cataclysm}
-                      </Buff>
-                    </Show>
-                    <Show when={phased()}>
-                      <Buff data-kind="fase">▲ {t`Fase nova`}</Buff>
-                    </Show>
-                  </Buffs>
-                  <Centered>
-                    <StatusIcons
-                      list={frame()?.u?.x[bossIndex()]}
-                      members={run().members}
-                      own={null}
-                      label={t`Efeitos em ${b().name}`}
-                      max={10}
-                    />
-                  </Centered>
-                </BossBar>
-              )}
-            </Show>
-            <Show when={!end() && targetView()}>
-              {(tg) => (
-                <TargetBox aria-label={t`Seu alvo: ${tg().name}`}>
-                  <div>
-                    <strong>{tg().name}</strong>
-                    <Show when={tg().aim}>
-                      {(n) => <Aim>{t`mirando ${n()}`}</Aim>}
-                    </Show>
-                    <small>{t`Nv ${tg().level}`}</small>
-                  </div>
-                  <Meter
-                    data-foe=""
-                    role="meter"
-                    aria-label={t`Vida de ${tg().name}`}
-                    aria-valuemin={0}
-                    aria-valuemax={tg().max}
-                    aria-valuenow={tg().hp}
-                  >
-                    <span style={{ width: `${pctOf(tg().hp, tg().max)}%` }} />
-                  </Meter>
-                  <Centered>
-                    <StatusIcons
-                      list={tg().statuses}
-                      members={run().members}
-                      own={null}
-                      label={t`Efeitos em ${tg().name}`}
-                      size="sm"
-                      max={8}
-                    />
-                  </Centered>
-                </TargetBox>
-              )}
-            </Show>
           </Title>
 
           <Corner>
@@ -681,7 +682,14 @@ export default function RunPanel(props: {
             />
           </Outcome>
         </Show>
+        <Show when={layout() === "faixa"}>
+          <StripDock>{foeStrip()}</StripDock>
+        </Show>
       </Screen>
+
+      <Show when={layout() === "abaixo"}>
+        <BelowDock>{foeStrip()}</BelowDock>
+      </Show>
 
       <Show when={run().members.length > 1}>
         <Mates data-where="strip">{mates()}</Mates>
@@ -1384,24 +1392,6 @@ const Pips = styled("div", {
   },
 });
 
-/** A barra do chefe (como nos RPGs, no alto): nome, vida e os buffs. */
-const BossBar = styled("div", {
-  base: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
-    width: "min(360px, 70vw)",
-    marginTop: "4px",
-    padding: "6px 10px",
-    borderRadius: "10px",
-    background: "rgba(30, 8, 6, 0.82)",
-    boxShadow: "0 0 0 1px rgba(255, 138, 122, 0.45)",
-    "& > div": { display: "flex", justifyContent: "space-between", gap: "8px" },
-    "& strong": { color: "#ffd2c8", fontSize: "0.85rem" },
-    "& small": { fontSize: "0.7rem", opacity: 0.85 },
-  },
-});
-
 /** "mirando Fulano": quem o monstro bate agora (a ameaça do quadro; 26/11/2026). */
 const Aim = styled("span", {
   base: {
@@ -1440,31 +1430,52 @@ const Buff = styled("span", {
   },
 });
 
-const Centered = styled("div", {
-  base: { display: "flex", justifyContent: "center" },
-});
-
-/** O alvo do meu herói (vida e efeitos), embaixo do nome da DG. */
-const TargetBox = styled("div", {
+/** A linha compacta do monstro focado (faixa no pé da cena ou abaixo dela). */
+const FoeStrip = styled("div", {
   base: {
     display: "flex",
     flexDirection: "column",
     gap: "3px",
-    width: "min(200px, 46vw)",
-    marginTop: "4px",
-    padding: "4px 8px 5px",
+    minWidth: 0,
+    padding: "3px 8px 4px",
     borderRadius: "8px",
-    background: "rgba(14, 12, 10, 0.78)",
-    boxShadow: "0 0 0 1px rgba(196, 22, 31, 0.45)",
-    pointerEvents: "auto",
-    "& > div:first-child": {
+    background: "rgba(14, 12, 10, 0.72)",
+    boxShadow: "0 0 0 1px rgba(196, 22, 31, 0.35)",
+    "&[data-boss]": { boxShadow: "0 0 0 1px rgba(255, 138, 122, 0.45)" },
+    "& > div": {
       display: "flex",
-      justifyContent: "space-between",
-      gap: "6px",
-      fontSize: "0.75rem",
+      alignItems: "center",
+      gap: "8px",
+      minWidth: 0,
+      fontSize: "0.72rem",
+      whiteSpace: "nowrap",
+      overflow: "hidden",
     },
-    "& small": { opacity: 0.8 },
+    "& strong": {
+      fontSize: "0.78rem",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+      color: "#ffd2c8",
+    },
+    "& small": { opacity: 0.8, flexShrink: 0 },
+    "& [role=meter]": { height: "5px" },
   },
+});
+/** No pé da cena, por cima do chão (os heróis e os monstros ficam do meio para cima). */
+const StripDock = styled("div", {
+  base: {
+    position: "absolute",
+    left: "50%",
+    bottom: "6px",
+    transform: "translateX(-50%)",
+    zIndex: 2,
+    width: "min(420px, calc(100% - 16px))",
+    pointerEvents: "none",
+  },
+});
+/** Fora da cena: entre ela e o grupo. */
+const BelowDock = styled("div", {
+  base: { padding: "6px 8px 0" },
 });
 
 /** O quadro esmaecido da largada: por cima da cena, embaixo da faixa de cima (os botões seguem). */

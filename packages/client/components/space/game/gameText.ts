@@ -261,8 +261,14 @@ export function mechanicName(m: MechanicEvent): string {
       return t`Golpe Pesado`;
     case "pulso":
       return t`Pulso Sombrio`;
+    case "talho":
+      return t`Talho`;
     case "maldicao":
       return t`Maldição`;
+    case "sangramento":
+      return t`Sangramento`;
+    case "veneno":
+      return t`Veneno`;
     case "invocacao":
       return t`Invocação`;
     case "dreno":
@@ -281,10 +287,16 @@ export function mechanicHint(m: MechanicEvent): string {
       return t`Golpe certeiro e pesado no alvo do chefe.`;
     case "pulso":
       return t`Dano mágico em todo o grupo.`;
+    case "talho":
+      return t`Dano físico em todo o grupo: defesa, esquiva e bloqueio contam.`;
     case "maldicao":
-      return t`Alguém perde vida a cada segundo até ser purificado.`;
+      return t`Dano mágico a cada segundo em alguém, até ser purificado.`;
+    case "sangramento":
+      return t`Dois heróis sangram a cada segundo (dano físico) até serem purificados.`;
+    case "veneno":
+      return t`O grupo todo envenenado (dano físico a cada segundo) até ser purificado.`;
     case "invocacao":
-      return t`O chefe chamou lacaios.`;
+      return t`O chefe chamou lacaios: eles vão atrás de quem não é tanque.`;
     case "dreno":
       return t`Quem usa magia perde mana por alguns segundos.`;
     case "investida":

@@ -202,20 +202,36 @@ test("D16: a Investida vale 1,5× o golpe do chefe menor (não o do chefe, calib
 // limite e cada DG fica no ponto do grupo de calibração mais frágil (dungeons/edge.generated.ts). Os
 // heróis destes testes estão no limite (limitEncounters); um degrau abaixo perde, e isso fica no relatório.
 // D21/D22: nada se balanceia por tempo; a duração das salas não é cobrada.
-test("D53: o farm (trio tanque + cura + dano abaixo do limite) vence toda Masmorra do nível; sem tanque e sem cura, abaixo do limite, perdem", () => {
+/**
+ * D71 (28/11/2026, o dono: "vamos aceitar o buff… temos mais níveis de DG do que força nos heróis"):
+ * com o chefe novo o farm abaixo do limite vence ~9 em 10, não mais toda Masmorra. Quem perde é o
+ * trio de um herói de dano só (os invocados tiram o dano dele do chefe); o grupo de 4 e o de 5 vencem
+ * todas. Medido: 136 de 148 no modo esperado, toda Masmorra cai para 3 dos 4.
+ */
+test("D53/D71: o farm abaixo do limite vence ~9 em 10 Masmorras do nível (4 e 5 vencem todas); sem tanque e sem cura, perdem", () => {
   const below = (d: (typeof DUNGEONS)[number], c: readonly string[]) =>
     simulateRun(
       d,
       c.map((x) => belowLimitFighter(x as FighterInput["cls"], d.level)),
       { mode: "esperado" },
     );
+  let wins = 0;
+  let total = 0;
   for (const d of DUNGEONS.filter((x) => x.kind === "masmorra")) {
-    for (const c of FARM_TRIOS)
-      assert.equal(below(d, c).outcome, "vitoria", `${c.join("+")} ${d.id}`);
+    let here = 0;
+    for (const c of FARM_TRIOS) {
+      const win = below(d, c).outcome === "vitoria";
+      total++;
+      if (win) wins++;
+      if (win) here++;
+      if (c.length >= 4) assert.ok(win, `${c.join("+")} ${d.id}`);
+    }
+    assert.ok(here >= FARM_TRIOS.length - 1, `${d.id}: só ${here} dos grupos de farm vencem`);
     if (![40, 70, 110, 160, 310, 490].includes(d.level)) continue;
     assert.notEqual(below(d, ["padre", "mago", "cacador"]).outcome, "vitoria", `${d.id} sem tanque`);
     assert.notEqual(below(d, ["guerreiro", "mago", "cacador"]).outcome, "vitoria", `${d.id} sem cura`);
   }
+  assert.ok(wins / total >= 0.88, `o farm vence ${wins} de ${total}`);
 });
 
 test("D53: o chefe de Região (até o do 500) cai para os 4 no limite perfeito: tanque, tanque, cura, dano; tanque, cura, cura, dano; tanque, cura, dano, dano", () => {

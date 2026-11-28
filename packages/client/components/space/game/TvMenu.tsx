@@ -46,6 +46,7 @@ import {
   partyState,
   roles,
 } from "./partyUi";
+import RankView from "./RankView";
 
 /** O que a TV usa do SpaceView além dos comandos. */
 export interface TvLink extends GameLink {
@@ -75,7 +76,7 @@ export default function TvMenu(props: {
 }) {
   const { t } = useLingui();
   const cmd = useCommands(() => props.link);
-  const [app, setApp] = createSignal<"home" | "idle">("home");
+  const [app, setApp] = createSignal<"home" | "idle" | "rank">("home");
   const [filter, setFilter] = createSignal<DungeonFilter>("todas");
   const [open, setOpen] = createSignal<number | null>(null);
   const [changing, setChanging] = createSignal(false);
@@ -147,8 +148,20 @@ export default function TvMenu(props: {
   return (
     <GameDialog
       id="rpg-tv"
-      title={app() === "idle" ? t`Idle Hunt` : props.request.title}
-      subtitle={app() === "idle" ? t`Dungeons em grupo` : undefined}
+      title={
+        app() === "idle"
+          ? t`Idle Hunt`
+          : app() === "rank"
+            ? t`Ranking`
+            : props.request.title
+      }
+      subtitle={
+        app() === "idle"
+          ? t`Dungeons em grupo`
+          : app() === "rank"
+            ? t`Quem foi mais longe nas dungeons, em todo o Muchat`
+            : undefined
+      }
       onClose={props.onClose}
     >
       <Show when={app() === "home"}>
@@ -176,7 +189,30 @@ export default function TvMenu(props: {
                   : t`Dungeons em grupo`}
             </Muted>
           </AppTile>
+          <AppTile
+            type="button"
+            role="listitem"
+            data-app="rank"
+            onClick={() => setApp("rank")}
+          >
+            <strong>🏆 {t`Ranking`}</strong>
+            <Muted>{t`Quem foi mais longe, sozinho e em grupo`}</Muted>
+          </AppTile>
         </Apps>
+      </Show>
+
+      <Show when={app() === "rank"}>
+        <Row>
+          <Btn
+            type="button"
+            data-size="sm"
+            data-tone="quiet"
+            onClick={() => setApp("home")}
+          >
+            ← {t`Apps`}
+          </Btn>
+        </Row>
+        <RankView link={props.link} myId={props.myId} />
       </Show>
 
       <Show when={app() === "idle"}>

@@ -497,7 +497,7 @@ msgstr ""
 msgid "{0} XP"
 msgstr ""
 
-#. placeholder {0}: num(d()!.perSecond)
+#. placeholder {0}: num1(d()!.perSecond)
 #: components/space/game/TrainingDialog.tsx
 msgid "{0} XP por segundo enquanto o herói bate no boneco; +5% para cada outro herói treinando na mesma sala (até +25%). Só treina aqui, fora da dungeon."
 msgstr ""
@@ -544,6 +544,13 @@ msgstr ""
 msgid "{0}: {1}, +{2}"
 msgstr ""
 
+#. placeholder {0}: m.name
+#. placeholder {1}: CLASSES[m.cls].titles[0]
+#. placeholder {2}: m.level
+#: components/space/game/RankView.tsx
+msgid "{0}: {1}, nível {2}"
+msgstr ""
+
 #. placeholder {0}: who(ev.a)
 #. placeholder {1}: who(ev.b)
 #. placeholder {2}: num(ev.v)
@@ -572,6 +579,11 @@ msgstr ""
 msgid "{0}/{1} concluídas"
 msgstr ""
 
+#. placeholder {0}: num1(v().perSecond)
+#: components/space/game/TrainingChip.tsx
+msgid "{0}/s"
+msgstr ""
+
 #. placeholder {0}: c.min
 #. placeholder {1}: Math.round(c.pct * 100)
 #: components/space/game/gameText.ts
@@ -581,6 +593,11 @@ msgstr ""
 #. placeholder {0}: c.min
 #: components/space/game/gameText.ts
 msgid "{0}+ inimigos"
+msgstr ""
+
+#. placeholder {0}: i() + 1
+#: components/space/game/RankView.tsx
+msgid "{0}º lugar"
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -1122,6 +1139,22 @@ msgstr ""
 msgid "A cura é fixa pela faixa do seu nível; as três curam o mesmo por segundo. O tamanho que vai no cinto você troca no Equipamento."
 msgstr ""
 
+#: components/space/game/RankView.tsx
+msgid "A dungeon mais difícil que cada grupo venceu junto, em todos os servidores do Muchat. Empate: quem chegou antes."
+msgstr ""
+
+#: components/space/game/RankView.tsx
+#~ msgid "A dungeon mais difícil que cada grupo venceu junto. Empate: quem chegou antes."
+#~ msgstr ""
+
+#: components/space/game/RankView.tsx
+msgid "A dungeon mais difícil que cada herói venceu sozinho, em todos os servidores do Muchat. Empate: quem chegou antes."
+msgstr ""
+
+#: components/space/game/RankView.tsx
+#~ msgid "A dungeon mais difícil que cada herói venceu sozinho. Empate: quem chegou antes."
+#~ msgstr ""
+
 #: components/space/game/ArsenalView.tsx
 msgid "A família define mãos, alcance, velocidade e o atributo que escala o dano."
 msgstr ""
@@ -1372,6 +1405,12 @@ msgstr ""
 msgid "Agora"
 msgstr ""
 
+#. placeholder {0}: d()!.peers
+#. placeholder {1}: Math.round(d()!.bonus * 100)
+#: components/space/game/TrainingDialog.tsx
+msgid "Agora {0} treinando junto: +{1}%."
+msgstr ""
+
 #. placeholder {0}: CLASSES[cls].titles[1]
 #. placeholder {1}: CLASSES[cls].titles[0]
 #: components/space/game/MasterPanel.tsx
@@ -1403,8 +1442,8 @@ msgid "Alguém está apresentando"
 msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "Alguém perde vida a cada segundo até ser purificado."
-msgstr ""
+#~ msgid "Alguém perde vida a cada segundo até ser purificado."
+#~ msgstr ""
 
 #: components/space/Onboarding.tsx
 msgid "Algumas salas têm a porta fechada para você. A lista de salas ao lado mostra tudo em texto, se preferir não usar o mapa."
@@ -1582,6 +1621,10 @@ msgstr ""
 
 #: components/space/game/TvMenu.tsx
 msgid "Apps da TV"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Arcano"
 msgstr ""
 
 #: components/modal/modals/SignOutSessions.tsx
@@ -2181,6 +2224,10 @@ msgstr ""
 msgid "Carregando o histórico…"
 msgstr ""
 
+#: components/space/game/RankView.tsx
+msgid "Carregando o ranking…"
+msgstr ""
+
 #: components/space/NewsPanel.tsx
 msgid "Carregando os avisos…"
 msgstr ""
@@ -2356,6 +2403,7 @@ msgstr "Check your mail!"
 msgid "chefe"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
 #: components/space/game/AttributesPanel.tsx
 #: components/space/game/gameText.ts
 #: components/space/game/RunPanel.tsx
@@ -2372,6 +2420,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Chefe preparando golpe"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Chefes: dano em área e por segundo"
 msgstr ""
 
 #. placeholder {0}: who() || "…"
@@ -3172,6 +3224,14 @@ msgid "Dano esperado"
 msgstr ""
 
 #: components/space/game/gameText.ts
+msgid "Dano físico em todo o grupo: defesa, esquiva e bloqueio contam."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Dano mágico a cada segundo em alguém, até ser purificado."
+msgstr ""
+
+#: components/space/game/gameText.ts
 msgid "Dano mágico em todo o grupo."
 msgstr ""
 
@@ -3308,8 +3368,20 @@ msgstr "Default"
 msgid "Defende o grupo de golpes e de magia; bate com dano sagrado."
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Defesa física"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Defesa mágica"
+msgstr ""
+
 #: components/space/game/StatusIcons.tsx
 msgid "defesa menor"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Defesa que corta"
 msgstr ""
 
 #: components/app/interface/settings/channel/permissions/ChannelPermissionsEditor.tsx
@@ -3605,6 +3677,10 @@ msgstr "Do Not Disturb"
 msgid "Do seu nível, por hora"
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "Dois heróis sangram a cada segundo (dano físico) até serem purificados."
+msgstr ""
+
 #: components/space/game/TrainingDialog.tsx
 msgid "Dojô · Proficiência"
 msgstr ""
@@ -3772,9 +3848,9 @@ msgstr ""
 msgid "Efeito de apoio (a Potência tira recarga)"
 msgstr ""
 
-#. placeholder {0}: b().name
 #. placeholder {0}: focusMember().name
 #. placeholder {0}: m.name
+#. placeholder {0}: v().name
 #: components/space/game/RunPanel.tsx
 msgid "Efeitos em {0}"
 msgstr ""
@@ -3820,12 +3896,21 @@ msgstr ""
 msgid "em corrida"
 msgstr ""
 
+#: components/space/game/RankView.tsx
+msgid "Em grupo"
+msgstr ""
+
 #: components/space/game/skillText.ts
 msgid "em inimigos sorteados a cada golpe"
 msgstr ""
 
 #: components/space/game/skillText.ts
 msgid "em todos os inimigos"
+msgstr ""
+
+#. placeholder {0}: mon.pulseEverySeconds
+#: components/space/game/ArsenalView.tsx
+msgid "Em todos, a cada {0} s"
 msgstr ""
 
 #: components/app/interface/settings/user/Account.tsx
@@ -4937,6 +5022,14 @@ msgstr "Invites"
 msgid "Invocação"
 msgstr ""
 
+#. placeholder {0}: mech.summonFrom
+#. placeholder {1}: mech.summon.everySeconds
+#. placeholder {2}: mech.summon.count
+#. placeholder {3}: mech.summon.countBySize[4] ?? mech.summon.count
+#: components/space/game/ArsenalView.tsx
+msgid "Invocação (chefes a partir do nível {0}): a cada {1} s, {2} lacaios ({3} em grupos de 4 ou 5) que nascem atrás de quem não é tanque. Os heróis de dano largam o chefe para matá-los; o tanque e o suporte ficam no chefe."
+msgstr ""
+
 #. placeholder {0}: room.title
 #: components/space/SpacePage.tsx
 msgid "Ir para {0}"
@@ -5423,6 +5516,14 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "Maldição"
+msgstr ""
+
+#. placeholder {0}: dots.arcano.targets
+#. placeholder {1}: pct(dots.arcano.pct)
+#. placeholder {2}: dots.arcano.maxSeconds
+#. placeholder {3}: dots.arcano.everySeconds
+#: components/space/game/ArsenalView.tsx
+msgid "Maldição em {0} herói que não é tanque: {1} da vida por segundo, até {2} s, a cada {3} s"
 msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
@@ -6134,6 +6235,10 @@ msgstr ""
 msgid "Nenhum aviso por enquanto."
 msgstr ""
 
+#: components/space/game/RankView.tsx
+msgid "Nenhum grupo venceu uma dungeon ainda."
+msgstr ""
+
 #: components/space/AudioCheck.tsx
 msgid "Nenhum microfone encontrado. Você pode entrar só ouvindo e ligar um depois."
 msgstr ""
@@ -6205,6 +6310,10 @@ msgstr ""
 msgid "Ninguém perde XP ao cair: leva o que rendeu até cair, sem o bônus de fim."
 msgstr ""
 
+#: components/space/game/RankView.tsx
+msgid "Ninguém venceu uma dungeon sozinho ainda."
+msgstr ""
+
 #. placeholder {0}: g().region.from
 #. placeholder {1}: g().region.to
 #. placeholder {2}: g().region.material
@@ -6212,8 +6321,10 @@ msgstr ""
 msgid "níveis {0}–{1} · {2}"
 msgstr ""
 
+#. placeholder {0}: d.level
 #. placeholder {0}: lv()
 #: components/space/game/DungeonDetail.tsx
+#: components/space/game/RankView.tsx
 msgid "nível {0}"
 msgstr ""
 
@@ -6426,10 +6537,11 @@ msgstr ""
 msgid "Nv"
 msgstr ""
 
-#. placeholder {0}: b().level
 #. placeholder {0}: focusMember().level
 #. placeholder {0}: m.level
+#. placeholder {0}: v().level
 #: components/space/game/PartyDock.tsx
+#: components/space/game/RankView.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Nv {0}"
 msgstr ""
@@ -6455,8 +6567,12 @@ msgid "o chefe"
 msgstr ""
 
 #: components/space/game/gameText.ts
-msgid "O chefe chamou lacaios."
+msgid "O chefe chamou lacaios: eles vão atrás de quem não é tanque."
 msgstr ""
+
+#: components/space/game/gameText.ts
+#~ msgid "O chefe chamou lacaios."
+#~ msgstr ""
 
 #. placeholder {0}: noRegion() .map((m) => m.name) .join(", ")
 #: components/space/game/TvMenu.tsx
@@ -6506,6 +6622,10 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "O grupo está cheio."
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "O grupo todo envenenado (dano físico a cada segundo) até ser purificado."
 msgstr ""
 
 #: components/space/game/gameText.ts
@@ -6767,6 +6887,10 @@ msgstr ""
 msgid "Ordem do cofre"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Os chefes de Masmorra e de Região têm três jeitos de lutar. Cada Chefe de Região tem o seu; nas Masmorras, ele muda a cada 10 níveis. Os números valem para um herói do nível do chefe com a defesa de referência: com menos defesa, ou abaixo do nível do chefe, o dano é maior. Cada dungeon ainda tem o seu ajuste de força, que vale para estes danos como vale para os golpes. A purificação tira os três danos por segundo."
+msgstr ""
+
 #: components/space/game/SmithPanel.tsx
 msgid "Os itens somem para sempre. Toque de novo"
 msgstr ""
@@ -6974,6 +7098,10 @@ msgstr ""
 
 #: components/space/game/MerchantPanel.tsx
 msgid "Peça"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Peçonhento"
 msgstr ""
 
 #. placeholder {0}: pct(odds().protectionStone)
@@ -7225,6 +7353,10 @@ msgstr ""
 msgid "Por raridade"
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+msgid "Por segundo"
+msgstr ""
+
 #: components/space/game/SkillsPanel.tsx
 msgid "Porcentagem"
 msgstr ""
@@ -7377,6 +7509,11 @@ msgstr ""
 msgid "Pulso Sombrio"
 msgstr ""
 
+#. placeholder {0}: pct(pulseShare)
+#: components/space/game/ArsenalView.tsx
+msgid "Pulso Sombrio (mágico): {0} da vida"
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Punhal"
 msgstr ""
@@ -7470,6 +7607,18 @@ msgstr ""
 msgid "Quem está no grupo"
 msgstr ""
 
+#: components/space/game/TvMenu.tsx
+#~ msgid "Quem foi mais longe nas dungeons deste espaço"
+#~ msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Quem foi mais longe nas dungeons, em todo o Muchat"
+msgstr ""
+
+#: components/space/game/TvMenu.tsx
+msgid "Quem foi mais longe, sozinho e em grupo"
+msgstr ""
+
 #: components/space/SmartTv.tsx
 msgid "Quem pode controlar a TV escolhe um vídeo."
 msgstr ""
@@ -7488,6 +7637,19 @@ msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Raid or spam attack"
+msgstr ""
+
+#: components/space/game/RankView.tsx
+#: components/space/game/TvMenu.tsx
+msgid "Ranking"
+msgstr ""
+
+#: components/space/game/RankView.tsx
+msgid "Ranking em grupo"
+msgstr ""
+
+#: components/space/game/RankView.tsx
+msgid "Ranking sozinho"
 msgstr ""
 
 #: components/space/game/GearPanel.tsx
@@ -8122,6 +8284,22 @@ msgstr ""
 msgid "sangramento"
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "Sangramento"
+msgstr ""
+
+#. placeholder {0}: dots.sanguinario.targets
+#. placeholder {1}: pct(dots.sanguinario.pct)
+#. placeholder {2}: dots.sanguinario.maxSeconds
+#. placeholder {3}: dots.sanguinario.everySeconds
+#: components/space/game/ArsenalView.tsx
+msgid "Sangramento em {0} heróis que não são tanque: {1} da vida por segundo, até {2} s, a cada {3} s"
+msgstr ""
+
+#: components/space/game/ArsenalView.tsx
+msgid "Sanguinário"
+msgstr ""
+
 #: components/app/interface/settings/channel/Overview.tsx
 #: components/app/interface/settings/channel/webhooks/ViewWebhook.tsx
 #: components/app/interface/settings/server/Overview.tsx
@@ -8411,6 +8589,14 @@ msgstr "Server Name"
 msgid "Server Roles"
 msgstr ""
 
+#: components/space/game/RankView.tsx
+msgid "Servidor onde a corrida aconteceu"
+msgstr ""
+
+#: components/space/game/RankView.tsx
+msgid "servidor que não existe mais"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "Sessão expirada"
 msgstr ""
@@ -8443,7 +8629,7 @@ msgstr ""
 msgid "Setup recovery codes"
 msgstr ""
 
-#. placeholder {0}: tg().name
+#. placeholder {0}: v().name
 #: components/space/game/RunPanel.tsx
 msgid "Seu alvo: {0}"
 msgstr ""
@@ -8698,6 +8884,10 @@ msgstr ""
 msgid "Sounds"
 msgstr "Sounds"
 
+#: components/space/game/RankView.tsx
+msgid "Sozinho"
+msgstr ""
+
 #: components/modal/modals/ReportContent.tsx
 msgid "Spam or similar platform abuse"
 msgstr ""
@@ -8885,6 +9075,15 @@ msgstr ""
 #. placeholder {2}: r.build.efficiency
 #: components/space/game/SkillsPanel.tsx
 msgid "T{0} · Potência {1} · Eficiência {2}"
+msgstr ""
+
+#: components/space/game/gameText.ts
+msgid "Talho"
+msgstr ""
+
+#. placeholder {0}: pct(pulseShare)
+#: components/space/game/ArsenalView.tsx
+msgid "Talho (físico; esquiva e bloqueio contam): {0} da vida"
 msgstr ""
 
 #. placeholder {0}: k.label()
@@ -9685,6 +9884,17 @@ msgstr ""
 msgid "veneno"
 msgstr ""
 
+#: components/space/game/gameText.ts
+msgid "Veneno"
+msgstr ""
+
+#. placeholder {0}: pct(dots.peconhento.pct)
+#. placeholder {1}: dots.peconhento.maxSeconds
+#. placeholder {2}: dots.peconhento.everySeconds
+#: components/space/game/ArsenalView.tsx
+msgid "Veneno no grupo todo: {0} da vida por segundo, até {1} s, a cada {2} s"
+msgstr ""
+
 #: components/space/game/skillText.ts
 msgid "Veneno por {dur}: {per} de dano {el} por segundo {where}."
 msgstr ""
@@ -9782,9 +9992,9 @@ msgstr ""
 msgid "Vida {0} · Mana {1}"
 msgstr ""
 
-#. placeholder {0}: b().name
 #. placeholder {0}: m.name
 #. placeholder {0}: props.name
+#. placeholder {0}: v().name
 #: components/space/game/PartyDock.tsx
 #: components/space/game/RunHud.tsx
 #: components/space/game/RunPanel.tsx
@@ -10124,6 +10334,10 @@ msgstr ""
 
 #: components/space/game/GainTab.tsx
 msgid "XP por corrida"
+msgstr ""
+
+#: components/space/game/TrainingChip.tsx
+msgid "XP por segundo agora"
 msgstr ""
 
 #: components/space/game/GainTab.tsx

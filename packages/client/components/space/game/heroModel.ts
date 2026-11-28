@@ -66,6 +66,8 @@ const oneFmt = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 1 });
 
 /** 12.345 */
 export const num = (n: number) => intFmt.format(Math.round(n));
+/** 11,5 (uma casa, só quando tem). */
+export const num1 = (n: number) => oneFmt.format(n);
 /** 0,34 → "34%"; com casa decimal abaixo de 10%. */
 export function pct(x: number): string {
   const v = x * 100;
@@ -644,19 +646,28 @@ export interface DojoNow {
   need: number;
   /** Quanto subiu neste treino (projetado; o servidor credita ao parar). */
   gained: number;
-  /** XP por segundo sem ninguém treinando junto (cada um a mais dá +5%, até +25%). */
+  /** XP por segundo agora, com os colegas na zona (cada um dá +5%, até +25%). */
   perSecond: number;
+  /** Quantos treinam junto agora e o bônus deles (0,15 = +15%). */
+  peers: number;
+  bonus: number;
   /** A Proficiência guardada já passou do teto do nível: o treino fica guardado até subir. */
   capped: boolean;
 }
 
+/**
+ * O treino projetado. `peers`: quem treina junto agora (a conta da tela usa a taxa de agora para o
+ * treino todo; o servidor credita a média do tempo, a cada mudança de quem está no boneco).
+ */
 export function dojoNow(
   state: { hero: HeroV5; dojo: { since: number } | null },
   now: number,
+  peers = 0,
 ): DojoNow {
   let b = state.hero.proficiency;
   let xp = state.hero.proficiencyXp;
-  const perSecond = B.proficiencyXpPerSecond(0);
+  const perSecond = B.proficiencyXpPerSecond(peers);
+  const bonus = perSecond / B.proficiencyXpPerSecond(0) - 1;
   if (state.dojo) {
     xp += Math.max(0, (now - state.dojo.since) / 1000) * perSecond;
     const max = B.cfg.levels.maxProficiency;
@@ -674,6 +685,8 @@ export function dojoNow(
     need: B.proficiencyXpToNext(b),
     gained: b - state.hero.proficiency,
     perSecond,
+    peers,
+    bonus,
     capped: b > effective,
   };
 }

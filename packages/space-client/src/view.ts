@@ -43,7 +43,7 @@ import type {
 } from "@muchat/space-core/game/ot/balance";
 import { type ConnStatus, SpaceConnection } from "./connection.ts";
 import { type EditorState, Editor } from "./editor.ts";
-import { myHeroOf } from "./hero.ts";
+import { myHeroOf, dojoPeers } from "./hero.ts";
 import { type Prompt, nearestInteractive } from "./interact.ts";
 import {
   type ListWing,
@@ -134,6 +134,8 @@ export interface SpaceUiState {
     at: number;
     rev: number;
   } | null;
+  /** Others training at a dummy in our zone now (the Dojô bonus the app shows; 0 when we don't train). */
+  dojoPeers: number;
   /** Someone used a training dummy on the map: the app opens the training dialog. */
   trainRequest: { instance: string; title: string; n: number } | null;
   /** We used an NPC of the idle game (stage O8): the app opens its dialog. */
@@ -176,7 +178,7 @@ export type { RunState } from "./runState.ts";
 
 /** What the game panel receives: its own events, and errors of its own commands. */
 export type GameWireEvent = {
-  t: "rpg.state" | "rpg.lobby" | "rpg.run" | "rpg.stats" | "error";
+  t: "rpg.state" | "rpg.lobby" | "rpg.run" | "rpg.stats" | "rpg.rank" | "error";
   re?: string;
   d: Record<string, unknown>;
 };
@@ -297,6 +299,7 @@ export class SpaceView {
       watchRequest: null,
       game: null,
       rpg: null,
+      dojoPeers: 0,
       trainRequest: null,
       npcRequest: null,
       newsRequest: null,
@@ -534,16 +537,22 @@ export class SpaceView {
     const list = shareList(s.list, buildList(this.world));
     const zones = shareZones(s.zones, zoneList(this.world));
     const zoom = this.renderer.zoom;
+    const peers = dojoPeers(
+      s.rpg?.hero?.dojo?.instance,
+      this.world.others.values(),
+      this.world.decor?.items ?? [],
+    );
     // The 4 Hz timer marks the UI dirty unconditionally; only tell the page when
     // something it shows actually moved.
     if (
       location === s.location &&
       list === s.list &&
       zones === s.zones &&
-      zoom === s.zoom
+      zoom === s.zoom &&
+      peers === s.dojoPeers
     )
       return;
-    this.patch({ location, list, zoom, zones });
+    this.patch({ location, list, zoom, zones, dojoPeers: peers });
   }
 
   private async loadMap(url: string) {
@@ -746,6 +755,13 @@ export class SpaceView {
         const re = typeof e.re === "string" ? e.re : undefined;
         if (re) this.gameCommands.delete(re);
         this.emitGame({ t: "rpg.stats", re, d });
+        return;
+      }
+      case "rpg.rank": {
+        // The TV asked for the ranking (28/11/2026): only its own command waits for it.
+        const re = typeof e.re === "string" ? e.re : undefined;
+        if (re) this.gameCommands.delete(re);
+        this.emitGame({ t: "rpg.rank", re, d });
         return;
       }
       case "rpg.board": {

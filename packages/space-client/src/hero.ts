@@ -14,6 +14,24 @@ export function heroLabel(
 }
 
 /**
+ * How many others train at a dummy in the same zone as ours right now (the Dojô social bonus, +5%
+ * each; 28/11/2026: the app always showed 10 XP/s). The same count as the server's runtime.
+ */
+export function dojoPeers(
+  mine: string | null | undefined,
+  others: Iterable<{ hero: AvatarHero | null }>,
+  items: readonly { id: string; zone: string }[],
+): number {
+  if (!mine) return 0;
+  const zoneOf = (id: string) => items.find((i) => i.id === id)?.zone;
+  const zone = zoneOf(mine);
+  let n = 0;
+  for (const o of others)
+    if (o.hero?.training && o.hero.at && zoneOf(o.hero.at) === zone) n++;
+  return n;
+}
+
+/**
  * The look of each class in the training animation (1 magic, 2 healing, 3 bow, 4 melee); the same
  * table as the server's `heroLook` (space-server game/ot/hero.ts), so we look like the others see us.
  */

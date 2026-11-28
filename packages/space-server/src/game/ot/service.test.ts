@@ -4,6 +4,7 @@ import test from "node:test";
 import {
   type RpgCommand,
   type RpgHeroState,
+  type RpgRankEvent,
   type RpgRunEvent,
   type RpgRunTickEvent,
   type RpgStatsEvent,
@@ -12,6 +13,7 @@ import {
 import { silentLog } from "../../log.ts";
 import type { SessionPort, Viewer } from "../../space/runtime.ts";
 import { LOBBY, LobbyHub } from "./lobby.ts";
+import { MemoryRecordStore } from "./records.ts";
 import { MemoryRunStore } from "./runs.ts";
 import { type RpgHost, RpgService, ratesFromEnv } from "./service.ts";
 import { MemoryRpgStore } from "./store.ts";
@@ -170,9 +172,11 @@ function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
   let now = 1_000_000;
   const store = stores?.store ?? new MemoryRpgStore();
   const runStore = stores?.runStore ?? new MemoryRunStore();
+  const records = new MemoryRecordStore();
   const svc = new RpgService({
     store,
     runStore,
+    records,
     log: silentLog,
     now: () => now,
     autoTick: false,
@@ -214,6 +218,7 @@ function setup(stores?: { store: MemoryRpgStore; runStore: MemoryRunStore }) {
     tick,
     store,
     runStore,
+    records,
     host,
     s,
     session,
@@ -968,4 +973,34 @@ test("ganho por hora (rpg.stats): a corrida fechada entra com o XP dela; sem sta
   assert.equal(after.days, 7);
   assert.equal(after.runs, 1);
   assert.equal(after.dungeons[0]!.runs, 1);
+});
+
+test("ranking (rpg.rank): a vitória que fecha vira recorde solo; a carga das antigas roda uma vez (28/11/2026)", async () => {
+  const t = setup();
+  const empty = await t.send("rpg.rank");
+  assert.deepEqual(t.s.errors(empty), []);
+  const first = t.s.of<RpgRankEvent>("rpg.rank").at(-1)!;
+  assert.equal(first.re, empty);
+  assert.deepEqual(first.d, { solo: [], grupo: [] });
+
+  const run = await huntRun(t);
+  const doc = t.runStore.docs.get(run.id)!;
+  t.clock.advance(doc.seconds * 1000);
+  await t.svc.tickRuns();
+  await t.svc.idle("U1");
+  assert.equal(doc.outcome, "vitoria");
+  await t.send("rpg.rank");
+  const d = t.s.of<RpgRankEvent>("rpg.rank").at(-1)!.d;
+  assert.equal(d.solo.length, 1);
+  assert.equal(d.solo[0]!.dungeon, "cacada-1");
+  assert.equal(d.solo[0]!.members[0]!.user_id, "U1");
+  // O servidor da corrida vai junto (o FakeHost é o "S1"; sem o nome do Stoat no teste, null).
+  assert.deepEqual(d.solo[0]!.server, { id: "S1", name: null });
+  assert.equal(d.grupo.length, 0);
+
+  // A carga lê as vitórias do banco uma vez; a segunda chamada não relê.
+  t.records.docs.clear();
+  assert.deepEqual(await t.svc.backfillRecords(), { wins: 1, records: 1 });
+  assert.equal(await t.svc.backfillRecords(), null);
+  assert.equal(t.records.docs.size, 1);
 });

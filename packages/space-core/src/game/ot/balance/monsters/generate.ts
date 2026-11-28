@@ -1,4 +1,10 @@
-import type { ArchetypeKey, EnemyInput, Family } from "../combat/types.ts";
+import type {
+  ArchetypeKey,
+  BossDot,
+  BossVariant,
+  EnemyInput,
+  Family,
+} from "../combat/types.ts";
 import type { DungeonEdge } from "../dungeons/edge.generated.ts";
 import {
   type Balance,
@@ -65,6 +71,8 @@ export interface MonsterOptions {
   magic?: boolean;
   /** D41: o aperto da DG (dungeons/edge.generated.ts): o golpe de todo monstro e o Cataclismo do chefe. */
   edge?: DungeonEdge;
+  /** D71: a variação do chefe (sem ela, arcano). */
+  variant?: BossVariant;
 }
 
 export function createMonsters(
@@ -205,15 +213,50 @@ export function createMonsters(
     };
   }
 
+  /**
+   * D71: a vida efetiva do caçador de referência do nível contra golpe mágico e físico (o que o Pulso e o
+   * lacaio usam no spec): sai da própria linha, então vale também acima do 500.
+   */
+  function hunterEhp(m: number, magic: boolean): number {
+    const r = row(m);
+    return magic ? r.pulse / mon.pulsePct : r.lacaioHit / mon.lacaioHitPct;
+  }
+
+  /** D71: o DoT do chefe da variação (sem `variants`, a Maldição de antes). */
+  function bossDot(
+    m: number,
+    o: MonsterOptions,
+  ): NonNullable<EnemyInput["curse"]> {
+    if (!mech.variants) return { ...mech.curse };
+    const d = mech.dots[o.variant ?? "arcano"];
+    return {
+      everySeconds: d.everySeconds,
+      maxSeconds: d.maxSeconds,
+      rawPerSecond: d.pct * hunterEhp(m, d.magic) * hitMult(o),
+      magic: d.magic,
+      kind: d.kind as BossDot,
+      targets: d.targets as number | "grupo",
+    };
+  }
+
   /** As mecânicas da faixa do chefe (§12.3). */
   function bandMechanics(m: number, o: MonsterOptions): Partial<EnemyInput> {
     const out: Partial<EnemyInput> = {};
-    if (m >= mech.curseFrom) out.curse = { ...mech.curse };
-    if (m >= mech.summonFrom)
+    if (m >= mech.curseFrom) out.curse = bossDot(m, o);
+    if (m >= mech.summonFrom) {
+      const su = mech.summon;
       out.summon = {
-        ...mech.summon,
-        minion: lacaio(m, { ...o, magic: false }, true),
+        everySeconds: su.everySeconds,
+        count: su.countBySize?.[o.partySize] ?? su.count,
+        // D71: o invocado tem uma fração da vida do lacaio da sala (que é feita para o grupo inteiro).
+        minion: (() => {
+          const x = lacaio(m, { ...o, magic: false }, true);
+          return { ...x, hp: x.hp * (su.hpMult ?? 1) };
+        })(),
+        ...(su.hunt ? { hunt: true } : {}),
+        ...(su.priority ? { priority: true } : {}),
       };
+    }
     if (m >= mech.drainFrom) out.manaDrain = { ...mech.manaDrain };
     // Investida: o multiplicador do config vale sobre o golpe do chefe menor (D16); o motor multiplica o do chefe.
     if (m >= mech.chargeFrom) {
@@ -231,6 +274,12 @@ export function createMonsters(
   function chefe(m: number, o: MonsterOptions): EnemyInput {
     const r = row(m);
     const scale = B.partyScale(o.partySize, "masmorra");
+    // D71: o chefe físico (sanguinário e peçonhento) troca o Pulso mágico pelo Talho, na DEF.
+    const variant = mech.variants ? (o.variant ?? "arcano") : undefined;
+    const physical = variant !== undefined && variant !== "arcano";
+    const pulseRaw = mech.variants
+      ? mon.pulsePct * hunterEhp(m, !physical) * hitMult(o) * mech.pulseMult
+      : r.pulse * hitMult(o);
     return {
       ...base(
         "chefe",
@@ -241,7 +290,12 @@ export function createMonsters(
         r.bossHit * hitMult(o),
       ),
       buster: { everySeconds: mon.busterEverySeconds, mult: mon.busterMult },
-      pulse: { everySeconds: mon.pulseEverySeconds, raw: r.pulse * hitMult(o) },
+      pulse: {
+        everySeconds: mon.pulseEverySeconds,
+        raw: pulseRaw,
+        ...(physical ? { magic: false } : {}),
+      },
+      ...(variant ? { variant } : {}),
       cataclysm: {
         atSeconds: o.edge?.cataclysmAt ?? mon.cataclysmAtSeconds,
         pct: mon.cataclysmPct,

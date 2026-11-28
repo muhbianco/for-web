@@ -4,6 +4,7 @@ import type {
   BuffStat,
   Condition,
   DebuffStat,
+  BossDot,
   DotKind,
   Effect,
   Element,
@@ -91,6 +92,27 @@ interface Dot {
   threatMult?: number;
 }
 
+/**
+ * Um efeito do chefe no herói. No DoT (D71): `by` é o chefe que pôs; com `raw`, `value` é o golpe
+ * bruto por segundo (cortado pela DEF ou MDEF); sem ele, a fração do HP máx./s (dano verdadeiro).
+ */
+interface HeroDebuff {
+  kind: string;
+  until: number;
+  value: number;
+  by?: number;
+  raw?: boolean;
+  magic?: boolean;
+}
+
+/** Os DoTs de chefe (D71): todos saem com a purificação e contam como "aliado amaldiçoado". */
+const BOSS_DOTS: ReadonlySet<string> = new Set<BossDot>(["maldicao", "sangramento", "veneno"]);
+const DOT_KIND: Record<BossDot, DotKind> = {
+  maldicao: "dot",
+  sangramento: "sangramento",
+  veneno: "veneno",
+};
+
 interface Hero {
   i: number;
   input: FighterInput;
@@ -138,7 +160,7 @@ interface Hero {
   } | null;
   buffs: Map<string, Timed>;
   /** Efeitos negativos no herói (Maldição, Drenar Mana), removíveis por purificação. */
-  debuffs: Map<string, { kind: string; until: number; value: number }>;
+  debuffs: Map<string, HeroDebuff>;
   hots: {
     key: string;
     perSec: number;
@@ -288,6 +310,8 @@ export function fight(
   const enemies: Enemy[] = enemyInputs.map(newEnemy);
   /** Os da sala; daqui para a frente, só invocados. */
   const roomEnemies = enemies.length;
+  /** D71: algum chefe da sala invoca lacaios que os heróis de dano atacam primeiro. */
+  const priorityAdds = enemyInputs.some((x) => x.summon?.priority === true);
   const kills: KillEvent[] = [];
   const recorded = new Set<number>();
   // ------------------------------------------------------------ gravador da tela (Fase 8)
@@ -561,7 +585,14 @@ export function fight(
     xs.reduce((a, b) => a * (1 - b.value), 1);
   const aliveHeroes = (): Hero[] => heroes.filter((h) => h.alive);
   const aliveEnemies = (): Enemy[] => enemies.filter((e) => e.alive);
-  const focus = (): Enemy | null => enemies.find((e) => e.alive) ?? null;
+  const focus = (h?: Hero): Enemy | null => {
+    // D71: invocados de prioridade (`summon.priority`) puxam os heróis de dano; o tanque e o suporte
+    // ficam no chefe. O mais antigo primeiro, como os lacaios da sala.
+    if (h && h.input.role === "dps" && priorityAdds)
+      for (let k = roomEnemies; k < enemies.length; k++)
+        if (enemies[k]!.alive) return enemies[k]!;
+    return enemies.find((e) => e.alive) ?? null;
+  };
   const isBoss = (e: Enemy) => BOSSES.has(e.input.archetype);
   /** Buff do próprio herói + o do grupo. */
   const buffOf = (h: Hero, stat: BuffStat): number =>
@@ -780,13 +811,20 @@ export function fight(
     h: Hero,
     e: Enemy,
     raw: number,
-    o: { magic?: boolean; certeiro?: boolean; devoted?: boolean } = {},
+    o: {
+      magic?: boolean;
+      certeiro?: boolean;
+      devoted?: boolean;
+      /** D71: tique de DoT de chefe (a cor do número). */
+      dot?: DotKind;
+    } = {},
   ) => {
     if (!h.alive) return;
     // D66 Devoção: parte do golpe vai para o paladino, com as defesas dele; o resto segue no aliado.
     const dv = h.devotion;
     if (
       !o.devoted &&
+      !o.dot &&
       dv &&
       dv.until > t &&
       dv.by !== h &&
@@ -804,7 +842,7 @@ export function fight(
     const m = e.input.level;
     const magic = o.magic ?? false;
     let blockedNow = false;
-    if (!o.certeiro && !magic) {
+    if (!o.certeiro && !magic && !o.dot) {
       const attackers = enemies.filter((x) => x.alive && x.target === h).length;
       const hitE =
         B.monsterStats(e.input.archetype, m).hit *
@@ -858,9 +896,10 @@ export function fight(
         (1 - red) * takenMult(h, e, magic, o.certeiro ?? false),
       ) *
       (1 - B.levelDiffMod(ch.level - m));
-    for (const w of h.windows)
-      if (w.until > t && w.hook.on === "reflete" && e.alive)
-        deal(h, e, d * w.hook.pct);
+    if (!o.dot)
+      for (const w of h.windows)
+        if (w.until > t && w.hook.on === "reflete" && e.alive)
+          deal(h, e, d * w.hook.pct);
     if (h.manaShield && h.manaShield.until > t) {
       const take = Math.min(d * h.manaShield.pct, h.mp);
       h.mp -= take;
@@ -876,11 +915,19 @@ export function fight(
         if (h.shield <= 0) breakShield(h, e);
       }
     }
-    add(FOE_BASE + e.i, who(h), foeSource, Math.max(0, d), false, blockedNow);
+    add(
+      FOE_BASE + e.i,
+      who(h),
+      foeSource,
+      Math.max(0, d),
+      false,
+      blockedNow,
+      o.dot ? { dot: o.dot } : {},
+    );
     h.hp -= d;
     if (h.hp <= 0 && h.alive) {
       if (!h.cheatedDeath && tryCheatDeath(h)) return;
-      die(h, "golpe");
+      die(h, o.dot ? "mecanica" : "golpe");
     }
   };
 
@@ -1076,7 +1123,7 @@ export function fight(
             (q) =>
               q.alive &&
               [...q.debuffs.values()].some(
-                (d) => d.kind === "maldicao" && d.until > t,
+                (d) => BOSS_DOTS.has(d.kind) && d.until > t,
               ),
           ),
         };
@@ -1694,14 +1741,14 @@ export function fight(
   };
 
   const resolveSkill = (h: Hero, s: SkillDef, ally: Hero | undefined) => {
-    const e = tauntFoe(h, s) ?? focus();
+    const e = tauntFoe(h, s) ?? focus(h);
     const ctx: Ctx = { landed: true };
     for (const eff of s.effects) applyEffect(h, s, eff, e, ally, ctx);
     for (const hook of s.hooks ?? []) {
       if (hook.on === "repete") {
         const again: Ctx = { landed: true, scale: hook.pct };
         for (const eff of s.effects)
-          if (eff.type === "dano") applyEffect(h, s, eff, focus(), ally, again);
+          if (eff.type === "dano") applyEffect(h, s, eff, focus(h), ally, again);
       } else if (hook.on === "danoCura" && (ctx.dealt ?? 0) > 0) {
         const target = hook.target === "proprio" ? h : (lowest(Infinity) ?? h);
         heal(
@@ -1855,16 +1902,21 @@ export function fight(
       if (e.input.pulse) {
         e.pulseTimer -= tick;
         if (e.pulseTimer <= 0) {
-          announce(e, "pulso");
-          foeSource = "pulso";
+          const magicPulse = e.input.pulse.magic ?? true;
+          const name = magicPulse ? "pulso" : "talho";
+          announce(e, name);
+          foeSource = name;
           for (const q of heroes)
-            if (q.alive) hurt(q, e, e.input.pulse.raw * dmg, { magic: true });
+            if (q.alive)
+              hurt(q, e, e.input.pulse.raw * dmg, { magic: magicPulse });
           foeSource = "golpe";
           e.pulseTimer += e.input.pulse.everySeconds;
         }
       }
-      const pickNonTank = (): Hero | null => {
-        const pool = heroes.filter((q) => q.alive && q.input.role !== "tanque");
+      const pickNonTank = (skip: readonly Hero[] = []): Hero | null => {
+        const pool = heroes.filter(
+          (q) => q.alive && q.input.role !== "tanque" && !skip.includes(q),
+        );
         if (pool.length === 0) return null;
         return expected
           ? pool[e.pick++ % pool.length]!
@@ -1874,13 +1926,26 @@ export function fight(
       if (cu) {
         e.curseTimer -= tick;
         if (e.curseTimer <= 0) {
-          const q = pickNonTank();
-          if (q) announce(e, "maldicao", q);
-          if (q)
-            q.debuffs.set("maldicao", {
-              kind: "maldicao",
+          const kind: BossDot = cu.kind ?? "maldicao";
+          const hit: Hero[] = [];
+          if (cu.targets === "grupo")
+            hit.push(...heroes.filter((q) => q.alive));
+          else
+            for (let k = 0; k < (cu.targets ?? 1); k++) {
+              const q = pickNonTank(hit);
+              if (q) hit.push(q);
+            }
+          if (hit.length > 0)
+            announce(e, kind, hit.length === 1 ? hit[0] : undefined);
+          const raw = cu.rawPerSecond !== undefined;
+          for (const q of hit)
+            q.debuffs.set(kind, {
+              kind,
               until: t + cu.maxSeconds,
-              value: cu.pctPerSecond,
+              // A fase 2 vale no DoT como no golpe (o bruto; a fração do HP fica como era).
+              value: raw ? cu.rawPerSecond! * dmg : (cu.pctPerSecond ?? 0),
+              by: e.i,
+              ...(raw ? { raw: true, magic: cu.magic ?? true } : {}),
             });
           e.curseTimer += cu.everySeconds;
         }
@@ -1919,8 +1984,23 @@ export function fight(
         e.summonTimer -= tick;
         if (e.summonTimer <= 0) {
           announce(e, "invocacao");
+          const prey: Hero[] = [];
+          const preyPool = heroes.filter(
+            (q) => q.alive && q.input.role !== "tanque",
+          ).length;
           for (let k = 0; k < su.count; k++) {
-            enemies.push(newEnemy(su.minion, enemies.length));
+            const add = newEnemy(su.minion, enemies.length);
+            // D71: nasce no pescoço de um não tanque (um para cada, depois repete); fica nele até alguém
+            // passar a ameaça (o tanque puxa com ameaça em área ou provocação).
+            if (su.hunt) {
+              if (prey.length >= preyPool) prey.length = 0;
+              const q = pickNonTank(prey);
+              if (q) {
+                prey.push(q);
+                add.target = q;
+              }
+            }
+            enemies.push(add);
             for (const q of heroes) q.threat.push(0);
           }
           e.summonTimer += su.everySeconds;
@@ -1956,10 +2036,24 @@ export function fight(
       // Maldição e Drenar Mana: por segundo, até acabar ou ser purificado.
       for (const d of h.debuffs.values()) {
         if (d.until <= t) continue;
-        if (d.kind === "maldicao") h.hp -= d.value * maxHp(h) * DT;
-        else if (d.kind === "drenar")
+        if (BOSS_DOTS.has(d.kind)) {
+          const by = enemies[d.by ?? 0] ?? enemies[0]!;
+          const dk = DOT_KIND[d.kind as BossDot];
+          if (d.raw) {
+            // D71: o golpe bruto do DoT, cortado como um golpe (DEF ou MDEF, nível, reduções, escudos).
+            foeSource = d.kind;
+            hurt(h, by, d.value * DT, { magic: d.magic ?? true, dot: dk });
+            foeSource = "golpe";
+          } else {
+            const v = d.value * maxHp(h) * DT;
+            add(FOE_BASE + by.i, who(h), d.kind, v, false, false, { dot: dk });
+            h.hp -= v;
+          }
+          if (!h.alive) break;
+        } else if (d.kind === "drenar")
           h.mp = Math.max(0, h.mp - d.value * ch.mp * DT);
       }
+      if (!h.alive) continue;
       if (h.hp <= 0) {
         die(h, "mecanica");
         continue;
@@ -2043,7 +2137,7 @@ export function fight(
       } else {
         h.auto -= DT;
         if (h.auto <= 0) {
-          const e = focus();
+          const e = focus(h);
           if (e) {
             const r =
               ch.kind === "magic"

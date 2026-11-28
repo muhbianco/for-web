@@ -5,7 +5,7 @@ import { generateLayout, MAX_SPEED, MOVE_SEND_HZ, applyMove, initialMoveState, i
 
 import { announceRoomChange, buildList, locationText, wingHeading } from "./list.ts";
 import { type MoveCommand, Mover } from "./mover.ts";
-import { heroLabel } from "./hero.ts";
+import { dojoPeers, heroLabel } from "./hero.ts";
 import { decodeMap, INTERP_DELAY_MS, World } from "./world.ts";
 
 const ROOM_A = "01JR00000000000000000000AA";
@@ -163,4 +163,17 @@ test("jogo idle: o herói dos outros chega no AvatarView e vira rótulo sob o no
   assert.equal(heroLabel("Caio", null), "Caio");
   assert.equal(heroLabel("Caio", { level: 12, training: false }), "Caio · Nv 12");
   assert.equal(heroLabel("Caio", { level: 3, training: true }), "⚔ Caio · Nv 3");
+});
+
+test("Dojô: a tela conta quem treina em boneco da mesma zona, como o servidor (28/11/2026)", () => {
+  const items = [
+    { id: "b1", zone: "sala-a" },
+    { id: "b2", zone: "sala-a" },
+    { id: "b3", zone: "sala-b" },
+  ];
+  const at = (id: string) => ({ hero: { level: 50, training: true as const, at: id, vocation: 1, gear: {} } });
+  const others = [at("b1"), at("b2"), at("b3"), { hero: { level: 50, training: false as const } }, { hero: null }];
+  assert.equal(dojoPeers("b1", others, items), 2);
+  assert.equal(dojoPeers("b3", others, items), 1);
+  assert.equal(dojoPeers(null, others, items), 0);
 });

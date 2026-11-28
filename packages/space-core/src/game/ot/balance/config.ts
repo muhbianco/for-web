@@ -583,12 +583,51 @@ export const BALANCE = {
 
   /** §12.3: mecânicas de chefe por faixa de nível (entram junto com as respostas dos tiers). */
   bossMechanics: {
-    /** Maldição: a cada 20 s, um não tanque perde 3% do HP máx./s até ser purificado (máx. 15 s). */
+    /**
+     * Maldição até a D71: a cada 20 s, um não tanque perde 3% do HP máx./s até ser purificado (máx.
+     * 15 s), dano verdadeiro. Com `variants: false` é a de todo chefe (a comparação de
+     * scripts/boss-pressure.ts).
+     */
     curseFrom: 40,
     curse: { everySeconds: 20, pctPerSecond: 0.03, maxSeconds: 15 },
-    /** Invocação: a cada 30 s, 2 lacaios do nível do chefe. */
+    /**
+     * D71 (28/11/2026, o dono: "o único golpe que tá importando é o golpe pesado… buff no dano mágico
+     * em área e do dano por segundo… isso deve pesar em heróis abaixo da referência do nível… variações
+     * de Bosses… assim desafiamos todos os tipos de defesas"). Cada chefe de Masmorra e de Região tem
+     * uma variação (dungeons/catalog.ts): arcano (Pulso e Maldição mágicos, MDEF), sanguinário (Talho
+     * físico em todos e Sangramento em 2 não tanques, DEF) e peçonhento (Talho e Veneno no grupo todo,
+     * DEF). O DoT deixa de ser fração da vida: é golpe bruto por segundo, `pct` × a vida efetiva do
+     * caçador de referência do nível (contra MDEF no mágico, DEF no físico), × o aperto da DG — quem
+     * tem menos defesa ou nível que a referência perde mais. false = todo chefe arcano, com a Maldição
+     * e o Pulso de antes.
+     */
+    variants: true,
+    /** D71: o Pulso (e o Talho) × isto. */
+    pulseMult: 1.25,
+    dots: {
+      arcano: { kind: "maldicao", magic: true, pct: 0.04, everySeconds: 16, maxSeconds: 12, targets: 1 },
+      sanguinario: { kind: "sangramento", magic: false, pct: 0.03, everySeconds: 16, maxSeconds: 12, targets: 2 },
+      peconhento: { kind: "veneno", magic: false, pct: 0.015, everySeconds: 18, maxSeconds: 14, targets: "grupo" },
+    },
+    /**
+     * Invocação: a cada N s, `count` lacaios do nível do chefe (por tamanho do grupo). D71: `hunt` —
+     * nascem mirando os não tanques; `priority` — os heróis de dano atacam os invocados primeiro (era
+     * 2 a cada 30 s, no tanque, e ninguém batia neles: só a área matava).
+     */
     summonFrom: 70,
-    summon: { everySeconds: 30, count: 2 },
+    summon: {
+      everySeconds: 30,
+      count: 2,
+      countBySize: { 4: 3, 5: 3 } as Record<number, number>,
+      /**
+       * A vida do invocado em fração da do lacaio da sala (que é feita para o grupo inteiro bater): com
+       * os heróis de dano trocando de alvo, 0,25 já levava o trio de farm a 69% e o nível −5 da Região
+       * a 9% (scripts/boss-pressure.ts, 28/11/2026); 0,15 a cada 30 s deixa o farm em ~9 em 10.
+       */
+      hpMult: 0.15,
+      hunt: true,
+      priority: true,
+    },
     /** Drenar Mana: a cada 25 s, conjuradores perdem 3% da MP máx./s por 6 s. */
     drainFrom: 100,
     manaDrain: { everySeconds: 25, pctPerSecond: 0.03, durationSeconds: 6 },

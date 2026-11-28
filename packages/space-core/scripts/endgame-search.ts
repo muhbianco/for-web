@@ -19,6 +19,11 @@
 //
 //   node scripts/endgame-search.ts [--perks 2] [--dg regiao-12] [--sizes 4,5] [--workers 8] [--pairs 5]
 //     [--seeds 200] [--top 40] [--out arquivo.json]
+// Até onde chegam (28/11/2026, o dono: "uma matriz das comps eleitas melhores e até onde elas chegam,
+// Caçadas, Masmorras e Região"): --reach arquivo.json [--reachTop 15] [--reachSeeds 20] pega a melhor
+// configuração de cada uma das --reachTop melhores composições de uma busca e sobe, em ordem de nível,
+// as Caçadas (do 451), as Masmorras (do 460) e as Regiões (do 450): no modo esperado, até a 1ª derrota;
+// com rolagem de verdade, até a 1ª DG com menos de metade das corridas vencidas (e a última com 90%).
 // Pesado: roda com prioridade baixa e metade dos núcleos por padrão.
 import { readFileSync, writeFileSync } from "node:fs";
 import { availableParallelism, constants, setPriority } from "node:os";
@@ -61,6 +66,13 @@ const arg = (k: string, d: string) => {
   const i = process.argv.indexOf(`--${k}`);
   return i > 0 ? process.argv[i + 1]! : d;
 };
+// D71: --boss-set JSON por cima de cfg.bossMechanics (os processos herdam), para comparar o chefe; com
+// --boss-legacy, o chefe de antes da D71.
+if (process.argv.includes("--boss-legacy"))
+  Object.assign(B.cfg.bossMechanics, {
+    variants: false,
+    summon: { everySeconds: 30, count: 2, countBySize: {}, hpMult: 1, hunt: false, priority: false },
+  });
 // Para calibrar o D67 sem mexer no config: --growth 1.4 vale para esta rodada (e os processos dela).
 if (process.argv.includes("--growth"))
   (B.cfg.monsters as { endgameGrowth: number }).endgameGrowth = Number(arg("growth", "1"));
@@ -267,6 +279,39 @@ export function scoreRun(d: DungeonDef, party: FighterInput[]): Score {
 // ------------------------------------------------------------------ trabalhador
 
 interface Job { kind: "comp"; comp: ClassId[]; dg: string; pairs: boolean }
+interface ReachJob { kind: "reach"; comp: ClassId[]; opts: Option[]; seeds: number }
+type Ladder = { exp: number; real50: number; real90: number; rates: [number, number][] };
+interface ReachResult { comp: ClassId[]; opts: Option[]; cacada: Ladder; masmorra: Ladder; regional: Ladder }
+
+const REACH_FROM = { cacada: 451, masmorra: 460, regional: 450 } as const;
+function reach(job: ReachJob): ReachResult {
+  const party = job.comp.map((c, i) => fighter(c, job.opts[i]!));
+  const ladder = (kind: keyof typeof REACH_FROM): Ladder => {
+    const dgs = ALL_DUNGEONS.filter((x) => x.kind === kind && x.level >= REACH_FROM[kind]);
+    let exp = 0;
+    for (const x of dgs) {
+      if (simulateRun(x, party, { mode: "esperado" }, B, M).outcome !== "vitoria") break;
+      exp = x.level;
+    }
+    let real50 = 0;
+    let real90 = 0;
+    let firm = true;
+    const rates: [number, number][] = [];
+    for (const x of dgs) {
+      let w = 0;
+      for (let seed = 1; seed <= job.seeds; seed++)
+        if (simulateRun(x, party, { mode: "aleatorio", random: randomSource(new Rng(seed * 104729 + x.level)) }, B, M).outcome === "vitoria") w++;
+      const r = w / job.seeds;
+      rates.push([x.level, r]);
+      if (r < 0.5) break;
+      real50 = x.level;
+      if (firm && r >= 0.9) real90 = x.level;
+      else firm = false;
+    }
+    return { exp, real50, real90, rates };
+  };
+  return { comp: job.comp, opts: job.opts, cacada: ladder("cacada"), masmorra: ladder("masmorra"), regional: ladder("regional") };
+}
 interface CompResult { comp: ClassId[]; opts: Option[]; score: Score; evals: number }
 
 function climb(comp: ClassId[], d: DungeonDef, pairs: boolean): CompResult {
@@ -338,7 +383,11 @@ function climb(comp: ClassId[], d: DungeonDef, pairs: boolean): CompResult {
 }
 
 if (!isMainThread) {
-  parentPort!.on("message", (job: Job) => {
+  parentPort!.on("message", (job: Job | ReachJob) => {
+    if (job.kind === "reach") {
+      parentPort!.postMessage(reach(job));
+      return;
+    }
     const d = dungeonById(job.dg)!;
     parentPort!.postMessage(climb(job.comp, d, job.pairs));
   });
@@ -401,8 +450,55 @@ function poolMode(file: string) {
   process.exit(0);
 }
 
+async function reachMode(file: string) {
+  const TOPN = Number(arg("reachTop", "15"));
+  const SEEDS = Number(arg("reachSeeds", "20"));
+  const WORKERS = Number(arg("workers", String(Math.max(1, Math.floor(availableParallelism() / 2)))));
+  const OUT = arg("out", "");
+  const data = JSON.parse(readFileSync(file, "utf8")) as { all: CompResult[] };
+  const seen = new Set<string>();
+  const picks: CompResult[] = [];
+  for (const r of [...data.all].sort((a, b) => b.score.score - a.score.score)) {
+    const k = r.comp.join(",");
+    if (seen.has(k)) continue;
+    seen.add(k);
+    picks.push(r);
+    if (picks.length >= TOPN) break;
+  }
+  const t0 = Date.now();
+  const pool = Array.from({ length: WORKERS }, () => new Worker(new URL(import.meta.url), { argv: process.argv.slice(2) }));
+  const out: ReachResult[] = await new Promise((resolve) => {
+    const res: ReachResult[] = [];
+    let next = 0;
+    const feed = (w: Worker) => {
+      if (next < picks.length) w.postMessage({ kind: "reach", comp: picks[next]!.comp, opts: picks[next]!.opts, seeds: SEEDS } satisfies ReachJob);
+      next++;
+    };
+    for (const w of pool) {
+      w.on("message", (r: ReachResult) => {
+        res.push(r);
+        process.stderr.write(`  ${res.length}/${picks.length} · ${Math.round((Date.now() - t0) / 1000)} s\n`);
+        if (res.length === picks.length) resolve(res);
+        else feed(w);
+      });
+      feed(w);
+    }
+  });
+  for (const w of pool) void w.terminate();
+  const order = new Map(picks.map((p, i) => [p.comp.join(","), i]));
+  out.sort((a, b) => order.get(a.comp.join(","))! - order.get(b.comp.join(","))!);
+  console.log(`# Até onde chegam — ${picks.length} melhores composições de ${file.split(/[\\/]/).pop()}, ${PERKS_PER_ITEM} perk(s)${SUPREME > 0 ? `, Suprema +${Math.round(SUPREME * 100)}%` : ""}, ${SEEDS} corridas por DG`);
+  console.log("esperado = vence em sequência no modo esperado; 50% / 90% = última DG em sequência com ao menos metade / 9 em 10 das corridas");
+  const fmt = (l: Ladder) => `${l.exp || "—"} · ${l.real50 || "—"} · ${l.real90 || "—"}`;
+  for (const r of out)
+    console.log(`  Caçada ${fmt(r.cacada)} | Masmorra ${fmt(r.masmorra)} | Região ${fmt(r.regional)} | ${r.comp.map((c, i) => optLabel(c, r.opts[i]!)).join(" · ")}`);
+  if (OUT) writeFileSync(OUT, JSON.stringify({ supreme: SUPREME, perks: PERKS_PER_ITEM, seeds: SEEDS, results: out }));
+  process.exit(0);
+}
+
 async function main() {
   if (process.argv.includes("--pool")) return poolMode(arg("pool", ""));
+  if (process.argv.includes("--reach")) return reachMode(arg("reach", ""));
   const DG = arg("dg", "regiao-12");
   const SIZES = arg("sizes", "4,5").split(",").map(Number);
   const WORKERS = Number(arg("workers", String(Math.max(1, Math.floor(availableParallelism() / 2)))));

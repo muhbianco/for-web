@@ -364,6 +364,8 @@ export const RpgStatsCmd = cmd(
   "rpg.stats",
   z.object({ days: z.union([z.literal(1), z.literal(7)]) }).strict(),
 );
+/** O ranking de todo o Muchat (28/11/2026): o top 10 sozinho e em grupo, pela DG mais difícil vencida. */
+export const RpgRankCmd = cmd("rpg.rank", empty);
 
 export const RpgCommand = z.discriminatedUnion("t", [
   RpgOpenCmd,
@@ -373,6 +375,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgAttrsCmd,
   RpgSkillSpendCmd,
   RpgSkillSlotsCmd,
+  RpgRankCmd,
   RpgSkillAiCmd,
   RpgMasterCmd,
   RpgMasterClassCmd,
@@ -684,6 +687,23 @@ export interface RpgStatsEvent {
     /** Da que mais rende XP por hora para a que menos rende. */
     dungeons: RpgGainDungeonView[];
   };
+}
+
+/** Uma linha do ranking: a DG mais difícil que o herói (ou o grupo) venceu, quando, e quem estava. */
+export interface RpgRankRow {
+  dungeon: string;
+  /** Quando começou a corrida que deu o recorde (ms). */
+  at: number;
+  members: { user_id: string; name: string; cls: ClassId; level: number }[];
+  /** O servidor do Muchat onde a corrida aconteceu (null: o servidor não existe mais). */
+  server: { id: string; name: string | null };
+}
+
+export interface RpgRankEvent {
+  v: 1;
+  t: "rpg.rank";
+  re?: string;
+  d: { solo: RpgRankRow[]; grupo: RpgRankRow[] };
 }
 
 /** Os erros que o servidor devolve em `error.d.code` (mais os das ações do herói, em `reason`). */

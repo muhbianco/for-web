@@ -294,6 +294,44 @@ test("dummy: sair de perto, ser tirado do Espaço ou o dummy sumir encerram o tr
   assert.deepEqual(left, [ANA, ANA, ANA]);
 });
 
+test("Dojô: o bônus é a média dos colegas no tempo, e quem sai de perto leva o seu (28/11/2026)", async () => {
+  // Antes o bônus era a foto de quem treinava na hora de parar: quem saía de perto já não constava
+  // (o runtime apagava o treino antes de avisar) e levava +0%, assim como o último a parar.
+  const BIA = "01JBIA00000000000000000000";
+  let now = 1_000_000;
+  const rt = new SpaceRuntime({
+    serverId: SRV,
+    cache: makeCache(),
+    store: new MemoryAssignmentStore(),
+    decorStore: new MemoryDecorStore(),
+    log: silentLog,
+    now: () => now,
+  });
+  await rt.init();
+  const left: [string, number][] = [];
+  rt.onTrainingLeft = (u) => left.push([u, rt.trainingPeers(u)]);
+  const ana = enter(rt, ANA, "Ana");
+  enter(rt, BIA, "Bia");
+  const dummy = await placeDummy(rt, ana, "dummy-1");
+  moveTo(rt, ANA, dummy.tx, dummy.ty + 1);
+  rt.setTraining(ANA, "dummy-1");
+  now += 100_000; // 100 s sozinha
+  rt.setTraining(BIA, "dummy-1");
+  now += 100_000; // 100 s com a Bia
+  assert.equal(rt.trainingPeers(ANA), 0.5);
+  // A Ana sai de perto: o crédito dela ainda conta os 100 s com a Bia.
+  for (const dx of [4, 5, 6, 7]) moveTo(rt, ANA, dummy.tx + dx, dummy.ty);
+  assert.deepEqual(left, [[ANA, 0.5]]);
+  // Lido uma vez: depois não há treino nem crédito pendente.
+  assert.equal(rt.trainingPeers(ANA), 0);
+  // A Bia treinou 100 s com a Ana; mais 100 s sozinha: média 0,5.
+  now += 100_000;
+  assert.equal(rt.trainingPeers(BIA), 0.5);
+  // Recomeçar no mesmo boneco não zera a conta da sessão.
+  rt.setTraining(BIA, "dummy-1");
+  assert.equal(rt.trainingPeers(BIA), 0.5);
+});
+
 test("dummy: desconectar não encerra (segue como o treino offline); reconectar longe encerra", async () => {
   const { rt } = await space();
   const left: string[] = [];

@@ -199,6 +199,7 @@ export class LabServer implements TvLink {
       "rpg.run.leave",
       "rpg.board",
       "rpg.stats",
+      "rpg.rank",
       "rpg.lobby.leave",
       "rpg.lobby.loop",
       "rpg.run.watch",
@@ -460,6 +461,25 @@ export class LabServer implements TvLink {
       }
       case "rpg.run.watch":
         return this.emit({ t: "rpg.run", re, d: {} });
+      case "rpg.rank": {
+        // Um ranking de exemplo (28/11/2026): nomes inventados, o "u-ana" é quem joga no laboratório.
+        const at = Date.now() - 3 * 86_400_000;
+        const m = (user_id: string, name: string, cls: ClassId, level: number) => ({ user_id, name, cls, level });
+        const srv = (i: number) => (i % 2 ? { id: "s2", name: "Taverna do Bia" } : { id: "s1", name: "Piloto" });
+        const solo = [
+          ["masmorra-490", m("u-x1", "Kael", "assassino", 300)],
+          ["regiao-6", m("u-ana", "Ana", "mago", 290)],
+          ["masmorra-260", m("u-x2", "Lia", "cacador", 260)],
+          ["cacada-240", m("u-x3", "Tom", "druida", 241)],
+          ["regiao-4", m("u-x4", "Rui", "paladino", 200)],
+        ].map(([dungeon, mm], i) => ({ dungeon: dungeon as string, at: at + i * 3_600_000, members: [mm as ReturnType<typeof m>], server: srv(i) }));
+        const grupo = [
+          ["regiao-12", [m("u-x1", "Kael", "assassino", 500), m("u-x5", "Bia", "guerreiro", 500), m("u-x6", "Caio", "padre", 500), m("u-x2", "Lia", "cacador", 500), m("u-ana", "Ana", "mago", 500)]],
+          ["masmorra-560", [m("u-x5", "Bia", "guerreiro", 480), m("u-x6", "Caio", "padre", 480), m("u-ana", "Ana", "mago", 480)]],
+          ["regiao-8", [m("u-x4", "Rui", "paladino", 400), m("u-x3", "Tom", "druida", 400)]],
+        ].map(([dungeon, ms], i) => ({ dungeon: dungeon as string, at: at + i * 7_200_000, members: ms as ReturnType<typeof m>[], server: srv(i + 1) }));
+        return this.emit({ t: "rpg.rank", re, d: { solo, grupo } });
+      }
       case "rpg.stats": {
         // Um histórico de exemplo (a aba Ganho do medidor): três DGs, uma com quedas.
         const days = d.days === 7 ? 7 : 1;

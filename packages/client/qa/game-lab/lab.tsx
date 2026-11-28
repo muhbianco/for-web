@@ -497,6 +497,24 @@ const SCENARIOS: Scenario[] = [
     run: { dungeon: "masmorra-40", seek: "chefe" },
   },
   {
+    id: "corrida-invocacao",
+    label: "Corrida (chefe que invoca)",
+    screen: "run",
+    // A Invocação só entra no chefe do 70 (§12.3): o corrida-chefe, na 40, não a mostrava (28/11/2026).
+    build: () =>
+      world(stateOf(grow("mago", 85, 50)), {
+        lobbies: {
+          x: lobbyOf("masmorra-70", [
+            { id: "u-ana", name: "Ana", cls: "mago", level: 85 },
+            { id: "u-bia", name: "Bia", cls: "guerreiro", level: 85 },
+            { id: "u-caio", name: "Caio", cls: "padre", level: 85 },
+            { id: "u-duda", name: "Duda", cls: "cacador", level: 85 },
+          ]),
+        },
+      }),
+    run: { dungeon: "masmorra-70", seek: "chefe" },
+  },
+  {
     id: "corrida-fim",
     label: "Corrida (fim)",
     screen: "run",
@@ -545,9 +563,12 @@ const SCENARIOS: Scenario[] = [
 function params() {
   const p = new URLSearchParams(location.hash.slice(1));
   const speed = Number(p.get("speed") ?? "1");
+  // &peers=3: quantos treinam junto no Dojô (o bônus na faixa e no boneco).
+  const peers = Number(p.get("peers") ?? "0");
   return {
     s: p.get("s") ?? "ficha",
     speed: Number.isFinite(speed) ? speed : 1,
+    peers: Number.isFinite(peers) ? peers : 0,
   };
 }
 
@@ -624,7 +645,9 @@ function Lab() {
       <main class="map" data-testid="map">
         <div class="chips">
           <Show when={w().rpg.hero?.dojo ? w().rpg : null}>
-            {(rpg) => <TrainingChip link={server} rpg={rpg()} />}
+            {(rpg) => (
+              <TrainingChip link={server} rpg={rpg()} peers={params().peers} />
+            )}
           </Show>
           <Show when={Object.keys(w().lobbies).length > 0}>
             <LobbyChip link={server} lobbies={w().lobbies} myId={server.me} />
@@ -672,6 +695,7 @@ function Lab() {
                 link={server}
                 request={{ instance: "boneco-1", title: "Boneco de treino" }}
                 rpg={w().rpg}
+                peers={params().peers}
                 onClose={() => setOpen(false)}
               />
             </Match>

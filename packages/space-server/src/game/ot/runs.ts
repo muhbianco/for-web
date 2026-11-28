@@ -80,7 +80,20 @@ export interface RunStore {
     since: number,
     limit: number,
   ): Promise<{ rows: GainRunRow[]; capped: boolean }>;
+  /**
+   * As vitórias fechadas que ainda estão no banco, só com o que o ranking lê (a carga inicial dos
+   * recordes, 28/11/2026), até `limit`.
+   */
+  wins(limit: number): Promise<WinDoc[]>;
 }
+
+/** O que o ranking lê de uma vitória. */
+export type WinDoc = Pick<
+  RpgRunDoc,
+  "_id" | "server" | "dungeon" | "outcome" | "started_at"
+> & {
+  members: { userId: string; name: string; hero: { cls: HeroV5["cls"]; level: number } }[];
+};
 
 /** O que a estatística lê de uma corrida fechada. */
 type GainDoc = Pick<
@@ -181,12 +194,32 @@ export class MemoryRunStore implements RunStore {
       .filter((r): r is GainRunRow => r !== null);
     return { rows, capped: docs.length > limit };
   }
+
+  async wins(limit: number): Promise<WinDoc[]> {
+    return [...this.docs.values()]
+      .filter((d) => d.status === "settled" && d.outcome === "vitoria")
+      .slice(0, limit)
+      .map((d) => ({
+        _id: d._id,
+        server: d.server,
+        dungeon: d.dungeon,
+        outcome: d.outcome,
+        started_at: d.started_at,
+        members: d.members.map((m) => ({
+          userId: m.userId,
+          name: m.name,
+          hero: { cls: m.hero.cls, level: m.hero.level },
+        })),
+      }));
+  }
 }
 
 type RunMongo = RpgRunDoc & { expire_at: Date | null };
 const OP = { maxTimeMS: 2_000 } as const;
 /** A leitura da estatística passa por milhares de corridas grandes (o herói inteiro de cada um). */
 const GAIN_QUERY_MS = 5_000;
+/** A carga inicial do ranking lê todas as vitórias que ainda estão no banco (uma vez). */
+const WINS_QUERY_MS = 30_000;
 
 /** Mongo `muchat_space.rpg_runs5` (a `rpg_runs` do v4 fica como estava). */
 export class MongoRunStore implements RunStore {
@@ -305,5 +338,29 @@ export class MongoRunStore implements RunStore {
       .map((d) => gainRowOf(d, userId))
       .filter((r): r is GainRunRow => r !== null);
     return { rows, capped: docs.length > limit };
+  }
+
+  async wins(limit: number): Promise<WinDoc[]> {
+    // Uma vez por versão da carga, na subida: sem índice próprio, com prazo maior e só os campos lidos.
+    return (await this.col
+      .find(
+        { status: "settled", outcome: "vitoria", v: 2 },
+        {
+          maxTimeMS: WINS_QUERY_MS,
+          limit,
+          projection: {
+            _id: 1,
+            server: 1,
+            dungeon: 1,
+            outcome: 1,
+            started_at: 1,
+            "members.userId": 1,
+            "members.name": 1,
+            "members.hero.cls": 1,
+            "members.hero.level": 1,
+          },
+        },
+      )
+      .toArray()) as unknown as WinDoc[];
   }
 }

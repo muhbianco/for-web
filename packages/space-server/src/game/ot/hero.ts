@@ -201,10 +201,12 @@ export function closeDojo(d: RpgHeroDoc, now: number, others: number): boolean {
   return true;
 }
 
+/** `peers`: os colegas do treino anterior (o runtime), creditados se este fechar para abrir outro. */
 export function openDojo(
   d: RpgHeroDoc,
   where: { instance: string; server: string; zone: string },
   now: number,
+  peers = 0,
 ): RpgOutcome {
   if (inRun(d, now)) return no("in_run");
   if (
@@ -213,7 +215,7 @@ export function openDojo(
     d.dojo.server === where.server
   )
     return yes;
-  if (d.dojo) closeDojo(d, now, 0);
+  if (d.dojo) closeDojo(d, now, peers);
   const r = startDojo({ ...d.hero, dojo: null }, now);
   if (!r.ok) return no(r.error);
   d.dojo = { ...where, since: now };
@@ -222,14 +224,15 @@ export function openDojo(
 
 // ------------------------------------------------------------ corrida
 
-/** Marca a corrida no herói (o treino fecha antes). */
+/** Marca a corrida no herói (o treino fecha antes, com o bônus dos colegas: `peers`). */
 export function markRun(
   d: RpgHeroDoc,
   mark: RpgRunMark,
   now: number,
+  peers = 0,
 ): RpgOutcome {
   if (inRun(d, now) && d.run?.id !== mark.id) return no("in_run");
-  closeDojo(d, now, 0);
+  closeDojo(d, now, peers);
   d.run = mark;
   return yes;
 }

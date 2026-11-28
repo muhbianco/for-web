@@ -6,7 +6,7 @@ import { styled } from "styled-system/jsx";
 
 import { gameChip } from "./gameTheme";
 import type { GameLink } from "./gameUi";
-import { dojoNow, num, serverClock } from "./heroModel";
+import { dojoNow, num, num1, serverClock } from "./heroModel";
 
 /**
  * A faixa "treinando" no topo do Espaço: a Proficiência subindo ao vivo (projetada pelo relógio do
@@ -15,6 +15,8 @@ import { dojoNow, num, serverClock } from "./heroModel";
 export default function TrainingChip(props: {
   link: GameLink;
   rpg: { hero: RpgHeroState | null; serverNow: number; at: number };
+  /** Quem treina junto na zona (o bônus do Dojô). */
+  peers: number;
 }) {
   const { t } = useLingui();
   const [tick, setTick] = createSignal(0);
@@ -26,7 +28,11 @@ export default function TrainingChip(props: {
     tick();
     const s = props.rpg.hero;
     return s?.dojo
-      ? dojoNow({ hero: s.hero, dojo: s.dojo }, serverClock(props.rpg))
+      ? dojoNow(
+          { hero: s.hero, dojo: s.dojo },
+          serverClock(props.rpg),
+          props.peers,
+        )
       : null;
   };
   return (
@@ -40,6 +46,12 @@ export default function TrainingChip(props: {
               <Up> +{v().gained}</Up>
             </Show>
           </span>
+          <Rate title={t`XP por segundo agora`}>
+            {t`${num1(v().perSecond)}/s`}
+            <Show when={v().bonus > 0}>
+              <Up>{` +${Math.round(v().bonus * 100)}%`}</Up>
+            </Show>
+          </Rate>
           <Track aria-hidden="true">
             <i
               style={{
@@ -74,6 +86,7 @@ const Chip = styled("div", {
   },
 });
 const Up = styled("span", { base: { color: "#7ee08a", fontWeight: 700 } });
+const Rate = styled("span", { base: { opacity: 0.85 } });
 const Track = styled("span", {
   base: {
     width: "48px",

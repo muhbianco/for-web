@@ -114,6 +114,20 @@ test("monstros: lugares distintos, o chefe 2 × 2 sem ninguém em cima, arte par
   assert.equal(foeArt({ archetype: "lacaio", family: "elemental" }, 5, 0), "espirito-da-nevasca");
 });
 
+test("invocados que chegam no meio da sala não mexem no lugar de quem já está nela (28/11/2026)", () => {
+  // A cena acrescenta os lacaios da Invocação com a sala montada (scene.ts, growRoom): os lugares dos
+  // primeiros têm de ser os mesmos com e sem eles, senão o chefe e os vivos pulariam de lugar.
+  for (const d of DUNGEONS.filter((x) => x.kind !== "cacada" && x.level >= 70)) {
+    const boss = roomFoes(d.id, 4)[3]!.map((f) => f.boss);
+    const before = monsterSpots(boss);
+    for (let extra = 1; extra <= 12; extra++) {
+      const after = monsterSpots([...boss, ...Array.from({ length: extra }, () => false)]);
+      assert.deepEqual(after.slice(0, before.length), before, `${d.id} +${extra}`);
+      assert.equal(new Set(after.map((s) => `${s.x},${s.y}`)).size, after.length, `${d.id} +${extra}: dois no mesmo lugar`);
+    }
+  }
+});
+
 test("cada segundo de corridas inteiras vira um roteiro de ~0,8 s, sem perder dano nem cura", () => {
   let seconds = 0;
   let areas = 0;

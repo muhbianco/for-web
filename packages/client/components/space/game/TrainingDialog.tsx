@@ -16,7 +16,7 @@ import {
   Row,
   useCommands,
 } from "./gameUi";
-import { dojoNow, num, serverClock } from "./heroModel";
+import { dojoNow, num, num1, serverClock } from "./heroModel";
 
 /**
  * O Dojô (§2): o boneco treina a Proficiência, o nível base que multiplica vida, mana, ATQ, MATQ e
@@ -27,6 +27,8 @@ export default function TrainingDialog(props: {
   link: GameLink;
   request: { instance: string; title: string };
   rpg: { hero: RpgHeroState | null; serverNow: number; at: number } | null;
+  /** Quem treina junto na zona agora (o bônus do Dojô). */
+  peers: number;
   onClose: () => void;
 }) {
   const { t } = useLingui();
@@ -43,7 +45,11 @@ export default function TrainingDialog(props: {
     tick();
     const s = state();
     return s && props.rpg
-      ? dojoNow({ hero: s.hero, dojo: s.dojo }, serverClock(props.rpg))
+      ? dojoNow(
+          { hero: s.hero, dojo: s.dojo },
+          serverClock(props.rpg),
+          here() ? props.peers : 0,
+        )
       : null;
   };
   return (
@@ -78,8 +84,13 @@ export default function TrainingDialog(props: {
           </Show>
         </Panel>
         <Muted>
-          {t`${num(d()!.perSecond)} XP por segundo enquanto o herói bate no boneco; +5% para cada outro herói treinando na mesma sala (até +25%). Só treina aqui, fora da dungeon.`}
+          {t`${num1(d()!.perSecond)} XP por segundo enquanto o herói bate no boneco; +5% para cada outro herói treinando na mesma sala (até +25%). Só treina aqui, fora da dungeon.`}
         </Muted>
+        <Show when={here() && d()!.peers > 0}>
+          <Muted role="status">
+            {t`Agora ${d()!.peers} treinando junto: +${Math.round(d()!.bonus * 100)}%.`}
+          </Muted>
+        </Show>
         <Notice error={cmd.error()} />
         <Row>
           <Show

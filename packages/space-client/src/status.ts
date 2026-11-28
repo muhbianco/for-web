@@ -76,6 +76,9 @@ export function statusTone(
     case "provocado":
       return "taunt";
     case "debuff":
+      // D71: os DoTs do chefe físico com o ícone do tipo; a Maldição e o Drenar com o de maldição.
+      if (st.s === "sangramento") return "bleed";
+      if (st.s === "veneno") return "poison";
       return st.s === "maldicao" || st.s === "drenar" ? "curse" : "debuff";
     case "dot": {
       // O tipo que o motor manda (o mesmo do número) decide; o elemento da skill só no DoT sem tipo.

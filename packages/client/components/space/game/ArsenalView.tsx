@@ -208,6 +208,11 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
 
   const shared = Math.round(B.cfg.loot.sharedLegendaryShare * 100);
   const named = Math.round(B.cfg.loot.namedInBase * 100);
+  // D71: o chefe (a tabela "Chefes: dano em área e por segundo").
+  const mech = B.cfg.bossMechanics;
+  const mon = B.cfg.monsters;
+  const dots = mech.dots;
+  const pulseShare = mon.pulsePct * mech.pulseMult;
   const usableExtra = pct(B.cfg.loot.legendaryUsableWeight - 1);
   /** D70: o que cai como Lendário para a classe escolhida (a mesma conta do sorteio). */
   const legendaryFor = createMemo(() => {
@@ -539,6 +544,51 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
             {t`No Ferreiro, ${B.cfg.supreme.inputs} armas Lendárias da mesma família e do mesmo nível de item viram uma Arma Suprema: a base fica (afixos, nome e o 1º perk), o refino é o maior das ${B.cfg.supreme.inputs} menos 30% (+10 vira +7), ganha de +${Math.round(B.cfg.supreme.power.min * 100)}% a +${Math.round(B.cfg.supreme.power.max * 100)}% de poder no dano da arma (média de 15%) e um 2º perk sorteado, que rola como o 1º. É o único item com 2 perks. Desmontar ou vender rende as ${B.cfg.supreme.inputs} lendárias.`}
           </Muted>
         </GroupHead>
+      </Group>
+
+      {/* D71 (28/11/2026): o que o chefe cobra por segundo e em área, com os números do config. */}
+      <Group>
+        <GroupHead>
+          <h4>{t`Chefes: dano em área e por segundo`}</h4>
+          <Muted>
+            {t`Os chefes de Masmorra e de Região têm três jeitos de lutar. Cada Chefe de Região tem o seu; nas Masmorras, ele muda a cada 10 níveis. Os números valem para um herói do nível do chefe com a defesa de referência: com menos defesa, ou abaixo do nível do chefe, o dano é maior. Cada dungeon ainda tem o seu ajuste de força, que vale para estes danos como vale para os golpes. A purificação tira os três danos por segundo.`}
+          </Muted>
+        </GroupHead>
+        <TableWrap>
+          <table>
+            <thead>
+              <tr>
+                <th>{t`Chefe`}</th>
+                <th>{t`Em todos, a cada ${mon.pulseEverySeconds} s`}</th>
+                <th>{t`Por segundo`}</th>
+                <th>{t`Defesa que corta`}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>{t`Arcano`}</td>
+                <td>{t`Pulso Sombrio (mágico): ${pct(pulseShare)} da vida`}</td>
+                <td>{t`Maldição em ${dots.arcano.targets} herói que não é tanque: ${pct(dots.arcano.pct)} da vida por segundo, até ${dots.arcano.maxSeconds} s, a cada ${dots.arcano.everySeconds} s`}</td>
+                <td>{t`Defesa mágica`}</td>
+              </tr>
+              <tr>
+                <td>{t`Sanguinário`}</td>
+                <td>{t`Talho (físico; esquiva e bloqueio contam): ${pct(pulseShare)} da vida`}</td>
+                <td>{t`Sangramento em ${dots.sanguinario.targets} heróis que não são tanque: ${pct(dots.sanguinario.pct)} da vida por segundo, até ${dots.sanguinario.maxSeconds} s, a cada ${dots.sanguinario.everySeconds} s`}</td>
+                <td>{t`Defesa física`}</td>
+              </tr>
+              <tr>
+                <td>{t`Peçonhento`}</td>
+                <td>{t`Talho (físico; esquiva e bloqueio contam): ${pct(pulseShare)} da vida`}</td>
+                <td>{t`Veneno no grupo todo: ${pct(dots.peconhento.pct)} da vida por segundo, até ${dots.peconhento.maxSeconds} s, a cada ${dots.peconhento.everySeconds} s`}</td>
+                <td>{t`Defesa física`}</td>
+              </tr>
+            </tbody>
+          </table>
+        </TableWrap>
+        <Muted>
+          {t`Invocação (chefes a partir do nível ${mech.summonFrom}): a cada ${mech.summon.everySeconds} s, ${mech.summon.count} lacaios (${mech.summon.countBySize[4] ?? mech.summon.count} em grupos de 4 ou 5) que nascem atrás de quem não é tanque. Os heróis de dano largam o chefe para matá-los; o tanque e o suporte ficam no chefe.`}
+        </Muted>
       </Group>
 
       <Group>

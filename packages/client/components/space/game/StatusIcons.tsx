@@ -146,8 +146,8 @@ export function statusViews(
     const tone = statusTone(st, authorCls);
     const skill = authorCls ? skillOf(authorCls, st.s) : undefined;
     const name =
-      st.s === "maldicao"
-        ? mechanicName("maldicao")
+      st.s === "maldicao" || st.s === "sangramento" || st.s === "veneno"
+        ? mechanicName(st.s)
         : st.s === "drenar"
           ? mechanicName("dreno")
           : st.k === "atordoado"

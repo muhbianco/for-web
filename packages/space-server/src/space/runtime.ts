@@ -1,3 +1,4 @@
+import { balance } from "@muchat/space-core/game/ot/balance";
 import {
   applyDecorOp,
   applyMove,
@@ -245,6 +246,16 @@ export class SpaceRuntime implements MediaHost, TvHost {
    */
   /** Who trains at which dummy. */
   private readonly trainingAt = new Map<string, string>();
+  /**
+   * O bônus social do Dojô ao longo do treino (28/11/2026, o dono: "estamos em 4 heróis no dummie e
+   * só estamos ganhando 10 de xp"): cada treinador soma colegas × segundos (até o teto do bônus) a cada
+   * mudança de quem treina na zona. Antes o bônus era a foto de quem treinava na hora de parar: quem
+   * saía de perto (ou fechava o app) já não constava e levava +0%, o último a parar também, e a
+   * corrida que começava fechava o treino com 0.
+   */
+  private readonly trainSocial = new Map<string, { since: number; lastAt: number; peerSeconds: number }>();
+  /** O média de colegas de quem acabou de parar, até o serviço creditar (trainingPeers). */
+  private readonly trainEnded = new Map<string, number>();
   /** Called when a trainer leaves the dummy (walked off, moved, evicted, dummy removed). */
   onTrainingLeft: ((userId: string) => void) | null = null;
   /** Called when someone enters the map where the game is on (to show their hero's level). */
@@ -819,8 +830,8 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return this.trainingAt.get(userId) === instanceId;
   }
 
-  /** How many others train at a dummy in the same zone as this person (the Dojô social bonus). */
-  trainingPeers(userId: string): number {
+  /** How many others train at a dummy in the same zone as this person right now. */
+  private peersNow(userId: string): number {
     const mine = this.trainingAt.get(userId);
     if (mine === undefined) return 0;
     const zoneOf = (id: string) => this.decor.items.find((i) => i.id === id)?.zone;
@@ -830,14 +841,58 @@ export class SpaceRuntime implements MediaHost, TvHost {
     return n;
   }
 
+  /** Brings every trainer's peer-seconds up to now (call before anyone starts or stops). */
+  private settleTraining(): void {
+    const now = this.now();
+    for (const [u, s] of this.trainSocial) {
+      s.peerSeconds += (Math.max(0, now - s.lastAt) / 1000) * Math.min(TRAIN_PEER_CAP, this.peersNow(u));
+      s.lastAt = now;
+    }
+  }
+
+  private beginTraining(userId: string, instanceId: string): void {
+    if (this.trainingAt.get(userId) === instanceId) return;
+    if (this.trainingAt.has(userId)) this.endTraining(userId);
+    this.settleTraining();
+    this.trainingAt.set(userId, instanceId);
+    const now = this.now();
+    this.trainSocial.set(userId, { since: now, lastAt: now, peerSeconds: 0 });
+    this.trainEnded.delete(userId);
+  }
+
+  private endTraining(userId: string): void {
+    if (!this.trainingAt.has(userId)) return;
+    this.settleTraining();
+    const s = this.trainSocial.get(userId);
+    if (s) this.trainEnded.set(userId, averagePeers(s, this.now()));
+    this.trainSocial.delete(userId);
+    this.trainingAt.delete(userId);
+  }
+
+  /**
+   * The Dojô social bonus to credit: how many others trained at a dummy in the same zone, on average
+   * over this person's session (fractional; each moment capped at the bonus's ceiling). Training: up
+   * to now. Just stopped (walked away, the dummy went, evicted): the session that ended, once.
+   */
+  trainingPeers(userId: string): number {
+    const s = this.trainSocial.get(userId);
+    if (s) {
+      this.settleTraining();
+      return averagePeers(s, this.now());
+    }
+    const ended = this.trainEnded.get(userId);
+    this.trainEnded.delete(userId);
+    return ended ?? 0;
+  }
+
   /** The dummy the runtime sees the person training at (null: none). */
   trainingOf(userId: string): string | null {
     return this.trainingAt.get(userId) ?? null;
   }
 
   setTraining(userId: string, instanceId: string | null): void {
-    if (instanceId === null) this.trainingAt.delete(userId);
-    else this.trainingAt.set(userId, instanceId);
+    if (instanceId === null) this.endTraining(userId);
+    else this.beginTraining(userId, instanceId);
     this.markHero(userId);
   }
 
@@ -938,7 +993,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
     if (instanceId === undefined) return;
     const a = this.avatars.get(userId);
     if (a && !a.evicted && this.besideInstance(a, instanceId, "train", TRAIN_REACH_TILES)) return;
-    this.trainingAt.delete(userId);
+    this.endTraining(userId);
     this.markHero(userId);
     this.onTrainingLeft?.(userId);
   }
@@ -1719,7 +1774,7 @@ export class SpaceRuntime implements MediaHost, TvHost {
       };
       this.avatars.set(user._id, a);
       // Trained there before the restart: goes on training (the hero document kept the session).
-      if (start?.training) this.trainingAt.set(user._id, start.training);
+      if (start?.training) this.beginTraining(user._id, start.training);
     }
     a.dirty = true;
     const visible = new Set<string>();
@@ -1945,4 +2000,12 @@ export class SpaceRuntime implements MediaHost, TvHost {
     this.visibleTo.clear();
     this.observers.clear();
   }
+}
+
+/** The Dojô bonus stops growing at this many others (+5% each, up to +25%). */
+const TRAIN_PEER_CAP = balance.cfg.proficiency.socialMax / balance.cfg.proficiency.socialPerHero;
+
+function averagePeers(s: { since: number; peerSeconds: number }, now: number): number {
+  const seconds = Math.max(0, now - s.since) / 1000;
+  return seconds > 0 ? s.peerSeconds / seconds : 0;
 }
