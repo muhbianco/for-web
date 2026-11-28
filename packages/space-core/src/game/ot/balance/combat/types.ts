@@ -186,6 +186,13 @@ export type Effect =
       chance?: number;
     }
   | { type: "provocar"; durationMs: number; scope: "alvo" | "sala" }
+  /**
+   * D66 Devoção (27/11/2026, o paladino tanca por outros meios): por `durationMs`, `pct` do dano que
+   * os monstros causam em cada aliado vai para quem conjurou, com as defesas, o bloqueio e o escudo
+   * dele; vale enquanto ele estiver com `minHpPct` ou mais da vida. Não pega em outro tanque. O
+   * Cataclismo não passa por ela.
+   */
+  | { type: "devocao"; pct: number; durationMs: number; minHpPct: number }
   | { type: "cortaAmeaca"; pct: number }
   | { type: "reviver"; hpPct: number }
   | {

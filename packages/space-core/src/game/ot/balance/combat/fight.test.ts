@@ -26,8 +26,15 @@ const hitter = (raw: number, extra: Partial<EnemyInput> = {}): EnemyInput => ({
   attacksPerSecond: 0.5,
   ...extra,
 });
-const run = (heroes: FighterInput[], enemies: EnemyInput[], maxSeconds = 30) =>
-  fight(heroes, enemies, { maxSeconds, mode: "esperado" });
+const run = (
+  heroes: FighterInput[],
+  enemies: EnemyInput[],
+  maxSeconds: number | { record: true } = 30,
+  opts: { record?: true } = {},
+) =>
+  typeof maxSeconds === "number"
+    ? fight(heroes, enemies, { maxSeconds, mode: "esperado", ...opts })
+    : fight(heroes, enemies, { maxSeconds: 30, mode: "esperado", ...maxSeconds });
 
 test("ameaça: com o guerreiro provocando, o chefe não encosta no mago", () => {
   const r = run(
@@ -41,14 +48,31 @@ test("ameaça: com o guerreiro provocando, o chefe não encosta no mago", () => 
   assert.ok(r.heroes[0]!.hpPct < 1, "o guerreiro não apanhou");
 });
 
-test("ameaça: sem tanque, o chefe fica em quem mais ameaça (o mago, que mais causa dano)", () => {
-  // No tique 0 ninguém tem ameaça e o primeiro golpe vai no primeiro da fila (como no gabarito).
+test("ameaça: sem tanque, o chefe abre no suporte e fica em quem mais ameaça (o mago, que mais causa dano)", () => {
+  // D65: no tique 0 ninguém tem ameaça e o 1º golpe vai em quem tem mais ameaça de classe (o padre,
+  // ×1 contra ×0,8 do mago), não no 1º da fila; depois o dano do mago puxa o chefe.
   const r = run(
     [bare("mago", GABARITO_KITS.mago), bare("padre")],
     [hitter(200)],
+    { record: true },
   );
   assert.ok(r.heroes[0]!.hpPct < 1, "o mago não apanhou");
-  assert.equal(r.heroes[1]!.hpPct, 1, "o padre apanhou");
+  const first = r.frames![0]!.e.filter((e) => e.k === "golpe" && e.a >= 100);
+  assert.deepEqual(first.map((e) => (e as { b: number }).b), [1], "o 1º golpe não foi no padre");
+});
+
+test("D65: a abertura de cada sala vai no tanque, mesmo com o mago na frente da lista", () => {
+  const boss = E.dungeonBoss(L, 4).autoRaw;
+  const mago = bare("mago", GABARITO_KITS.mago);
+  const r = run(
+    [mago, bare("guerreiro", GABARITO_KITS.guerreiro)],
+    [hitter(boss), hitter(boss), hitter(boss)],
+    { record: true },
+  );
+  const first = r.frames![0]!.e.filter((e) => e.k === "golpe" && e.a >= 100);
+  assert.equal(first.length, 3, "os 3 monstros batem no 1º segundo");
+  assert.ok(first.every((e) => (e as { b: number }).b === 1), "o 1º golpe de algum monstro foi no mago");
+  assert.equal(r.frames![0]!.h[0], Math.round(mago.stats.hp), "o mago apanhou no 1º segundo");
 });
 
 test("poções: no máximo 1 por segundo", () => {
@@ -227,15 +251,16 @@ test("conjuração: o Meteoro só cai depois de 2 s, e o mago não bate enquanto
 
 test("Ressurreição: revive o aliado caído uma vez por luta", () => {
   const r = run(
+    // D65: o golpe abre em quem tem mais ameaça de classe; o guerreiro cai primeiro e o padre revive.
     [
-      withSkills("mago", []),
+      withSkills("guerreiro", []),
       withSkills("padre", [skill("padre", "ressurreicao")]),
     ],
     [hitter(1e7)],
     10,
   );
   assert.equal(r.heroes[1]!.casts["ressurreicao"], 1);
-  assert.ok(r.deaths >= 2, "o mago não morreu de novo depois de revivido");
+  assert.ok(r.deaths >= 2, "o guerreiro não morreu de novo depois de revivido");
 });
 
 test("Recusa da Morte (5/5): o golpe fatal deixa o guerreiro com 1 HP uma vez", () => {
@@ -569,3 +594,52 @@ test("D49: a Desafio leva a ameaça do guerreiro aos monstros que ele não acert
   const [a, b] = threat(5);
   assert.ok(b! > 0 && b! <= 0.2 * a! + 1e-9, `alvo ${a}, outro ${b}`);
 });
+
+// ---------------------------------------------------------------- D66: Devoção e Escudo da Fé
+const pulser = (raw: number): EnemyInput => ({
+  ...hitter(0),
+  autoRaw: 0,
+  pulse: { everySeconds: 2, raw },
+});
+const pulseOn = (r: ReturnType<typeof run>, b: number, s: string) =>
+  r.frames!.flatMap((f) => f.e).filter((e) => e.k === "magia" && e.b === b && e.s === s).reduce((a, e) => a + (e as { v: number }).v, 0);
+
+test("D66 Devoção: 30% do dano que o aliado levaria vai para o paladino", () => {
+  // 10 s: dentro dos 12 s de uma Devoção (o paladino solta no 1º tique).
+  const sem = run([withSkills("paladino", []), withSkills("mago", [])], [pulser(300)], 10, { record: true });
+  const com = run(
+    [withSkills("paladino", [skill("paladino", "intervencao-divina")]), withSkills("mago", [])],
+    [pulser(300)],
+    10,
+    { record: true },
+  );
+  const magoSem = pulseOn(sem, 1, "pulso");
+  const magoCom = pulseOn(com, 1, "pulso");
+  assert.ok(magoSem > 0, "o pulso não acertou o mago");
+  // O mago leva 70% (a parte dele passa pelas defesas dele, igual a antes).
+  assert.ok(Math.abs(magoCom / magoSem - 0.7) < 0.03, `o mago levou ${(magoCom / magoSem).toFixed(3)} do dano`);
+  assert.ok(pulseOn(com, 0, "intervencao-divina") > 0, "o paladino não levou a parte desviada");
+  assert.ok(com.frames!.some((f) => f.u?.h[1]?.some((x) => x.st === "devocao" && x.a === 0)), "a tela não mostra a Devoção no mago");
+});
+
+test("D66 Devoção: sozinho não sai; abaixo de 25% da vida o paladino para de desviar", () => {
+  const solo = run([withSkills("paladino", [skill("paladino", "intervencao-divina")])], [hitter(100)], 10);
+  assert.equal(solo.heroes[0]!.casts["intervencao-divina"] ?? 0, 0);
+  // Não pega em outro tanque (só com o guerreiro, nem sai).
+  const doisTanques = run(
+    [withSkills("paladino", [skill("paladino", "intervencao-divina")]), withSkills("guerreiro", [])],
+    [pulser(300)],
+    10,
+    { record: true },
+  );
+  assert.equal(doisTanques.heroes[0]!.casts["intervencao-divina"] ?? 0, 0);
+  assert.equal(pulseOn(doisTanques, 0, "intervencao-divina"), 0);
+  // O paladino entra a 20% da vida e sem poção: não desvia nada; o mago leva o pulso inteiro.
+  const pal = { ...withSkills("paladino", [skill("paladino", "intervencao-divina")]), potions: { hp: 0, mp: 0, stock: 0 } };
+  const carry = { hp: pal.stats.hp * 0.2, mp: pal.stats.mp, alive: true, pots: 0, cooldowns: {}, revived: false, cheatedDeath: false };
+  const fraco = fight([pal, withSkills("mago", [])], [pulser(30)], { maxSeconds: 10, mode: "esperado", record: true, carry: [carry, undefined] });
+  const inteiro = run([withSkills("paladino", []), withSkills("mago", [])], [pulser(30)], 10, { record: true });
+  assert.equal(pulseOn(fraco, 0, "intervencao-divina"), 0, "desviou abaixo de 25%");
+  assert.equal(pulseOn(fraco, 1, "pulso"), pulseOn(inteiro, 1, "pulso"));
+});
+

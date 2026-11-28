@@ -81,7 +81,9 @@ export function feedLine(
             ? mechanicName(ev.s)
             : ev.s === "cataclismo"
               ? t`Cataclismo`
-              : ev.s;
+              : ev.s === "intervencao-divina"
+                ? t`Devoção`
+                : ev.s;
         return {
           text: t`${who(ev.a)}: ${name} em ${who(ev.b)} (${num(ev.v)})`,
           tone: "bad",

@@ -305,7 +305,9 @@ export type FxArt =
   | "meteoro"
   | "raio"
   | "giro"
-  | "bolha";
+  | "bolha"
+  // D66: o vínculo da Devoção (linha fina, esticada do aliado ao paladino).
+  | "elo";
 
 /** Os pixels de uma elipse (contorno ou cheia), centrada no canvas. */
 function ellipse(ctx: Ctx, w: number, h: number, color: string, fill: boolean) {
@@ -475,6 +477,15 @@ export function fxCanvas(k: FxArt): HTMLCanvasElement {
         [9, 18], [7, 17], [5, 16], [0, 9], [1, 7], [2, 5],
       ];
       for (const [x, y] of arcs) px(ctx, x, y, 2, 1, "#ffffff");
+      return c;
+    }
+    case "elo": {
+      // 1 px de altura, esticado pela distância: o miolo forte e as bordas fracas (tracejado vivo).
+      const { c, ctx } = artCanvas(4, 1);
+      px(ctx, 0, 0, 3, 1, "#ffffff");
+      ctx.globalAlpha = 0.35;
+      px(ctx, 3, 0, 1, 1, "#ffffff");
+      ctx.globalAlpha = 1;
       return c;
     }
     case "bolha": {

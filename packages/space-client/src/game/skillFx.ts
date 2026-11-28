@@ -74,12 +74,6 @@ export const CAST_FX: Readonly<Record<string, CastFx>> = {
     color: FX_COLOR.branco,
     alvo: "quemTemEscudo",
   },
-  "intervencao-divina": {
-    on: "lancamento",
-    kind: "bolha",
-    color: FX_COLOR.escudo,
-    alvo: "grupo",
-  },
 };
 
 export function castFx(skill: string): CastFx | null {
@@ -88,17 +82,24 @@ export function castFx(skill: string): CastFx | null {
 
 /** O que fica desenhado num herói ou monstro enquanto um efeito do jogo está ativo nele. */
 export interface LingerFx {
-  art: "nuvem" | "glifo" | "floco" | "bolha";
+  art: "nuvem" | "glifo" | "floco" | "bolha" | "elo";
   color: number;
   /** Embaixo da unidade (no chão), por cima dela ou em volta dela. */
   layer: "chao" | "cima" | "volta";
+  /** No elo: o herói da outra ponta (quem protege). */
+  from?: number;
 }
 
 /**
  * O efeito que dura, pelo efeito ativo do quadro (a skill que pôs e o tipo). Um por skill e unidade:
  * duas camadas da mesma Nuvem Tóxica são uma nuvem só.
  */
-export function lingerFor(st: Pick<FrameStatus, "s" | "k">): LingerFx | null {
+export function lingerFor(
+  st: Pick<FrameStatus, "s" | "k"> & Partial<Pick<FrameStatus, "st" | "a">>,
+): LingerFx | null {
+  // D66: a Devoção liga o aliado ao paladino que toma parte do dano dele.
+  if (st.k === "buff" && st.st === "devocao" && st.a !== undefined)
+    return { art: "elo", color: FX_COLOR.sagrado, layer: "chao", from: st.a };
   if (st.k === "dot" && st.s === "fumaca")
     return { art: "nuvem", color: FX_COLOR.veneno, layer: "cima" };
   if (st.k === "dot" && st.s === "consagracao")
@@ -118,14 +119,16 @@ export function lingerFor(st: Pick<FrameStatus, "s" | "k">): LingerFx | null {
 
 /** As que duram numa unidade, sem repetir a mesma arte (a chave é a arte e a cor). */
 export function lingersOf(
-  list: readonly Pick<FrameStatus, "s" | "k">[] | undefined,
+  list:
+    | readonly (Pick<FrameStatus, "s" | "k"> & Partial<Pick<FrameStatus, "st" | "a">>)[]
+    | undefined,
 ): LingerFx[] {
   const out: LingerFx[] = [];
   const seen = new Set<string>();
   for (const st of list ?? []) {
     const fx = lingerFor(st);
     if (!fx) continue;
-    const key = `${fx.art}|${fx.color}`;
+    const key = `${fx.art}|${fx.color}|${fx.from ?? ""}`;
     if (seen.has(key)) continue;
     seen.add(key);
     out.push(fx);

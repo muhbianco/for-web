@@ -128,6 +128,14 @@ interface Hero {
     refund: number;
     src?: string;
   } | null;
+  /** D66 Devoção: quem protege este herói (parte do dano dos monstros vai para ele). */
+  devotion: {
+    by: Hero;
+    pct: number;
+    until: number;
+    minHp: number;
+    src: string;
+  } | null;
   buffs: Map<string, Timed>;
   /** Efeitos negativos no herói (Maldição, Drenar Mana), removíveis por purificação. */
   debuffs: Map<string, { kind: string; until: number; value: number }>;
@@ -238,6 +246,7 @@ export function fight(
     shieldUntil: 0,
     shieldBreak: null,
     manaShield: null,
+    devotion: null,
     buffs: new Map(),
     debuffs: new Map(),
     hots: [],
@@ -455,6 +464,14 @@ export function fight(
           s: q.manaShield.src ?? "escudo-de-mana",
           k: "mana",
           t: left(q.manaShield.until),
+        });
+      if (q.devotion && q.devotion.until > now && q.devotion.by.alive)
+        push(out, {
+          s: q.devotion.src,
+          k: "buff",
+          st: "devocao",
+          t: left(q.devotion.until),
+          a: who(q.devotion.by),
         });
       return out;
     });
@@ -763,9 +780,26 @@ export function fight(
     h: Hero,
     e: Enemy,
     raw: number,
-    o: { magic?: boolean; certeiro?: boolean } = {},
+    o: { magic?: boolean; certeiro?: boolean; devoted?: boolean } = {},
   ) => {
     if (!h.alive) return;
+    // D66 Devoção: parte do golpe vai para o paladino, com as defesas dele; o resto segue no aliado.
+    const dv = h.devotion;
+    if (
+      !o.devoted &&
+      dv &&
+      dv.until > t &&
+      dv.by !== h &&
+      dv.by.alive &&
+      ratio(dv.by) >= dv.minHp
+    ) {
+      const part = raw * dv.pct;
+      const was = foeSource;
+      foeSource = dv.src;
+      hurt(dv.by, e, part, { ...o, devoted: true });
+      foeSource = was;
+      raw -= part;
+    }
     const ch = h.ch;
     const m = e.input.level;
     const magic = o.magic ?? false;
@@ -1137,6 +1171,11 @@ export function fight(
     return ally ? { ok, ally } : { ok };
   };
 
+  /** D66: a Devoção só sai com aliado vivo (que não seja tanque) para proteger. */
+  const devotionAllowed = (h: Hero, s: SkillDef): boolean =>
+    !s.effects.some((x) => x.type === "devocao") ||
+    heroes.some((q) => q !== h && q.alive && q.input.role !== "tanque");
+
   const burstHeld = (h: Hero, s: SkillDef): boolean => {
     if (h.input.role === "tanque") return false;
     if (skillTotalMultiplier(s) < cfg.threat.burstMultiplierFrom) return false;
@@ -1456,6 +1495,23 @@ export function fight(
         }
         return;
       }
+      case "devocao": {
+        // Teto de 90%: o aliado sempre leva alguma parte (o motor não desvia o golpe inteiro). Não
+        // pega em outro tanque (como a do Cruzado do Ragnarok): o guerreiro se defende melhor que o
+        // paladino, e desviar o golpe dele enfraquecia o grupo de dois tanques (Região do 500: 97% →
+        // 92% no relatório).
+        const pct = Math.min(0.9, eff.pct);
+        for (const q of heroes)
+          if (q !== h && q.alive && q.input.role !== "tanque")
+            q.devotion = {
+              by: h,
+              pct,
+              until: dur(eff.durationMs),
+              minHp: eff.minHpPct,
+              src: s.id,
+            };
+        break;
+      }
       case "escudo": {
         const amountFor = (tt: Hero) =>
           (eff.pctMaxHp ?? 0) * maxHp(tt) +
@@ -1726,7 +1782,12 @@ export function fight(
       if (!e.alive) continue;
       if (e.forced && e.forcedUntil > t && e.forced.alive) e.target = e.forced;
       else {
+        // D65 (27/11/2026): com a ameaça zerada (o começo de cada sala), abre quem chama mais atenção
+        // — o multiplicador de ameaça da classe com a VIT: o tanque; sem tanque, o suporte; empate, a
+        // ordem — e não o 1º da lista, que no jogo é quem criou o grupo. Antes o mago que criava o
+        // grupo levava o 1º golpe de todos os monstros de cada sala, antes de o tanque agir.
         let best = alive[0]!;
+        for (const q of alive) if (q.ch.threat > best.ch.threat) best = q;
         for (const q of alive) if (q.threat[e.i]! > best.threat[e.i]!) best = q;
         if (
           !e.target ||
@@ -2030,6 +2091,7 @@ export function fight(
         if (!cond.ok) continue;
         if (!tauntAllowed(h, s)) continue;
         if (burstHeld(h, s)) continue;
+        if (!devotionAllowed(h, s)) continue;
         const target = pickAlly(h, s, cond.ally);
         if (!target.ok) continue;
         doCast(h, s, target.ally, cost);

@@ -81,6 +81,7 @@ export function isSupportSkill(s: Pick<SkillContent, "effects">): boolean {
       "cortaAmeaca",
       "purificar",
       "escudoDeMana",
+      "devocao",
     ].includes(e.type),
   );
 }

@@ -847,7 +847,7 @@ export class DungeonScene {
     const want = new Map<string, { ref: number; fx: LingerFx }>();
     if (u0) {
       u0.h.forEach((list, i) => {
-        for (const fx of lingersOf(list)) want.set(`${i}|${fx.art}|${fx.color}`, { ref: i, fx });
+        for (const fx of lingersOf(list)) want.set(`${i}|${fx.art}|${fx.color}|${fx.from ?? ""}`, { ref: i, fx });
       });
       u0.x.forEach((list, i) => {
         for (const fx of lingersOf(list)) want.set(`${FOE_BASE + i}|${fx.art}|${fx.color}`, { ref: FOE_BASE + i, fx });
@@ -861,7 +861,9 @@ export class DungeonScene {
     for (const [key, w] of want) {
       if (this.lingers.has(key)) continue;
       const s = new Sprite(this.fxTex(w.fx.art));
-      s.anchor.set(0.5);
+      // O elo sai do aliado e estica até quem protege.
+      if (w.fx.art === "elo") s.anchor.set(0, 0.5);
+      else s.anchor.set(0.5);
       s.tint = w.fx.color;
       (w.fx.layer === "chao" ? this.groundFx : this.aura).addChild(s);
       this.lingers.set(key, { s, ref: w.ref, fx: w.fx });
@@ -903,6 +905,22 @@ export class DungeonScene {
           l.s.scale.set(k * 1.1);
           l.s.alpha = 0.8 * pulse;
           break;
+        case "elo": {
+          const p = l.fx.from === undefined ? undefined : this.unit(l.fx.from);
+          if (!p || !p.alive || p.gone || p.dying || p === u) {
+            l.s.visible = false;
+            break;
+          }
+          const a = this.middle(u);
+          const b = this.middle(p);
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          l.s.position.set(Math.round(a.x), Math.round(a.y));
+          l.s.rotation = Math.atan2(dy, dx);
+          l.s.scale.set(Math.hypot(dx, dy) / 4, 1);
+          l.s.alpha = 0.55 * pulse;
+          break;
+        }
       }
     }
   }

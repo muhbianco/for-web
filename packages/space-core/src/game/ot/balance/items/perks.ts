@@ -186,7 +186,7 @@ export const PERKS: Record<string, PerkTemplate> = {
     0.1,
     0.2,
     0.01,
-    (v) => `Intervenção Divina +${v}.`,
+    (v) => `Devoção desvia +${v} do dano.`,
     (v) => [potencia([0], v)],
   ),
 

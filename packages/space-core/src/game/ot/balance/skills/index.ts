@@ -63,7 +63,10 @@ export const REFERENCE_KITS: Record<ClassId, string[]> = {
  * responder aos lacaios. O paladino trocava a Égide pela Consagração (P63); desde a D50 a Consagração
  * já está no kit de todo tier (com a Bênção da Égide), então nenhuma classe muda mais no T4.
  */
-export const REFERENCE_KITS_T4: Partial<Record<ClassId, string[]>> = {};
+export const REFERENCE_KITS_T4: Partial<Record<ClassId, string[]>> = {
+  // D66: o Cruzado troca a Bênção da Égide pela Devoção (tanca o que cai nos aliados).
+  paladino: ["golpe-sagrado", "consagracao", "escudo-da-fe", "intervencao-divina"],
+};
 
 /** Kits solo (§8): tanques trocam uma defensiva por área; padre com Luz Sagrada; druida com Raízes. */
 export const REFERENCE_SOLO_KITS: Record<ClassId, string[]> = {

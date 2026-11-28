@@ -354,6 +354,19 @@ export function effectLines(e: Effect, d: HeroStats | null): string[] {
       out.push(t`Corta ${p} da sua ameaça: os monstros tendem a largar você.`);
       return out;
     }
+    case "devocao": {
+      // D66: o motor limita o desvio a 90% (o aliado sempre leva alguma parte).
+      const p = pct(Math.min(0.9, e.pct));
+      const dur = secs(e.durationMs);
+      const min = pct(e.minHpPct);
+      out.push(
+        t`Por ${dur}, ${p} do dano que os monstros causam em cada aliado que não é tanque vem para você, com as suas defesas, o seu bloqueio e o seu escudo.`,
+      );
+      out.push(
+        t`Para de desviar enquanto você estiver abaixo de ${min} da vida.`,
+      );
+      return out;
+    }
     case "reviver": {
       const p = pct(e.hpPct);
       out.push(t`Revive um aliado caído com ${p} da vida.`);
@@ -592,6 +605,8 @@ export function skillIcon(cls: ClassId, id: string): string {
       return "water_drop";
     case "cortaAmeaca":
       return "visibility_off";
+    case "devocao":
+      return "link";
   }
   return "star";
 }

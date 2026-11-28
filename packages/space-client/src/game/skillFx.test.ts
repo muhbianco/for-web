@@ -160,6 +160,20 @@ test("o que dura: nuvem verde no veneno da Nuvem Tóxica, círculo dourado da Co
     lingerFor({ s: "escudo-sagrado", k: "escudo" })?.color,
     FX_COLOR.branco,
   );
+  // D66: a Devoção vira um elo dourado do aliado até quem protege (um por paladino).
+  assert.deepEqual(lingerFor({ s: "intervencao-divina", k: "buff", st: "devocao", a: 2 }), {
+    art: "elo",
+    color: FX_COLOR.sagrado,
+    layer: "chao",
+    from: 2,
+  });
+  assert.equal(
+    lingersOf([
+      { s: "intervencao-divina", k: "buff", st: "devocao", a: 0 },
+      { s: "intervencao-divina", k: "buff", st: "devocao", a: 3 },
+    ]).length,
+    2,
+  );
   // O veneno da Lâmina não vira nuvem (só o da Nuvem Tóxica).
   assert.equal(lingerFor({ s: "lamina-envenenada", k: "dot" }), null);
   // A Nevasca põe DoT e lentidão: um floco só.

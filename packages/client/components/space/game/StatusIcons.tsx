@@ -117,6 +117,8 @@ function statText(stat: string | undefined): string | null {
       return t`ataca mais devagar`;
     case "defesa":
       return t`defesa menor`;
+    case "devocao":
+      return t`parte do dano vai para o paladino`;
     default:
       return null;
   }

@@ -67,6 +67,9 @@ function scaleMain(e: Effect, m: number): void {
     case "reviver":
       e.hpPct *= m;
       return;
+    case "devocao":
+      e.pct *= m;
+      return;
     default:
       return;
   }

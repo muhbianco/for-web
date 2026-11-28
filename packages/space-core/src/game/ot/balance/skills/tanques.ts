@@ -5,7 +5,6 @@ import {
   SEMPRE,
   SENDO_ALVO,
   SO_EM_CHEFE,
-  aliados,
   duracao,
   efeito,
   fis,
@@ -527,16 +526,22 @@ export const PALADINO: SkillContent[] = [
     ],
   },
   {
+    // D66 (27/11/2026, o dono: o paladino "não seguraria agro, mas tem que fazer o papel de tank com
+    // outros recursos"): a Devoção do Cruzado. Parte do dano que os monstros causam nos aliados vai
+    // para o paladino, com as defesas dele: ele não precisa do agro para tancar. Trocou o escudo de
+    // 7% do grupo da Intervenção Divina e ficou com o id dela (heróis, kits e perks já gravados).
     id: "intervencao-divina",
-    name: "Intervenção Divina",
+    name: "Devoção",
     cls: "paladino",
     tier: 4,
     target: "grupo",
-    cooldownMs: s(30),
+    cooldownMs: s(15),
     manaPct: 0.06,
-    ai: [CHEFE_PREPARANDO, aliados(2, 0.5)],
+    ai: [SEMPRE],
     effects: [
-      { type: "escudo", target: "grupo", pctMaxHp: 0.07, durationMs: s(6) },
+      // 30%: 40–60% sobrecarregava o paladino e o grupo dele perdia Regiões no limite
+      // (scripts/paladin-probe.ts, 27/11/2026).
+      { type: "devocao", pct: 0.3, durationMs: s(12), minHpPct: 0.25 },
     ],
     mechanics: [
       mech("graca", "Graça", 4, "+1 s (máx. +5 s).", [duracao([0], 1000)]),
