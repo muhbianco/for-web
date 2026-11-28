@@ -246,7 +246,12 @@ function CommonUser(props: {
           member: user().member,
         },
         contextMenu: () => (
-          <UserContextMenu user={user().user!} member={user().member} inVoice />
+          <UserContextMenu
+            user={user().user!}
+            member={user().member}
+            serverId={props.channel.serverId}
+            inVoice
+          />
         ),
       }}
     >

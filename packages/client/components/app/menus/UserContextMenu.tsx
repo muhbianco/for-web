@@ -18,7 +18,7 @@ import {
   ContextMenuDivider,
 } from "./ContextMenu";
 import { NotificationContextMenu } from "./shared/NotificationContextMenu";
-import { findVoiceChannel } from "./voiceUser";
+import { findVoiceChannel, showsSpaceTts } from "./voiceUser";
 
 const lastVoiceAlertAt = new Map<string, number>();
 
@@ -33,6 +33,11 @@ export function UserContextMenu(props: {
   contextMessage?: Message;
   inVoice?: boolean;
   isScreenshare?: boolean;
+  /**
+   * O servidor de onde o menu foi aberto (a sala na barra lateral, o quadro da chamada), para quando o
+   * membro ainda não carregou: o bloco da voz do TTS do Espaço depende dele (28/11/2026).
+   */
+  serverId?: string;
 }) {
   // TODO: if we take serverId instead, we could dynamically fetch server member here
   // same for the floating menu I guess?
@@ -185,9 +190,19 @@ export function UserContextMenu(props: {
    * próprio e "Ouvir a voz"). Não aparece para você mesmo nem na tela compartilhada.
    */
   function ttsInSpace() {
-    if (props.user.self || props.isScreenshare || props.user.bot) return false;
-    const serverId = props.member?.server?.id ?? targetVoiceChannel()?.serverId;
-    return !!serverId && isSpaceServer(serverId);
+    return showsSpaceTts(
+      {
+        self: props.user.self,
+        bot: !!props.user.bot,
+        screenshare: !!props.isScreenshare,
+      },
+      {
+        serverId: props.serverId,
+        memberServerId: props.member?.server?.id,
+        voiceServerId: targetVoiceChannel()?.serverId,
+      },
+      isSpaceServer,
+    );
   }
 
   /**

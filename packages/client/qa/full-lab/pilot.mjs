@@ -16,6 +16,7 @@
  *   POST /act   {"u":"ana","op":"eval","js":"document.title"}
  *   POST /act   {"u":"ana","op":"shot","name":"palco-lateral"}   → out/<n>.png
  *   POST /act   {"u":"ana","op":"size","w":1280,"h":720}
+ *   POST /act   {"u":"bia","op":"longpress","x":140,"y":218}       (toque longo, como no celular)
  *   POST /act   {"u":"ana","op":"frame","url":"youtube","js":"document.querySelector('video').currentTime"}
  *
  * As senhas de teste vêm de state.local.json (gerado pela semente) e nunca são
@@ -136,6 +137,22 @@ async function act(body) {
       // Toque de verdade (touchstart/touchend), como no celular.
       await page.touchscreen.tap(body.x, body.y);
       return "ok";
+    case "longpress": {
+      // Dedo parado em cima (28/11/2026): no Android o toque longo vira o menu de contexto. O
+      // Playwright só tem o toque curto; aqui o toque fica `ms` parado pelo protocolo do Chromium.
+      // O gesto passa pelo reconhecedor do Chromium (como um dedo de verdade): touchStart e touchEnd
+      // soltos viravam um toque curto (abria o cartão de perfil).
+      const cdp = await page.context().newCDPSession(page);
+      await cdp.send("Input.synthesizeTapGesture", {
+        x: body.x,
+        y: body.y,
+        duration: body.ms ?? 900,
+        tapCount: 1,
+        gestureSourceType: "touch",
+      });
+      await cdp.detach();
+      return "ok";
+    }
     case "fill": {
       const loc = body.label
         ? page.getByLabel(body.label)
