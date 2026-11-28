@@ -230,10 +230,11 @@ describe("OutlineNews", () => {
     );
   });
 
-  it("busca no máximo NEWS_MAX_ITEMS documentos", async () => {
+  it("com mais de NEWS_MAX_ITEMS notas, mostra as mais novas mesmo com a árvore na ordem das velhas (28/11/2026)", async () => {
+    // A árvore do Novidades vem em ordem alfabética: a data no título põe as velhas primeiro.
     const docs: Doc[] = Array.from({ length: NEWS_MAX_ITEMS + 5 }, (_, i) => ({
       id: `d${i}`,
-      title: `nota ${i}`,
+      title: `2026-01-${String(1 + i).padStart(2, "0")} — nota ${i}`,
       publishedAt: new Date(Date.UTC(2026, 0, 1 + i)).toISOString(),
       text: "",
     }));
@@ -244,7 +245,31 @@ describe("OutlineNews", () => {
       fetch: o.fetchImpl,
     }).get();
     assert.equal(wire.items.length, NEWS_MAX_ITEMS);
-    assert.equal(o.calls.filter((c) => c.method === "documents.info").length, NEWS_MAX_ITEMS);
+    assert.equal(wire.items[0]!.id, `d${NEWS_MAX_ITEMS + 4}`);
+    assert.deepEqual(
+      wire.items.map((i) => i.id),
+      docs.slice(5).reverse().map((d) => d.id),
+    );
+    assert.equal(o.calls.filter((c) => c.method === "documents.info").length, NEWS_MAX_ITEMS + 5);
+  });
+
+  it("lê no máximo scanMax documentos da coleção", async () => {
+    const docs: Doc[] = Array.from({ length: 40 }, (_, i) => ({
+      id: `d${i}`,
+      title: `nota ${i}`,
+      publishedAt: new Date(Date.UTC(2026, 0, 1 + i)).toISOString(),
+      text: "",
+    }));
+    const o = fakeOutline(docs);
+    const wire = await new OutlineNews({
+      shareUrl: SHARE,
+      log: silentLog,
+      fetch: o.fetchImpl,
+      scanMax: 30,
+    }).get();
+    assert.equal(o.calls.filter((c) => c.method === "documents.info").length, 30);
+    assert.equal(wire.items.length, NEWS_MAX_ITEMS);
+    assert.equal(wire.items[0]!.id, "d29");
   });
 });
 

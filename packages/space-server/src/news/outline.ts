@@ -31,6 +31,8 @@ export interface OutlineNewsOptions {
   concurrency?: number;
   /** Depois de uma falha, quanto esperar antes de tentar o Outline de novo. */
   retryMs?: number;
+  /** Quantos documentos da coleção ler, no máximo, antes de ficar com os `NEWS_MAX_ITEMS` mais novos. */
+  scanMax?: number;
 }
 
 const SHARE_PATH = /^\/s\/([A-Za-z0-9_-]{1,100})\/?$/;
@@ -77,6 +79,7 @@ export class OutlineNews implements NewsSource {
   private readonly maxBytes: number;
   private readonly concurrency: number;
   private readonly retryMs: number;
+  private readonly scanMax: number;
   private cache: Cached | null = null;
   private inflight: Promise<NewsWire> | null = null;
   /** Última falha: sem cache, ninguém bate no Outline de novo antes de `retryMs`. */
@@ -96,6 +99,7 @@ export class OutlineNews implements NewsSource {
     this.maxBytes = opts.maxBytes ?? 1_000_000;
     this.concurrency = opts.concurrency ?? 4;
     this.retryMs = opts.retryMs ?? 30_000;
+    this.scanMax = Math.max(NEWS_MAX_ITEMS, opts.scanMax ?? 100);
   }
 
   /** O quadro: do cache enquanto fresco; senão busca (uma busca por vez para todo mundo). */
@@ -140,11 +144,15 @@ export class OutlineNews implements NewsSource {
   private async refresh(): Promise<NewsWire> {
     const started = this.now();
     const share = await this.call("shares.info", { id: this.shareId });
-    const nodes = treeChildren(share).slice(0, NEWS_MAX_ITEMS);
+    // A árvore vem na ordem da coleção (no Novidades, alfabética: a data no título põe as mais
+    // velhas primeiro), não na de publicação. Cortar nela deixava as notas novas fora do quadro
+    // (28/11/2026: 24 notas, as 4 últimas sumiam). Lê até `scanMax`, ordena pela data e corta.
+    const nodes = treeChildren(share).slice(0, this.scanMax);
     const docs = await mapLimit(nodes, this.concurrency, (n) => this.document(n));
     const items = docs
       .filter((d): d is NewsItem => d !== null)
-      .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt));
+      .sort((a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt))
+      .slice(0, NEWS_MAX_ITEMS);
     const wire: NewsWire = { items, url: this.publicUrl };
     this.cache = { wire, at: this.now() };
     this.log.info("news: refreshed", {
