@@ -34,6 +34,10 @@ import {
   detachVadPort,
   ensureRmsGateNode,
 } from "./rmsGateWorklet";
+import {
+  SWM_TICK_MS,
+  SpeakingWhileMutedDetector,
+} from "./speakingWhileMuted";
 import { VadClient, canUseVadWorker } from "./vadClient";
 import type { VadEngineId } from "./vadPolicy";
 import type { VoiceEngineId } from "./voiceEngineStatus";
@@ -165,7 +169,9 @@ export type VoiceProcessorEvent =
   | "micSourceMute"
   | "micSourceUnmute"
   | "micSourceEnded"
-  | "audioContext";
+  | "audioContext"
+  /** Speech on the muted capture ("Você está mutado", speakingWhileMuted.ts). */
+  | "speakingWhileMuted";
 
 function deepFilterCdnUrl(): string {
   const override = CONFIGURATION.DEEPFILTERNET_CDN_URL;
@@ -269,6 +275,19 @@ export class VoiceProcessor implements TrackProcessor<
   private destinationNode?: MediaStreamAudioDestinationNode;
   private meterNode?: AudioWorkletNode;
   private lastProduction?: ProductionStats;
+
+  /** Private copy of the capture, only while muted (tickMutedProbe). */
+  private mutedProbe?: {
+    track: MediaStreamTrack;
+    source: MediaStreamAudioSourceNode;
+    analyser: AnalyserNode;
+    buf: Float32Array<ArrayBuffer>;
+  };
+  private mutedProbeContext?: AudioContext;
+  private mutedProbeTimer?: ReturnType<typeof setInterval>;
+  /** The probe could not be built for this graph: do not retry every tick. */
+  private mutedProbeFailed = false;
+  private speakingWhileMuted = new SpeakingWhileMutedDetector();
 
   private disposeSolidjsContext: () => void = () => {};
 
@@ -1059,10 +1078,98 @@ export class VoiceProcessor implements TrackProcessor<
 
     await this.openGraph(context, this.sourceTrack);
     await this.wireGraph(context);
+    this.watchMuted(context);
     this.emitStatus();
   }
 
+  /**
+   * "Você está mutado" (speakingWhileMuted.ts). LiveKit's mute disables the
+   * capture this chain reads, so while muted the chain only sees zeros. Then,
+   * and only then, a private clone of the capture feeds an analyser nobody
+   * hears; its level never leaves the device. With the mic open there is no
+   * clone and no extra node: the chain is exactly what it was before. Unmuting
+   * stops the clone, so it never holds the device when the mic heal
+   * (healMicrophone) needs to reopen it.
+   */
+  private watchMuted(context: AudioContext) {
+    this.mutedProbeContext = context;
+    this.mutedProbeFailed = false;
+    this.mutedProbeTimer ??= setInterval(
+      () => this.tickMutedProbe(),
+      SWM_TICK_MS,
+    );
+  }
+
+  private tickMutedProbe() {
+    const source = this.sourceTrack;
+    const context = this.mutedProbeContext;
+    // The published capture enabled = not muted (or gone): no probe at all.
+    if (
+      !source ||
+      !context ||
+      source.readyState !== "live" ||
+      source.enabled ||
+      context.state === "closed"
+    ) {
+      this.closeMutedProbe();
+      return;
+    }
+    const probe = this.mutedProbe ?? this.openMutedProbe(context, source);
+    if (!probe || probe.track.muted) return;
+    probe.analyser.getFloatTimeDomainData(probe.buf);
+    let sum = 0;
+    for (const x of probe.buf) sum += x * x;
+    const rms = Math.sqrt(sum / probe.buf.length);
+    const db = rms > 0 ? 20 * Math.log10(rms) : -Infinity;
+    if (this.speakingWhileMuted.update(db)) {
+      this.onEvent?.("speakingWhileMuted");
+    }
+  }
+
+  private openMutedProbe(context: AudioContext, track: MediaStreamTrack) {
+    if (this.mutedProbeFailed || typeof track.clone !== "function") return;
+    let clone: MediaStreamTrack | undefined;
+    try {
+      clone = track.clone();
+      clone.enabled = true;
+      const source = context.createMediaStreamSource(new MediaStream([clone]));
+      const analyser = context.createAnalyser();
+      analyser.fftSize = 2048;
+      source.connect(analyser);
+      this.speakingWhileMuted.reset();
+      this.mutedProbe = {
+        track: clone,
+        source,
+        analyser,
+        buf: new Float32Array(analyser.fftSize),
+      };
+      return this.mutedProbe;
+    } catch (error) {
+      console.warn("[voice] speaking-while-muted probe unavailable", error);
+      clone?.stop();
+      this.mutedProbeFailed = true;
+      return undefined;
+    }
+  }
+
+  private closeMutedProbe() {
+    const probe = this.mutedProbe;
+    if (!probe) return;
+    this.mutedProbe = undefined;
+    probe.source.disconnect();
+    probe.track.stop();
+    this.speakingWhileMuted.reset();
+  }
+
+  private stopMutedWatch() {
+    clearInterval(this.mutedProbeTimer);
+    this.mutedProbeTimer = undefined;
+    this.mutedProbeContext = undefined;
+    this.closeMutedProbe();
+  }
+
   private async teardown() {
+    this.stopMutedWatch();
     this.disconnectNoiseGraph();
     this.gainNode?.disconnect();
     if (this.meterNode) {

@@ -10,6 +10,8 @@ import { IconButton } from "../../design/IconButton";
 import { OverflowingText } from "../../utils/OverflowingText";
 import { Symbol } from "../../utils/Symbol";
 
+import { MicSlot, SpeakingWhileMutedHint } from "./SpeakingWhileMutedHint";
+
 /**
  * Persistent voice controls pinned to the bottom of the channel sidebar.
  *
@@ -54,20 +56,23 @@ export function VoiceDock() {
           </Status>
 
           <Actions>
-            <IconButton
-              size="xs"
-              variant={voice.microphone() ? "filled" : "tonal"}
-              onPress={() => voice.toggleMute()}
-              isDisabled={!voice.speakingPermission}
-              aria-label={voice.microphone() ? t`Mute` : t`Unmute`}
-            >
-              <Show
-                when={voice.microphone()}
-                fallback={<Symbol>mic_off</Symbol>}
+            <MicSlot>
+              <SpeakingWhileMutedHint />
+              <IconButton
+                size="xs"
+                variant={voice.microphone() ? "filled" : "tonal"}
+                onPress={() => voice.toggleMute()}
+                isDisabled={!voice.speakingPermission}
+                aria-label={voice.microphone() ? t`Mute` : t`Unmute`}
               >
-                <Symbol>mic</Symbol>
-              </Show>
-            </IconButton>
+                <Show
+                  when={voice.microphone()}
+                  fallback={<Symbol>mic_off</Symbol>}
+                >
+                  <Symbol>mic</Symbol>
+                </Show>
+              </IconButton>
+            </MicSlot>
 
             <IconButton
               size="xs"

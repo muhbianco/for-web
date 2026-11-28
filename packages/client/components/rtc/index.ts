@@ -11,6 +11,7 @@ export {
 } from "./callPush";
 export { useVoice, VoiceContext } from "./state";
 export { useIsDeafened } from "./useIsDeafened";
+export { useSpeakingShown } from "./useSpeakingShown";
 export type { VoiceEngineId, VoiceEngineStatus } from "./voiceEngineStatus";
 
 export { InRoom } from "./components/InRoom";
