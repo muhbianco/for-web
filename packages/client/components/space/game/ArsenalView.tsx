@@ -208,6 +208,10 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
 
   const shared = Math.round(B.cfg.loot.sharedLegendaryShare * 100);
   const named = Math.round(B.cfg.loot.namedInBase * 100);
+  // D68: a Arma Suprema na tabela das bases (o degrau depois do Lendário) e na legenda.
+  const supremeMin = Math.round(B.cfg.supreme.power.min * 100);
+  const supremeMax = Math.round(B.cfg.supreme.power.max * 100);
+  const supremeAvg = (B.cfg.supreme.power.min + B.cfg.supreme.power.max) / 2;
   // D71: o chefe (a tabela "Chefes: dano em área e por segundo").
   const mech = B.cfg.bossMechanics;
   const mon = B.cfg.monsters;
@@ -340,6 +344,10 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
             </span>
           )}
         </For>
+        <span>
+          <b style={{ color: SUPREME_COLOR }}>🔥 {t`Arma Suprema`}</b>{" "}
+          {t`só arma: Lendário com +${supremeMin}% a +${supremeMax}% no dano e 2 perks`}
+        </span>
         <Show when={cls()}>
           {(c) => (
             <span>
@@ -371,7 +379,7 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
                         {t`No jogo: ${itemName(comum())} · iL ${ilvl()}`}
                       </Muted>
                       <Who classes={b.classes} heavy={b.heavy} />
-                      <Tiers>
+                      <Tiers data-six={b.base.slot === "arma" ? "" : undefined}>
                         <For each={RARITY_IDS}>
                           {(r) => {
                             const it = () => sample(b.base, ilvl(), r, ref());
@@ -402,6 +410,35 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
                             );
                           }}
                         </For>
+                        {/* D68: a Arma Suprema (só arma), com o poder médio; a faixa vai embaixo. */}
+                        <Show when={b.base.slot === "arma"}>
+                          {(() => {
+                            const it = () =>
+                              ({
+                                ...sample(b.base, ilvl(), "lendario", ref()),
+                                supreme: { power: supremeAvg },
+                              }) as ItemInstance;
+                            const lines = () => itemTooltip(it()).base;
+                            const aff = affixCount(b.base.slot, "lendario");
+                            return (
+                              <Tier>
+                                <ItemIcon item={it()} size={48} />
+                                <b style={{ color: SUPREME_COLOR }}>{t`Suprema`}</b>
+                                <span>
+                                  {lines()
+                                    .map(
+                                      (l) =>
+                                        `${l.label} ${Math.round(l.value).toLocaleString("pt-BR")}`,
+                                    )
+                                    .join(" · ") || "—"}
+                                </span>
+                                <Muted>
+                                  {t`${aff} afixos + 2 perks · +${supremeMin}% a +${supremeMax}% no dano (média ${Math.round(supremeAvg * 100)}%)`}
+                                </Muted>
+                              </Tier>
+                            );
+                          })()}
+                        </Show>
                       </Tiers>
                     </Card>
                   );
@@ -816,11 +853,19 @@ const WhoChip = styled("span", {
     "&[data-me]": { borderColor: "#d9b45a", color: "#ffe9b0" },
   },
 });
+/** A cor da Arma Suprema (a mesma da moldura no cartão do item). */
+const SUPREME_COLOR = "#ff4a2a";
+
 const Tiers = styled("div", {
   base: {
     display: "grid",
     gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
     gap: "6px",
+    // Arma: o 6º degrau é a Suprema; na tela estreita, duas linhas de 3.
+    "&[data-six]": {
+      gridTemplateColumns: "repeat(6, minmax(0, 1fr))",
+      "@media (max-width: 640px)": { gridTemplateColumns: "repeat(3, minmax(0, 1fr))" },
+    },
   },
 });
 const Tier = styled("div", {
