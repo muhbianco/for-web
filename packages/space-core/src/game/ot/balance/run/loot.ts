@@ -184,6 +184,17 @@ export function lootSource(
 ): GroupLootSource {
   const loot = B.cfg.loot;
   const src: GroupLootSource = loot.sources[archetype];
+  if (type === "masmorra") {
+    // Masmorra de 4 e 5: o Lendário do chefe sobe (`loot.masmorraLegendary`); o resto encolhe junto.
+    const target = loot.masmorraLegendary[members];
+    if (target === undefined || src.rarity.lendario === undefined) return src;
+    const others = (Object.entries(src.rarity) as [RarityId, number][]).filter(([id]) => id !== "lendario");
+    const sum = others.reduce((a, [, w]) => a + w, 0);
+    const rarity: Partial<Record<RarityId, number>> = {};
+    for (const [id, w] of others) rarity[id] = (w / sum) * (1 - target);
+    rarity.lendario = target;
+    return { ...src, rarity };
+  }
   if (type !== "cacada" || members < loot.huntGroupFrom) return src;
   const legendary = Math.min(1, loot.huntLegendary[members] ?? 0);
   const weights = Object.entries(src.rarity) as [RarityId, number][];

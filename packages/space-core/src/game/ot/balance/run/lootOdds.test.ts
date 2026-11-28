@@ -141,13 +141,15 @@ test("mais gente no grupo divide o item dos lacaios, da elite e do chefe menor",
   const solo = dungeonLootOdds(dg("cacada-40"), 1);
   const trio = dungeonLootOdds(dg("cacada-40"), 3);
   near(trio.perHero.items, solo.perHero.items / 3, 1e-9, "itens");
-  // O chefe de Masmorra dá um para cada um: o Lendário não muda com o grupo.
-  near(
-    dungeonLootOdds(dg("masmorra-40"), 5).perHero.atLeastOne.lendario,
-    dungeonLootOdds(dg("masmorra-40"), 1).perHero.atLeastOne.lendario,
-    1e-9,
-    "lendário",
-  );
+  // O chefe de Masmorra dá um para cada um: até o trio o Lendário não muda com o grupo; desde
+  // 27/11/2026 ele sobe com o 4º e o 5º (3% → 4% → 5%, `loot.masmorraLegendary`).
+  const leg = (n: number) => dungeonLootOdds(dg("masmorra-40"), n).perHero.atLeastOne.lendario;
+  near(leg(3), leg(1), 1e-9, "lendário até o trio");
+  assert.ok(leg(4) > leg(3) && leg(5) > leg(4), `lendário ${leg(3)} ${leg(4)} ${leg(5)}`);
+  const boss = (n: number) =>
+    dungeonLootOdds(dg("masmorra-40"), n).sources.find((x) => x.archetype === "chefe")!.rarity.lendario;
+  near(boss(4), 0.04, 1e-12, "chefe com 4");
+  near(boss(5), 0.05, 1e-12, "chefe com 5");
 });
 
 test("Caçada de 4 e 5: o drop cresce na proporção do grupo sobre o trio e o Lendário entra com 1% e 2%", () => {

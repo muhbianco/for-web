@@ -11,7 +11,7 @@ import { materialOf } from "../items/generate.ts";
 import { itemPerks } from "../items/legendary.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
 import { SKILLS_BY_CLASS } from "../skills/index.ts";
-import { lootFor, rollBase, rollItem, rollRarity, runLoot } from "./loot.ts";
+import { lootFor, lootSource, rollBase, rollItem, rollRarity, runLoot } from "./loot.ts";
 import type { RewardKill } from "./rewards.ts";
 import { simulateRun } from "./simulate.ts";
 
@@ -228,4 +228,25 @@ test("Caçada de 4 e 5: mais itens por abate e a chance de Lendário; até o tri
     lootFor(kills3, [...trio], rng(5), B, "cacada"),
     lootFor(kills3, [...trio], rng(5), B),
   );
+});
+
+test("Masmorra (27/11/2026): o Lendário do chefe é 3% até o trio, 4% com 4 e 5% com 5; Caçada e Região seguem", () => {
+  const five = ["guerreiro", "padre", "mago", "cacador", "assassino"] as const;
+  for (const [n, want] of [[2, 0.03], [3, 0.03], [4, 0.04], [5, 0.05]] as const) {
+    const src = lootSource("chefe", "masmorra", n, B);
+    assert.ok(Math.abs((src.rarity.lendario ?? 0) - want) < 1e-12, `${n}: ${src.rarity.lendario}`);
+    const sum = Object.values(src.rarity).reduce((a, x) => a + (x ?? 0), 0);
+    assert.ok(Math.abs(sum - 1) < 1e-12, `${n}: soma ${sum}`);
+    // O raro e o épico encolhem na mesma proporção (70 : 27).
+    assert.ok(Math.abs((src.rarity.raro ?? 0) / (src.rarity.epico ?? 1) - 70 / 27) < 1e-9);
+  }
+  // O sorteio: 5 no grupo, um item do chefe para cada vivo.
+  const kills = Array.from({ length: 20_000 }, () => kill("chefe", [true, true, true, true, true]));
+  const got = lootFor(kills, [...five], rng(17), B, "masmorra").items;
+  const leg = got.filter((d) => d.item.rarity === "lendario").length / got.length;
+  assert.ok(Math.abs(leg - 0.05) < 0.004, `Lendário ${leg}`);
+  // Chefe de Região e Caçada como estavam.
+  assert.equal(lootSource("regional", "regional", 5, B), B.cfg.loot.sources.regional);
+  assert.equal(lootSource("chefe", "cacada", 3, B), B.cfg.loot.sources.chefe);
+  assert.equal(lootSource("lacaio", "masmorra", 5, B), B.cfg.loot.sources.lacaio);
 });

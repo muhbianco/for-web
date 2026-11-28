@@ -90,7 +90,7 @@ export function createMonsters(
     if (lv > top) {
       const a = row(top - 100);
       const b = row(top);
-      const k = (lv - top) / 100;
+      const k = ((lv - top) / 100) * (mon.endgameGrowth ?? 1);
       const grow = (x: number, y: number) => y * (y / x) ** k;
       return {
         soloDps: grow(a.soloDps, b.soloDps),

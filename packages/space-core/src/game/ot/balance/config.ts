@@ -389,6 +389,13 @@ export const BALANCE = {
     huntDropBase: 3,
     huntLegendary: { 4: 0.01, 5: 0.02 } as Record<number, number>,
     /**
+     * Masmorra com 4 e 5 (27/11/2026, pedido do dono: "quanto mais player, maior chance; vamos fazer
+     * isso pras masmorras também"): o item do chefe da Masmorra sai Lendário com esta chance (o resto da
+     * tabela encolhe na proporção); até o trio, os 3% da fonte `chefe`. A Caçada e o chefe de Região
+     * seguem como estão.
+     */
+    masmorraLegendary: { 4: 0.04, 5: 0.05 } as Record<number, number>,
+    /**
      * O Lendário que cai (27/11/2026, pedido do dono; run/loot.ts `rollLegendary`): nesta fração, um de
      * qualquer classe (a Coroa do Mentor, "1 em cada 5"); em `namedLegendaryShare`, um dos lendários com
      * nome, de qualquer classe; no resto, uma base qualquer do jogo. O perk vem sempre para a classe de
@@ -528,6 +535,16 @@ export const BALANCE = {
      */
     regionalBusterMult: 5,
     regionalPulseMult: 0.8,
+    /**
+     * D67 (27/11/2026, o dono: "fechar o 600 nenhuma comp, nem com os melhores conjuntos de build, deve
+     * conseguir"): acima do teto do herói (501–600) os monstros crescem no ritmo do 400→500 elevado a
+     * este expoente. 1 = o mesmo ritmo; acima de 1, o fim de jogo fica mais íngreme a cada nível. Não
+     * mexe em nada do 500 para baixo. Medido em 27/11/2026 (scripts/endgame-search.ts): com 1, 161
+     * composições fechavam o 600 com 2 perks em todo item; com 2, nenhuma das 200 mais fortes vencia em
+     * 20 mil corridas com rolagem. Fica em 1 (o ritmo de sempre) enquanto o fim de jogo vai até o 1000
+     * e as medições mostram até onde os heróis chegam.
+     */
+    endgameGrowth: 1,
     /** Cataclismo: 40% do HP máx. de cada herói a cada 2 s, dano verdadeiro. */
     cataclysmAtSeconds: 150,
     menorCataclysmAtSeconds: 120,
