@@ -9,7 +9,7 @@ import {
   OFFHAND_IDS,
 } from "../content.ts";
 import { type DungeonDef, dungeonType } from "../dungeons/catalog.ts";
-import type { ItemInstance } from "../equipment.ts";
+import { type ItemInstance, armorFit } from "../equipment.ts";
 import {
   type Balance,
   type DungeonType,
@@ -90,27 +90,108 @@ export function rollBase(cls: ClassId, rng: RandomSource): ItemBase {
   return { slot, weight: c.armor };
 }
 
-/** Uma base qualquer do jogo, de qualquer classe: o lugar com a mesma chance, depois a família, a mão secundária ou o peso. */
-export function rollAnyBase(rng: RandomSource): ItemBase {
-  const slot = pick(GEAR_SLOTS, rng);
-  if (slot === "arma") return { slot, family: pick(FAMILY_IDS, rng) };
-  if (slot === "secundaria") return { slot, offhand: pick(OFFHAND_IDS, rng) };
-  if (slot === "colar" || slot === "anel") return { slot };
-  return { slot, weight: pick(ARMOR_WEIGHTS, rng) };
-}
-
 /** Os lendários com nome que podem cair (todos, para qualquer classe; a lista da TV). */
 export function namedLegendaries(): LegendaryDef[] {
   return LEGENDARIES;
 }
 
+/** As 30 bases do jogo, uma vez cada: 12 armas, 4 mãos secundárias, 4 lugares × 3 pesos, colar e anel. */
+export function allBases(): ItemBase[] {
+  return [
+    ...FAMILY_IDS.map((family) => ({ slot: "arma" as const, family })),
+    ...OFFHAND_IDS.map((offhand) => ({ slot: "secundaria" as const, offhand })),
+    ...ARMOR_SLOTS.flatMap((slot) =>
+      ARMOR_WEIGHTS.map((weight) => ({ slot, weight })),
+    ),
+    { slot: "colar" as const },
+    { slot: "anel" as const },
+  ];
+}
+
+/** A chave da base ("arma:cajado", "secundaria:escudo", "elmo:leve", "anel"). */
+export function baseKey(b: ItemBase): string {
+  if (b.slot === "arma") return `arma:${b.family}`;
+  if (b.slot === "secundaria") return `secundaria:${b.offhand}`;
+  return "weight" in b ? `${b.slot}:${b.weight}` : b.slot;
+}
+
 /**
- * O Lendário que cai (27/11/2026, pedido do dono: "todo herói consegue dropar qualquer item; se o amigo
- * quiser, trocam pelo Banqueiro; o perk sempre vem para a classe que dropou"). Uma rolagem:
- * - `loot.sharedLegendaryShare`: um de qualquer classe (a Coroa do Mentor), com o perk dele;
- * - `loot.namedLegendaryShare`: um dos lendários com nome, de qualquer classe; o perk de origem só se a
- *   skill dele for da classe de quem dropou, senão um perk rolado para ela;
- * - o resto: uma base qualquer do jogo, com um perk rolado para a classe de quem dropou.
+ * A classe usa a base sem penalidade: arma e mão secundária dela, armadura no peso dela ou mais leve
+ * (o peso acima veste, mas perde ATQ/MATQ: não conta), colar e anel sempre.
+ */
+export function usesBase(cls: ClassId, b: ItemBase): boolean {
+  const c = CLASSES[cls];
+  if (b.slot === "arma") return c.weapons.includes(b.family);
+  if (b.slot === "secundaria") return c.offhands.includes(b.offhand);
+  if ("weight" in b) return armorFit(cls, b.weight) === "natural";
+  return true;
+}
+
+/** A chance de cada parte do Lendário que cai para a classe; somam 1 com `crown`. */
+export interface LegendaryOdds {
+  /** A Coroa do Mentor (fatia fixa, de qualquer classe). */
+  crown: number;
+  bases: {
+    key: string;
+    base: ItemBase;
+    /** A classe usa sem penalidade (pesa `legendaryUsableWeight`). */
+    usable: boolean;
+    /** A chance desta base no Lendário (com e sem nome). */
+    chance: number;
+    /** O lendário com nome desta base, se houver, e a parte da chance que vem com ele. */
+    named: string | null;
+    namedChance: number;
+  }[];
+}
+
+/** O lendário com nome de uma base (não a Coroa, que tem fatia própria). */
+function namedOf(b: ItemBase): LegendaryDef | undefined {
+  const k = baseKey(b);
+  return LEGENDARIES.find((l) => l.cls !== null && baseKey(l.base) === k);
+}
+
+/**
+ * As chances do Lendário que cai para a classe (D70, 28/11/2026): a Coroa em `sharedLegendaryShare`;
+ * no resto, as 30 bases com peso 1 e as que a classe usa com `legendaryUsableWeight`. É a mesma conta
+ * do `rollLegendary` (o teste confere uma contra a outra).
+ */
+export function legendaryOdds(
+  cls: ClassId,
+  B: Balance = gameBalance,
+): LegendaryOdds {
+  const loot = B.cfg.loot;
+  const hasCrown = LEGENDARIES.some((l) => l.cls === null);
+  const crown = hasCrown ? loot.sharedLegendaryShare : 0;
+  const list = allBases().map((base) => {
+    const usable = usesBase(cls, base);
+    return { base, usable, w: usable ? loot.legendaryUsableWeight : 1 };
+  });
+  const total = list.reduce((a, x) => a + x.w, 0);
+  return {
+    crown,
+    bases: list.map(({ base, usable, w }) => {
+      const chance = ((1 - crown) * w) / total;
+      const named = namedOf(base);
+      return {
+        key: baseKey(base),
+        base,
+        usable,
+        chance,
+        named: named?.id ?? null,
+        namedChance: named ? chance * loot.namedInBase : 0,
+      };
+    }),
+  };
+}
+
+/**
+ * O Lendário que cai (D56 + D70): todo herói pode dropar qualquer item do jogo, com mais chance no que
+ * ele usa, e o perk vem sempre para a classe dele ("se o amigo quiser, trocam pelo Banqueiro"). Uma
+ * rolagem:
+ * - `loot.sharedLegendaryShare`: a Coroa do Mentor, com o perk dela;
+ * - o resto: uma das 30 bases pelo peso (`legendaryOdds`); numa base com lendário com nome, ele vem
+ *   com o nome em `loot.namedInBase` das vezes, com o perk de origem só se a skill for da classe de
+ *   quem dropou; senão, um perk rolado para ela.
  */
 export function rollLegendary(
   cls: ClassId,
@@ -119,31 +200,36 @@ export function rollLegendary(
   B: Balance = gameBalance,
 ): ItemInstance {
   const loot = B.cfg.loot;
-  const x = rng.next();
   const shared = LEGENDARIES.filter((l) => l.cls === null);
-  const named = LEGENDARIES.filter((l) => l.cls !== null);
-  if (shared.length > 0 && x < loot.sharedLegendaryShare) {
+  if (shared.length > 0 && rng.next() < loot.sharedLegendaryShare) {
     const l = pick(shared, rng);
     return {
       ...generateItem(l.base, ilvl, "lendario", rng, B),
       legendary: l.id,
     };
   }
-  if (
-    named.length > 0 &&
-    x < loot.sharedLegendaryShare + loot.namedLegendaryShare
-  ) {
-    const l = pick(named, rng);
+  const odds = legendaryOdds(cls, B).bases;
+  let x = rng.next() * odds.reduce((a, o) => a + o.chance, 0);
+  let base = odds[odds.length - 1]!.base;
+  for (const o of odds) {
+    x -= o.chance;
+    if (x < 0) {
+      base = o.base;
+      break;
+    }
+  }
+  const named = namedOf(base);
+  if (named && rng.next() < loot.namedInBase) {
     const item = {
-      ...generateItem(l.base, ilvl, "lendario", rng, B),
-      legendary: l.id,
+      ...generateItem(named.base, ilvl, "lendario", rng, B),
+      legendary: named.id,
     };
-    return perkClass(l.perk) === cls
+    return perkClass(named.perk) === cls
       ? item
       : { ...item, perks: [rollPerk(cls, [], rng)] };
   }
   return {
-    ...generateItem(rollAnyBase(rng), ilvl, "lendario", rng, B),
+    ...generateItem(base, ilvl, "lendario", rng, B),
     perks: [rollPerk(cls, [], rng)],
   };
 }
@@ -188,7 +274,9 @@ export function lootSource(
     // Masmorra de 4 e 5: o Lendário do chefe sobe (`loot.masmorraLegendary`); o resto encolhe junto.
     const target = loot.masmorraLegendary[members];
     if (target === undefined || src.rarity.lendario === undefined) return src;
-    const others = (Object.entries(src.rarity) as [RarityId, number][]).filter(([id]) => id !== "lendario");
+    const others = (Object.entries(src.rarity) as [RarityId, number][]).filter(
+      ([id]) => id !== "lendario",
+    );
     const sum = others.reduce((a, [, w]) => a + w, 0);
     const rarity: Partial<Record<RarityId, number>> = {};
     for (const [id, w] of others) rarity[id] = (w / sum) * (1 - target);

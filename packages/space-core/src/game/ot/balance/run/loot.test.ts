@@ -11,7 +11,17 @@ import { materialOf } from "../items/generate.ts";
 import { itemPerks } from "../items/legendary.ts";
 import { limitEncounters as E } from "../sim/encounters.ts";
 import { SKILLS_BY_CLASS } from "../skills/index.ts";
-import { lootFor, lootSource, rollBase, rollItem, rollRarity, runLoot } from "./loot.ts";
+import {
+  baseKey,
+  legendaryOdds,
+  lootFor,
+  lootSource,
+  rollBase,
+  rollItem,
+  rollRarity,
+  runLoot,
+  usesBase,
+} from "./loot.ts";
 import type { RewardKill } from "./rewards.ts";
 import { simulateRun } from "./simulate.ts";
 
@@ -151,13 +161,11 @@ test("o Lendário que cai é qualquer item do jogo, com o perk da classe de quem
         Math.abs(got / n - want) < 0.025,
         `${cls} ${what}: ${((got / n) * 100).toFixed(1)}%`,
       );
+    const odds = legendaryOdds(cls);
+    const namedWant = odds.bases.reduce((a, b) => a + b.namedChance, 0);
     near(crown, B.cfg.loot.sharedLegendaryShare, "Coroa");
-    near(named, B.cfg.loot.namedLegendaryShare, "com nome");
-    near(
-      other,
-      1 - B.cfg.loot.sharedLegendaryShare - B.cfg.loot.namedLegendaryShare,
-      "base qualquer",
-    );
+    near(named, namedWant, "com nome");
+    near(other, 1 - B.cfg.loot.sharedLegendaryShare - namedWant, "sem nome");
     // Qualquer item do jogo: as 30 bases saem para toda classe (inclusive as que ela não veste;
     // o punhal entrou em 27/11/2026).
     assert.equal(slots.size, 30, `${cls}: ${slots.size} bases`);
@@ -174,6 +182,86 @@ test("o Lendário que cai é qualquer item do jogo, com o perk da classe de quem
     }
   }
   assert.ok(seen);
+});
+
+test("D70: as 30 bases pesam igual, e o que a classe usa pesa legendaryUsableWeight (28/11/2026)", () => {
+  const w = B.cfg.loot.legendaryUsableWeight;
+  assert.ok(w > 1);
+  for (const cls of CLASS_IDS) {
+    const odds = legendaryOdds(cls);
+    assert.equal(odds.bases.length, 30);
+    const sum = odds.crown + odds.bases.reduce((a, b) => a + b.chance, 0);
+    assert.ok(Math.abs(sum - 1) < 1e-9, `${cls}: soma ${sum}`);
+    const use = odds.bases.filter((b) => b.usable);
+    const skip = odds.bases.filter((b) => !b.usable);
+    // Tudo o que ela usa sai com a mesma chance, e o que não usa também; a razão é o peso.
+    for (const b of use)
+      assert.ok(Math.abs(b.chance - use[0]!.chance) < 1e-12, `${cls} ${b.key}`);
+    for (const b of skip)
+      assert.ok(
+        Math.abs(b.chance - skip[0]!.chance) < 1e-12,
+        `${cls} ${b.key}`,
+      );
+    if (skip.length > 0)
+      assert.ok(Math.abs(use[0]!.chance / skip[0]!.chance - w) < 1e-9);
+    // O que ela usa: as armas e as mãos secundárias dela, o peso dela e os mais leves, colar e anel.
+    const c = CLASSES[cls];
+    for (const b of odds.bases) {
+      const base = b.base;
+      const want =
+        base.slot === "arma"
+          ? c.weapons.includes(base.family)
+          : base.slot === "secundaria"
+            ? c.offhands.includes(base.offhand)
+            : "weight" in base
+              ? ["leve", "media", "pesada"].indexOf(base.weight) <=
+                ["leve", "media", "pesada"].indexOf(c.armor)
+              : true;
+      assert.equal(b.usable, want, `${cls} ${b.key}`);
+      assert.equal(usesBase(cls, base), want);
+    }
+    // A arma com lendário com nome sai como as outras (até o D70, 5,5× mais).
+    const caj = odds.bases.find((b) => b.key === "arma:cajado")!;
+    const esp = odds.bases.find((b) => b.key === "arma:espada")!;
+    if (caj.usable === esp.usable)
+      assert.ok(Math.abs(caj.chance - esp.chance) < 1e-12, cls);
+    assert.equal(caj.named, "cajado-da-aurora");
+    assert.equal(esp.named, null);
+    assert.ok(
+      Math.abs(caj.namedChance - caj.chance * B.cfg.loot.namedInBase) < 1e-12,
+    );
+  }
+});
+
+test("D70: o sorteio do Lendário bate com legendaryOdds, base a base", () => {
+  const r = rng(70);
+  for (const cls of ["mago", "guerreiro", "assassino"] as const) {
+    const n = 60_000;
+    const got = new Map<string, number>();
+    for (let i = 0; i < n; i++) {
+      const it = rollItem(cls, 150, "lendario", r);
+      if (it.legendary === "coroa-do-mentor") continue;
+      const k = baseKey(
+        it.slot === "arma"
+          ? { slot: "arma", family: it.family }
+          : it.slot === "secundaria"
+            ? { slot: "secundaria", offhand: it.offhand }
+            : "weight" in it
+              ? { slot: it.slot, weight: it.weight }
+              : { slot: it.slot },
+      );
+      got.set(k, (got.get(k) ?? 0) + 1);
+    }
+    for (const b of legendaryOdds(cls).bases) {
+      const p = (got.get(b.key) ?? 0) / n;
+      // 4 desvios-padrão da binomial.
+      const tol = 4 * Math.sqrt((b.chance * (1 - b.chance)) / n);
+      assert.ok(
+        Math.abs(p - b.chance) < tol,
+        `${cls} ${b.key}: ${p} vs ${b.chance}`,
+      );
+    }
+  }
 });
 
 test("a corrida dá minério da região por sala vencida a cada vivo, e os itens dos abates", () => {
@@ -232,21 +320,41 @@ test("Caçada de 4 e 5: mais itens por abate e a chance de Lendário; até o tri
 
 test("Masmorra (27/11/2026): o Lendário do chefe é 3% até o trio, 4% com 4 e 5% com 5; Caçada e Região seguem", () => {
   const five = ["guerreiro", "padre", "mago", "cacador", "assassino"] as const;
-  for (const [n, want] of [[2, 0.03], [3, 0.03], [4, 0.04], [5, 0.05]] as const) {
+  for (const [n, want] of [
+    [2, 0.03],
+    [3, 0.03],
+    [4, 0.04],
+    [5, 0.05],
+  ] as const) {
     const src = lootSource("chefe", "masmorra", n, B);
-    assert.ok(Math.abs((src.rarity.lendario ?? 0) - want) < 1e-12, `${n}: ${src.rarity.lendario}`);
+    assert.ok(
+      Math.abs((src.rarity.lendario ?? 0) - want) < 1e-12,
+      `${n}: ${src.rarity.lendario}`,
+    );
     const sum = Object.values(src.rarity).reduce((a, x) => a + (x ?? 0), 0);
     assert.ok(Math.abs(sum - 1) < 1e-12, `${n}: soma ${sum}`);
     // O raro e o épico encolhem na mesma proporção (70 : 27).
-    assert.ok(Math.abs((src.rarity.raro ?? 0) / (src.rarity.epico ?? 1) - 70 / 27) < 1e-9);
+    assert.ok(
+      Math.abs((src.rarity.raro ?? 0) / (src.rarity.epico ?? 1) - 70 / 27) <
+        1e-9,
+    );
   }
   // O sorteio: 5 no grupo, um item do chefe para cada vivo.
-  const kills = Array.from({ length: 20_000 }, () => kill("chefe", [true, true, true, true, true]));
+  const kills = Array.from({ length: 20_000 }, () =>
+    kill("chefe", [true, true, true, true, true]),
+  );
   const got = lootFor(kills, [...five], rng(17), B, "masmorra").items;
-  const leg = got.filter((d) => d.item.rarity === "lendario").length / got.length;
+  const leg =
+    got.filter((d) => d.item.rarity === "lendario").length / got.length;
   assert.ok(Math.abs(leg - 0.05) < 0.004, `Lendário ${leg}`);
   // Chefe de Região e Caçada como estavam.
-  assert.equal(lootSource("regional", "regional", 5, B), B.cfg.loot.sources.regional);
+  assert.equal(
+    lootSource("regional", "regional", 5, B),
+    B.cfg.loot.sources.regional,
+  );
   assert.equal(lootSource("chefe", "cacada", 3, B), B.cfg.loot.sources.chefe);
-  assert.equal(lootSource("lacaio", "masmorra", 5, B), B.cfg.loot.sources.lacaio);
+  assert.equal(
+    lootSource("lacaio", "masmorra", 5, B),
+    B.cfg.loot.sources.lacaio,
+  );
 });

@@ -37,6 +37,7 @@ import {
   generateItem,
   itemName,
   itemTooltip,
+  legendaryOdds,
   legendaryText,
   refinable,
 } from "@muchat/space-core/game/ot/balance";
@@ -52,6 +53,7 @@ import {
 } from "./gameText";
 import { RARITY } from "./gameTheme";
 import { Btn, ItemIcon, Muted } from "./gameUi";
+import { pct } from "./heroModel";
 
 /**
  * O Arsenal (27/11/2026, pedido do dono: a página de todos os itens "como release lá no game, com o
@@ -205,8 +207,23 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
   ]);
 
   const shared = Math.round(B.cfg.loot.sharedLegendaryShare * 100);
-  const named = Math.round(B.cfg.loot.namedLegendaryShare * 100);
-  const namedCount = LEGENDARIES.filter((l) => l.cls !== null).length;
+  const named = Math.round(B.cfg.loot.namedInBase * 100);
+  const usableExtra = pct(B.cfg.loot.legendaryUsableWeight - 1);
+  /** D70: o que cai como Lendário para a classe escolhida (a mesma conta do sorteio). */
+  const legendaryFor = createMemo(() => {
+    const c = cls();
+    if (!c) return null;
+    const odds = legendaryOdds(c);
+    const uses =
+      odds.crown +
+      odds.bases.reduce((a, b) => a + (b.usable ? b.chance : 0), 0);
+    const weapon = odds.bases.find((b) => b.usable && b.base.slot === "arma");
+    return {
+      cls: c,
+      uses,
+      weaponOneIn: weapon ? Math.round(1 / weapon.chance) : 0,
+    };
+  });
 
   const Who = (p: {
     classes: readonly ClassId[];
@@ -394,8 +411,15 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
         <GroupHead>
           <h4>{t`Lendários`}</h4>
           <Muted>
-            {t`Quando cai um Lendário: ${shared}% é a Coroa do Mentor; ${named}% é um dos ${namedCount} lendários com nome, de qualquer classe; o resto é qualquer item do jogo, inclusive os que a sua classe não usa (passe para outro jogador pelo Banqueiro). O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo.`}
+            {t`Quando cai um Lendário: ${shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa tem ${usableExtra} a mais de chance. O que ela não usa, passe para outro jogador pelo Banqueiro. Numa base que tem lendário com nome, ${named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo.`}
           </Muted>
+          <Show when={legendaryFor()}>
+            {(o) => (
+              <Muted>
+                {t`${title(o().cls)}: ${pct(o().uses)} dos Lendários são algo que ele usa; cada arma dele sai em 1 de cada ${o().weaponOneIn}.`}
+              </Muted>
+            )}
+          </Show>
         </GroupHead>
         <Cards>
           <For each={LEGENDARIES}>

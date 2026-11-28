@@ -530,6 +530,13 @@ msgstr "{0}, {1} nível {2}: vida {3} de {4}"
 msgid "{0}: {1}"
 msgstr "{0}: {1}"
 
+#. placeholder {0}: title(o().cls)
+#. placeholder {1}: pct(o().uses)
+#. placeholder {2}: o().weaponOneIn
+#: components/space/game/ArsenalView.tsx
+msgid "{0}: {1} dos Lendários são algo que ele usa; cada arma dele sai em 1 de cada {2}."
+msgstr "{0}: {1} dos Lendários são algo que ele usa; cada arma dele sai em 1 de cada {2}."
+
 #. placeholder {0}: slotName(s())
 #. placeholder {1}: rarityName(it()!.rarity)
 #. placeholder {2}: it()!.refine
@@ -7391,8 +7398,16 @@ msgid "Quando a cura rende"
 msgstr "Quando a cura rende"
 
 #: components/space/game/ArsenalView.tsx
-msgid "Quando cai um Lendário: {shared}% é a Coroa do Mentor; {named}% é um dos {namedCount} lendários com nome, de qualquer classe; o resto é qualquer item do jogo, inclusive os que a sua classe não usa (passe para outro jogador pelo Banqueiro). O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
-msgstr "Quando cai um Lendário: {shared}% é a Coroa do Mentor; {named}% é um dos {namedCount} lendários com nome, de qualquer classe; o resto é qualquer item do jogo, inclusive os que a sua classe não usa (passe para outro jogador pelo Banqueiro). O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+#~ msgid "Quando cai um Lendário: {shared}% é a Coroa do Mentor; {named}% é um dos {namedCount} lendários com nome, de qualquer classe; o resto é qualquer item do jogo, inclusive os que a sua classe não usa (passe para outro jogador pelo Banqueiro). O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+#~ msgstr "Quando cai um Lendário: {shared}% é a Coroa do Mentor; {named}% é um dos {namedCount} lendários com nome, de qualquer classe; o resto é qualquer item do jogo, inclusive os que a sua classe não usa (passe para outro jogador pelo Banqueiro). O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+
+#: components/space/game/ArsenalView.tsx
+#~ msgid "Quando cai um Lendário: {shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa sai {usableWeight}× mais. O que ela não usa, passe para outro jogador pelo Banqueiro. Numa base que tem lendário com nome, {named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+#~ msgstr "Quando cai um Lendário: {shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa sai {usableWeight}× mais. O que ela não usa, passe para outro jogador pelo Banqueiro. Numa base que tem lendário com nome, {named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+
+#: components/space/game/ArsenalView.tsx
+msgid "Quando cai um Lendário: {shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa tem {usableExtra} a mais de chance. O que ela não usa, passe para outro jogador pelo Banqueiro. Numa base que tem lendário com nome, {named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
+msgstr "Quando cai um Lendário: {shared}% é a Coroa do Mentor; o resto é qualquer item do jogo, todos com a mesma chance, e o que a classe de quem dropou usa tem {usableExtra} a mais de chance. O que ela não usa, passe para outro jogador pelo Banqueiro. Numa base que tem lendário com nome, {named}% vêm com o nome. O perk vem sempre numa habilidade da classe de quem dropou; no Ferreiro, ele rola de novo."
 
 #: components/space/game/skillText.ts
 msgid "Quando o escudo quebra, {p} do que ele absorveu vira dano sagrado em quem bateu."

@@ -397,13 +397,19 @@ export const BALANCE = {
      */
     masmorraLegendary: { 4: 0.04, 5: 0.05 } as Record<number, number>,
     /**
-     * O Lendário que cai (27/11/2026, pedido do dono; run/loot.ts `rollLegendary`): nesta fração, um de
-     * qualquer classe (a Coroa do Mentor, "1 em cada 5"); em `namedLegendaryShare`, um dos lendários com
-     * nome, de qualquer classe; no resto, uma base qualquer do jogo. O perk vem sempre para a classe de
+     * O Lendário que cai (run/loot.ts `rollLegendary`). Em `sharedLegendaryShare`, a Coroa do Mentor,
+     * de qualquer classe ("1 em cada 5", 27/11/2026). No resto (D70, 28/11/2026, pedido do dono: "vamos
+     * igualar e dar prioridade de drop pra item que o herói pode usar"), uma das 30 bases do jogo, todas
+     * com peso 1 e as que a classe de quem dropou usa sem penalidade com `legendaryUsableWeight`. Até o
+     * D70, a fatia dos lendários com nome caía por cima da base deles, e as 6 armas sem nome saíam 5,5×
+     * menos (1 em 160 contra 1 em 29). Numa base que tem lendário com nome, ele vem com o nome em
+     * `namedInBase` das vezes (perto dos 82% de antes no cajado). O perk vem sempre para a classe de
      * quem dropou ("se o amigo quiser, trocam pelo Banqueiro").
      */
     sharedLegendaryShare: 0.2,
-    namedLegendaryShare: 0.2,
+    namedInBase: 0.8,
+    // 60% a mais no que a classe usa (o dono achou 2 muito: "os amigos podem trocar itens").
+    legendaryUsableWeight: 1.6,
   },
 
   /**
