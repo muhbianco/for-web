@@ -154,6 +154,89 @@ export const ENDGAME_REGIONS: Region[] = [
     magicShare: 0.4,
     bossName: "O Último Rei",
   },
+  // D69 (27/11/2026, o dono: "vamos dar mais DGs, até o 1000, com artes novas, acompanhando a
+  // progressão de até agora; dessa forma a gente tem mais folga pra entender até onde os heróis
+  // vão"). O mesmo ritmo de monstros (monsters/generate.ts) e o mesmo aperto do 451–500 (edgeOf).
+  {
+    index: 13,
+    from: 601,
+    to: 650,
+    name: "Ermo das Cinzas Rubras",
+    material: "Vazio",
+    families: ["dragao", "elemental"],
+    magicShare: 0.4,
+    bossName: "Wyrm da Brasa Eterna",
+  },
+  {
+    index: 14,
+    from: 651,
+    to: 700,
+    name: "Catedral Partida",
+    material: "Vazio",
+    families: ["morto-vivo", "humanoide"],
+    magicShare: 0.5,
+    bossName: "Inquisidor Sem Rosto",
+  },
+  {
+    index: 15,
+    from: 701,
+    to: 750,
+    name: "Mar de Vidro Negro",
+    material: "Vazio",
+    families: ["aberracao", "elemental"],
+    magicShare: 0.5,
+    bossName: "Kraken de Obsidiana",
+  },
+  {
+    index: 16,
+    from: 751,
+    to: 800,
+    name: "Forja dos Titãs",
+    material: "Vazio",
+    families: ["elemental", "humanoide"],
+    magicShare: 0.3,
+    bossName: "Titã da Bigorna",
+  },
+  {
+    index: 17,
+    from: 801,
+    to: 850,
+    name: "Jardim das Almas",
+    material: "Vazio",
+    families: ["sombrio", "fera"],
+    magicShare: 0.4,
+    bossName: "Jardineira dos Lamentos",
+  },
+  {
+    index: 18,
+    from: 851,
+    to: 900,
+    name: "Torre do Eclipse",
+    material: "Vazio",
+    families: ["humanoide", "sombrio"],
+    magicShare: 0.5,
+    bossName: "Arquimago do Eclipse",
+  },
+  {
+    index: 19,
+    from: 901,
+    to: 950,
+    name: "Coração do Abismo",
+    material: "Vazio",
+    families: ["aberracao", "dragao"],
+    magicShare: 0.4,
+    bossName: "O Coração que Pulsa",
+  },
+  {
+    index: 20,
+    from: 951,
+    to: 1000,
+    name: "Horizonte Final",
+    material: "Vazio",
+    families: ["sombrio", "aberracao"],
+    magicShare: 0.5,
+    bossName: "Aquele que Apaga o Tempo",
+  },
 ];
 
 /** Todas as regiões do jogo: as calibradas e as do fim de jogo. */
@@ -237,7 +320,7 @@ function dungeonsOf(regions: Region[]): DungeonDef[] {
  */
 export const DUNGEONS: DungeonDef[] = dungeonsOf(REGIONS);
 
-/** As DGs do fim de jogo (501–600), fora da calibração. */
+/** As DGs do fim de jogo (501–1000), fora da calibração. */
 export const ENDGAME_DUNGEONS: DungeonDef[] = dungeonsOf(ENDGAME_REGIONS);
 
 /** Todas as DGs que o jogo oferece. */
@@ -254,7 +337,9 @@ export function dungeonById(id: string): DungeonDef | undefined {
 export function edgeOf(d: DungeonDef) {
   let id = d.id;
   let level = d.level;
-  for (let k = 0; k < 4; k++) {
+  // De 50 em 50 para trás até achar a DG calibrada equivalente (o fim de jogo, até o 1000, cai na
+  // do 451–500; D69: antes parava em 4 passos e as acima do 700 ficariam sem aperto).
+  while (level >= 1) {
     const e = DUNGEON_EDGE[id];
     if (e) return e;
     level -= 50;

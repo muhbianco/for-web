@@ -387,6 +387,7 @@ test("tooltip e visual: base, refino, afixos com diferença para o vestido", () 
     material: "Bronze",
     rarityColor: "roxo",
     refineGlow: "particulas",
+    supreme: false,
   });
 });
 

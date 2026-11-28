@@ -4,6 +4,7 @@ import { useLingui } from "@lingui/solid/macro";
 import {
   type Affix,
   type ClassId,
+  type HeroV5,
   type ItemPerk,
   type Material,
   type OwnedItem,
@@ -12,6 +13,8 @@ import {
   buyBackPrice,
   CLASSES,
   dismantle,
+  FAMILIES,
+  isSupreme,
   itemPerks,
   itemTooltip,
   perkClass,
@@ -21,6 +24,8 @@ import {
   refineCostOf,
   reforgeCost,
   stoneMatters,
+  supremeIngredient,
+  supremeKey,
 } from "@muchat/space-core/game/ot/balance";
 import { styled } from "styled-system/jsx";
 
@@ -40,7 +45,7 @@ import {
 } from "./gameUi";
 import { bagMarks, findItem, gold, pct } from "./heroModel";
 
-type Tab = "refinar" | "reforjar" | "perk" | "desmontar";
+type Tab = "refinar" | "reforjar" | "perk" | "suprema" | "desmontar";
 
 /** O último perk que saiu no Ferreiro (o antes e o depois, na aba do perk). */
 type PerkRoll = {
@@ -111,22 +116,44 @@ export function SmithPanel(props: {
           ? x.rarity === "lendario"
           : tab() !== "reforjar" || x.affixes.length > 0,
     );
-  /** Rola o perk `slot` (ou imbui o 2º, sem `slot`) e guarda o antes e o depois para a caixa. */
-  const perk = async (it: OwnedItem, slot?: number) => {
-    const before = slot === undefined ? null : (itemPerks(it)[slot] ?? null);
+  /** Rola o perk `slot` e guarda o antes e o depois para a caixa. */
+  const perk = async (it: OwnedItem, slot: number) => {
+    const before = itemPerks(it)[slot] ?? null;
     setPerkRoll(null);
     const r = await cmd.run("rpg.smith.perk", {
       npc: props.npc,
       uid: it.uid,
-      action: slot === undefined ? "imbuir" : "rolar",
-      ...(slot === undefined ? {} : { slot }),
+      action: "rolar",
+      slot,
     });
     if (!r?.ok) return;
     const now = findItem(h(), it.uid)?.item;
-    const perks = now ? itemPerks(now) : [];
-    const at = slot ?? perks.length - 1;
-    const after = perks[at];
-    if (after) setPerkRoll({ uid: it.uid, slot: at, before, after });
+    const after = now ? itemPerks(now)[slot] : undefined;
+    if (after) setPerkRoll({ uid: it.uid, slot, before, after });
+  };
+  const [forged, setForged] = createSignal<string | null>(null);
+  const [forgedUid, setForgedUid] = createSignal<string | null>(null);
+  /** D68: forja a Suprema; o aviso diz o poder e o 2º perk que saíram. */
+  const forge = async (base: string, uids: string[]) => {
+    setForged(null);
+    setForgedUid(null);
+    const r = await cmd.run("rpg.smith.supreme", {
+      npc: props.npc,
+      base,
+      uids,
+    });
+    if (!r?.ok) return false;
+    const now = findItem(h(), base)?.item;
+    if (now && isSupreme(now)) {
+      const power = pct(now.supreme.power);
+      const second = itemPerks(now)[1];
+      const perk = second ? (perkText(second) ?? second.skill) : "";
+      setForged(
+        t`Saiu a Arma Suprema: +${power} de poder no dano da arma. 2º perk: ${perk}`,
+      );
+      setForgedUid(base);
+    }
+    return true;
   };
   const item = createMemo(() => {
     const uid = sel();
@@ -191,15 +218,31 @@ export function SmithPanel(props: {
           setProtect(false);
           setMany([]);
           setPerkRoll(null);
+          setForged(null);
         }}
         items={[
           { id: "refinar", label: t`Refinar` },
           { id: "reforjar", label: t`Reforjar` },
           { id: "perk", label: t`Perk lendário` },
+          { id: "suprema", label: t`Arma Suprema` },
           { id: "desmontar", label: t`Desmontar` },
         ]}
       />
-      <Show when={tab() !== "desmontar"}>
+      <Show when={tab() === "suprema"}>
+        <SupremeForge
+          hero={h()}
+          busy={cmd.busy()}
+          inRun={inRun()}
+          done={forged()}
+          error={cmd.error()}
+          onForge={forge}
+        />
+        {/* A recompensa: a carta da arma que acabou de sair, com a moldura de sangue e fogo. */}
+        <Show when={forgedUid() && findItem(h(), forgedUid()!)?.item}>
+          {(it) => <ItemCard hero={h()} item={it()} compare={false} />}
+        </Show>
+      </Show>
+      <Show when={tab() !== "desmontar" && tab() !== "suprema"}>
         <ItemGrid
           label={t`Vestido`}
           items={worn()}
@@ -210,18 +253,20 @@ export function SmithPanel(props: {
           hero={h()}
         />
       </Show>
-      <ItemGrid
-        label={t`Mochila`}
-        items={bag()}
-        selected={breaking() ? many() : sel() ? [sel()!] : []}
-        onToggle={breaking() ? toggleMany : pick}
-        mark={breaking() ? (uid) => marks()[uid]?.mark : undefined}
-        note={(it) => `+${it.refine}`}
-        empty={<Muted>{t`Nada na mochila serve aqui.`}</Muted>}
-        hero={h()}
-        price={buyBackPrice}
-        hint
-      />
+      <Show when={tab() !== "suprema"}>
+        <ItemGrid
+          label={t`Mochila`}
+          items={bag()}
+          selected={breaking() ? many() : sel() ? [sel()!] : []}
+          onToggle={breaking() ? toggleMany : pick}
+          mark={breaking() ? (uid) => marks()[uid]?.mark : undefined}
+          note={(it) => `+${it.refine}`}
+          empty={<Muted>{t`Nada na mochila serve aqui.`}</Muted>}
+          hero={h()}
+          price={buyBackPrice}
+          hint
+        />
+      </Show>
       <Show when={breaking() && h().bag.length > 0}>
         <Row>
           <Show when={many().length < h().bag.length}>
@@ -271,7 +316,9 @@ export function SmithPanel(props: {
       <Show when={outcome()} keyed>
         {(o) => <Result outcome={o} item={item()} />}
       </Show>
-      <Notice error={cmd.error()} ok={breaking() ? broke() : null} />
+      <Show when={tab() !== "suprema"}>
+        <Notice error={cmd.error()} ok={breaking() ? broke() : null} />
+      </Show>
 
       <Show when={inRun() && !breaking()}>
         <Muted role="note">
@@ -294,7 +341,6 @@ export function SmithPanel(props: {
                       busy={cmd.busy()}
                       last={perkRoll()?.uid === it().uid ? perkRoll() : null}
                       onRoll={(slot) => perk(it(), slot)}
-                      onImbue={() => perk(it())}
                     />
                   </Show>
                 }
@@ -514,8 +560,9 @@ function ReforgeBox(props: {
 
 /**
  * O perk do lendário (27/11/2026): o que o item tem, a faixa de cada um e as ações. Rolar troca o
- * perk por um numa skill da sua classe, com o tamanho na faixa dela (1 Essência); imbuir dá o 2º
- * (20 Essências). A Essência sai de desmontar lendário. Nada disso mexe nos afixos.
+ * perk por um numa skill da sua classe, com o tamanho na faixa dela (1 Essência). O 2º perk só na
+ * Arma Suprema (D68), que rola os dois. A Essência sai de desmontar lendário. Nada disso mexe nos
+ * afixos.
  */
 function PerkBox(props: {
   item: OwnedItem;
@@ -524,7 +571,6 @@ function PerkBox(props: {
   busy: boolean;
   last: PerkRoll | null;
   onRoll: (slot: number) => void;
-  onImbue: () => void;
 }) {
   const { t } = useLingui();
   const cfg = B.cfg.legendaryPerks;
@@ -536,7 +582,6 @@ function PerkBox(props: {
     return c !== null && c !== props.cls ? CLASSES[c].titles[1] : null;
   };
   const rollOk = () => props.essence >= cfg.rerollEssence;
-  const imbueOk = () => props.essence >= cfg.imbueEssence;
   return (
     <Panel>
       <strong>{t`Perk lendário`}</strong>
@@ -582,20 +627,10 @@ function PerkBox(props: {
           );
         }}
       </For>
-      <Show when={perks().length < cfg.maxPerks && perks().length > 0}>
-        <PerkLine>
-          <span>
-            <strong>{t`2º perk`}</strong>{" "}
-            <Muted>{t`Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola.`}</Muted>
-          </span>
-          <Confirm
-            tone="primary"
-            disabled={props.busy || !imbueOk()}
-            label={t`Imbuir o 2º perk (${cfg.imbueEssence} Essências)`}
-            confirm={t`Gastar ${cfg.imbueEssence} Essências? Toque de novo`}
-            onConfirm={props.onImbue}
-          />
-        </PerkLine>
+      <Show when={!isSupreme(props.item)}>
+        <Muted>
+          {t`O 2º perk só existe na Arma Suprema: junte 5 armas Lendárias iguais na aba Arma Suprema.`}
+        </Muted>
       </Show>
       <Costs>
         <span data-ok={rollOk() ? "" : undefined}>
@@ -617,6 +652,227 @@ function PerkBox(props: {
     </Panel>
   );
 }
+
+/**
+ * D68 A forja da Arma Suprema: as armas Lendárias (vestida e mochila) agrupadas por família e iL, com
+ * o quanto falta para 5. No grupo escolhido, a base (fica, com afixos, refino, nome e o 1º perk) e as
+ * 4 que somem ficam em grades separadas, para não haver dúvida de qual é qual. A escolha começa pronta
+ * (base: a vestida, senão a de mais refino; somem: as de menos refino) e o aviso aponta o que se perde
+ * de valor (refino alto, lendário com nome). Forjar pede o segundo toque.
+ */
+function SupremeForge(props: {
+  hero: HeroV5;
+  busy: boolean;
+  inRun: boolean;
+  done: string | null;
+  error: string | null;
+  onForge: (base: string, uids: string[]) => Promise<boolean>;
+}) {
+  const { t } = useLingui();
+  const need = B.cfg.supreme.inputs;
+  const p = B.cfg.supreme.power;
+  const groups = createMemo(() => {
+    const worn = props.hero.equipment.arma;
+    const list = [...(worn ? [worn] : []), ...props.hero.bag].filter(
+      (x) => supremeIngredient(x) && x.slot === "arma",
+    ) as (OwnedItem & { slot: "arma" })[];
+    const by = new Map<string, (OwnedItem & { slot: "arma" })[]>();
+    for (const x of list) {
+      const k = supremeKey(x);
+      by.set(k, [...(by.get(k) ?? []), x]);
+    }
+    return [...by.entries()]
+      .map(([key, items]) => ({ key, items, first: items[0]! }))
+      .sort(
+        (a, b) =>
+          b.items.length - a.items.length || b.first.ilvl - a.first.ilvl,
+      );
+  });
+  const [key, setKey] = createSignal<string | null>(null);
+  const [base, setBase] = createSignal<string | null>(null);
+  const [eat, setEat] = createSignal<string[]>([]);
+  const group = () => groups().find((g) => g.key === key()) ?? null;
+  const wornUid = () => props.hero.equipment.arma?.uid;
+  const inBag = (uid: string) => props.hero.bag.some((x) => x.uid === uid);
+  /** A escolha pronta do grupo: a base vestida (ou a de mais refino); somem as de menos refino. */
+  const choose = (k: string) => {
+    setKey(k);
+    const g = groups().find((x) => x.key === k);
+    if (!g) return;
+    const worn = g.items.find((x) => x.uid === wornUid());
+    const b = worn ?? [...g.items].sort((a, c) => c.refine - a.refine)[0]!;
+    setBase(b.uid);
+    setEat(
+      g.items
+        .filter((x) => x.uid !== b.uid && inBag(x.uid))
+        .sort((a, c) => a.refine - c.refine)
+        .slice(0, need - 1)
+        .map((x) => x.uid),
+    );
+  };
+  const pickBase = (uid: string) => {
+    setBase(uid);
+    setEat(eat().filter((x) => x !== uid));
+  };
+  const toggleEat = (uid: string) => {
+    if (eat().includes(uid)) setEat(eat().filter((x) => x !== uid));
+    else if (eat().length < need - 1) setEat([...eat(), uid]);
+  };
+  const eaten = () =>
+    (group()?.items ?? []).filter((x) => eat().includes(x.uid));
+  const ready = () =>
+    !!group()?.items.some((x) => x.uid === base()) && eat().length === need - 1;
+  const loss = () => {
+    const out = new Set<string>();
+    for (const x of eaten()) {
+      if (x.refine >= 7) out.add(t`uma das que somem é +${x.refine}`);
+      if (x.legendary) out.add(t`uma das que somem é um lendário com nome`);
+    }
+    return [...out];
+  };
+  const range = () => `${pct(p.min)} a +${pct(p.max)}`;
+  return (
+    <Panel>
+      <strong>{t`Arma Suprema`}</strong>
+      <Muted>
+        {t`Junte ${need} armas Lendárias da mesma família e do mesmo nível de item. A base fica (afixos, refino, nome e o 1º perk) e ganha de +${range()} de poder no dano da arma, mais um 2º perk sorteado, que depois rola como o 1º. As outras ${need - 1} somem.`}
+      </Muted>
+      <Show
+        when={groups().length > 0}
+        fallback={
+          <Muted>
+            {t`Nenhuma arma Lendária ainda. Elas caem do chefe da Masmorra e do chefe de Região.`}
+          </Muted>
+        }
+      >
+        <GroupList role="listbox" aria-label={t`Grupos de armas Lendárias`}>
+          <For each={groups()}>
+            {(g) => {
+              const fam = () => FAMILIES[g.first.family].name;
+              const n = () => g.items.length;
+              return (
+                <GroupBtn
+                  type="button"
+                  role="option"
+                  aria-selected={key() === g.key}
+                  data-on={key() === g.key ? "" : undefined}
+                  data-ready={n() >= need ? "" : undefined}
+                  onClick={() => choose(g.key)}
+                >
+                  <span>{t`${fam()} · nível ${g.first.ilvl}`}</span>
+                  <Meter aria-hidden="true">
+                    <span
+                      style={{ width: `${Math.min(1, n() / need) * 100}%` }}
+                    />
+                  </Meter>
+                  <small>
+                    {n() >= need
+                      ? t`${n()} de ${need}: pronto`
+                      : t`${n()} de ${need}`}
+                  </small>
+                </GroupBtn>
+              );
+            }}
+          </For>
+        </GroupList>
+      </Show>
+      <Show when={group()}>
+        {(g) => (
+          <>
+            <strong>{t`Base (fica e vira a Suprema)`}</strong>
+            <ItemGrid
+              label={t`Base (fica e vira a Suprema)`}
+              items={g().items}
+              selected={base() ? [base()!] : []}
+              onToggle={pickBase}
+              note={(it) => `+${it.refine}`}
+              hero={props.hero}
+            />
+            <strong>{t`Somem na forja (${eat().length} de ${need - 1})`}</strong>
+            <ItemGrid
+              label={t`Somem na forja (${eat().length} de ${need - 1})`}
+              items={g().items.filter((x) => x.uid !== base() && inBag(x.uid))}
+              selected={eat()}
+              onToggle={toggleEat}
+              note={(it) => `+${it.refine}`}
+              hero={props.hero}
+              empty={<Muted>{t`Faltam armas iguais na mochila.`}</Muted>}
+            />
+            <Show when={g().items.length < need}>
+              <Muted>
+                {t`Faltam ${need - g().items.length} para ${need}. A arma vestida só entra como base.`}
+              </Muted>
+            </Show>
+            <Show when={loss().length > 0}>
+              <Muted role="note">{t`Atenção: ${loss().join("; ")}.`}</Muted>
+            </Show>
+            <Show when={props.inRun}>
+              <Muted role="note">{t`Forjar, só quando a corrida acabar.`}</Muted>
+            </Show>
+            <Confirm
+              tone="danger"
+              disabled={props.busy || props.inRun || !ready()}
+              label={t`Forjar a Arma Suprema`}
+              confirm={t`As ${need - 1} armas somem para sempre. Toque de novo`}
+              onConfirm={async () => {
+                const b = base();
+                if (!b) return;
+                if (await props.onForge(b, eat())) {
+                  setKey(null);
+                  setEat([]);
+                }
+              }}
+            />
+          </>
+        )}
+      </Show>
+      <Notice error={props.error} ok={props.done} />
+    </Panel>
+  );
+}
+
+const GroupList = styled("div", {
+  base: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fill, minmax(170px, 1fr))",
+    gap: "8px",
+  },
+});
+const GroupBtn = styled("button", {
+  base: {
+    display: "flex",
+    flexDirection: "column",
+    gap: "4px",
+    textAlign: "left",
+    padding: "8px 10px",
+    borderRadius: "10px",
+    cursor: "pointer",
+    color: "inherit",
+    background: "var(--md-sys-color-surface-container-high)",
+    border: "1px solid var(--md-sys-color-outline-variant)",
+    "& > small": { opacity: 0.75 },
+    "&[data-ready]": { borderColor: "#e0261a" },
+    "&[data-on]": {
+      borderColor: "#ff4a2a",
+      boxShadow: "0 0 0 2px rgba(224, 38, 26, 0.45)",
+    },
+    "&:focus-visible": { outline: "2px solid #ff7a3d", outlineOffset: "2px" },
+  },
+});
+const Meter = styled("span", {
+  base: {
+    display: "block",
+    height: "4px",
+    borderRadius: "2px",
+    background: "rgba(255, 255, 255, 0.12)",
+    overflow: "hidden",
+    "& > span": {
+      display: "block",
+      height: "100%",
+      background: "linear-gradient(90deg, #7a0606, #e0261a, #ff8a2a)",
+    },
+  },
+});
 
 const PerkLine = styled("div", {
   base: {

@@ -149,6 +149,12 @@ msgstr ""
 msgid "{0} · {s} cura {1} (+{2})"
 msgstr ""
 
+#. placeholder {0}: fam()
+#. placeholder {1}: g.first.ilvl
+#: components/space/game/SmithPanel.tsx
+msgid "{0} · nível {1}"
+msgstr ""
+
 #. placeholder {0}: who(ev.a)
 #. placeholder {1}: who(ev.b)
 #. placeholder {2}: num(ev.v)
@@ -240,6 +246,16 @@ msgstr ""
 #. placeholder {2}: title(c())
 #: components/space/game/ArsenalView.tsx
 msgid "{0} de {1} bases servem para {2}"
+msgstr ""
+
+#. placeholder {0}: n()
+#: components/space/game/SmithPanel.tsx
+msgid "{0} de {need}"
+msgstr ""
+
+#. placeholder {0}: n()
+#: components/space/game/SmithPanel.tsx
+msgid "{0} de {need}: pronto"
 msgstr ""
 
 #. placeholder {0}: pct(s().chance)
@@ -965,6 +981,11 @@ msgstr ""
 msgid "✓ pode usar · ◐ veste um peso acima, com {0} · ★ é o lendário com nome da classe."
 msgstr ""
 
+#. placeholder {0}: pct(sp().power)
+#: components/space/game/ItemCard.tsx
+msgid "✦ +{0} de poder no dano da arma · 2 perks"
+msgstr ""
+
 #: components/space/SpacePage.tsx
 msgid "📎 {n} anexos"
 msgstr ""
@@ -1062,8 +1083,8 @@ msgid "24 hours"
 msgstr "24 ساعة"
 
 #: components/space/game/SmithPanel.tsx
-msgid "2º perk"
-msgstr ""
+#~ msgid "2º perk"
+#~ msgstr ""
 
 #: components/space/game/GainTab.tsx
 msgid "7 dias"
@@ -1594,6 +1615,12 @@ msgstr ""
 msgid "Arma de duas mãos não combina com escudo."
 msgstr ""
 
+#: components/space/game/ArsenalView.tsx
+#: components/space/game/ItemCard.tsx
+#: components/space/game/SmithPanel.tsx
+msgid "Arma Suprema"
+msgstr ""
+
 #: components/space/game/ClassPicker.tsx
 #: components/space/game/gameText.ts
 #: components/space/game/MasterPanel.tsx
@@ -1627,6 +1654,11 @@ msgstr ""
 
 #: components/space/game/ArsenalView.tsx
 msgid "Arsenal"
+msgstr ""
+
+#. placeholder {0}: need - 1
+#: components/space/game/SmithPanel.tsx
+msgid "As {0} armas somem para sempre. Toque de novo"
 msgstr ""
 
 #. placeholder {0}: props.place
@@ -1689,6 +1721,11 @@ msgstr ""
 
 #: components/space/game/SmithPanel.tsx
 msgid "Até o +4 é certo."
+msgstr ""
+
+#. placeholder {0}: loss().join("; ")
+#: components/space/game/SmithPanel.tsx
+msgid "Atenção: {0}."
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -1845,6 +1882,10 @@ msgstr ""
 #: components/app/interface/settings/ServerSettings.tsx
 msgid "Bans"
 msgstr "المستخدمون المحظورون"
+
+#: components/space/game/SmithPanel.tsx
+msgid "Base (fica e vira a Suprema)"
+msgstr ""
 
 #. placeholder {0}: props.below
 #: components/space/game/RunHud.tsx
@@ -4302,6 +4343,15 @@ msgstr ""
 msgid "faltam {0} de ouro"
 msgstr ""
 
+#. placeholder {0}: need - g().items.length
+#: components/space/game/SmithPanel.tsx
+msgid "Faltam {0} para {need}. A arma vestida só entra como base."
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Faltam armas iguais na mochila."
+msgstr ""
+
 #: components/space/game/gameText.ts
 msgid "Faltam minérios da região do item."
 msgstr ""
@@ -4448,6 +4498,14 @@ msgstr ""
 msgid "Força: ATQ corpo a corpo e das armas de força."
 msgstr ""
 
+#: components/space/game/SmithPanel.tsx
+msgid "Forjar a Arma Suprema"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Forjar, só quando a corrida acabar."
+msgstr ""
+
 #. placeholder {0}: perks().length
 #: components/space/game/SkillTip.tsx
 msgid "fortalecida por {0} perks"
@@ -4496,8 +4554,8 @@ msgstr ""
 
 #. placeholder {0}: cfg.imbueEssence
 #: components/space/game/SmithPanel.tsx
-msgid "Gastar {0} Essências? Toque de novo"
-msgstr ""
+#~ msgid "Gastar {0} Essências? Toque de novo"
+#~ msgstr ""
 
 #. placeholder {0}: ev().pointsLeft
 #: components/space/game/MasterPanel.tsx
@@ -4635,6 +4693,10 @@ msgstr "اسم المجموعة"
 #: components/space/game/RunMeter.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Grupo"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "Grupos de armas Lendárias"
 msgstr ""
 
 #: components/space/game/TvMenu.tsx
@@ -4793,13 +4855,13 @@ msgid "Illegal hacking or cracking"
 msgstr "القرصنة أو الاختراق غير القانوني"
 
 #: components/space/game/SmithPanel.tsx
-msgid "Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola."
-msgstr ""
+#~ msgid "Imbuir dá um 2º perk, numa skill diferente da do 1º; depois ele também rola."
+#~ msgstr ""
 
 #. placeholder {0}: cfg.imbueEssence
 #: components/space/game/SmithPanel.tsx
-msgid "Imbuir o 2º perk ({0} Essências)"
-msgstr ""
+#~ msgid "Imbuir o 2º perk ({0} Essências)"
+#~ msgstr ""
 
 #: components/modal/modals/ReportContent.tsx
 msgid "Impersonation"
@@ -5034,6 +5096,12 @@ msgstr "انتقل إلى الرسائل الحاضرة"
 #: components/ui/components/features/messaging/bars/NewMessages.tsx
 msgid "Jump to the beginning"
 msgstr "انتقل إلى البداية"
+
+#. placeholder {0}: range()
+#. placeholder {1}: need - 1
+#: components/space/game/SmithPanel.tsx
+msgid "Junte {need} armas Lendárias da mesma família e do mesmo nível de item. A base fica (afixos, refino, nome e o 1º perk) e ganha de +{0} de poder no dano da arma, mais um 2º perk sorteado, que depois rola como o 1º. As outras {1} somem."
+msgstr ""
 
 #: components/modal/modals/ChannelToggleMature.tsx
 msgid "Keep as is"
@@ -6085,6 +6153,10 @@ msgstr ""
 msgid "Nenhum monstro na luta agora."
 msgstr ""
 
+#: components/space/game/SmithPanel.tsx
+msgid "Nenhuma arma Lendária ainda. Elas caem do chefe da Masmorra e do chefe de Região."
+msgstr ""
+
 #: components/space/game/GainTab.tsx
 msgid "Nenhuma corrida fechada nas últimas 24 h."
 msgstr ""
@@ -6241,6 +6313,14 @@ msgstr ""
 msgid "no Ferreiro"
 msgstr ""
 
+#. placeholder {0}: B.cfg.supreme.inputs
+#. placeholder {1}: Math.round(B.cfg.supreme.power.min * 100)
+#. placeholder {2}: Math.round(B.cfg.supreme.power.max * 100)
+#. placeholder {3}: B.cfg.supreme.inputs
+#: components/space/game/ArsenalView.tsx
+msgid "No Ferreiro, {0} armas Lendárias da mesma família e do mesmo nível de item viram uma Arma Suprema: a base fica (afixos, refino, nome e o 1º perk), ganha de +{1}% a +{2}% de poder no dano da arma (média de 15%) e um 2º perk sorteado, que rola como o 1º. É o único item com 2 perks. Desmontar ou vender rende as {3} lendárias."
+msgstr ""
+
 #: components/space/game/skillText.ts
 msgid "No fim, {p} da mana gasta pelo escudo de mana volta."
 msgstr ""
@@ -6362,6 +6442,10 @@ msgstr ""
 #: components/space/game/PartyDock.tsx
 #: components/space/game/RunPanel.tsx
 msgid "Nv {0}"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "O 2º perk só existe na Arma Suprema: junte 5 armas Lendárias iguais na aba Arma Suprema."
 msgstr ""
 
 #: components/space/game/skillText.ts
@@ -7982,6 +8066,10 @@ msgstr ""
 msgid "saiu {0} (faixa {1})"
 msgstr ""
 
+#: components/space/game/SmithPanel.tsx
+msgid "Saiu a Arma Suprema: +{power} de poder no dano da arma. 2º perk: {perk}"
+msgstr ""
+
 #: components/space/game/RunPanel.tsx
 msgid "Saiu antes e abriu mão da recompensa."
 msgstr ""
@@ -8561,6 +8649,12 @@ msgstr ""
 
 #: components/space/game/gameText.ts
 msgid "sombrio"
+msgstr ""
+
+#. placeholder {0}: eat().length
+#. placeholder {1}: need - 1
+#: components/space/game/SmithPanel.tsx
+msgid "Somem na forja ({0} de {1})"
 msgstr ""
 
 #: components/modal/modals/EditEmail.tsx
@@ -9330,6 +9424,15 @@ msgstr ""
 #. placeholder {0}: Math.round(props.tv.cooldownS / 60)
 #: components/space/SmartTv.tsx
 msgid "Um vídeo por vez; intervalo de {0} min entre vídeos nesta sala."
+msgstr ""
+
+#. placeholder {0}: x.refine
+#: components/space/game/SmithPanel.tsx
+msgid "uma das que somem é +{0}"
+msgstr ""
+
+#: components/space/game/SmithPanel.tsx
+msgid "uma das que somem é um lendário com nome"
 msgstr ""
 
 #: components/app/interface/settings/user/Support.tsx

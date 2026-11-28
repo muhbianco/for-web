@@ -15,9 +15,10 @@ export const BALANCE = {
      * dificuldade até a 600; não vamos recalibrar nada, a ideia é trazer mais dificuldade sem alterar
      * o herói; o grupo deve ficar travado antes de zerar o jogo, mesmo acima do limite com perks").
      * Do 501 ao 600 a tabela de monstros continua no ritmo do 400 ao 500 (monsters/generate.ts) e o
-     * herói continua com teto no 500: as regiões 11 e 12 são o fim de jogo.
+     * herói continua com teto no 500: as regiões 11 e 12 são o fim de jogo. D69: até o 1000 (regiões
+     * 13 a 20), no mesmo ritmo, para medir até onde os heróis vão.
      */
-    maxDungeonLevel: 600,
+    maxDungeonLevel: 1000,
     /** Nível de job (30% da experiência do nível). */
     maxJob: 150,
     /** Proficiência, o nível base do Dojô. */
@@ -407,14 +408,24 @@ export const BALANCE = {
 
   /**
    * O perk dos lendários no Ferreiro (27/11/2026, pedido do dono; items/perks.ts): rolar o perk custa
-   * `rerollEssence`; imbuir o 2º perk, `imbueEssence`; desmontar um lendário dá `dismantleEssence`
-   * (o §10 dava 1). A Essência é o que sai de desmontar lendário.
+   * `rerollEssence`; desmontar um lendário dá `dismantleEssence` (o §10 dava 1). A Essência é o que
+   * sai de desmontar lendário. Desde a D68 o lendário tem 1 perk: o 2º só na Arma Suprema.
    */
   legendaryPerks: {
     rerollEssence: 1,
-    imbueEssence: 20,
-    maxPerks: 2,
+    maxPerks: 1,
     dismantleEssence: 2,
+  },
+
+  /**
+   * D68 Arma Suprema (27/11/2026; items/supreme.ts): `inputs` armas Lendárias da mesma família e do
+   * mesmo iL viram uma; `power` é o a mais no dano base da arma (sorteado de `min` a `max`, em
+   * passos de `step`: média 15%); `maxPerks` perks. Desmontar e vender valem as `inputs` lendárias.
+   */
+  supreme: {
+    inputs: 5,
+    power: { min: 0.1, max: 0.2, step: 0.01 },
+    maxPerks: 2,
   },
 
   /** §10: Mercador. */

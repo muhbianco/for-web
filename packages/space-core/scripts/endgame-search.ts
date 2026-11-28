@@ -141,7 +141,12 @@ export const BUILDS: Record<ClassId, Record<string, Spec>> = {
 };
 
 const L = 500;
-const PERKS_PER_ITEM = Number(arg("perks", "2"));
+const PERKS_PER_ITEM = Number(arg("perks", "1"));
+/**
+ * D68: com `--supreme 0.15` (a média) ou `0.2` (a melhor rolagem), a arma é a Suprema: o poder no dano
+ * dela e 2 perks (o do plano e outra skill do kit); os outros itens seguem com `--perks`.
+ */
+const SUPREME = Number(arg("supreme", "0"));
 const R0 = createReference(B);
 const hs0Cache = new Map<ClassId, ReturnType<typeof limitMechanics>>();
 const hs0 = (cls: ClassId) => {
@@ -215,7 +220,15 @@ export function fighter(cls: ClassId, o: Option): FighterInput {
   const plan = perkPlans(kit)[o.plan]!;
   let n = 0;
   const next = () => plan[n++ % plan.length]!;
-  const eq: Record<string, ItemInstance> = { arma: topItem(cls, { slot: "arma", family: s.weapon }, next()) };
+  const first = next();
+  const weaponPerks =
+    SUPREME > 0
+      ? [first[0]!, first[1] ?? plan.flat().find((x) => x !== first[0]) ?? kit.find((x) => x !== first[0])!]
+      : first;
+  const arma = topItem(cls, { slot: "arma", family: s.weapon }, weaponPerks);
+  const eq: Record<string, ItemInstance> = {
+    arma: SUPREME > 0 ? ({ ...arma, supreme: { power: SUPREME } } as ItemInstance) : arma,
+  };
   if (s.off) eq.secundaria = topItem(cls, { slot: "secundaria", offhand: s.off }, next());
   for (const slot of ARMOR_SLOTS) eq[slot] = topItem(cls, { slot, weight: s.weight }, next());
   eq.colar = topItem(cls, { slot: "colar" }, next());
@@ -374,7 +387,7 @@ function poolMode(file: string) {
   const g = (B.cfg.monsters as { endgameGrowth?: number }).endgameGrowth ?? 1;
   const wins = rows.filter((x) => x.sc.win).length;
   const lucky = rows.filter((x) => x.luck > 0).length;
-  console.log(`# Pool (${rows.length} configurações) no ${DG}, ${PERKS_PER_ITEM} perk(s), endgameGrowth ${g}`);
+  console.log(`# Pool (${rows.length} configurações) no ${DG}, ${PERKS_PER_ITEM} perk(s)${SUPREME > 0 ? `, arma Suprema +${Math.round(SUPREME * 100)}%` : ""}, endgameGrowth ${g}`);
   console.log(`vencem no esperado: ${wins} · vencem ao menos 1 de ${SEEDS} com rolagem: ${lucky} (total de vitórias: ${rows.reduce((a, x) => a + x.luck, 0)})`);
   const hist = (k: "regiao" | "masmorra") => {
     const m = new Map<number, number>();
@@ -439,7 +452,7 @@ async function main() {
   first.sort((a, b) => b.score.score - a.score.score);
   const evals = first.reduce((a, r) => a + r.evals, 0);
 
-  console.log(`# Busca no ${DG} — ${PERKS_PER_ITEM} perk(s) por item — ${comps.length} composições, ${evals} lutas, ${Math.round((Date.now() - t0) / 1000)} s`);
+  console.log(`# Busca no ${DG} — ${PERKS_PER_ITEM} perk(s) por item${SUPREME > 0 ? `, arma Suprema +${Math.round(SUPREME * 100)}%` : ""} — ${comps.length} composições, ${evals} lutas, ${Math.round((Date.now() - t0) / 1000)} s`);
   const wins = first.filter((r) => r.score.win);
   console.log(`vencem (modo esperado): ${wins.length} composições`);
   const dist = new Map<string, number>();

@@ -1,6 +1,7 @@
 import type { RarityId } from "../content.ts";
 import type { ItemInstance } from "../equipment.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
+import { isSupreme } from "./supreme.ts";
 import {
   type Material,
   type RandomSource,
@@ -143,9 +144,13 @@ export function dismantle(
   ore: { material: Material; count: number };
   essence: number;
 } {
+  // D68: a Suprema vale as lendárias que a forja consumiu.
+  const n = isSupreme(item) ? B.cfg.supreme.inputs : 1;
   return {
-    ore: { material: materialOf(item.ilvl), count: DISMANTLE[item.rarity] },
+    ore: { material: materialOf(item.ilvl), count: DISMANTLE[item.rarity] * n },
     essence:
-      item.rarity === "lendario" ? B.cfg.legendaryPerks.dismantleEssence : 0,
+      item.rarity === "lendario"
+        ? B.cfg.legendaryPerks.dismantleEssence * n
+        : 0,
   };
 }

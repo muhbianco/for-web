@@ -25,6 +25,7 @@ import {
   balance as gameBalance,
 } from "./formulas.ts";
 import type { ItemPerk } from "./items/perks.ts";
+import { supremePower } from "./items/supreme.ts";
 
 /**
  * O item instanciado (spec §9) e o herói da engine nova: o que vai salvo e o caminho até os derivados.
@@ -52,6 +53,8 @@ interface ItemCommon {
 export interface WeaponItem extends ItemCommon {
   slot: "arma";
   family: FamilyId;
+  /** D68 Arma Suprema (items/supreme.ts): o a mais no dano base da arma (0,10–0,20). */
+  supreme?: { power: number };
 }
 
 export interface OffhandItem extends ItemCommon {
@@ -248,7 +251,8 @@ export function heroLoadout(
   const weaponBase = weapon
     ? B.weaponBaseValue(weapon.ilvl) *
       B.rarityMult(weapon.rarity) *
-      B.refineMult(weapon.refine, true)
+      B.refineMult(weapon.refine, true) *
+      (1 + supremePower(weapon))
     : 0;
 
   const off = eq.secundaria;

@@ -9,12 +9,12 @@ import "material-symbols";
 import "../../src/index.css";
 
 import {
-  createMemo,
   For,
   Match,
   Show,
   Suspense,
   Switch,
+  createMemo,
   createSignal,
   lazy,
   onCleanup,
@@ -114,7 +114,8 @@ const newsView = {
 } as unknown as SpaceView;
 /** A estante do Arsenal não busca as novidades: se buscar, o cenário acusa. */
 const shelfView = {
-  news: () => Promise.reject(new Error("a estante do Arsenal não busca as novidades")),
+  news: () =>
+    Promise.reject(new Error("a estante do Arsenal não busca as novidades")),
   setNewsUnread: () => {},
 } as unknown as SpaceView;
 
@@ -232,6 +233,51 @@ const SCENARIOS: Scenario[] = [
       };
       const bag = [...h.bag, mk("cajado-da-aurora"), mk("cetro-das-cinzas")];
       return world(stateOf({ ...h, essence: 25, bag }));
+    },
+  },
+  {
+    id: "ferreiro-suprema",
+    label: "Ferreiro (Arma Suprema: 5 espadas Lendárias iguais)",
+    screen: "npc",
+    npc: "ferreiro",
+    // D68 (27/11/2026): 5 espadas Lendárias do iL 200 (uma vestida, de +9, e uma de +7 na mochila) e
+    // 2 do iL 190 (grupo incompleto), para a forja da Suprema.
+    build: () => {
+      const h = grow("guerreiro", 200, 30);
+      let seed = 11;
+      const rng = {
+        next: () => (seed = (seed * 16807) % 2147483647) / 2147483647,
+      };
+      let k = 0;
+      const sword = (ilvl: number, refine: number) => ({
+        ...generateItem(
+          { slot: "arma", family: "espada" },
+          ilvl,
+          "lendario",
+          rng,
+        ),
+        perks: [{ skill: "grito-de-guerra", value: 0.5 }],
+        refine,
+        uid: `lab-espada-${k++}`,
+      });
+      const worn = sword(200, 9);
+      const bag = [
+        sword(200, 0),
+        sword(200, 7),
+        sword(200, 2),
+        sword(200, 0),
+        sword(190, 0),
+        sword(190, 3),
+        ...h.bag,
+      ];
+      return world(
+        stateOf({
+          ...h,
+          essence: 6,
+          bag,
+          equipment: { ...h.equipment, arma: worn } as typeof h.equipment,
+        }),
+      );
     },
   },
   {

@@ -4,6 +4,7 @@ import { type Balance, balance as gameBalance } from "../formulas.ts";
 import type { MechanicMod } from "../skills/schema.ts";
 import type { ItemBase } from "./generate.ts";
 import { type ItemPerk, JOB_XP_PERK, perkMods, perkText } from "./perks.ts";
+import { perkCapOf } from "./supreme.ts";
 
 /**
  * Lendários (spec §9.5): raridade Lendário com 3 afixos e um efeito único. O spec dá 8 exemplos
@@ -98,7 +99,8 @@ export function legendaryText(def: LegendaryDef): string {
 /** Os perks do item: os rolados no Ferreiro; sem eles, o de origem do lendário; fora do Lendário, nenhum. */
 export function itemPerks(item: ItemInstance): ItemPerk[] {
   if (item.rarity !== "lendario") return [];
-  if (item.perks) return item.perks;
+  // D68: 2 perks só na Arma Suprema; num lendário comum, um 2º perk gravado antes não vale.
+  if (item.perks) return item.perks.slice(0, perkCapOf(item));
   const def = legendaryOf(item);
   return def ? [def.perk] : [];
 }

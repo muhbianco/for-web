@@ -1860,6 +1860,423 @@ const THEMES: Record<string, Theme> = {
       }
     },
   },
+  // ---- D69 (27/11/2026): os temas do fim de jogo, um por região (11 a 20) -----------------------
+  "fenda-abissal": {
+    floor: ["#1a2a30", "#18262c"],
+    grout: "#24404a",
+    wall: "#0d171b",
+    wallDark: "#081013",
+    lip: "#0a1316",
+    deco: (ctx, rnd, st) => {
+      // Olhos que piscam na parede e fendas de luz no chão.
+      for (let x = 10; x < SCENE_W - 10; x += 22 + Math.floor(rnd() * 20)) {
+        const y = 4 + Math.floor(rnd() * 7);
+        glow(ctx, x + 1, y + 1, 4, 3, "#40e0d0", 0.25);
+        px(ctx, x - 1, y, 5, 3, "#0b3a3a");
+        px(ctx, x, y + 1, 3, 1, "#7ffff0");
+        px(ctx, x + 1, y + 1, 1, 1, "#05080a");
+      }
+      for (let i = 0; i < 3 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        glow(ctx, x + 8, y + 2, 14, 5, "#3ad0c8", 0.18);
+        line(ctx, "#7ffff0", x, y, x + 4, y + 2, x + 7, y - 1, x + 11, y + 2, x + 16, y);
+        line(ctx, "#1f8f8a", x, y + 1, x + 4, y + 3, x + 7, y, x + 11, y + 3, x + 16, y + 1);
+      }
+      for (let i = 0; i < 4; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y, 3, 2, "#2e4a52");
+        px(ctx, x + 1, y - 1, 1, 1, "#4e7a84");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 9, 30, 12, "#3ad0c8", 0.3);
+        px(ctx, cx - 10, 1, 20, 14, "#020506");
+        for (let k = 0; k < 7; k++) line(ctx, k % 2 ? "#7ffff0" : "#a070e0", cx, 8, cx - 12 + k * 4, k % 2 ? 1 : 15);
+        px(ctx, cx - 2, 6, 4, 4, "#e8fffc");
+      }
+    },
+  },
+  "trono-do-fim": {
+    floor: ["#2a1618", "#261416"],
+    grout: "#3a1e22",
+    wall: "#140a0c",
+    wallDark: "#0c0607",
+    lip: "#100809",
+    deco: (ctx, rnd, st) => {
+      // Velas pretas de chama roxa na parede, ossos e colunas partidas no chão.
+      for (let x = 12; x < SCENE_W - 12; x += 30 + Math.floor(rnd() * 16)) {
+        glow(ctx, x + 1, 7, 6, 5, "#b04ae0", 0.22);
+        px(ctx, x, 8, 3, 6, "#1a1a1e");
+        px(ctx, x + 1, 5, 1, 3, "#d090ff");
+        px(ctx, x + 1, 4, 1, 1, "#ffffff");
+      }
+      for (let i = 0; i < 4 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y, 7, 1, "#d8d0c0");
+        px(ctx, x - 1, y - 1, 2, 3, "#e8e0d0");
+        px(ctx, x + 6, y - 1, 2, 3, "#e8e0d0");
+      }
+      for (let i = 0; i < 2; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y - 10, 6, 10, "#4a3a3e");
+        px(ctx, x, y - 10, 1, 10, "#6a5a5e");
+        px(ctx, x + 1, y - 12, 2, 2, "#4a3a3e");
+        px(ctx, x - 2, y, 10, 2, "#3a2a2e");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 8, 26, 10, "#8a1a2a", 0.3);
+        px(ctx, cx - 8, 1, 16, 15, "#0a0505");
+        px(ctx, cx - 10, 6, 3, 10, "#2a1418");
+        px(ctx, cx + 7, 6, 3, 10, "#2a1418");
+        px(ctx, cx - 5, 2, 10, 2, "#c8a040");
+        for (const dx of [-5, -2, 1, 4]) px(ctx, cx + dx, 0, 1, 2, "#ffd060");
+        px(ctx, cx - 10, FLOOR_Y, 20, 5, "#0a0505");
+        px(ctx, cx - 10, FLOOR_Y + 4, 20, 1, "#8a1a2a");
+      }
+    },
+  },
+  "ermo-de-cinzas": {
+    floor: ["#3a3432", "#36302e"],
+    grout: "#4a3a30",
+    wall: "#231c1a",
+    wallDark: "#1a1412",
+    lip: "#1e1816",
+    deco: (ctx, rnd, st) => {
+      // Cinza caindo, rachaduras com brasa e costelas de dragão no chão.
+      for (let i = 0; i < 30; i++) {
+        ctx.globalAlpha = 0.35 + rnd() * 0.5;
+        px(ctx, Math.floor(rnd() * SCENE_W), Math.floor(rnd() * SCENE_H), 1, 1, rnd() < 0.25 ? "#ff8a3d" : "#bdb4ae");
+      }
+      ctx.globalAlpha = 1;
+      for (let i = 0; i < 4 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        glow(ctx, x + 6, y + 1, 10, 4, "#ff6a1a", 0.22);
+        line(ctx, "#ff8a2a", x, y, x + 3, y + 1, x + 6, y - 1, x + 9, y + 1, x + 12, y);
+        line(ctx, "#ffd27a", x + 4, y, x + 6, y - 1);
+      }
+      const [rx, ry] = floorPoint(rnd);
+      for (let k = 0; k < 5; k++) {
+        px(ctx, rx + k * 4, ry - 6 + Math.abs(2 - k), 1, 7 - Math.abs(2 - k), "#e8e0d0");
+        px(ctx, rx + k * 4 + 1, ry - 5 + Math.abs(2 - k), 1, 1, "#c8c0b0");
+      }
+      px(ctx, rx - 2, ry + 1, 22, 1, "#d8d0c0");
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 10, 30, 10, "#ff5a1a", 0.28);
+        px(ctx, cx - 12, 3, 24, 11, "#d8d0c0");
+        px(ctx, cx - 12, 3, 24, 1, "#f0e8d8");
+        px(ctx, cx - 7, 6, 4, 3, "#1a0a06");
+        px(ctx, cx + 3, 6, 4, 3, "#1a0a06");
+        px(ctx, cx - 6, 7, 2, 1, "#ff6a1a");
+        px(ctx, cx + 4, 7, 2, 1, "#ff6a1a");
+        for (let k = -9; k <= 9; k += 3) px(ctx, cx + k, 12, 2, 3, "#f0e8d8");
+        px(ctx, cx - 16, 1, 4, 6, "#c8c0b0");
+        px(ctx, cx + 12, 1, 4, 6, "#c8c0b0");
+      }
+    },
+  },
+  "catedral-partida": {
+    floor: ["#8a8e96", "#7c8088"],
+    grout: "#5e626a",
+    wall: "#3a3e4a",
+    wallDark: "#2a2e38",
+    lip: "#30343e",
+    deco: (ctx, rnd, st) => {
+      // Vitrais coloridos na parede, bancos quebrados e cacos de vidro no chão.
+      const glass = ["#d04a4a", "#4a7ad0", "#e0c040", "#4ab070", "#a04ad0"];
+      for (let x = 14; x < SCENE_W - 18; x += 34 + Math.floor(rnd() * 10)) {
+        px(ctx, x, 2, 9, 13, "#1a1c22");
+        for (let gy = 0; gy < 3; gy++)
+          for (let gx = 0; gx < 2; gx++) px(ctx, x + 1 + gx * 4, 3 + gy * 4, 3, 3, glass[Math.floor(rnd() * glass.length)]!);
+        px(ctx, x + 3, 1, 3, 1, "#1a1c22");
+        glow(ctx, x + 4, 20, 10, 4, glass[Math.floor(rnd() * glass.length)]!, 0.12);
+      }
+      for (let i = 0; i < 2 + (st % 2); i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y, 18, 3, "#5a3a24");
+        px(ctx, x, y - 4, 2, 4, "#4a2e1c");
+        px(ctx, x + 12, y - 4, 2, 4, "#4a2e1c");
+        px(ctx, x + 7, y, 3, 3, "#7c8088");
+      }
+      for (let i = 0; i < 6; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y, 1, 1, glass[Math.floor(rnd() * glass.length)]!);
+        px(ctx, x + 1, y + 1, 1, 1, "#e8eef8");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 7, 18, 9, "#e8e0ff", 0.25);
+        ctx.fillStyle = "#1a1c22";
+        ctx.beginPath();
+        ctx.arc(cx, 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        for (let k = 0; k < 8; k++) {
+          const a = (k / 8) * Math.PI * 2;
+          px(ctx, Math.round(cx + Math.cos(a) * 5) - 1, Math.round(8 + Math.sin(a) * 5) - 1, 2, 2, glass[k % glass.length]!);
+        }
+        line(ctx, "#3a3e4a", cx - 6, 3, cx + 2, 12);
+        px(ctx, cx - 12, FLOOR_Y + 2, 24, 6, "#d8d8e0");
+        px(ctx, cx - 12, FLOOR_Y + 2, 24, 1, "#ffffff");
+        for (const dx of [-9, -4, 4, 9]) {
+          px(ctx, cx + dx, FLOOR_Y - 2, 1, 4, "#f0ead8");
+          px(ctx, cx + dx, FLOOR_Y - 3, 1, 1, "#ffd060");
+        }
+      }
+    },
+  },
+  "mar-de-vidro": {
+    floor: ["#101218", "#0e1016"],
+    grout: "#1c2030",
+    wall: "#08090e",
+    wallDark: "#040509",
+    lip: "#06070b",
+    deco: (ctx, rnd, st) => {
+      // Vidro negro: reflexos brancos no chão, espinhos de obsidiana, estrelas na parede.
+      for (let i = 0; i < 26; i++) {
+        ctx.globalAlpha = 0.3 + rnd() * 0.6;
+        px(ctx, Math.floor(rnd() * SCENE_W), Math.floor(rnd() * (FLOOR_Y - 1)), 1, 1, "#c8d8ff");
+      }
+      ctx.globalAlpha = 0.18;
+      for (let i = 0; i < 8; i++) {
+        const [x, y] = floorPoint(rnd);
+        line(ctx, "#ffffff", x, y, x + 10, y - 3);
+      }
+      ctx.globalAlpha = 1;
+      for (let i = 0; i < 4 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        const h = 5 + Math.floor(rnd() * 7);
+        glow(ctx, x + 1, y - h / 2, 4, h / 2 + 1, "#7a6ad8", 0.14);
+        for (let k = 0; k < h; k++) px(ctx, x + Math.floor(k / 3), y - k, Math.max(1, 3 - Math.floor(k / 3)), 1, k >= h - 2 ? "#c0b0ff" : "#2e2a4a");
+        px(ctx, x, y - 1, 1, h - 2, "#5a4a98");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 10, 34, 12, "#5a4aa8", 0.28);
+        for (const dx of [-14, -6, 4, 12]) {
+          let y = FLOOR_Y + 10;
+          for (let k = 0; k < 16; k++) {
+            y -= 1;
+            px(ctx, cx + dx + Math.round(Math.sin(k / 2.5 + dx) * 2), y, 3, 1, k > 12 ? "#8a7ac8" : "#14121e");
+          }
+        }
+      }
+    },
+  },
+  "forja-dos-titas": {
+    floor: ["#4a3a2e", "#44352a"],
+    grout: "#2e241c",
+    wall: "#2a221c",
+    wallDark: "#1c1612",
+    lip: "#221a14",
+    deco: (ctx, rnd, st) => {
+      // Correntes na parede, chapas rebitadas, canais de lava e bigornas.
+      for (let x = 8; x < SCENE_W - 8; x += 24 + Math.floor(rnd() * 14)) {
+        for (let y = 0; y < 12; y += 3) {
+          px(ctx, x, y, 3, 2, "#5a5450");
+          px(ctx, x + 1, y + 2, 1, 1, "#3a3430");
+        }
+        px(ctx, x - 1, 12, 5, 3, "#6a6460");
+      }
+      for (let ty = 2; ty < 9; ty += 3)
+        for (let tx = 1; tx < 14; tx += 4) px(ctx, tx * TILE + 2, ty * TILE + 2, 1, 1, "#8a7a6a");
+      for (let i = 0; i < 1 + (st % 2); i++) {
+        const y = FLOOR_Y + 20 + Math.floor(rnd() * 80);
+        glow(ctx, SCENE_W / 2, y + 1, SCENE_W / 2, 4, "#ff6a1a", 0.18);
+        px(ctx, SIDE, y, SCENE_W - 2 * SIDE, 3, "#ff6a1a");
+        px(ctx, SIDE, y + 1, SCENE_W - 2 * SIDE, 1, "#ffd27a");
+      }
+      for (let i = 0; i < 2; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y - 6, 12, 3, "#5a5a60");
+        px(ctx, x + 3, y - 3, 6, 3, "#4a4a50");
+        px(ctx, x + 1, y, 10, 2, "#3a3a40");
+        px(ctx, x, y - 6, 12, 1, "#8a8a90");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 12, 32, 10, "#ff6a1a", 0.35);
+        px(ctx, cx - 14, 5, 28, 5, "#5a5a60");
+        px(ctx, cx - 14, 5, 28, 1, "#9a9aa0");
+        px(ctx, cx - 6, 10, 12, 6, "#4a4a50");
+        px(ctx, cx - 10, FLOOR_Y, 20, 4, "#3a3a40");
+        px(ctx, cx + 6, 0, 2, 6, "#6a4a2e");
+        px(ctx, cx + 3, 0, 8, 3, "#7a7a80");
+      }
+    },
+  },
+  "jardim-das-almas": {
+    floor: ["#241a30", "#21182c"],
+    grout: "#2e2240",
+    wall: "#140e1c",
+    wallDark: "#0c0812",
+    lip: "#100b16",
+    deco: (ctx, rnd, st) => {
+      // Trepadeiras na parede, flores pálidas que brilham e almas flutuando.
+      for (let x = 4; x < SCENE_W - 4; x += 8 + Math.floor(rnd() * 10)) {
+        const h = 6 + Math.floor(rnd() * 9);
+        px(ctx, x, 0, 1, h, "#3a5a3a");
+        px(ctx, x - 1, h - 2, 3, 2, "#4a7a4a");
+      }
+      for (let i = 0; i < 10 + st * 2; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x + 1, y - 3, 1, 3, "#3a5a3a");
+        glow(ctx, x + 1.5, y - 4, 3, 3, "#e8e0ff", 0.25);
+        px(ctx, x, y - 5, 3, 2, "#f0eaff");
+        px(ctx, x + 1, y - 5, 1, 1, "#b8a8e8");
+      }
+      for (let i = 0; i < 3 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        glow(ctx, x + 2, y - 10, 6, 6, "#a8f0ff", 0.2);
+        px(ctx, x, y - 12, 4, 4, "#d8f8ff");
+        px(ctx, x + 1, y - 8, 2, 2, "#a8e0f0");
+        px(ctx, x + 1, y - 6, 1, 1, "#78b0c8");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 10, 30, 12, "#a8f0ff", 0.22);
+        px(ctx, cx - 2, 2, 5, 14, "#2a1a14");
+        for (const [dx, dy] of [[-10, 3], [-6, 1], [6, 2], [10, 4]] as const) line(ctx, "#2a1a14", cx, 4, cx + dx, dy);
+        for (const [dx, dy] of [[-9, 6], [8, 7], [-4, 9], [4, 10]] as const) {
+          px(ctx, cx + dx, dy, 1, 3, "#3a2a24");
+          px(ctx, cx + dx - 1, dy + 3, 3, 2, "#d8f8ff");
+        }
+        px(ctx, cx - 8, FLOOR_Y, 16, 3, "#2a1a14");
+      }
+    },
+  },
+  "torre-do-eclipse": {
+    floor: ["#1c1a3a", "#1a1836"],
+    grout: "#2e2a5a",
+    wall: "#100e24",
+    wallDark: "#0a0918",
+    lip: "#0d0b1e",
+    deco: (ctx, rnd, st) => {
+      // O eclipse na parede, livros flutuando e círculos arcanos no chão.
+      const ex = 30 + Math.floor(rnd() * (SCENE_W - 60));
+      glow(ctx, ex, 8, 12, 9, "#ffd060", 0.35);
+      ctx.fillStyle = "#05040c";
+      ctx.beginPath();
+      ctx.arc(ex, 8, 6, 0, Math.PI * 2);
+      ctx.fill();
+      for (let i = 0; i < 3; i++) {
+        const x = 10 + Math.floor(rnd() * (SCENE_W - 20));
+        const y = 2 + Math.floor(rnd() * 9);
+        if (Math.abs(x - ex) < 12) continue;
+        px(ctx, x, y, 5, 4, "#6a2a2a");
+        px(ctx, x + 1, y + 1, 3, 2, "#f0e8d0");
+      }
+      for (let i = 0; i < 1 + (st >= 2 ? 1 : 0); i++) {
+        const [x, y] = floorPoint(rnd);
+        ctx.globalAlpha = 0.55;
+        ctx.strokeStyle = "#8a7ae8";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.ellipse(x + 10, y + 3, 11, 4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.ellipse(x + 10, y + 3, 7, 2.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        for (let k = 0; k < 6; k++) px(ctx, x + 10 + Math.round(Math.cos(k) * 9), y + 3 + Math.round(Math.sin(k) * 3), 1, 1, "#d8d0ff");
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 8, 26, 14, "#ffd060", 0.4);
+        ctx.fillStyle = "#020106";
+        ctx.beginPath();
+        ctx.arc(cx, 8, 9, 0, Math.PI * 2);
+        ctx.fill();
+        for (let k = 0; k < 12; k++) {
+          const a = (k / 12) * Math.PI * 2;
+          px(ctx, Math.round(cx + Math.cos(a) * 11), Math.round(8 + Math.sin(a) * 8), 1, 1, "#fff0b0");
+        }
+      }
+    },
+  },
+  "coracao-do-abismo": {
+    floor: ["#3a1418", "#361216"],
+    grout: "#5a1e24",
+    wall: "#220a0e",
+    wallDark: "#160608",
+    lip: "#1c080b",
+    deco: (ctx, rnd, st) => {
+      // Veias pulsando no chão, bolsas de carne na parede e costelas.
+      for (let x = 8; x < SCENE_W - 8; x += 20 + Math.floor(rnd() * 16)) {
+        const y = 3 + Math.floor(rnd() * 6);
+        glow(ctx, x + 3, y + 3, 6, 5, "#ff3a4a", 0.18);
+        px(ctx, x, y, 7, 7, "#6a1a24");
+        px(ctx, x + 1, y + 1, 5, 5, "#8a2a34");
+        px(ctx, x + 2, y + 2, 2, 2, "#c84a54");
+      }
+      for (let i = 0; i < 4 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        line(ctx, "#8a1a2a", x, y, x + 5, y + 2, x + 9, y + 1, x + 14, y + 4, x + 20, y + 3);
+        line(ctx, "#c8303e", x + 5, y + 2, x + 7, y + 5);
+      }
+      for (let i = 0; i < 2; i++) {
+        const [x, y] = floorPoint(rnd);
+        for (let k = 0; k < 4; k++) {
+          px(ctx, x + k * 4, y - 8, 1, 8, "#e8d8d0");
+          px(ctx, x + k * 4 + 1, y - 9, 2, 1, "#e8d8d0");
+        }
+      }
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 9, 30, 12, "#ff2a3a", 0.35);
+        px(ctx, cx - 9, 2, 18, 13, "#8a1a24");
+        px(ctx, cx - 7, 1, 6, 3, "#8a1a24");
+        px(ctx, cx + 1, 1, 6, 3, "#8a1a24");
+        px(ctx, cx - 6, 4, 4, 4, "#c84a54");
+        px(ctx, cx - 5, 5, 2, 2, "#ff8a94");
+        for (const dx of [-12, 12]) line(ctx, "#6a1a24", cx, 9, cx + dx, 15);
+        px(ctx, cx - 2, 0, 4, 2, "#5a121a");
+      }
+    },
+  },
+  "horizonte-final": {
+    floor: ["#0e1020", "#0c0e1c"],
+    grout: "#1a1e38",
+    wall: "#05060e",
+    wallDark: "#020309",
+    lip: "#04050b",
+    deco: (ctx, rnd, st) => {
+      // O horizonte que se apaga: estrelas, a linha de luz, ponteiros de relógio soltos e areia que sobe.
+      for (let i = 0; i < 44; i++) {
+        ctx.globalAlpha = 0.25 + rnd() * 0.7;
+        px(ctx, Math.floor(rnd() * SCENE_W), Math.floor(rnd() * SCENE_H), 1, 1, rnd() < 0.2 ? "#ffd8a0" : "#ffffff");
+      }
+      ctx.globalAlpha = 1;
+      glow(ctx, SCENE_W / 2, FLOOR_Y - 1, SCENE_W / 2, 3, "#ffb86a", 0.3);
+      px(ctx, 0, FLOOR_Y - 2, SCENE_W, 1, "#ffd8a0");
+      for (let i = 0; i < 2 + st; i++) {
+        const [x, y] = floorPoint(rnd);
+        line(ctx, "#c8b8f0", x, y, x + 8, y - 4);
+        px(ctx, x + 8, y - 5, 2, 2, "#ffffff");
+        line(ctx, "#8a7ac8", x + 3, y + 2, x + 7, y + 4);
+      }
+      ctx.globalAlpha = 0.4;
+      for (let i = 0; i < 18; i++) {
+        const [x, y] = floorPoint(rnd);
+        px(ctx, x, y, 1, 1, "#ffd8a0");
+      }
+      ctx.globalAlpha = 1;
+      if (st === 3) {
+        const cx = SCENE_W / 2;
+        glow(ctx, cx, 8, 22, 12, "#ffd8a0", 0.3);
+        px(ctx, cx - 7, 1, 14, 1, "#c8a060");
+        px(ctx, cx - 7, 15, 14, 1, "#c8a060");
+        px(ctx, cx - 6, 2, 12, 2, "#8ab0d0");
+        px(ctx, cx - 3, 4, 6, 3, "#8ab0d0");
+        px(ctx, cx - 1, 7, 2, 2, "#ffd8a0");
+        px(ctx, cx - 3, 9, 6, 3, "#8ab0d0");
+        px(ctx, cx - 6, 12, 12, 3, "#ffd8a0");
+        line(ctx, "#ffffff", cx - 5, 3, cx + 4, 13);
+        px(ctx, cx + 9, 6, 3, 2, "#8ab0d0");
+        px(ctx, cx - 12, 10, 2, 2, "#8ab0d0");
+      }
+    },
+  },
 };
 
 /** O tema da sala de cada região (e a cor por cima, quando repete o tema de outra). */
@@ -1874,11 +2291,22 @@ const REGION_ROOM: Readonly<Record<number, { like: string; tint?: string }>> = {
   8: { like: "cripta-do-musgo", tint: "#6a5a8a" },
   9: { like: "bosque-petrificado", tint: "#e8e0ff" },
   10: { like: "trono-do-vazio" },
+  // D69: o fim de jogo, até o 1000 (antes a 11 e a 12 caíam no tema da 1).
+  11: { like: "fenda-abissal" },
+  12: { like: "trono-do-fim" },
+  13: { like: "ermo-de-cinzas" },
+  14: { like: "catedral-partida" },
+  15: { like: "mar-de-vidro" },
+  16: { like: "forja-dos-titas" },
+  17: { like: "jardim-das-almas" },
+  18: { like: "torre-do-eclipse" },
+  19: { like: "coracao-do-abismo" },
+  20: { like: "horizonte-final" },
 };
 
 /** A sala `st` de uma dungeon: parede com enfeites, chão de lajes, portas dos dois lados. */
 export function roomCanvas(dungeon: string, st: number): HTMLCanvasElement {
-  // As 10 regiões (§12.2) usam os temas que existem; as que repetem um tema ganham outra cor.
+  // As 20 regiões (§12.2 e D69) usam os temas que existem; as que repetem um tema ganham outra cor.
   const look = REGION_ROOM[dungeonById(dungeon)?.region.index ?? 1] ?? REGION_ROOM[1]!;
   const th = THEMES[look.like] ?? THEMES["cripta-do-musgo"]!;
   const { c, ctx } = canvas(SCENE_W, SCENE_H);

@@ -1,6 +1,7 @@
 import type { AmmoGrade, RarityId } from "../content.ts";
 import type { ItemInstance } from "../equipment.ts";
 import { type Balance, balance as gameBalance } from "../formulas.ts";
+import { isSupreme } from "../items/supreme.ts";
 
 /**
  * O Mercador (spec §10): poções e munição por tier, equipamento Comum do tier e a compra de itens do
@@ -59,10 +60,12 @@ export function buyBackPrice(
   item: ItemInstance,
   B: Balance = gameBalance,
 ): number {
+  // D68: a Suprema vale as lendárias que a forja consumiu.
+  const n = isSupreme(item) ? B.cfg.supreme.inputs : 1;
   return Math.max(
     1,
     Math.floor(
-      B.cfg.merchant.buyBackPct * itemBasePrice(item.ilvl, item.rarity, B),
+      B.cfg.merchant.buyBackPct * itemBasePrice(item.ilvl, item.rarity, B) * n,
     ),
   );
 }

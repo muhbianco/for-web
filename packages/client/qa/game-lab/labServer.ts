@@ -27,9 +27,9 @@ import {
   dungeonById,
   equipItem,
   evolveTier,
+  forgeSupreme,
   heroDerived,
   heroRunFighter,
-  imbuePerk,
   jobXpOf,
   planTransfer,
   raiseAttributes,
@@ -324,11 +324,16 @@ export class LabServer implements TvLink {
       case "rpg.smith.perk":
         return this.apply(
           re,
-          d.action === "rolar"
-            ? rerollPerk(h, String(d.uid), Number(d.slot ?? 0), {
-                next: Math.random,
-              })
-            : imbuePerk(h, String(d.uid), { next: Math.random }),
+          rerollPerk(h, String(d.uid), Number(d.slot ?? 0), {
+            next: Math.random,
+          }),
+        );
+      case "rpg.smith.supreme":
+        return this.apply(
+          re,
+          forgeSupreme(h, String(d.base), (d.uids as unknown[]).map(String), {
+            next: Math.random,
+          }),
         );
       case "rpg.bank":
         return this.apply(re, bankGold(h, Number(d.gold)));

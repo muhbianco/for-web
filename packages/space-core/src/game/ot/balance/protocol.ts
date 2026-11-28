@@ -248,8 +248,8 @@ export const RpgSmithDismantleManyCmd = cmd(
   z.object({ npc, uids: z.array(ref).min(1).max(BAG_SLOTS) }).strict(),
 );
 /**
- * Ferreiro: o perk do lendário (27/11/2026): rolar o perk `slot` (1 Essência) ou imbuir o 2º perk
- * (20 Essências). Vale vestido ou na mochila; não na corrida.
+ * Ferreiro: o perk do lendário (27/11/2026): rolar o perk `slot` (1 Essência; o `slot` 1 só na Arma
+ * Suprema, D68). Vale vestido ou na mochila; não na corrida.
  */
 export const RpgSmithPerkCmd = cmd(
   "rpg.smith.perk",
@@ -257,9 +257,19 @@ export const RpgSmithPerkCmd = cmd(
     .object({
       npc,
       uid: ref,
-      action: z.enum(["rolar", "imbuir"]),
+      action: z.literal("rolar"),
       slot: z.number().int().min(0).max(1).optional(),
     })
+    .strict(),
+);
+/**
+ * Ferreiro: forjar a Arma Suprema (D68): a `base` (vestida ou na mochila) e as outras 4 lendárias da
+ * mesma família e iL, na mochila. Não na corrida.
+ */
+export const RpgSmithSupremeCmd = cmd(
+  "rpg.smith.supreme",
+  z
+    .object({ npc, base: ref, uids: z.array(ref).length(4) })
     .strict(),
 );
 /** Banqueiro: ouro no cofre (positivo deposita, negativo saca). */
@@ -378,6 +388,7 @@ export const RpgCommand = z.discriminatedUnion("t", [
   RpgSmithCmd,
   RpgSmithDismantleManyCmd,
   RpgSmithPerkCmd,
+  RpgSmithSupremeCmd,
   RpgBankCmd,
   RpgVaultCmd,
   RpgVaultManyCmd,

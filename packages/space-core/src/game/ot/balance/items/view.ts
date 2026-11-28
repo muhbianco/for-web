@@ -11,6 +11,7 @@ import { type Balance, balance as gameBalance } from "../formulas.ts";
 import { type Material, affixRange, itemName, materialOf } from "./generate.ts";
 import { itemPerks, legendaryOf } from "./legendary.ts";
 import { perkClass, perkText } from "./perks.ts";
+import { isSupreme, supremePower } from "./supreme.ts";
 
 /**
  * O item como a tela o mostra (spec §9.7): tooltip e o que a arte precisa para desenhar o ícone
@@ -26,6 +27,8 @@ export interface ItemVisual {
   rarityColor: string;
   /** +7 brilho; +9 partículas; +10 aura. */
   refineGlow: "nenhum" | "brilho" | "particulas" | "aura";
+  /** D68: a Arma Suprema tem a moldura de sangue e fogo. */
+  supreme: boolean;
 }
 
 export interface ItemTooltip {
@@ -49,6 +52,8 @@ export interface ItemTooltip {
   }[];
   /** Os perks do lendário (em laranja): a frase e a classe dona da skill (`null`: vale para todas). */
   perks?: { text: string; cls: ClassId | null }[];
+  /** D68: a Arma Suprema; `power` em fração (0,15 = +15% no dano da arma, já somado em `base`). */
+  supreme?: { power: number };
   visual: ItemVisual;
 }
 
@@ -120,6 +125,7 @@ export function itemVisual(item: ItemInstance): ItemVisual {
     rarityColor: RARITIES[item.rarity].color,
     refineGlow:
       r >= 10 ? "aura" : r >= 9 ? "particulas" : r >= 7 ? "brilho" : "nenhum",
+    supreme: isSupreme(item),
   };
 }
 
@@ -140,7 +146,10 @@ export function itemTooltip(
   if (item.slot === "arma") {
     const f = FAMILIES[item.family];
     const wb =
-      B.weaponBaseValue(item.ilvl) * rm * B.refineMult(item.refine, true);
+      B.weaponBaseValue(item.ilvl) *
+      rm *
+      B.refineMult(item.refine, true) *
+      (1 + supremePower(item));
     kind = `${f.name} (${f.hands === 2 ? "2 mãos" : "1 mão"}, ${f.aps.toFixed(2).replace(".", ",")} ataques/s, escala ${f.scale})`;
     if (f.atk > 0) base.push({ label: "ATQ", value: Math.round(wb * f.atk) });
     if (f.matk > 0)
@@ -216,6 +225,7 @@ export function itemTooltip(
     refine: item.refine,
     affixes,
     ...(perks.length > 0 ? { perks } : {}),
+    ...(isSupreme(item) ? { supreme: { power: supremePower(item) } } : {}),
     visual: itemVisual(item),
   };
 }

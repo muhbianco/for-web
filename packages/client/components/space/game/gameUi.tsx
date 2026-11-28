@@ -44,6 +44,9 @@ if (
     "@keyframes gameFloat{0%{transform:translateY(0);opacity:1}100%{transform:translateY(-22px);opacity:0}}",
     "@keyframes gameTipIn{from{opacity:0}to{opacity:1}}",
     "@keyframes gamePulse{0%,100%{box-shadow:0 0 0 0 rgba(255,120,90,.0)}50%{box-shadow:0 0 0 4px rgba(255,120,90,.45)}}",
+    // D68: a moldura da Arma Suprema respira como brasa e solta fagulhas para cima.
+    "@keyframes gameEmber{0%,100%{box-shadow:0 0 5px 1px rgba(200,16,16,.75),0 0 12px 2px rgba(255,90,20,.35),inset 0 0 6px rgba(150,0,0,.8)}50%{box-shadow:0 0 9px 2px rgba(255,40,20,.95),0 0 18px 4px rgba(255,140,30,.55),inset 0 0 9px rgba(210,20,0,.9)}}",
+    "@keyframes gameEmberRise{0%{transform:translateY(3px);opacity:0}30%{opacity:1}100%{transform:translateY(-7px);opacity:0}}",
   ].join("");
   document.head.append(s);
 }
@@ -896,12 +899,14 @@ export function ItemIcon(
   const [local, rest] = splitProps(props, ["item", "size", "mark"]);
   const r = () => RARITY[local.item.rarity];
   const glow = () => itemVisual(local.item).refineGlow;
+  const supreme = () => itemVisual(local.item).supreme;
   const px = () => local.size ?? 32;
   return (
     <Frame
       {...rest}
       data-frame={r().frame}
       data-glow={glow() === "nenhum" ? undefined : glow()}
+      data-supreme={supreme() ? "" : undefined}
       style={{
         "--rc": r().color,
         width: `${px() + 8}px`,
@@ -967,6 +972,31 @@ const Frame = styled("span", {
     },
     "&[data-glow=aura]": {
       boxShadow: "0 0 12px 2px rgba(255, 214, 102, 0.55)",
+    },
+    // D68 Arma Suprema: borda de sangue e fogo (vermelho-escuro → brasa) que respira, e fagulhas
+    // subindo pela borda de cima. Parada (só o brilho fixo) com "reduzir movimento".
+    "&[data-supreme]": {
+      border: "2px solid #e0261a",
+      background:
+        "radial-gradient(circle at 50% 115%, rgba(255,110,30,0.45), rgba(120,0,0,0.55) 55%, rgba(20,0,0,0.6))",
+      boxShadow:
+        "0 0 6px 1px rgba(220,30,20,0.85), 0 0 14px 3px rgba(255,110,30,0.4), inset 0 0 7px rgba(170,0,0,0.85)",
+      "@media (prefers-reduced-motion: no-preference)": {
+        animation: "gameEmber 1.8s ease-in-out infinite",
+      },
+    },
+    "&[data-supreme]::before": {
+      content: '""',
+      position: "absolute",
+      inset: "-4px -2px auto -2px",
+      height: "10px",
+      pointerEvents: "none",
+      background:
+        "radial-gradient(circle at 18% 70%, #ffd27a 0 1px, transparent 1.6px), radial-gradient(circle at 52% 40%, #ff8a3d 0 1.2px, transparent 1.8px), radial-gradient(circle at 83% 75%, #ffb24d 0 1px, transparent 1.6px)",
+      opacity: 0.85,
+      "@media (prefers-reduced-motion: no-preference)": {
+        animation: "gameEmberRise 1.4s ease-out infinite",
+      },
     },
   },
 });

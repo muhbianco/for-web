@@ -29,6 +29,7 @@ import {
 } from "./items/generate.ts";
 import { itemPerks } from "./items/legendary.ts";
 import { rollPerk } from "./items/perks.ts";
+import { rollSupremePower, supremeRecipeError } from "./items/supreme.ts";
 import {
   dismantle,
   refineAttempt,
@@ -716,32 +717,42 @@ export function rerollPerk(
   );
 }
 
-/** Imbuir: o lendário ganha um 2º perk rolado (numa skill que ele ainda não tem), por Essência. */
-export function imbuePerk(
+/**
+ * D68 Forjar a Arma Suprema (27/11/2026; items/supreme.ts): a base (vestida ou na mochila) e as outras
+ * `supreme.inputs − 1` lendárias da mesma família e iL, na mochila. A base fica com afixos, refino,
+ * nome e o 1º perk; ganha o poder sorteado e o 2º perk (numa skill diferente do 1º). As outras somem.
+ * Sem custo além das armas. Tudo ou nada.
+ */
+export function forgeSupreme(
   h: HeroV5,
-  uid: string,
+  baseUid: string,
+  uids: readonly string[],
   rng: RandomSource,
   B: Balance = gameBalance,
 ) {
-  const item = findItem(h, uid);
-  if (!item) return fail("item-nao-encontrado" as const);
-  if (item.rarity !== "lendario") return fail("nao-lendario" as const);
-  const perks = itemPerks(item);
-  if (perks.length >= B.cfg.legendaryPerks.maxPerks)
-    return fail("perks-cheios" as const);
-  const cost = B.cfg.legendaryPerks.imbueEssence;
-  if (h.essence < cost) return fail("sem-essencia" as const);
-  const perk = rollPerk(
-    h.cls,
-    perks.map((p) => p.skill),
-    rng,
-  );
+  if (new Set([baseUid, ...uids]).size !== uids.length + 1)
+    return fail("suprema-quantidade" as const);
+  const base = findItem(h, baseUid);
+  if (!base) return fail("item-nao-encontrado" as const);
+  const others: OwnedItem[] = [];
+  for (const uid of uids) {
+    const x = h.bag.find((b) => b.uid === uid);
+    if (!x) return fail("suprema-fora-da-mochila" as const);
+    others.push(x);
+  }
+  const err = supremeRecipeError(base, others, B);
+  if (err) return fail(err);
+  if (base.slot !== "arma") return fail("suprema-nao-lendaria" as const);
+  const power = rollSupremePower(rng, B);
+  // O 1º perk da base fica; os que faltam até o teto da Suprema saem sorteados (skills diferentes).
+  const perks = itemPerks(base).slice(0, 1);
+  while (perks.length < B.cfg.supreme.maxPerks)
+    perks.push(rollPerk(h.cls, perks.map((p) => p.skill), rng));
+  const gone = new Set(uids);
+  const next: OwnedItem = { ...base, supreme: { power }, perks };
   return done(
-    replaceItem({ ...h, essence: h.essence - cost }, uid, {
-      ...item,
-      perks: [...perks, perk],
-    }),
-    { perk },
+    replaceItem({ ...h, bag: h.bag.filter((x) => !gone.has(x.uid)) }, baseUid, next),
+    { power, perk: perks[perks.length - 1]! },
   );
 }
 

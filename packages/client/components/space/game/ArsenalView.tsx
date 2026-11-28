@@ -507,6 +507,16 @@ export function ArsenalView(props: { onBack?: () => void; cls?: ClassId }) {
         </TableWrap>
       </Group>
 
+      {/* D68: a Arma Suprema, para quem procura a receita fora do Ferreiro. */}
+      <Group>
+        <GroupHead>
+          <h4>{t`Arma Suprema`}</h4>
+          <Muted>
+            {t`No Ferreiro, ${B.cfg.supreme.inputs} armas Lendárias da mesma família e do mesmo nível de item viram uma Arma Suprema: a base fica (afixos, refino, nome e o 1º perk), ganha de +${Math.round(B.cfg.supreme.power.min * 100)}% a +${Math.round(B.cfg.supreme.power.max * 100)}% de poder no dano da arma (média de 15%) e um 2º perk sorteado, que rola como o 1º. É o único item com 2 perks. Desmontar ou vender rende as ${B.cfg.supreme.inputs} lendárias.`}
+          </Muted>
+        </GroupHead>
+      </Group>
+
       <Group>
         <GroupHead>
           <h4>{t`Quem usa o quê`}</h4>

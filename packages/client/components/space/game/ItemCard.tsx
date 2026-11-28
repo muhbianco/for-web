@@ -33,6 +33,7 @@ import {
   equipPreview,
   equippedIn,
   gold,
+  pct,
 } from "./heroModel";
 import { ItemTip } from "./ItemTip";
 
@@ -97,8 +98,9 @@ export function ItemCard(props: {
 
   return (
     <Card
-      style={{ "--rc": r().color }}
+      style={{ "--rc": tip().supreme ? "#ff4a2a" : r().color }}
       data-compact={props.compact ? "" : undefined}
+      data-supreme={tip().supreme ? "" : undefined}
     >
       <Top>
         <ItemIcon item={props.item} size={props.compact ? 48 : 64} />
@@ -107,7 +109,7 @@ export function ItemCard(props: {
           <Meta>
             <span>
               {r().pips ? `${r().pips} ` : ""}
-              {rarityName(props.item.rarity)}
+              {tip().supreme ? t`Arma Suprema` : rarityName(props.item.rarity)}
             </span>
             <span>·</span>
             <span>{slotName(props.item.slot as GearSlot)}</span>
@@ -117,6 +119,13 @@ export function ItemCard(props: {
             </Show>
           </Meta>
           <Muted>{tip().kind}</Muted>
+          <Show when={tip().supreme}>
+            {(sp) => (
+              <SupremeLine>
+                {t`✦ +${pct(sp().power)} de poder no dano da arma · 2 perks`}
+              </SupremeLine>
+            )}
+          </Show>
           <Req data-bad={below() ? "" : undefined}>
             {t`Nível do item ${tip().ilvl} · pede nível ${tip().requiredLevel}`}
             <Show when={below()}> {t`(acima do seu)`}</Show>
@@ -387,6 +396,23 @@ const Card = styled("div", {
     borderTop: "3px solid var(--rc)",
     // No tooltip: mais apertado, para caber ao lado do item sem cobrir a tela.
     "&[data-compact]": { gap: "7px", padding: "10px" },
+    // D68: a Suprema tem a borda de cima em sangue e fogo, e um brilho de brasa no fundo.
+    "&[data-supreme]": {
+      borderTop: "3px solid transparent",
+      borderImage:
+        "linear-gradient(90deg, #7a0606, #e0261a 35%, #ff8a2a 60%, #e0261a 85%, #7a0606) 1",
+      borderImageSlice: "3 0 0 0",
+      background:
+        "radial-gradient(ellipse at 50% 0%, rgba(224,38,26,0.16), transparent 60%), var(--md-sys-color-surface-container)",
+    },
+  },
+});
+const SupremeLine = styled("span", {
+  base: {
+    fontSize: "0.85em",
+    fontWeight: 700,
+    color: "#ff7a3d",
+    textShadow: "0 0 6px rgba(224, 38, 26, 0.55)",
   },
 });
 const Top = styled("div", {

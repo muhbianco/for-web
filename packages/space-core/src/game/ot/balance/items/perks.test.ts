@@ -11,7 +11,6 @@ import {
   type HeroV5,
   type OwnedItem,
   createHero,
-  imbuePerk,
   reforgeItem,
   rerollPerk,
 } from "../hero.ts";
@@ -186,7 +185,7 @@ test("a rolagem cai numa skill da classe (menos as excluídas), no passo da faix
   assert.ok(vals.has(0.2) && vals.has(0.4), [...vals].join(","));
 });
 
-test("Ferreiro: rolar o perk custa 1 Essência, numa skill da classe de quem rola; imbuir o 2º custa 20", () => {
+test("Ferreiro: rolar o perk custa 1 Essência, numa skill da classe de quem rola (o 2º perk só na Suprema, D68)", () => {
   const staff = legendaryItem("cajado-da-aurora");
   const h0: HeroV5 = {
     ...createHero("druida", id),
@@ -203,25 +202,8 @@ test("Ferreiro: rolar o perk custa 1 Essência, numa skill da classe de quem rol
   assert.equal(perkClass(after.perks![0]!), "druida");
   assert.deepEqual(after.affixes, staff.affixes);
   assert.equal(after.refine, staff.refine);
-  // Imbuir: 20 Essência, um 2º perk numa skill diferente do 1º.
-  const r2 = ok(imbuePerk(r1.hero, staff.uid, rng(6)));
-  const two = r2.hero.bag[0]!.perks!;
-  assert.equal(r2.hero.essence, 4);
-  assert.equal(two.length, 2);
-  assert.notEqual(two[0]!.skill, two[1]!.skill);
-  assert.deepEqual(imbuePerk({ ...r2.hero, essence: 99 }, staff.uid, rng()), {
-    ok: false,
-    error: "perks-cheios",
-  });
-  // Rolar o 2º não toca no 1º e nunca repete a skill dele.
-  let h = r2.hero;
-  for (let i = 0; i < 40; i++) {
-    h = ok(rerollPerk({ ...h, essence: 1 }, staff.uid, 1, rng(100 + i))).hero;
-    const p = h.bag[0]!.perks!;
-    assert.deepEqual(p[0], two[0]);
-    assert.notEqual(p[1]!.skill, p[0]!.skill);
-  }
-  // Os erros.
+  const h = r1.hero;
+  // Os erros (o perk 1 só existe na Arma Suprema: items/supreme.test.ts).
   assert.deepEqual(rerollPerk({ ...h, essence: 0 }, staff.uid, 0, rng()), {
     ok: false,
     error: "sem-essencia",
@@ -242,22 +224,12 @@ test("Ferreiro: rolar o perk custa 1 Essência, numa skill da classe de quem rol
     ok: false,
     error: "nao-lendario",
   });
-  assert.deepEqual(imbuePerk({ ...h0, essence: 19 }, staff.uid, rng()), {
-    ok: false,
-    error: "sem-essencia",
-  });
 });
 
 test("o perk rolado vale vestido: a skill do druida muda; o herói rolado passa no esquema", () => {
   const staff = legendaryItem("cajado-da-aurora");
   const base: HeroV5 = { ...createHero("druida", id), level: 100, essence: 30 };
-  const h = ok(
-    imbuePerk(
-      ok(rerollPerk({ ...base, bag: [staff] }, staff.uid, 0, rng(7))).hero,
-      staff.uid,
-      rng(8),
-    ),
-  ).hero;
+  const h = ok(rerollPerk({ ...base, bag: [staff] }, staff.uid, 0, rng(7))).hero;
   const it = h.bag[0]!;
   const mods = legendaryMods({ arma: it } as Equipment);
   for (const p of it.perks!) assert.ok(mods[p.skill]?.length, p.skill);
@@ -268,7 +240,7 @@ test("o perk rolado vale vestido: a skill do druida muda; o herói rolado passa 
   const bad = (perks: unknown) =>
     checkHero({ ...h, bag: [{ ...it, perks }] }).ok;
   assert.equal(bad([{ skill: "toString", value: 0.1 }]), false);
-  assert.equal(bad([...it.perks!, it.perks![0]]), false);
+  assert.equal(bad([...it.perks!, it.perks![0], it.perks![0]]), false);
   // A Coroa: o perk de origem é o +5% de XP de job.
   assert.equal(
     jobXpBonus({ elmo: legendaryItem("coroa-do-mentor") } as Equipment),
@@ -298,7 +270,14 @@ test("reforjar mantém os perks; desmontar lendário dá 2 Essências; o tooltip
   );
   assert.equal(dismantle(axe).essence, B.cfg.legendaryPerks.dismantleEssence);
   assert.equal(B.cfg.legendaryPerks.dismantleEssence, 2);
+  // D68: num lendário comum só o 1º perk vale; na Arma Suprema, os 2.
   assert.deepEqual(itemTooltip(axe).perks, [
+    {
+      text: "Redemoinho cura 0,9% do HP máximo por inimigo atingido.",
+      cls: "guerreiro",
+    },
+  ]);
+  assert.deepEqual(itemTooltip({ ...axe, supreme: { power: 0.15 } } as never).perks, [
     {
       text: "Redemoinho cura 0,9% do HP máximo por inimigo atingido.",
       cls: "guerreiro",

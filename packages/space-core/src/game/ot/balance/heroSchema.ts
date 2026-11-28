@@ -44,7 +44,7 @@ const common = {
     .string()
     .refine((x) => LEGENDARIES.some((l) => l.id === x))
     .optional(),
-  // Os perks rolados no Ferreiro (27/11/2026): até 2, numa skill que tenha perk.
+  // Os perks rolados no Ferreiro (27/11/2026): até 2 (o 2º só vale na Arma Suprema, D68).
   perks: z
     .array(
       z.object({
@@ -56,7 +56,13 @@ const common = {
     .optional(),
 };
 const item = z.union([
-  z.object({ ...common, slot: z.literal("arma"), family: z.enum(FAMILY_IDS) }),
+  z.object({
+    ...common,
+    slot: z.literal("arma"),
+    family: z.enum(FAMILY_IDS),
+    // D68 Arma Suprema: o a mais no dano base (0,10–0,20 hoje; o teto do schema é folga).
+    supreme: z.object({ power: z.number().min(0).max(1) }).strict().optional(),
+  }),
   z.object({
     ...common,
     slot: z.literal("secundaria"),

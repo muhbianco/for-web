@@ -54,7 +54,7 @@ import {
   refineItem,
   reforgeItem,
   rerollPerk,
-  imbuePerk,
+  forgeSupreme,
   jobXpOf,
   respecAttributes,
   respecSkills,
@@ -788,12 +788,17 @@ export class RpgService {
         // O perk muda a skill do herói: como refinar e reforjar, só fora da corrida.
         return act(
           (d) =>
-            apply(
-              d,
-              cmd.d.action === "rolar"
-                ? rerollPerk(d.hero, cmd.d.uid, cmd.d.slot ?? 0, roll())
-                : imbuePerk(d.hero, cmd.d.uid, roll()),
-            ),
+            apply(d, rerollPerk(d.hero, cmd.d.uid, cmd.d.slot ?? 0, roll())),
+          "rpg smith",
+        );
+      }
+      case "rpg.smith.supreme": {
+        if (!near(cmd.d.npc, "ferreiro")) return;
+        const roll = drawn();
+        // A Suprema muda a arma (e as skills, pelo 2º perk): como refinar, só fora da corrida.
+        return act(
+          (d) =>
+            apply(d, forgeSupreme(d.hero, cmd.d.base, cmd.d.uids, roll())),
           "rpg smith",
         );
       }
